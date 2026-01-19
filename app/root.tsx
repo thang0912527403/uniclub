@@ -6,7 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
-
+import '@fortawesome/fontawesome-free/css/all.min.css';
 import type { Route } from "./+types/root";
 import "./app.css";
 
