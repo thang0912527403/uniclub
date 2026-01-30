@@ -1,13 +1,13 @@
 import type { Dayjs } from 'dayjs';
-export interface ClubNewsCardProps {
+// type.ts - Thêm vào cuối file
+export interface ClubCardProps {
   image: string;
   title: string;
-  clubName: string;  
   category: string;
-  date: string;
-  views: number;
-  likes: number;
-  summary: string;
+  description: string;
+  members: number;
+  events: number;
+  iconColor: string;
 }
 export interface NewsFilterProps {
   onSearchChange: (value: string) => void;
