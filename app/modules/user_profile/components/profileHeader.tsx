@@ -1,9 +1,9 @@
 import React from 'react';
 const ProfileHeader = () => {
   return (
-    <div className="relative mb-8">
+    <div className="relative mb-8 mt-20">
       {/* Cover Image */}
-      <div className="h-48 w-full bg-gradient-to-r from-[#f26522] to-[#ffa585] rounded-3xl"></div>
+      <div className="h-35 w-full bg-gradient-to-r from-[#f26522] to-[#ffa585] rounded-3xl"></div>
       {/* Avatar & Info */}
       <div className="flex flex-col md:flex-row items-end px-8 -mt-12 gap-6">
         <img 

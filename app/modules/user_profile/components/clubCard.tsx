@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ClubCardProps } from '../../home/type';
+import type { ClubCardProps } from '../../type';
 
 const ClubCard: React.FC<ClubCardProps> = ({ image, title, category, description, members, events, iconColor }) => {
   return (
