@@ -39,8 +39,29 @@ export const useWebRtcContext = () => {
 // Configuration for ICE servers (STUN/TURN)
 const rtcConfig: RTCConfiguration = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' }
+    {
+      urls: "stun:stun.relay.metered.ca:80",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: "c8af2a6d067a2d2bd56f1a64",
+      credential: "EqNHfvLSLD6Udxsj",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: "c8af2a6d067a2d2bd56f1a64",
+      credential: "EqNHfvLSLD6Udxsj",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: "c8af2a6d067a2d2bd56f1a64",
+      credential: "EqNHfvLSLD6Udxsj",
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: "c8af2a6d067a2d2bd56f1a64",
+      credential: "EqNHfvLSLD6Udxsj",
+    },
   ]
 };
 
@@ -71,7 +92,7 @@ export const WebRtcProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     const initSignalR = async () => {
       const accessToken = localStorage.getItem('accessToken');
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://localhost:7237';
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://ef55-58-187-78-183.ngrok-free.app';
       
       const newConnection = new HubConnectionBuilder()
         .withUrl(`${backendUrl}/webrtc`, {
