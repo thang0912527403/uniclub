@@ -57,6 +57,7 @@ const Navbar: React.FC = () => {
         { name: 'Câu lạc bộ', href: '#clubs' },
         { name: 'Sự kiện', href: '#events' },
         { name: 'Tin tức', href: '#news' },
+        { name: 'Họp trực tuyến', href: '/meeting' },
         { name: 'Về chúng tôi', href: '#about' },
     ];
 
@@ -126,15 +127,26 @@ const Navbar: React.FC = () => {
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center gap-8">
                         {navLinks.map((link) => (
-                            <a
-                                key={link.name}
-                                href={link.href}
-                                onClick={(e) => handleSmoothScroll(e, link.href)}
-                                className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 relative group cursor-pointer"
-                            >
-                                {link.name}
-                                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
-                            </a>
+                            link.href.startsWith('#') ? (
+                                <a
+                                    key={link.name}
+                                    href={link.href}
+                                    onClick={(e) => handleSmoothScroll(e, link.href)}
+                                    className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 relative group cursor-pointer"
+                                >
+                                    {link.name}
+                                    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
+                                </a>
+                            ) : (
+                                <Link
+                                    key={link.name}
+                                    to={link.href}
+                                    className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 relative group cursor-pointer"
+                                >
+                                    {link.name}
+                                    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
+                                </Link>
+                            )
                         ))}
                     </div>
 
@@ -282,14 +294,25 @@ const Navbar: React.FC = () => {
                 >
                     <div className="flex flex-col gap-4 py-4 border-t border-gray-200">
                         {navLinks.map((link) => (
-                            <a
-                                key={link.name}
-                                href={link.href}
-                                onClick={(e) => handleSmoothScroll(e, link.href)}
-                                className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 py-2 cursor-pointer"
-                            >
-                                {link.name}
-                            </a>
+                            link.href.startsWith('#') ? (
+                                <a
+                                    key={link.name}
+                                    href={link.href}
+                                    onClick={(e) => handleSmoothScroll(e, link.href)}
+                                    className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 py-2 cursor-pointer"
+                                >
+                                    {link.name}
+                                </a>
+                            ) : (
+                                <Link
+                                    key={link.name}
+                                    to={link.href}
+                                    className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 py-2 cursor-pointer"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                >
+                                    {link.name}
+                                </Link>
+                            )
                         ))}
                         
                         <div className="flex flex-col gap-3 pt-4 border-t border-gray-200">

@@ -10,5 +10,8 @@ export default [
   route("auth/reset-password", "routes/auth/reset-password.tsx"),
   route("auth/verify-email", "routes/auth/verify-email.tsx"),
   route("auth/change-password", "routes/auth/change-password.tsx"),
+
+  // Meeting routes
+  route("meeting/:roomId?", "routes/meeting.tsx"),
 ] satisfies RouteConfig;
 
