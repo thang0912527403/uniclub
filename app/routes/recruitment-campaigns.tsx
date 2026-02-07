@@ -1,11 +1,37 @@
+import { useState } from 'react';
 import { useGetRecruitmentCampaignsQuery } from '~/cores/api';
+import { ApiStatusButton } from '~/components/ApiStatusButton';
 
 export default function RecruitmentCampaigns() {
+  const [isDark, setIsDark] = useState(false);
   const { data: campaigns, isLoading, error } = useGetRecruitmentCampaignsQuery();
+
+  const apiStatuses = [
+    { name: 'Recruitment Campaigns', isLoading },
+  ];
+
+  const bgClass = isDark ? 'bg-[#1a1d2e]' : 'bg-gray-50';
+  const textClass = isDark ? 'text-white' : 'text-gray-900';
+
+  // Helper function để kiểm tra URL hợp lệ
+  const isValidUrl = (url: string) => {
+    if (!url || url === 'string' || url.trim() === '') return false;
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="p-8">
+      <div className={`min-h-screen ${bgClass} p-8`}>
+        <ApiStatusButton
+          apiStatuses={apiStatuses}
+          isDark={isDark}
+          onThemeToggle={() => setIsDark(!isDark)}
+        />
         <div className="animate-pulse space-y-4">
           <div className="h-48 bg-gray-200 rounded"></div>
           <div className="h-48 bg-gray-200 rounded"></div>
@@ -17,7 +43,12 @@ export default function RecruitmentCampaigns() {
   if (error) {
     console.error('API Error:', error);
     return (
-      <div className="p-8">
+      <div className={`min-h-screen ${bgClass} p-8`}>
+        <ApiStatusButton
+          apiStatuses={apiStatuses}
+          isDark={isDark}
+          onThemeToggle={() => setIsDark(!isDark)}
+        />
         <div className="bg-red-50 border border-red-200 rounded p-4">
           <h3 className="text-red-800 font-semibold">Error loading campaigns</h3>
           <p className="text-red-600 text-sm mt-2">
@@ -39,20 +70,15 @@ export default function RecruitmentCampaigns() {
     );
   }
 
-  // Helper function để kiểm tra URL hợp lệ
-  const isValidUrl = (url: string) => {
-    if (!url || url === 'string' || url.trim() === '') return false;
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-6">Recruitment Campaigns</h1>
+    <div className={`min-h-screen ${bgClass} transition-colors duration-300 p-8`}>
+      <ApiStatusButton
+        apiStatuses={apiStatuses}
+        isDark={isDark}
+        onThemeToggle={() => setIsDark(!isDark)}
+      />
+
+      <h1 className={`text-3xl font-bold mb-6 ${textClass}`}>Recruitment Campaigns</h1>
       
       {campaigns && campaigns.length === 0 ? (
         <div className="text-center text-gray-500 py-12">
