@@ -9,10 +9,11 @@ export const API_URLS = {
 
 // Common headers
 const prepareHeaders = (headers: Headers) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    headers.set('authorization', `Bearer ${token}`);
+  const accessToken = localStorage.getItem('accessToken');
+  if (accessToken) {
+    headers.set('authorization', `Bearer ${accessToken}`);
   }
+  headers.set('Content-Type', 'application/json');
   return headers;
 };
 
@@ -61,3 +62,4 @@ export const notificationApi = createApi({
   tagTypes: ['Notification'],
   endpoints: () => ({}),
 });
+
