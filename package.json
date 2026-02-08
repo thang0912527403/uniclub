@@ -10,13 +10,16 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
+    "@microsoft/signalr": "^10.0.0",
     "@react-router/node": "7.12.0",
     "@react-router/serve": "7.12.0",
+    "@reduxjs/toolkit": "^2.11.2",
     "@types/react-redux": "^7.1.34",
     "antd": "^6.2.0",
     "isbot": "^5.1.31",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-redux": "^9.2.0",
     "react-router": "7.12.0"
   },
   "devDependencies": {

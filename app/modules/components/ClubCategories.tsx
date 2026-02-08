@@ -7,7 +7,7 @@ const ClubCategories: React.FC = () => {
             id: 1,
             title: 'Công nghệ & Khoa học',
             description: 'Khám phá thế giới công nghệ, lập trình và khoa học máy tính',
-            icon: '💻',
+            icon: 'code',
             image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&q=80',
             members: 1200,
             clubs: 15
@@ -16,7 +16,7 @@ const ClubCategories: React.FC = () => {
             id: 2,
             title: 'Văn hóa & Nghệ thuật',
             description: 'Thể hiện tài năng nghệ thuật và khám phá văn hóa đa dạng',
-            icon: '🎨',
+            icon: 'palette',
             image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=800&q=80',
             members: 890,
             clubs: 12
@@ -25,12 +25,33 @@ const ClubCategories: React.FC = () => {
             id: 3,
             title: 'Thể thao & Sức khỏe',
             description: 'Rèn luyện sức khỏe và tinh thần thể thao đồng đội',
-            icon: '⚽',
+            icon: 'sports',
             image: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=800&q=80',
             members: 1500,
             clubs: 20
         }
     ];
+
+    const getIcon = (iconName: string) => {
+        const icons = {
+            code: (
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+            ),
+            palette: (
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+            ),
+            sports: (
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            )
+        };
+        return icons[iconName as keyof typeof icons] || icons.code;
+    };
 
     return (
         <section className="py-16 px-6 md:px-12 bg-gray-50">
@@ -48,7 +69,7 @@ const ClubCategories: React.FC = () => {
                     {categories.map((category) => (
                         <div
                             key={category.id}
-                            className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+                            className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer"
                         >
                             <div className="relative h-48 overflow-hidden">
                                 <img
@@ -57,7 +78,9 @@ const ClubCategories: React.FC = () => {
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                                <div className="absolute bottom-4 left-4 text-4xl">{category.icon}</div>
+                                <div className="absolute bottom-4 left-4 text-white">
+                                    {getIcon(category.icon)}
+                                </div>
                             </div>
 
                             <div className="p-6">
@@ -83,7 +106,7 @@ const ClubCategories: React.FC = () => {
                                     </span>
                                 </div>
 
-                                <button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-medium transition-colors duration-300">
+                                <button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-lg font-medium transition-all duration-300 hover:shadow-lg cursor-pointer">
                                     Khám phá
                                 </button>
                             </div>
@@ -92,7 +115,7 @@ const ClubCategories: React.FC = () => {
                 </div>
 
                 <div className="text-center mt-10">
-                    <button className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center gap-2 group">
+                    <button className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center gap-2 group cursor-pointer">
                         Xem tất cả CLB
                         <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
