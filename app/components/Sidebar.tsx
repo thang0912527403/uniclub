@@ -120,6 +120,13 @@ export function Sidebar({
       ]
     },
     {
+      label: 'Manage Users',
+      icon: 'fa-user-cog',
+      subItems: [
+        { label: 'All Users', url: '/users' },
+      ]
+    },
+    {
       label: 'Manage Events',
       icon: 'fa-calendar',
       subItems: [

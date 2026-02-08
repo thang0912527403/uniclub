@@ -10,6 +10,9 @@ export default [
   route("clubs", "routes/clubs.tsx"),
   route("recruitment-campaign", "routes/recruitment-campaigns.tsx"),
 
+  // Users (CRUD)
+  route("users", "routes/users.tsx"),
+
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),
   route("auth/register", "routes/auth/register.tsx"),

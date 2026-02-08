@@ -3,4 +3,5 @@ export * from './recruitmentCampaignApi';
 export * from './dashboardApi';
 export * from './authApi';
 export * from './clubApi';
+export * from './userApi';
 export * from './types';
