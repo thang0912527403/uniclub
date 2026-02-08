@@ -30,14 +30,14 @@ export const createApiWithBaseUrl = (baseUrl: string, reducerPath: string, tagTy
   });
 };
 
-// Main API cho RecruitmentCampaign
+// Main API cho RecruitmentCampaign, Dashboard, Club
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ 
     baseUrl: API_URLS.MAIN_SERVICE,
     prepareHeaders 
   }),
-  tagTypes: ['RecruitmentCampaign'],
+  tagTypes: ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification'],
   endpoints: () => ({}),
 });
 

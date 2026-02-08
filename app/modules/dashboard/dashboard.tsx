@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
+import { HeaderBar } from '~/components/HeaderBar';
+import { useTheme } from '~/hooks/useTheme';
+import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import {
   useGetDashboardStatsQuery,
   useGetRevenueDataQuery,
@@ -9,8 +12,9 @@ import {
 } from '~/cores/api';
 
 export default function DashboardModule() {
-  const [isDark, setIsDark] = useState(false); // Theme cho content
-  const [isSidebarDark, setIsSidebarDark] = useState(true); // Theme cho sidebar
+  const { isDark, toggleTheme } = useTheme(); // Theme cho content (lưu cookies)
+  const [isSidebarDark, setIsSidebarDark] = useState(true); // Theme cho sidebar (không lưu)
+  const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle(); // Toggle sidebar
 
   const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery();
   const { data: revenue, isLoading: revenueLoading } = useGetRevenueDataQuery();
@@ -21,10 +25,6 @@ export default function DashboardModule() {
   const cardClass = isDark ? 'bg-[#242838]' : 'bg-white';
   const textClass = isDark ? 'text-white' : 'text-gray-900';
   const textSecondaryClass = isDark ? 'text-gray-400' : 'text-gray-500';
-  const inputClass = isDark 
-    ? 'bg-[#1a1d2e] border-gray-700 text-white' 
-    : 'bg-white border-gray-200 text-gray-900';
-  const iconClass = isDark ? 'text-gray-400' : 'text-gray-600';
   const hoverClass = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
 
   const apiStatuses = [
@@ -52,11 +52,11 @@ export default function DashboardModule() {
   ];
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen">
       <ApiStatusButton
         apiStatuses={apiStatuses}
         isDark={isDark}
-        onThemeToggle={() => setIsDark(!isDark)}
+        onThemeToggle={toggleTheme}
         position="bottom-right"
       />
 
@@ -64,32 +64,20 @@ export default function DashboardModule() {
         isDark={isSidebarDark} 
         currentPath="/dashboard"
         onToggleSidebarTheme={() => setIsSidebarDark(!isSidebarDark)}
+        isOpen={isSidebarOpen}
       />
 
-      <main className={`flex-1 p-6 ${bgClass} transition-colors duration-300`}>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className={`text-sm ${textSecondaryClass}`}>Pages / Dashboard</p>
-            <h1 className={`text-xl font-bold ${textClass}`}>Dashboard</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <input
-              type="text"
-              placeholder="Search here"
-              className={`pl-4 pr-4 py-2 rounded-lg border outline-none w-64 text-sm ${inputClass}`}
-            />
-            <button className={`p-2 rounded-lg ${hoverClass}`}>
-              <i className={`fas fa-user ${iconClass}`}></i>
-            </button>
-            <button className={`p-2 rounded-lg ${hoverClass}`}>
-              <i className={`fas fa-cog ${iconClass}`}></i>
-            </button>
-            <button className={`p-2 rounded-lg ${hoverClass}`}>
-              <i className={`fas fa-bell ${iconClass}`}></i>
-            </button>
-          </div>
-        </div>
+      <HeaderBar 
+        isDark={isDark}
+        title="Dashboard"
+        breadcrumb="Pages / Dashboard"
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={toggleSidebar}
+      />
 
+      <main className={`pt-24 p-6 ${bgClass} transition-all duration-300 min-h-screen ${
+        isSidebarOpen ? 'ml-64' : 'ml-0'
+      }`}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {statsCards.map((card, index) => (
             <div key={index} className={`${cardClass} rounded-xl shadow-md p-4`}>

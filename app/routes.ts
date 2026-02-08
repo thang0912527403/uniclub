@@ -1,16 +1,15 @@
 import { type RouteConfig, index, route } from "@react-router/dev/routes";
-import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 export default [
   index("routes/home.tsx"),
 
-// Dashboard route
+  // Dashboard route
   route("dashboard", "routes/dashboard.tsx"),
 
-// Club routes
-  route("RecruitmentCampaign", "routes/recruitment-campaigns.tsx"),
+  // Club routes
+  route("clubs", "routes/clubs.tsx"),
+  route("recruitment-campaign", "routes/recruitment-campaigns.tsx"),
 
-  
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),
   route("auth/register", "routes/auth/register.tsx"),
@@ -21,5 +20,8 @@ export default [
 
   // Meeting routes
   route("meeting/:roomId?", "routes/meeting.tsx"),
+
+  // Catch-all route
+  route("*", "routes/404.tsx"),
 
 ] satisfies RouteConfig;
