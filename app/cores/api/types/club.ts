@@ -1,13 +1,23 @@
 export interface Club {
+  address: string;
   clubId: number;
   clubName: string;
-  description: string;
-  category: string;
-  memberCount: number;
-  imageUrl: string;
-  status: 'active' | 'inactive';
+  coverImageUrl: string;
   createdAt: string;
-  updatedAt?: string;
+  description: string;
+  email: string;
+  facebookUrl: string;
+  foundedDate: string;
+  isActive: boolean;
+  isDeleted: boolean;
+  isPublic: boolean;
+  logoUrl: string;
+  memberCount: number;
+  phoneNumber: string
+  shortName: string;
+  status: "Active" | "Inactive";
+  updatedAt: string;
+  websiteUrl: string;
 }
 
 export interface ApiResponse<T> {
