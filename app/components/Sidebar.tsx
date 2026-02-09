@@ -182,7 +182,7 @@ export function Sidebar({
               {hasSubItems ? (
                 <button
                   onClick={() => toggleExpand(item.label)}
-                  className={`w-full flex items-center justify-between px-4 py-3 transition-all ${expanded ? '' : 'rounded-lg'
+                  className={`w-full flex cursor-pointer items-center justify-between px-4 py-3 transition-all ${expanded ? '' : 'rounded-lg'
                     } ${isSubItemActive || expanded
                       ? isDark ? 'text-white' : 'text-gray-900'
                       : `${textSecondaryClass} ${hoverClass}`
@@ -236,7 +236,7 @@ export function Sidebar({
         {onToggleSidebarTheme && (
           <button
             onClick={onToggleSidebarTheme}
-            className={`w-full px-4 py-2 rounded-lg text-sm ${isDark
+            className={`w-full px-4 py-2 rounded-lg text-sm cursor-pointer ${isDark
               ? 'bg-white/10 text-white hover:bg-white/20'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}

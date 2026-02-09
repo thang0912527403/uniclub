@@ -31,7 +31,7 @@ export function HeaderBar({
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className={`p-2 rounded-lg ${hoverClass} transition-colors`}
+              className={`p-2 rounded-lg cursor-pointer ${hoverClass} transition-colors`}
             >
               <i className={`fas fa-bars ${iconClass} text-lg`}></i>
             </button>
@@ -47,13 +47,13 @@ export function HeaderBar({
             placeholder="Search here"
             className={`pl-4 pr-4 py-2 rounded-lg border outline-none w-64 text-sm ${inputClass}`}
           />
-          <button className={`p-2 rounded-lg ${hoverClass}`}>
+          <button className={`p-2 rounded-lg cursor-pointer ${hoverClass}`}>
             <i className={`fas fa-user ${iconClass}`}></i>
           </button>
-          <button className={`p-2 rounded-lg ${hoverClass}`}>
+          <button className={`p-2 rounded-lg cursor-pointer ${hoverClass}`}>
             <i className={`fas fa-cog ${iconClass}`}></i>
           </button>
-          <button className={`p-2 rounded-lg ${hoverClass}`}>
+          <button className={`p-2 rounded-lg cursor-pointer ${hoverClass}`}>
             <i className={`fas fa-bell ${iconClass}`}></i>
           </button>
         </div>

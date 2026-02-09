@@ -1,12 +1,16 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
+import { Loading } from '~/components/Loading';
+import { Error } from '~/components/Error';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useGetClubsQuery } from '~/cores/api';
 
 export default function ClubsModule() {
+  const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const [isSidebarDark, setIsSidebarDark] = useState(true);
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
@@ -51,27 +55,10 @@ export default function ClubsModule() {
         isSidebarOpen ? 'ml-64' : 'ml-0'
       }`}>
         {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <i className={`fas fa-spinner fa-spin text-4xl ${textClass} mb-4`}></i>
-              <p className={textSecondaryClass}>Đang tải dữ liệu...</p>
-            </div>
-          </div>
-        )}
+        {isLoading && <Loading isDark={isDark} />}
 
         {/* Error State */}
-        {error && (
-          <div className={`${cardClass} rounded-xl shadow-md p-6 mb-6`}>
-            <div className="flex items-center gap-3 text-red-500">
-              <i className="fas fa-exclamation-circle text-2xl"></i>
-              <div>
-                <h3 className="font-bold">Lỗi khi tải dữ liệu</h3>
-                <p className="text-sm">{'status' in error ? `Error ${error.status}` : 'Network error'}</p>
-              </div>
-            </div>
-          </div>
-        )}
+        {error && <Error isDark={isDark} error={error} />}
 
         {/* Stats Overview */}
         {!isLoading && clubs && (
@@ -111,7 +98,7 @@ export default function ClubsModule() {
                   <div>
                     <p className={`text-xs ${textSecondaryClass} uppercase`}>Active Clubs</p>
                     <h3 className={`text-2xl font-bold ${textClass}`}>
-                      {clubs.filter(c => c.status === 'active').length}
+                      {clubs.filter(c => c.isActive).length}
                     </h3>
                   </div>
                 </div>
@@ -120,12 +107,12 @@ export default function ClubsModule() {
               <div className={`${cardClass} rounded-xl shadow-md p-6`}>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-layer-group text-white text-xl"></i>
+                    <i className="fas fa-globe text-white text-xl"></i>
                   </div>
                   <div>
-                    <p className={`text-xs ${textSecondaryClass} uppercase`}>Categories</p>
+                    <p className={`text-xs ${textSecondaryClass} uppercase`}>Public Clubs</p>
                     <h3 className={`text-2xl font-bold ${textClass}`}>
-                      {new Set(clubs.map(c => c.category)).size}
+                      {clubs.filter(c => c.isPublic).length}
                     </h3>
                   </div>
                 </div>
@@ -135,7 +122,7 @@ export default function ClubsModule() {
             {/* Actions Bar */}
             <div className={`${cardClass} rounded-xl shadow-md p-4 mb-6 flex items-center justify-between`}>
               <div className="flex items-center gap-3">
-                <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer">
                   <i className="fas fa-plus mr-2"></i>
                   Tạo CLB mới
                 </button>
@@ -146,13 +133,14 @@ export default function ClubsModule() {
               </div>
               <div className="flex items-center gap-3">
                 <select className={`px-4 py-2 rounded-lg border outline-none ${isDark ? 'bg-[#1a1d2e] border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
-                  <option>Tất cả danh mục</option>
-                  <option>Technology</option>
-                  <option>Arts</option>
-                  <option>Business</option>
-                  <option>Sports</option>
-                  <option>Environment</option>
-                  <option>Music</option>
+                  <option>Tất cả trạng thái</option>
+                  <option>Hoạt động</option>
+                  <option>Không hoạt động</option>
+                </select>
+                <select className={`px-4 py-2 rounded-lg border outline-none ${isDark ? 'bg-[#1a1d2e] border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                  <option>Tất cả</option>
+                  <option>Công khai</option>
+                  <option>Riêng tư</option>
                 </select>
               </div>
             </div>
@@ -161,13 +149,29 @@ export default function ClubsModule() {
             {clubs.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {clubs.map((club) => (
-                  <div key={club.clubId} className={`${cardClass} rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer`}>
+                  <div 
+                    key={club.clubId} 
+                    className={`${cardClass} rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer`}
+                    onClick={() => navigate(`/clubs/${club.clubId}`)}
+                  >
                     <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 relative overflow-hidden">
-                      <img 
-                        src={club.imageUrl || 'https://via.placeholder.com/400x250/4F46E5/FFFFFF?text=Club'} 
-                        alt={club.clubName}
-                        className="w-full h-full object-cover"
-                      />
+                      {club.coverImageUrl || club.logoUrl ? (
+                        <img 
+                          src={club.coverImageUrl || club.logoUrl} 
+                          alt={club.clubName}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="text-center text-white">
+                            <i className="fas fa-building text-5xl mb-2 opacity-50"></i>
+                            <p className="text-sm font-semibold opacity-75">{club.clubName}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="p-6">
@@ -175,14 +179,14 @@ export default function ClubsModule() {
                         <h3 className={`text-lg font-bold ${textClass} mb-2`}>{club.clubName}</h3>
                         <div className="flex items-center justify-between gap-2">
                           <span className={`inline-block px-2 py-1 text-xs rounded ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-                            {club.category}
+                            {club.shortName || 'N/A'}
                           </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            club.status === 'active' 
+                            club.isActive 
                               ? 'bg-green-500 text-white' 
                               : 'bg-gray-500 text-white'
                           }`}>
-                            {club.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
+                            {club.isActive ? 'Hoạt động' : 'Không hoạt động'}
                           </span>
                         </div>
                       </div>
@@ -195,9 +199,9 @@ export default function ClubsModule() {
                           <i className={`fas fa-users text-sm ${textSecondaryClass}`}></i>
                           <span className={`text-sm ${textSecondaryClass}`}>{club.memberCount} thành viên</span>
                         </div>
-                        <button className="text-blue-500 hover:text-blue-600 text-sm font-semibold">
+                        <span className="text-blue-500 hover:text-blue-600 text-sm font-semibold">
                           Xem chi tiết →
-                        </button>
+                        </span>
                       </div>
                     </div>
                   </div>
