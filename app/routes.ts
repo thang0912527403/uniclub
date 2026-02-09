@@ -9,7 +9,7 @@ export default [
   // Club routes
   route("clubs", "routes/clubs.tsx"),
   route("clubs/:id", "routes/clubs.$id.tsx"),
-  route("recruitment-campaign", "routes/recruitment-campaigns.tsx"),
+  route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
 
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),

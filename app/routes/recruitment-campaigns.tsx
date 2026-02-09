@@ -5,10 +5,6 @@ export default function RecruitmentCampaigns() {
   const [isDark, setIsDark] = useState(false);
   const { data: campaigns, isLoading, error } = useGetRecruitmentCampaignsQuery();
 
-  const apiStatuses = [
-    { name: 'Recruitment Campaigns', isLoading },
-  ];
-
   const bgClass = isDark ? 'bg-[#1a1d2e]' : 'bg-gray-50';
   const textClass = isDark ? 'text-white' : 'text-gray-900';
 
@@ -63,7 +59,7 @@ export default function RecruitmentCampaigns() {
     <div className={`min-h-screen ${bgClass} transition-colors duration-300 p-8`}>
 
       <h1 className={`text-3xl font-bold mb-6 ${textClass}`}>Recruitment Campaigns</h1>
-      
+
       {campaigns && campaigns.length === 0 ? (
         <div className="text-center text-gray-500 py-12">
           <p>No campaigns available</p>
@@ -74,8 +70,8 @@ export default function RecruitmentCampaigns() {
             <div key={campaign.campaignId} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
               {/* Image với fallback */}
               {isValidUrl(campaign.imageUrl) ? (
-                <img 
-                  src={campaign.imageUrl} 
+                <img
+                  src={campaign.imageUrl}
                   alt={campaign.campaignName}
                   className="w-full h-48 object-cover"
                   onError={(e) => {
@@ -87,15 +83,15 @@ export default function RecruitmentCampaigns() {
                   <i className="fas fa-image text-white text-4xl opacity-50"></i>
                 </div>
               )}
-              
+
               <div className="p-4">
                 <h2 className="text-xl font-semibold mb-2">{campaign.campaignName}</h2>
                 <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                  {campaign.description && campaign.description !== 'string' 
-                    ? campaign.description 
+                  {campaign.description && campaign.description !== 'string'
+                    ? campaign.description
                     : 'No description available'}
                 </p>
-                
+
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center text-gray-500">
                     <i className="fas fa-calendar mr-2"></i>
@@ -103,11 +99,10 @@ export default function RecruitmentCampaigns() {
                       {new Date(campaign.startDate).toLocaleDateString()} - {new Date(campaign.endDate).toLocaleDateString()}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                      campaign.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${campaign.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
                       {campaign.status && campaign.status !== 'string' ? campaign.status : 'N/A'}
                     </span>
                   </div>
@@ -115,7 +110,7 @@ export default function RecruitmentCampaigns() {
 
                 {/* Link chỉ hiển thị nếu hợp lệ */}
                 {isValidUrl(campaign.linkCampaign) && (
-                  <a 
+                  <a
                     href={campaign.linkCampaign}
                     target="_blank"
                     rel="noopener noreferrer"

@@ -1,11 +1,10 @@
 interface ErrorProps {
-  isDark?: boolean;
   error: any;
   title?: string;
 }
 
-export function Error({ isDark = false, error, title = "Lỗi khi tải dữ liệu" }: ErrorProps) {
-  const cardClass = isDark ? 'bg-[#242838]' : 'bg-white';
+export function Error({  error, title = "Lỗi khi tải dữ liệu" }: ErrorProps) {
+  const cardClass ='dark:bg-[#242838] bg-white';
 
   return (
     <div className={`${cardClass} rounded-xl shadow-md p-6 mb-6`}>

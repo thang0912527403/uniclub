@@ -41,7 +41,7 @@ export default function ClubsModule() {
 
         {/* Error State */}
         {error && (
-          <Error title="Lỗi khi tải danh sách câu lạc bộ." error={error} />
+          <Error title="Lỗi khi tải danh sách câu lạc bộ." error={JSON.stringify(error)} />
         )}
 
         {/* Stats Overview */}

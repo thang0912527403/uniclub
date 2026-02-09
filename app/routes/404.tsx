@@ -39,14 +39,14 @@ export default function NotFoundPage() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
           <button
             onClick={() => navigate('/')}
-            className="px-8 py-4 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-lg hover:shadow-xl"
+            className="px-8 py-4 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-lg hover:shadow-xl cursor-pointer"
           >
             <i className="fas fa-home mr-2"></i>
             Về trang chủ
           </button>
           <button
             onClick={() => navigate(-1)}
-            className="px-8 py-4 bg-white text-gray-700 font-semibold rounded-lg border-2 border-gray-300 hover:border-orange-500 hover:text-orange-500 transition-colors"
+            className="px-8 py-4 bg-white text-gray-700 font-semibold rounded-lg border-2 border-gray-300 hover:border-orange-500 hover:text-orange-500 transition-colors cursor-pointer"
           >
             <i className="fas fa-arrow-left mr-2"></i>
             Quay lại
@@ -58,22 +58,22 @@ export default function NotFoundPage() {
           <p className="text-sm text-gray-500 mb-4">Hoặc bạn có thể khám phá:</p>
           <div className="flex flex-wrap justify-center gap-4">
             <button
-              onClick={() => navigate('/dashboard')}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-orange-500 transition-colors"
+              onClick={() => navigate('/')}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-orange-500 transition-colors cursor-pointer"
             >
-              <i className="fas fa-th-large mr-2"></i>
-              Dashboard
+              <i className="fa-regular fa-newspaper"></i>
+              Tin tức
             </button>
             <button
               onClick={() => navigate('/club/info')}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-orange-500 transition-colors"
+              className="px-4 py-2 text-sm text-gray-600 hover:text-orange-500 transition-colors cursor-pointer"
             >
               <i className="fas fa-building mr-2"></i>
               Câu lạc bộ
             </button>
             <button
               onClick={() => navigate('/events')}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-orange-500 transition-colors"
+              className="px-4 py-2 text-sm text-gray-600 hover:text-orange-500 transition-colors cursor-pointer"
             >
               <i className="fas fa-calendar mr-2"></i>
               Sự kiện
