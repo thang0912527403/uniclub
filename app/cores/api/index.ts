@@ -4,3 +4,5 @@ export * from './dashboardApi';
 export * from './authApi';
 export * from './clubApi';
 export * from './types';
+export * from './departmentApi';
+export * from './userApi';
