@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useGetRecruitmentCampaignsQuery } from '~/cores/api';
-import { ApiStatusButton } from '~/components/ApiStatusButton';
 
 export default function RecruitmentCampaigns() {
   const [isDark, setIsDark] = useState(false);
@@ -27,11 +26,6 @@ export default function RecruitmentCampaigns() {
   if (isLoading) {
     return (
       <div className={`min-h-screen ${bgClass} p-8`}>
-        <ApiStatusButton
-          apiStatuses={apiStatuses}
-          isDark={isDark}
-          onThemeToggle={() => setIsDark(!isDark)}
-        />
         <div className="animate-pulse space-y-4">
           <div className="h-48 bg-gray-200 rounded"></div>
           <div className="h-48 bg-gray-200 rounded"></div>
@@ -44,11 +38,6 @@ export default function RecruitmentCampaigns() {
     console.error('API Error:', error);
     return (
       <div className={`min-h-screen ${bgClass} p-8`}>
-        <ApiStatusButton
-          apiStatuses={apiStatuses}
-          isDark={isDark}
-          onThemeToggle={() => setIsDark(!isDark)}
-        />
         <div className="bg-red-50 border border-red-200 rounded p-4">
           <h3 className="text-red-800 font-semibold">Error loading campaigns</h3>
           <p className="text-red-600 text-sm mt-2">
@@ -72,11 +61,6 @@ export default function RecruitmentCampaigns() {
 
   return (
     <div className={`min-h-screen ${bgClass} transition-colors duration-300 p-8`}>
-      <ApiStatusButton
-        apiStatuses={apiStatuses}
-        isDark={isDark}
-        onThemeToggle={() => setIsDark(!isDark)}
-      />
 
       <h1 className={`text-3xl font-bold mb-6 ${textClass}`}>Recruitment Campaigns</h1>
       
