@@ -25,4 +25,6 @@ export default [
   // Catch-all route
   route("*", "routes/404.tsx"),
 
+  // User Profile route
+  route("user/profile", "routes/user_profile.tsx"),
 ] satisfies RouteConfig;

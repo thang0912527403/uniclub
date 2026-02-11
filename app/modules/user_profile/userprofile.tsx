@@ -1,22 +1,22 @@
-import React, { use } from 'react';
 import { useNavigate } from 'react-router';
 import { useSidebarToggle } from '../../hooks/useSidebarToggle';
 import Navbar from './components/navbar';
 import ProfileHeader from './components/profileHeader';
-import ClubCard from './components/clubCard';
-import { useGetUserByIdQuery } from '~/cores/api';
+import { useGetCurrentUserQuery, useGetUserByIdQuery } from '~/cores/api';
 
 const UserProfile = () => {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const { data: user, isLoading, error } = useGetUserByIdQuery('currentUserId');
+  const {data: me} = useGetCurrentUserQuery();
+  //47457723-6435-4C62-8797-08DE67F399A1
+  const { data: user, isLoading, error } = useGetUserByIdQuery(me?.userId || '');
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <ProfileHeader />
+        <ProfileHeader user={user} />
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar Info */}
@@ -24,10 +24,10 @@ const UserProfile = () => {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <h3 className="font-bold text-gray-800 mb-4 text-lg">Thông tin cá nhân</h3>
               <div className="space-y-3 text-sm text-gray-600">
-                <p>📧 {user?.Email}</p>
-                <p>📞 {user?.PhoneNumber}</p>
-                <p>🏫 {user?.Major}</p>
-                <p>🆔 MSSV: {user?.StudentId}</p>
+                <p>📧 {user?.email}</p>
+                <p>📞 {user?.phoneNumber}</p>
+                <p>🏫 {user?.major}</p>
+                <p>🆔 MSSV: {user?.studentId}</p>
               </div>
             </div>
 
