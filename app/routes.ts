@@ -27,4 +27,7 @@ export default [
 
   // User Profile route
   route("user/profile", "routes/user_profile.tsx"),
+
+  // Question route
+  route("question", "routes/question.tsx"),
 ] satisfies RouteConfig;
