@@ -1,9 +1,7 @@
 import { baseApi } from './baseApi';
-import type { UserResponseDto, CreateUserDto, UpdateUserDto } from './types/user';
-import type { ApiResponse } from './types/recruitmentCampaign';
+import type { ApiResponse, UserResponseDto, CreateUserDto, UpdateUserDto } from "./types";
 
-/** User CRUD - gọi MAIN_SERVICE (7237). Nếu backend User chạy ở USER_SERVICE (7238) thì đổi baseApi → userApi. */
-export const userCrudApi = baseApi.injectEndpoints({
+export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getUsers: builder.query<UserResponseDto[], void>({
       query: () => '/Users',
@@ -58,4 +56,4 @@ export const {
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
-} = userCrudApi;
+} = userApi;

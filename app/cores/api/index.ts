@@ -5,3 +5,6 @@ export * from './authApi';
 export * from './clubApi';
 export * from './userApi';
 export * from './types';
+export * from './departmentApi';
+export * from './userApi';
+export * from './applicationApi';

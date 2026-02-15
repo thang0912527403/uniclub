@@ -16,7 +16,7 @@ export const authApi = baseApi.injectEndpoints({
     // Đăng nhập
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
-        url: '/api/auth/login',
+        url: '/auth/login',
         method: 'POST',
         body: credentials,
       }),
@@ -26,7 +26,7 @@ export const authApi = baseApi.injectEndpoints({
     // Đăng ký
     register: builder.mutation<UserInfo, RegisterRequest>({
       query: (userData) => ({
-        url: '/api/auth/register',
+        url: '/auth/register',
         method: 'POST',
         body: userData,
       }),
@@ -35,7 +35,7 @@ export const authApi = baseApi.injectEndpoints({
     // Refresh token
     refreshToken: builder.mutation<LoginResponse, RefreshTokenRequest>({
       query: (data) => ({
-        url: '/api/auth/refresh-token',
+        url: '/auth/refresh-token',
         method: 'POST',
         body: data,
       }),
@@ -44,7 +44,7 @@ export const authApi = baseApi.injectEndpoints({
     // Đăng xuất (revoke token)
     logout: builder.mutation<void, { refreshToken: string }>({
       query: (data) => ({
-        url: '/api/auth/revoke-token',
+        url: '/auth/revoke-token',
         method: 'POST',
         body: data,
       }),
@@ -54,7 +54,7 @@ export const authApi = baseApi.injectEndpoints({
     // Đăng xuất tất cả thiết bị
     logoutAllDevices: builder.mutation<void, void>({
       query: () => ({
-        url: '/api/auth/logout-all',
+        url: '/auth/logout-all',
         method: 'POST',
       }),
       invalidatesTags: ['User'],
@@ -63,7 +63,7 @@ export const authApi = baseApi.injectEndpoints({
     // Đổi mật khẩu
     changePassword: builder.mutation<void, ChangePasswordRequest>({
       query: (data) => ({
-        url: '/api/auth/change-password',
+        url: '/auth/change-password',
         method: 'POST',
         body: data,
       }),
@@ -72,7 +72,7 @@ export const authApi = baseApi.injectEndpoints({
     // Quên mật khẩu
     forgotPassword: builder.mutation<void, ForgotPasswordRequest>({
       query: (data) => ({
-        url: '/api/auth/forgot-password',
+        url: '/auth/forgot-password',
         method: 'POST',
         body: data,
       }),
@@ -81,7 +81,7 @@ export const authApi = baseApi.injectEndpoints({
     // Reset mật khẩu
     resetPassword: builder.mutation<void, ResetPasswordRequest>({
       query: (data) => ({
-        url: '/api/auth/reset-password',
+        url: '/auth/reset-password',
         method: 'POST',
         body: data,
       }),
@@ -90,7 +90,7 @@ export const authApi = baseApi.injectEndpoints({
     // Xác thực email
     verifyEmail: builder.mutation<void, VerifyEmailRequest>({
       query: (data) => ({
-        url: '/api/auth/verify-email',
+        url: '/auth/verify-email',
         method: 'POST',
         body: data,
       }),
@@ -99,7 +99,7 @@ export const authApi = baseApi.injectEndpoints({
     // Gửi lại email xác thực
     resendVerificationEmail: builder.mutation<void, { email: string }>({
       query: (data) => ({
-        url: '/api/auth/resend-verification-email',
+        url: '/auth/resend-verification-email',
         method: 'POST',
         body: data,
       }),
@@ -107,7 +107,7 @@ export const authApi = baseApi.injectEndpoints({
 
     // Lấy thông tin user hiện tại
     getCurrentUser: builder.query<UserInfo, void>({
-      query: () => '/api/auth/me',
+      query: () => '/auth/me',
       providesTags: ['User'],
     }),
   }),

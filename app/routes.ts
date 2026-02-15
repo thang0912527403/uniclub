@@ -8,6 +8,7 @@ export default [
 
   // Club routes
   route("clubs", "routes/clubs.tsx"),
+  route("clubs/:id", "routes/clubs.$id.tsx"),
   route("recruitment-campaign", "routes/recruitment-campaigns.tsx"),
 
   // Users (CRUD)
@@ -27,4 +28,9 @@ export default [
   // Catch-all route
   route("*", "routes/404.tsx"),
 
+  // User Profile route
+  route("user/profile", "routes/user_profile.tsx"),
+
+  // Question route
+  route("question", "routes/question.tsx"),
 ] satisfies RouteConfig;

@@ -1,8 +1,6 @@
-import { useState } from 'react';
-import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
-import { useTheme } from '~/hooks/useTheme';
+import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import {
   useGetDashboardStatsQuery,
@@ -12,27 +10,12 @@ import {
 } from '~/cores/api';
 
 export default function DashboardModule() {
-  const { isDark, toggleTheme } = useTheme(); // Theme cho content (lưu cookies)
-  const [isSidebarDark, setIsSidebarDark] = useState(true); // Theme cho sidebar (không lưu)
-  const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle(); // Toggle sidebar
+  const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
   const { data: stats, isLoading: statsLoading } = useGetDashboardStatsQuery();
   const { data: revenue, isLoading: revenueLoading } = useGetRevenueDataQuery();
   const { data: activities, isLoading: activitiesLoading } = useGetActivitiesQuery();
   const { data: products, isLoading: productsLoading } = useGetProductsQuery();
-
-  const bgClass = isDark ? 'bg-[#1a1d2e]' : 'bg-[#f5f7fa]';
-  const cardClass = isDark ? 'bg-[#242838]' : 'bg-white';
-  const textClass = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondaryClass = isDark ? 'text-gray-400' : 'text-gray-500';
-  const hoverClass = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
-
-  const apiStatuses = [
-    { name: 'Dashboard Stats', isLoading: statsLoading },
-    { name: 'Revenue Data', isLoading: revenueLoading },
-    { name: 'Activities', isLoading: activitiesLoading },
-    { name: 'Products', isLoading: productsLoading },
-  ];
 
   const statsCards = [
     { title: 'Bookings', value: '281', change: '+55%', changeText: 'than last week', icon: 'fa-bookmark', color: 'bg-gray-800' },
@@ -53,40 +36,33 @@ export default function DashboardModule() {
 
   return (
     <div className="min-h-screen">
-      <ApiStatusButton
-        apiStatuses={apiStatuses}
-        isDark={isDark}
-        onThemeToggle={toggleTheme}
-        position="bottom-right"
-      />
+      <SettingButton />
 
       <Sidebar 
-        isDark={isSidebarDark} 
         currentPath="/dashboard"
-        onToggleSidebarTheme={() => setIsSidebarDark(!isSidebarDark)}
         isOpen={isSidebarOpen}
       />
 
       <HeaderBar 
-        isDark={isDark}
         title="Dashboard"
         breadcrumb="Pages / Dashboard"
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />
 
-      <main className={`pt-24 p-6 ${bgClass} transition-all duration-300 min-h-screen ${
+      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${
         isSidebarOpen ? 'ml-64' : 'ml-0'
       }`}>
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {statsCards.map((card, index) => (
-            <div key={index} className={`${cardClass} rounded-xl shadow-md p-4`}>
+            <div key={index} className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className={`text-xs ${textSecondaryClass} uppercase mb-1`}>{card.title}</p>
-                  <h3 className={`text-2xl font-bold ${textClass}`}>{card.value}</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">{card.title}</p>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{card.value}</h3>
                   <p className="text-xs text-green-500 mt-2">
-                    {card.change} <span className={textSecondaryClass}>{card.changeText}</span>
+                    {card.change} <span className="text-gray-500 dark:text-gray-400">{card.changeText}</span>
                   </p>
                 </div>
                 <div className={`w-14 h-14 ${card.color} rounded-xl flex items-center justify-center shadow-lg`}>
@@ -97,11 +73,12 @@ export default function DashboardModule() {
           ))}
         </div>
 
+        {/* Charts Row */}
         <div className="grid md:grid-cols-3 gap-6 mb-6">
-          <div className={`${cardClass} rounded-xl shadow-md p-6`}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
             <div className="mb-4">
-              <h3 className={`text-lg font-bold ${textClass} mb-1`}>Website Views</h3>
-              <p className={`text-xs ${textSecondaryClass}`}>Last Campaign Performance</p>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Website Views</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Last Campaign Performance</p>
             </div>
             <div className="h-48 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 flex items-end justify-between gap-2">
               {websiteViewsData.map((item, index) => (
@@ -114,16 +91,16 @@ export default function DashboardModule() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <i className="far fa-clock"></i>
               <span>campaign sent 2 days ago</span>
             </div>
           </div>
 
-          <div className={`${cardClass} rounded-xl shadow-md p-6`}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
             <div className="mb-4">
-              <h3 className={`text-lg font-bold ${textClass} mb-1`}>Daily Sales</h3>
-              <p className={`text-xs ${textSecondaryClass}`}>(+15%) increase in today sales</p>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Daily Sales</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">(+15%) increase in today sales</p>
             </div>
             <div className="h-48 bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 relative overflow-hidden">
               <svg className="w-full h-full" viewBox="0 0 300 150" preserveAspectRatio="none">
@@ -141,16 +118,16 @@ export default function DashboardModule() {
                 />
               </svg>
             </div>
-            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <i className="far fa-clock"></i>
               <span>updated 4 min ago</span>
             </div>
           </div>
 
-          <div className={`${cardClass} rounded-xl shadow-md p-6`}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
             <div className="mb-4">
-              <h3 className={`text-lg font-bold ${textClass} mb-1`}>Completed Tasks</h3>
-              <p className={`text-xs ${textSecondaryClass}`}>Last Campaign Performance</p>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Completed Tasks</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Last Campaign Performance</p>
             </div>
             <div className="h-48 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 relative overflow-hidden">
               <svg className="w-full h-full" viewBox="0 0 300 150" preserveAspectRatio="none">
@@ -168,32 +145,33 @@ export default function DashboardModule() {
                 />
               </svg>
             </div>
-            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <i className="far fa-clock"></i>
               <span>just updated</span>
             </div>
           </div>
         </div>
 
+        {/* Projects & Orders Row */}
         <div className="grid md:grid-cols-2 gap-6">
-          <div className={`${cardClass} rounded-xl shadow-md p-6`}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className={`text-lg font-bold ${textClass}`}>Projects</h3>
-              <button className={`text-gray-400 ${hoverClass} p-2 rounded-lg`}>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Projects</h3>
+              <button className="text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg">
                 <i className="fas fa-ellipsis-v"></i>
               </button>
             </div>
             <div className="flex items-center gap-2 mb-6">
               <i className="fas fa-check text-green-500"></i>
-              <span className={`text-sm font-semibold ${textClass}`}>30 done</span>
-              <span className={`text-xs ${textSecondaryClass}`}>this month</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">30 done</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">this month</span>
             </div>
 
             <div className="space-y-4">
               {productsLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className={`h-16 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} animate-pulse rounded`}></div>
+                    <div key={i} className="h-16 bg-gray-100 dark:bg-gray-700 animate-pulse rounded"></div>
                   ))}
                 </div>
               ) : (
@@ -201,15 +179,15 @@ export default function DashboardModule() {
                   <div key={project.id} className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg"></div>
                     <div className="flex-1">
-                      <div className={`font-semibold text-sm ${textClass}`}>{project.name}</div>
+                      <div className="font-semibold text-sm text-gray-900 dark:text-white">{project.name}</div>
                       <div className="flex items-center gap-2 mt-1">
-                        <div className={`flex-1 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                        <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-blue-500 to-blue-600" 
                             style={{ width: `${project.progress}%` }}
                           ></div>
                         </div>
-                        <span className={`text-xs ${textSecondaryClass}`}>{project.progress}%</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{project.progress}%</span>
                       </div>
                     </div>
                   </div>
@@ -218,24 +196,24 @@ export default function DashboardModule() {
             </div>
           </div>
 
-          <div className={`${cardClass} rounded-xl shadow-md p-6`}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className={`text-lg font-bold ${textClass}`}>Orders overview</h3>
-              <button className={`text-gray-400 ${hoverClass} p-2 rounded-lg`}>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Orders overview</h3>
+              <button className="text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg">
                 <i className="fas fa-cog"></i>
               </button>
             </div>
             <div className="flex items-center gap-2 mb-6">
               <i className="fas fa-arrow-up text-green-500"></i>
-              <span className={`text-sm font-semibold ${textClass}`}>24%</span>
-              <span className={`text-xs ${textSecondaryClass}`}>this month</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">24%</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">this month</span>
             </div>
 
             <div className="space-y-4">
               {activitiesLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className={`h-12 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} animate-pulse rounded`}></div>
+                    <div key={i} className="h-12 bg-gray-100 dark:bg-gray-700 animate-pulse rounded"></div>
                   ))}
                 </div>
               ) : (
@@ -246,8 +224,8 @@ export default function DashboardModule() {
                       activity.type === 'sale' ? 'bg-blue-500' : 'bg-red-500'
                     }`}></div>
                     <div className="flex-1">
-                      <div className={`font-medium text-sm ${textClass}`}>{activity.title}</div>
-                      <div className={`text-xs ${textSecondaryClass} mt-1`}>{activity.time}</div>
+                      <div className="font-medium text-sm text-gray-900 dark:text-white">{activity.title}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{activity.time}</div>
                     </div>
                   </div>
                 ))

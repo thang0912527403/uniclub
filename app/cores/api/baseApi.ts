@@ -37,7 +37,7 @@ export const baseApi = createApi({
     baseUrl: API_URLS.MAIN_SERVICE,
     prepareHeaders 
   }),
-  tagTypes: ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification'],
+  tagTypes: ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification', 'Department', 'Application'],
   endpoints: () => ({}),
 });
 
