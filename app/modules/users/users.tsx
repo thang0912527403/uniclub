@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { Table, Button, Space, Modal, Form, Input, Select, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
-import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import {
   useGetUsersQuery,
@@ -12,7 +10,7 @@ import {
   useUpdateUserMutation,
   useDeleteUserMutation,
 } from '~/cores/api';
-import type { UserResponseDto, CreateUserDto, UpdateUserDto } from '~/cores/api/types/user';
+import type { User, CreateUserDto, UpdateUserDto } from '~/cores/api/types/user';
 
 const GENDER_OPTIONS = [
   { value: 'Male', label: 'Male' },
@@ -27,9 +25,13 @@ const STATUS_OPTIONS = [
 ];
 
 export default function UsersModule() {
-  const { isDark, toggleTheme } = useTheme();
   const [isSidebarDark, setIsSidebarDark] = useState(true);
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+
+  const isDark = isSidebarDark;
+  const bgClass = isDark ? 'bg-[#1a1d2e]' : 'bg-[#f5f7fa]';
+  const cardClass = isDark ? 'bg-[#242838]' : 'bg-white';
+  const textClass = isDark ? 'text-white' : 'text-gray-900';
 
   const { data: users = [], isLoading } = useGetUsersQuery();
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
@@ -37,12 +39,8 @@ export default function UsersModule() {
   const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
 
   const [modalOpen, setModalOpen] = useState<'create' | 'edit' | null>(null);
-  const [editingUser, setEditingUser] = useState<UserResponseDto | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
-
-  const bgClass = isDark ? 'bg-[#1a1d2e]' : 'bg-[#f5f7fa]';
-  const cardClass = isDark ? 'bg-[#242838]' : 'bg-white';
-  const textClass = isDark ? 'text-white' : 'text-gray-900';
 
   const openCreate = () => {
     setEditingUser(null);
@@ -50,7 +48,7 @@ export default function UsersModule() {
     setModalOpen('create');
   };
 
-  const openEdit = (record: UserResponseDto) => {
+  const openEdit = (record: User) => {
     setEditingUser(record);
     form.setFieldsValue({
       fullName: record.fullName,
@@ -116,7 +114,7 @@ export default function UsersModule() {
     }
   };
 
-  const onDelete = (record: UserResponseDto) => {
+  const onDelete = (record: User) => {
     Modal.confirm({
       title: 'Delete user?',
       content: `Delete "${record.fullName}" (${record.email})? This action cannot be undone.`,
@@ -135,7 +133,7 @@ export default function UsersModule() {
     });
   };
 
-  const columns: ColumnsType<UserResponseDto> = [
+  const columns: ColumnsType<User> = [
     { title: 'Full name', dataIndex: 'fullName', key: 'fullName', ellipsis: true },
     { title: 'Email', dataIndex: 'email', key: 'email', ellipsis: true },
     { title: 'Phone', dataIndex: 'phoneNumber', key: 'phoneNumber', ellipsis: true },
@@ -181,13 +179,6 @@ export default function UsersModule() {
 
   return (
     <div className="min-h-screen">
-      <ApiStatusButton
-        apiStatuses={[{ name: 'Users', isLoading }]}
-        isDark={isDark}
-        onThemeToggle={toggleTheme}
-        position="bottom-right"
-      />
-
       <Sidebar
         isDark={isSidebarDark}
         currentPath="/users"

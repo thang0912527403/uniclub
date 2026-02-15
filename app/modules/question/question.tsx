@@ -3,10 +3,16 @@ import Navbar from './components/navbar';
 import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
 import ProgressBar from './components/progressBar';
-import { useGetQuestionsByFormQuery } from '../../cores/api/applicationApi';
+import { useGetQuestionsByFormQuery, useSubmitApplicationMutation } from '../../cores/api/applicationApi';
+import { useGetCurrentUserQuery } from '../../cores/api';
+import type { ApplicationAnswerItemDto } from '../../cores/api';
+
+const FORM_ID = 1;
 
 const App: React.FC = () => {
-  const { data: questionsData, isLoading, error } = useGetQuestionsByFormQuery(1);
+  const { data: questionsData, isLoading, error } = useGetQuestionsByFormQuery(FORM_ID);
+  const { data: currentUser } = useGetCurrentUserQuery();
+  const [submitApplication, { isLoading: isSubmitting, error: submitError, isSuccess }] = useSubmitApplicationMutation();
 
   const [answers, setAnswers] = useState<Record<number, any>>({});
 
@@ -22,10 +28,29 @@ const App: React.FC = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const toAnswerText = (value: any): string => {
+    if (value == null) return '';
+    if (Array.isArray(value)) return value.join(', ');
+    return String(value);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Dữ liệu form:', answers);
-    alert('Gửi form thành công!');
+    const answerList: ApplicationAnswerItemDto[] = Object.entries(answers)
+      .filter(([, v]) => toAnswerText(v).trim() !== '')
+      .map(([questionId, value]) => ({
+        questionId: Number(questionId),
+        answerText: toAnswerText(value),
+      }));
+    try {
+      await submitApplication({
+        formId: FORM_ID,
+        userId: currentUser?.userId,
+        answers: answerList,
+      }).unwrap();
+    } catch (_) {
+      // submitError từ mutation để hiển thị bên dưới
+    }
   };
 
   if (isLoading) return <div className="text-center py-20">Đang tải câu hỏi...</div>;
@@ -64,12 +89,23 @@ const App: React.FC = () => {
             />
           ))}
 
+          {submitError && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
+              {(submitError as { data?: { message?: string } })?.data?.message ?? 'Gửi đơn thất bại. Vui lòng thử lại.'}
+            </div>
+          )}
+          {isSuccess && (
+            <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-green-700">
+              Gửi đơn đăng ký thành công.
+            </div>
+          )}
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="bg-[#FF6B00] hover:bg-[#E56000] text-white px-12 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-orange-200 hover:-translate-y-1"
+              disabled={isSubmitting}
+              className="bg-[#FF6B00] hover:bg-[#E56000] disabled:opacity-70 disabled:cursor-not-allowed text-white px-12 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-orange-200 hover:-translate-y-1"
             >
-              Gửi đơn đăng ký
+              {isSubmitting ? 'Đang gửi...' : 'Gửi đơn đăng ký'}
             </button>
           </div>
         </form>

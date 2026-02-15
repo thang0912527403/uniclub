@@ -3,6 +3,8 @@ import {
   type ApplicationQuestionResponseDto,
   type CreateApplicationQuestionDto,
   type ApiResponse,
+  type ApplicationResponseDto,
+  type SubmitApplicationDto,
 } from "./types";
 
 export const applicationApi = baseApi.injectEndpoints({
@@ -34,6 +36,12 @@ export const applicationApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/Application/questions/${id}`, method: 'DELETE' }),
       invalidatesTags: (result, error, id) => [{ type: 'Application' as const, id }],
     }),
+    // --- Application Answer: nộp đơn kèm câu trả lời ---
+    submitApplication: builder.mutation<ApplicationResponseDto, SubmitApplicationDto>({
+      query: (body) => ({ url: '/Application/submit', method: 'POST', body }),
+      transformResponse: (response: ApiResponse<ApplicationResponseDto>) => response.data,
+      invalidatesTags: ['Application'],
+    }),
   }),
 });
 
@@ -43,4 +51,5 @@ export const {
   useCreateQuestionMutation,
   useUpdateQuestionMutation,
   useDeleteQuestionMutation,
+  useSubmitApplicationMutation,
 } = applicationApi;

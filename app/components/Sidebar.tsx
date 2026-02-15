@@ -17,11 +17,13 @@ interface NavItem {
 interface SidebarProps {
   currentPath?: string;
   isOpen?: boolean;
+  isDark?: boolean;
+  onToggleSidebarTheme?: () => void;
 }
 
 export function Sidebar({
   currentPath = '/dashboard',
-  isOpen = true
+  isOpen = true,
 }: SidebarProps) {
   const navigate = useNavigate();
   const { toggleExpand, isExpanded } = useExpandedMenu();

@@ -20,23 +20,6 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-/** Map từ UserResponseDto (backend) */
-export interface UserResponseDto {
-  userId: string;
-  fullName: string;
-  email: string;
-  phoneNumber?: string | null;
-  dateOfBirth?: string | null; // DateOnly → "YYYY-MM-DD"
-  gender?: string | null;
-  address?: string | null;
-  avatar?: string | null;
-  studentId?: string | null;
-  major?: string | null;
-  joinDate?: string | null; // DateOnly
-  status?: string | null;
-  createdAt?: string | null; // DateTime ISO
-}
-
 /** Map từ CreateUserDto (backend) */
 export interface CreateUserDto {
   fullName: string;

@@ -48,3 +48,16 @@ export interface ApplicationQuestionResponseDto {
 }
 
 export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | string;
+
+// --- Application Answer (phần trả lời đơn) ---
+export interface ApplicationAnswerItemDto {
+  questionId: number;
+  answerText: string;
+}
+
+/** Body gửi khi nộp đơn (form + danh sách câu trả lời). */
+export interface SubmitApplicationDto {
+  formId: number;
+  userId?: string;
+  answers: ApplicationAnswerItemDto[];
+}
