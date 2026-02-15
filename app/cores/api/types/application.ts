@@ -55,9 +55,17 @@ export interface ApplicationAnswerItemDto {
   answerText: string;
 }
 
-/** Body gửi khi nộp đơn (form + danh sách câu trả lời). */
+/** Body gửi khi nộp đơn (form + danh sách câu trả lời). Khớp backend SubmitApplicationWithAnswersDto. */
 export interface SubmitApplicationDto {
   formId: number;
   userId?: string;
   answers: ApplicationAnswerItemDto[];
+}
+
+/** Câu trả lời đã lưu (GET Application/{id}/answers). */
+export interface ApplicationAnswerResponseDto {
+  answerId: number;
+  applicationId: number;
+  questionId: number;
+  answerText: string;
 }

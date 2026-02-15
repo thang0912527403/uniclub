@@ -55,6 +55,24 @@ const App: React.FC = () => {
 
   if (isLoading) return <div className="text-center py-20">Đang tải câu hỏi...</div>;
   if (error) return <div className="text-center py-20 text-red-500">Đã xảy ra lỗi khi tải dữ liệu.</div>;
+  if (!questionsData?.length) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A]">
+        <Navbar />
+        <main className="max-w-3xl mx-auto px-4 py-16">
+          <FormHeader
+            title="Thông tin đăng ký"
+            highlight="Thành viên"
+            description="Chào mừng bạn đến với hệ thống tuyển thành viên của UniClubs."
+          />
+          <div className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
+            <p className="font-medium">Form chưa có câu hỏi.</p>
+            <p className="mt-1 text-sm">Quản trị viên cần thêm câu hỏi vào form trước khi bạn có thể gửi đơn.</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A]">
