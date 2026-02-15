@@ -36,16 +36,19 @@ const App: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser?.userId) {
+      return; // UI hiển thị "Vui lòng đăng nhập" bên dưới
+    }
     const answerList: ApplicationAnswerItemDto[] = Object.entries(answers)
       .filter(([, v]) => toAnswerText(v).trim() !== '')
       .map(([questionId, value]) => ({
         questionId: Number(questionId),
-        answerText: toAnswerText(value),
+        answerText: toAnswerText(value) || undefined,
       }));
     try {
       await submitApplication({
         formId: FORM_ID,
-        userId: currentUser?.userId,
+        userId: currentUser.userId,
         answers: answerList,
       }).unwrap();
     } catch (_) {
@@ -107,6 +110,11 @@ const App: React.FC = () => {
             />
           ))}
 
+          {!currentUser?.userId && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+              Vui lòng đăng nhập để gửi đơn đăng ký.
+            </div>
+          )}
           {submitError && (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
               {(submitError as { data?: { message?: string } })?.data?.message ?? 'Gửi đơn thất bại. Vui lòng thử lại.'}
@@ -120,7 +128,7 @@ const App: React.FC = () => {
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !currentUser?.userId}
               className="bg-[#FF6B00] hover:bg-[#E56000] disabled:opacity-70 disabled:cursor-not-allowed text-white px-12 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-orange-200 hover:-translate-y-1"
             >
               {isSubmitting ? 'Đang gửi...' : 'Gửi đơn đăng ký'}

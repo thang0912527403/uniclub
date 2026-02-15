@@ -49,23 +49,23 @@ export interface ApplicationQuestionResponseDto {
 
 export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | string;
 
-// --- Application Answer (phần trả lời đơn) ---
+// --- Application Answer (phần trả lời đơn). Khớp backend DTOs. ---
 export interface ApplicationAnswerItemDto {
   questionId: number;
-  answerText: string;
+  answerText?: string | null;
 }
 
-/** Body gửi khi nộp đơn (form + danh sách câu trả lời). Khớp backend SubmitApplicationWithAnswersDto. */
+/** Body gửi khi nộp đơn. Khớp backend SubmitApplicationWithAnswersDto (FormId + UserId required). */
 export interface SubmitApplicationDto {
   formId: number;
-  userId?: string;
+  userId: string;
   answers: ApplicationAnswerItemDto[];
 }
 
-/** Câu trả lời đã lưu (GET Application/{id}/answers). */
+/** Câu trả lời đã lưu (GET Application/{id}/answers). Khớp ApplicationAnswerResponseDto. */
 export interface ApplicationAnswerResponseDto {
   answerId: number;
   applicationId: number;
   questionId: number;
-  answerText: string;
+  answerText?: string | null;
 }
