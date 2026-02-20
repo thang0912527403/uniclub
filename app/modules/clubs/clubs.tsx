@@ -106,7 +106,7 @@ export default function ClubsModule() {
             {/* Actions Bar */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer">
+                <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer" onClick={() => navigate("/clubs/create")}>
                   <i className="fas fa-plus mr-2"></i>
                   Tạo CLB mới
                 </button>
