@@ -8,7 +8,9 @@ export default [
 
   // Club routes
   route("clubs", "routes/clubs.tsx"),
-  route("recruitment-campaign", "routes/recruitment-campaigns.tsx"),
+  route("clubs/:id", "routes/clubs.$id.tsx"),
+  route("clubs/create", "routes/create-club.tsx"),
+  route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
 
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),
@@ -28,6 +30,10 @@ export default [
 
   // Meeting routes
   route("meeting/:roomId?", "routes/meeting.tsx"),
+
+  // Error routes
+  route("401", "routes/401.tsx"),
+  route("403", "routes/403.tsx"),
 
   // Catch-all route
   route("*", "routes/404.tsx"),
