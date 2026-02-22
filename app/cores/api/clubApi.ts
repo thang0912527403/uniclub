@@ -1,49 +1,59 @@
-import { baseApi, API_CONFIG } from './baseApi';
-import type { Club, CreateClubRequest } from './types';
+import { baseApi } from './baseApi';
+import { type Club, type ApiResponse } from './types';
 
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getClubs: builder.query<Club[], void>({
-      query: () => ({
-        url: '/clubs',
-        baseUrl: API_CONFIG.CLUB_SERVICE,
-      }),
+      query: () => '/Club',
+      transformResponse: (response: ApiResponse<Club[]>) => response.data,
       providesTags: ['Club'],
     }),
-
-    getClub: builder.query<Club, string>({
-      query: (id) => ({
-        url: `/clubs/${id}`,
-        baseUrl: API_CONFIG.CLUB_SERVICE,
-      }),
-      providesTags: ['Club'],
+    getClubById: builder.query<Club, number>({
+      query: (id) => `/Club/${id}`,
+      transformResponse: (response: ApiResponse<Club>) => response.data,
+      providesTags: (result, error, id) => [{ type: 'Club', id }],
     }),
-
-    createClub: builder.mutation<Club, CreateClubRequest>({
+    createClub: builder.mutation<Club, Partial<Club>>({
       query: (club) => ({
-        url: '/clubs',
+        url: '/Club',
         method: 'POST',
         body: club,
-        baseUrl: API_CONFIG.CLUB_SERVICE,
+      }),
+      transformResponse: (response: ApiResponse<Club>) => response.data,
+      invalidatesTags: ['Club'],
+    }),
+    updateClub: builder.mutation<Club, { id: number; club: Partial<Club> }>({
+      query: ({ id, club }) => ({
+        url: `/Club/${id}`,
+        method: 'PUT',
+        body: club,
+      }),
+      transformResponse: (response: ApiResponse<Club>) => response.data,
+      invalidatesTags: (result, error, { id }) => [{ type: 'Club', id }],
+    }),
+    deleteClub: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `/Club/${id}`,
+        method: 'DELETE',
       }),
       invalidatesTags: ['Club'],
     }),
-
-    updateClub: builder.mutation<Club, { id: string; data: Partial<Club> }>({
-      query: ({ id, data }) => ({
-        url: `/clubs/${id}`,
-        method: 'PATCH',
-        body: data,
-        baseUrl: API_CONFIG.CLUB_SERVICE,
+    toggleClubStatus: builder.mutation<Club, { id: number; isActive: boolean }>({
+      query: ({ id, isActive }) => ({
+        url: `/Club/ChangeStatus/${id}`,
+        method: 'PUT',
       }),
-      invalidatesTags: ['Club'],
+      transformResponse: (response: ApiResponse<Club>) => response.data,
+      invalidatesTags: (result, error, { id }) => [{ type: 'Club', id }, 'Club'],
     }),
   }),
 });
 
 export const {
   useGetClubsQuery,
-  useGetClubQuery,
+  useGetClubByIdQuery,
   useCreateClubMutation,
   useUpdateClubMutation,
+  useDeleteClubMutation,
+  useToggleClubStatusMutation,
 } = clubApi;

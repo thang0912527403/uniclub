@@ -1,14 +1,27 @@
 export interface Club {
-  id: string;
-  name: string;
-  description: string;
-  logo?: string;
-  memberCount: number;
+  address: string;
+  clubId: number;
+  clubName: string;
+  coverImageUrl: string;
   createdAt: string;
+  description: string;
+  email: string;
+  facebookUrl: string;
+  foundedDate: string;
+  isActive: boolean;
+  isDeleted: boolean;
+  isPublic: boolean;
+  logoUrl: string;
+  memberCount: number;
+  phoneNumber: string
+  shortName: string;
+  status: "Active" | "Inactive";
+  updatedAt: string;
+  websiteUrl: string;
 }
 
-export interface CreateClubRequest {
-  name: string;
-  description: string;
-  logo?: string;
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
 }
