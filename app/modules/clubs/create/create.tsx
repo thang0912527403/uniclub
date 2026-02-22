@@ -6,22 +6,8 @@ import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCreateClubMutation } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
+import { validateClubForm, type ClubFormData } from '~/cores/validation';
 
-interface ClubFormData {
-    clubName: string;
-    shortName: string;
-    description: string;
-    email: string;
-    phoneNumber: string;
-    address: string;
-    websiteUrl: string;
-    facebookUrl: string;
-    logoUrl: string;
-    coverImageUrl: string;
-    foundedDate: string;
-    isActive: boolean;
-    isPublic: boolean;
-}
 
 export default function CreateClubModule() {
     const navigate = useNavigate();
@@ -47,38 +33,6 @@ export default function CreateClubModule() {
 
     const [formErrors, setFormErrors] = useState<Partial<Record<keyof ClubFormData, string>>>({});
 
-    const validateForm = (): boolean => {
-        const errors: Partial<Record<keyof ClubFormData, string>> = {};
-
-        if (!formData.clubName.trim()) errors.clubName = 'Tên câu lạc bộ là bắt buộc';
-        if (!formData.shortName.trim()) errors.shortName = 'Tên viết tắt là bắt buộc';
-        if (!formData.description.trim()) errors.description = 'Mô tả là bắt buộc';
-        if (!formData.email.trim()) {
-            errors.email = 'Email là bắt buộc';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            errors.email = 'Email không hợp lệ';
-        }
-        if (!formData.phoneNumber.trim()) errors.phoneNumber = 'Số điện thoại là bắt buộc';
-        if (!formData.address.trim()) errors.address = 'Địa chỉ là bắt buộc';
-
-        const urlPattern = /^https?:\/\/.+/;
-        if (formData.websiteUrl && !urlPattern.test(formData.websiteUrl)) {
-            errors.websiteUrl = 'URL không hợp lệ';
-        }
-        if (formData.facebookUrl && !urlPattern.test(formData.facebookUrl)) {
-            errors.facebookUrl = 'URL không hợp lệ';
-        }
-        if (formData.logoUrl && !urlPattern.test(formData.logoUrl)) {
-            errors.logoUrl = 'URL không hợp lệ';
-        }
-        if (formData.coverImageUrl && !urlPattern.test(formData.coverImageUrl)) {
-            errors.coverImageUrl = 'URL không hợp lệ';
-        }
-
-        setFormErrors(errors);
-        return Object.keys(errors).length === 0;
-    };
-
     const handleInputChange = (field: keyof ClubFormData, value: string | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         if (formErrors[field]) {
@@ -88,8 +42,12 @@ export default function CreateClubModule() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Submitting form with data:', formData);
-        if (!validateForm()) return;
+        const validation = validateClubForm(formData);
+        if (!validation.success) {
+            setFormErrors(validation.errors);
+            return;
+        }
+        setFormErrors({});
 
         try {
             await createClub(formData).unwrap();
