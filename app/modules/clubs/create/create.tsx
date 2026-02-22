@@ -5,6 +5,7 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCreateClubMutation } from '~/cores/api';
+import { useNotification } from '~/components/Notification';
 
 interface ClubFormData {
     clubName: string;
@@ -26,6 +27,7 @@ export default function CreateClubModule() {
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const [createClub, { isLoading, error }] = useCreateClubMutation();
+    const { show: showNotification } = useNotification();
 
     const [formData, setFormData] = useState<ClubFormData>({
         clubName: '',
@@ -91,9 +93,20 @@ export default function CreateClubModule() {
 
         try {
             await createClub(formData).unwrap();
-            navigate('/clubs');
+            showNotification({
+                type: 'success',
+                title: 'Tạo câu lạc bộ thành công!',
+                message: `Câu lạc bộ "${formData.clubName}" đã được tạo thành công.`,
+                duration: 3000,
+            });
+            setTimeout(() => navigate('/clubs'), 1500);
         } catch (err) {
             console.error('Failed to create club:', err);
+            showNotification({
+                type: 'error',
+                title: 'Tạo câu lạc bộ thất bại',
+                message: 'Vui lòng kiểm tra lại thông tin và thử lại.',
+            });
         }
     };
 

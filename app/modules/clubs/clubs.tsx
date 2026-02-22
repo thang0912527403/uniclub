@@ -8,7 +8,7 @@ import { Error } from '~/components/Error';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useGetClubsQuery, useToggleClubStatusMutation } from '~/cores/api';
 import type { Club } from '~/cores/api';
-
+import { useNotification } from '~/components/Notification';
 interface ConfirmModalProps {
   club: Club;
   onConfirm: () => void;
@@ -77,6 +77,8 @@ export default function ClubsModule() {
 
   const [confirmClub, setConfirmClub] = useState<Club | null>(null);
 
+  const { show: showNotification } = useNotification();
+
   const handleToggleClick = (e: React.MouseEvent, club: Club) => {
     e.stopPropagation();
     setConfirmClub(club);
@@ -86,8 +88,21 @@ export default function ClubsModule() {
     if (!confirmClub) return;
     try {
       await toggleStatus({ id: confirmClub.clubId, isActive: !confirmClub.isActive }).unwrap();
-    } catch {
-      // error handled globally or can add toast here
+      showNotification({
+        type: 'success',
+        title: 'Thay đổi trạng thái thành công!',
+        message: `Câu lạc bộ "${confirmClub.clubName}" đã được ${confirmClub.isActive ? 'vô hiệu hóa' : 'kích hoạt'} thành công.`,
+        duration: 3000,
+      });
+    } catch (err) {
+      const rtkErr = err as { status?: number; data?: { message?: string } };
+      const errMsg = rtkErr?.data?.message ?? 'Vui lòng thử lại sau.';
+      showNotification({
+        type: 'error',
+        title: 'Thay đổi trạng thái thất bại!',
+        message: `Câu lạc bộ "${confirmClub.clubName}" không thể thay đổi trạng thái. ${errMsg}`,
+        duration: 4000,
+      });
     } finally {
       setConfirmClub(null);
     }
