@@ -86,7 +86,7 @@ export default function CreateClubModule() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
+        console.log('Submitting form with data:', formData);
         if (!validateForm()) return;
 
         try {
@@ -234,7 +234,7 @@ export default function CreateClubModule() {
                                 <div>
                                     <label className="block text-sm text-gray-700 dark:text-gray-400 mb-2">Ngày Thành Lập</label>
                                     <div className="relative">
-                                        <i className="fas fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"></i>
+                                        <i className="fas fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white"></i>
                                         <input
                                             type="date"
                                             value={formData.foundedDate}

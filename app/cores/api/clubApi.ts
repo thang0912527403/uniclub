@@ -38,6 +38,14 @@ export const clubApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Club'],
     }),
+    toggleClubStatus: builder.mutation<Club, { id: number; isActive: boolean }>({
+      query: ({ id, isActive }) => ({
+        url: `/Club/ChangeStatus/${id}`,
+        method: 'PUT',
+      }),
+      transformResponse: (response: ApiResponse<Club>) => response.data,
+      invalidatesTags: (result, error, { id }) => [{ type: 'Club', id }, 'Club'],
+    }),
   }),
 });
 
@@ -47,4 +55,5 @@ export const {
   useCreateClubMutation,
   useUpdateClubMutation,
   useDeleteClubMutation,
+  useToggleClubStatusMutation,
 } = clubApi;
