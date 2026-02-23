@@ -1,11 +1,10 @@
 interface LoadingProps {
-  isDark?: boolean;
   message?: string;
 }
 
-export function Loading({ isDark = false, message = "Đang tải dữ liệu..." }: LoadingProps) {
-  const textClass = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondaryClass = isDark ? 'text-gray-400' : 'text-gray-500';
+export function Loading({ message = "Đang tải dữ liệu..." }: LoadingProps) {
+  const textClass =  'dark:text-white text-gray-900';
+  const textSecondaryClass ='dark:text-gray-400 text-gray-500';
 
   return (
     <div className="flex items-center justify-center py-20">

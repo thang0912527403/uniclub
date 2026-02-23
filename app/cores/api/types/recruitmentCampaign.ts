@@ -11,5 +11,3 @@ export interface RecruitmentCampaign {
   content: string;
   createdAt: string;
 }
-
-
