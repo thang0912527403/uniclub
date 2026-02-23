@@ -93,6 +93,7 @@ export function Sidebar({
       subItems: [
         { label: 'All Recruitment Campaigns', url: '/recruitment-campaigns' },
         { label: 'Your Club Campaigns', url: '/club/recruitment-campaigns' },
+        { label: 'Approve Applications', url: '/applications' },
       ]
     },
     {

@@ -11,6 +11,7 @@ export default [
   route("clubs/:id", "routes/clubs.$id.tsx"),
   route("clubs/create", "routes/create-club.tsx"),
   route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
+  route("applications", "routes/applications.tsx"),
 
   // Users (CRUD)
   route("users", "routes/users.tsx"),
@@ -38,4 +39,7 @@ export default [
 
   // Question route
   route("question", "routes/question.tsx"),
+
+  // My applications
+  route("my-applications", "routes/my-applications.tsx"),
 ] satisfies RouteConfig;
