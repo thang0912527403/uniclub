@@ -28,6 +28,10 @@ export default [
   route("events/:id", "routes/events.$id.tsx"),
   route("events/:id/edit", "routes/events.$id.edit.tsx"),
 
+  // Public event routes (no auth, uses landing Navbar/Footer)
+  route("public/events", "routes/public.events.tsx"),
+  route("public/events/:id", "routes/public.events.$id.tsx"),
+
   // Meeting routes
   route("meeting/:roomId?", "routes/meeting.tsx"),
 

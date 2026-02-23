@@ -12,7 +12,7 @@ export default function EditEventPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { isDark, toggleTheme } = useTheme();
-    const [isSidebarDark, setIsSidebarDark] = useState(true);
+
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
     const { data: event, isLoading: isLoadingEvent } = useGetEventByIdQuery(Number(id));
@@ -46,8 +46,8 @@ export default function EditEventPage() {
     if (isLoadingEvent) {
         return (
             <div className="min-h-screen">
-                <Sidebar isDark={isSidebarDark} currentPath="/events" isOpen={isSidebarOpen} />
-                <HeaderBar isDark={isDark} title="Edit Event" isSidebarOpen={isSidebarOpen} />
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+                <HeaderBar title="Edit Event" isSidebarOpen={isSidebarOpen} />
                 <main className={`pt-24 p-6 ${bgClass} min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
                     <div className="animate-pulse space-y-4 max-w-4xl mx-auto">
                         <div className="h-12 bg-gray-300 rounded"></div>
@@ -61,8 +61,8 @@ export default function EditEventPage() {
     if (!event) {
         return (
             <div className="min-h-screen">
-                <Sidebar isDark={isSidebarDark} currentPath="/events" isOpen={isSidebarOpen} />
-                <HeaderBar isDark={isDark} title="Edit Event" isSidebarOpen={isSidebarOpen} />
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+                <HeaderBar title="Edit Event" isSidebarOpen={isSidebarOpen} />
                 <main className={`pt-24 p-6 ${bgClass} min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
                     <div className="bg-red-50 border border-red-200 rounded p-4">
                         <h3 className="text-red-800 font-semibold">Event not found</h3>
@@ -82,14 +82,11 @@ export default function EditEventPage() {
             />
 
             <Sidebar
-                isDark={isSidebarDark}
                 currentPath="/events"
-                onToggleSidebarTheme={() => setIsSidebarDark(!isSidebarDark)}
                 isOpen={isSidebarOpen}
             />
 
             <HeaderBar
-                isDark={isDark}
                 title="Edit Event"
                 breadcrumb={`Pages / Events / ${event.eventName} / Edit`}
                 isSidebarOpen={isSidebarOpen}

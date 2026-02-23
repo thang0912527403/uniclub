@@ -11,7 +11,7 @@ import { EventCard } from '~/modules/events/components/EventCard';
 export default function EventsPage() {
     const navigate = useNavigate();
     const { isDark, toggleTheme } = useTheme();
-    const [isSidebarDark, setIsSidebarDark] = useState(true);
+
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
     const [pageNumber, setPageNumber] = useState(1);
@@ -41,14 +41,11 @@ export default function EventsPage() {
             />
 
             <Sidebar
-                isDark={isSidebarDark}
                 currentPath="/events"
-                onToggleSidebarTheme={() => setIsSidebarDark(!isSidebarDark)}
                 isOpen={isSidebarOpen}
             />
 
             <HeaderBar
-                isDark={isDark}
                 title="Events"
                 breadcrumb="Pages / Events / All Events"
                 isSidebarOpen={isSidebarOpen}
@@ -130,8 +127,8 @@ export default function EventsPage() {
                                     onClick={() => setPageNumber(prev => Math.max(1, prev - 1))}
                                     disabled={pageNumber === 1}
                                     className={`px-4 py-2 rounded-lg ${isDark
-                                            ? 'bg-[#242838] text-white hover:bg-[#2c3e50]'
-                                            : 'bg-white text-gray-900 hover:bg-gray-100'
+                                        ? 'bg-[#242838] text-white hover:bg-[#2c3e50]'
+                                        : 'bg-white text-gray-900 hover:bg-gray-100'
                                         } disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                                 >
                                     <i className="fas fa-chevron-left"></i>
@@ -143,8 +140,8 @@ export default function EventsPage() {
                                     onClick={() => setPageNumber(prev => prev + 1)}
                                     disabled={events.length < pageSize}
                                     className={`px-4 py-2 rounded-lg ${isDark
-                                            ? 'bg-[#242838] text-white hover:bg-[#2c3e50]'
-                                            : 'bg-white text-gray-900 hover:bg-gray-100'
+                                        ? 'bg-[#242838] text-white hover:bg-[#2c3e50]'
+                                        : 'bg-white text-gray-900 hover:bg-gray-100'
                                         } disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                                 >
                                     <i className="fas fa-chevron-right"></i>

@@ -51,10 +51,15 @@ export function EventCard({ event, isDark = false, onClick }: EventCardProps) {
         return 'bg-gray-100 text-gray-800';
     };
 
+    const cardBg = isDark ? 'bg-[#242838]' : 'bg-white';
+    const titleColor = isDark ? 'text-white' : 'text-gray-900';
+    const descColor = isDark ? 'text-gray-400' : 'text-gray-600';
+    const metaColor = isDark ? 'text-gray-400' : 'text-gray-500';
+
     return (
         <div
             onClick={onClick}
-            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+            className={`${cardBg} rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer`}
         >
             {isValidUrl(event.imageUrl) ? (
                 <img
@@ -72,8 +77,8 @@ export function EventCard({ event, isDark = false, onClick }: EventCardProps) {
             )}
 
             <div className="p-4">
-                <h2 className="text-xl font-semibold mb-2 line-clamp-1">{event.eventName}</h2>
-                <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                <h2 className={`text-xl font-semibold mb-2 line-clamp-1 ${titleColor}`}>{event.eventName}</h2>
+                <p className={`${descColor} text-sm mb-3 line-clamp-2`}>
                     {event.description && event.description !== 'string'
                         ? event.description
                         : 'No description available'}
@@ -81,13 +86,13 @@ export function EventCard({ event, isDark = false, onClick }: EventCardProps) {
 
                 <div className="space-y-2 text-sm">
                     {event.location && event.location !== 'string' && (
-                        <div className="flex items-center text-gray-500">
+                        <div className={`flex items-center ${metaColor}`}>
                             <i className="fas fa-map-marker-alt mr-2 w-4"></i>
                             <span className="line-clamp-1">{event.location}</span>
                         </div>
                     )}
 
-                    <div className="flex items-center text-gray-500">
+                    <div className={`flex items-center ${metaColor}`}>
                         <i className="fas fa-calendar mr-2 w-4"></i>
                         <span>
                             {formatDate(event.startDate)} - {formatDate(event.endDate)}

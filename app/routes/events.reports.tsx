@@ -1,12 +1,10 @@
-import { useState } from 'react';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 
 export default function EventReportsPage() {
-    const { isDark, toggleTheme } = useTheme();
-    const [isSidebarDark, setIsSidebarDark] = useState(true);
+    const { isDark } = useTheme();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
     const bgClass = isDark ? 'bg-[#1a1d2e]' : 'bg-[#f5f7fa]';
@@ -16,14 +14,11 @@ export default function EventReportsPage() {
     return (
         <div className="min-h-screen">
             <Sidebar
-                isDark={isSidebarDark}
                 currentPath="/events/reports"
-                onToggleSidebarTheme={() => setIsSidebarDark(!isSidebarDark)}
                 isOpen={isSidebarOpen}
             />
 
             <HeaderBar
-                isDark={isDark}
                 title="Event Reports"
                 breadcrumb="Pages / Events / Reports"
                 isSidebarOpen={isSidebarOpen}
