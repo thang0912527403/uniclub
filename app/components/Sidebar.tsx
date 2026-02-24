@@ -70,7 +70,7 @@ export function Sidebar({
         { label: 'All Clubs', url: '/clubs' },
         { label: 'Your Club Info', url: '/club/info' },
         { label: 'Manage Club Name', url: '/club/name' },
-        { label: 'Club Settings', url: '/club/settings' },
+        { label: 'Recruitment Campaigns', url: '/club/recruitment-campaigns' },
         { label: 'Club Members', url: '/club/members' },
         { label: 'Club Activities', url: '/club/activities' },
       ]
@@ -83,6 +83,14 @@ export function Sidebar({
         { label: 'Create Department', url: '/department/create' },
         { label: 'Department Roles', url: '/department/roles' },
         { label: 'Department Settings', url: '/department/settings' },
+      ]
+    },
+    {
+      label: 'Manage Recruitment Campaigns',
+      icon: 'fa-solid fa-flag',
+      subItems: [
+        { label: 'All Recruitment Campaigns', url: '/recruitment-campaigns' },
+        { label: 'Your Club Campaigns', url: '/club/recruitment-campaigns' },
       ]
     },
     {
