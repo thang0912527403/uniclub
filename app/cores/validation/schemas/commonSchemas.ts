@@ -18,7 +18,7 @@ export const phoneSchema = z
     .string()
     .trim()
     .min(1, 'Số điện thoại là bắt buộc')
-    .regex(/^\+?[\d\s\-()]{7,15}$/, 'Số điện thoại không hợp lệ');
+    .regex(/^\+?[\d\s\-()]{10,11}$/, 'Số điện thoại không hợp lệ');
 
 /** Optional URL — must start with http:// or https:// if provided */
 export const optionalUrlSchema = z
