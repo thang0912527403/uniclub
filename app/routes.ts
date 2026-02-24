@@ -25,10 +25,10 @@ export default [
   route("meeting/:roomId?", "routes/meeting.tsx"),
 
   // Error routes
-  route("401", "routes/401.tsx"),
-  route("403", "routes/403.tsx"),
+  route("401", "routes/error/401.tsx"),
+  route("403", "routes/error/403.tsx"),
 
   // Catch-all route
-  route("*", "routes/404.tsx"),
+  route("*", "routes/error/404.tsx"),
 
 ] satisfies RouteConfig;
