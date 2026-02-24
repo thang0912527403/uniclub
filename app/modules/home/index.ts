@@ -1,4 +1,3 @@
-// Main exports
 export { default as HomePage } from './HomePage';
 
 export * from './components';
