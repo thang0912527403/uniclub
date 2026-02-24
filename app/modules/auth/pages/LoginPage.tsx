@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { AuthLayout, FormInput, FormButton } from '../';
 import { useLoginMutation, type LoginRequest } from '~/cores/api';
-
+import Cookies from 'js-cookie';
 // Icons
 const EmailIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,11 +61,10 @@ const LoginPage: React.FC = () => {
     
     try {
       const response = await login(formData).unwrap();
-      
-      localStorage.setItem('accessToken', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('expiresAt', response.expiresAt);
-      localStorage.setItem('user', JSON.stringify(response.user));
+
+      Cookies.set('accessToken', response?.data?.accessToken);
+      Cookies.set('refreshToken', response?.data?.refreshToken);
+      Cookies.set('user', JSON.stringify(response?.data?.user));
 
       navigate('/');
     } catch (err) {

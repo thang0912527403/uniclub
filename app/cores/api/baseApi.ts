@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import Cookies from 'js-cookie';
 
 // Cấu hình base URLs cho các services
 export const API_URLS = {
@@ -9,7 +10,7 @@ export const API_URLS = {
 
 // Common headers
 const prepareHeaders = (headers: Headers) => {
-  const accessToken = localStorage.getItem('accessToken');
+  const accessToken = Cookies.get('accessToken');
   if (accessToken) {
     headers.set('authorization', `Bearer ${accessToken}`);
   }
@@ -31,35 +32,8 @@ export const createApiWithBaseUrl = (baseUrl: string, reducerPath: string, tagTy
 };
 
 // Main API cho RecruitmentCampaign, Dashboard, Club
-export const baseApi = createApi({
-  reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: API_URLS.MAIN_SERVICE,
-    prepareHeaders 
-  }),
-  tagTypes: ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification', 'Department', 'Application'],
-  endpoints: () => ({}),
-});
+const BASE_TAG_TYPES = ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification', 'Department', 'Application'];
+export const baseApi = createApiWithBaseUrl(API_URLS.MAIN_SERVICE, 'api', BASE_TAG_TYPES);
 
-// User API với base URL riêng (ví dụ)
-export const userApi = createApi({
-  reducerPath: 'userApi',
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: API_URLS.USER_SERVICE,
-    prepareHeaders 
-  }),
-  tagTypes: ['User'],
-  endpoints: () => ({}),
-});
-
-// Notification API với base URL riêng (ví dụ)
-export const notificationApi = createApi({
-  reducerPath: 'notificationApi',
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: API_URLS.NOTIFICATION_SERVICE,
-    prepareHeaders 
-  }),
-  tagTypes: ['Notification'],
-  endpoints: () => ({}),
-});
-
+export const userApi = createApiWithBaseUrl(API_URLS.USER_SERVICE, 'userApi', ['User']);
+export const notificationApi = createApiWithBaseUrl(API_URLS.NOTIFICATION_SERVICE, 'notificationApi', ['Notification']);

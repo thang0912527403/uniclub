@@ -1,4 +1,5 @@
 import { baseApi } from './baseApi';
+import type { ApiResponse } from './types';
 import type {
   LoginRequest,
   LoginResponse,
@@ -14,7 +15,7 @@ import type {
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Đăng nhập
-    login: builder.mutation<LoginResponse, LoginRequest>({
+    login: builder.mutation<ApiResponse<LoginResponse>, LoginRequest>({
       query: (credentials) => ({
         url: '/auth/login',
         method: 'POST',
@@ -24,7 +25,7 @@ export const authApi = baseApi.injectEndpoints({
     }),
 
     // Đăng ký
-    register: builder.mutation<UserInfo, RegisterRequest>({
+    register: builder.mutation<ApiResponse<UserInfo>, RegisterRequest>({
       query: (userData) => ({
         url: '/auth/register',
         method: 'POST',
@@ -33,7 +34,7 @@ export const authApi = baseApi.injectEndpoints({
     }),
 
     // Refresh token
-    refreshToken: builder.mutation<LoginResponse, RefreshTokenRequest>({
+    refreshToken: builder.mutation<ApiResponse<LoginResponse>, RefreshTokenRequest>({
       query: (data) => ({
         url: '/auth/refresh-token',
         method: 'POST',
