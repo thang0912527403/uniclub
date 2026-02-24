@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { UserInfo } from '~/cores/api';
+import Cookies from 'js-cookie';
 
 const Navbar: React.FC = () => {
     const navigate = useNavigate();
@@ -21,8 +22,8 @@ const Navbar: React.FC = () => {
     // Load user from localStorage
     useEffect(() => {
         const checkAuth = () => {
-            const userData = localStorage.getItem('user');
-            const accessToken = localStorage.getItem('accessToken');
+            const userData = Cookies.get('user');
+            const accessToken = Cookies.get('accessToken');
             
             if (userData && accessToken) {
                 try {
@@ -43,10 +44,9 @@ const Navbar: React.FC = () => {
     }, []);
 
     const handleLogout = () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        localStorage.removeItem('expiresAt');
+        Cookies.remove('accessToken');
+        Cookies.remove('refreshToken');
+        Cookies.remove('user');
         setUser(null);
         setIsUserMenuOpen(false);
         navigate('/');
