@@ -10,8 +10,9 @@ export default [
   route("clubs", "routes/clubs/clubs.tsx"),
   route("clubs/:id", "routes/clubs/clubs.$id.tsx"),
   route("clubs/create", "routes/clubs/clubs.create.tsx"),
-  route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
   route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
+  route("club-roles", "routes/club-roles.tsx"),
+  route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
 
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),

@@ -68,6 +68,7 @@ export function Sidebar({
       icon: 'fa-building',
       subItems: [
         { label: 'All Clubs', url: '/clubs' },
+        { label: 'Club Roles', url: '/club-roles' },
         { label: 'Your Club Info', url: '/club/info' },
         { label: 'Manage Club Name', url: '/club/name' },
         { label: 'Recruitment Campaigns', url: '/club/recruitment-campaigns' },
@@ -126,11 +127,10 @@ export function Sidebar({
   ];
 
   return (
-    <aside 
-      ref={sidebarRef} 
-      className={`w-64 min-w-[256px] max-w-[256px] h-screen fixed left-0 top-0 p-4 bg-slate-800 transition-all duration-300 overflow-y-auto overflow-x-hidden scrollbar-hide ${
-        isOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}
+    <aside
+      ref={sidebarRef}
+      className={`w-64 min-w-[256px] max-w-[256px] h-screen fixed left-0 top-0 p-4 bg-slate-800 transition-all duration-300 overflow-y-auto overflow-x-hidden scrollbar-hide ${isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
     >
       <style>{`
         .scrollbar-hide::-webkit-scrollbar {
@@ -169,13 +169,11 @@ export function Sidebar({
               {hasSubItems ? (
                 <button
                   onClick={() => toggleExpand(item.label)}
-                  className={`w-full flex cursor-pointer items-center justify-between px-4 py-3 transition-all ${
-                    expanded ? '' : 'rounded-lg'
-                  } ${
-                    isSubItemActive || expanded
+                  className={`w-full flex cursor-pointer items-center justify-between px-4 py-3 transition-all ${expanded ? '' : 'rounded-lg'
+                    } ${isSubItemActive || expanded
                       ? 'text-white'
                       : 'text-white/70 hover:bg-white/5'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <i className={`fas ${item.icon} w-5 flex-shrink-0`}></i>
@@ -186,11 +184,10 @@ export function Sidebar({
               ) : (
                 <button
                   onClick={() => item.url && navigate(item.url)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer ${
-                    isActive
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer ${isActive
                       ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-r-4 border-blue-500 text-white font-semibold shadow-lg'
                       : 'text-white/70 hover:bg-white/5'
-                  }`}
+                    }`}
                 >
                   <i className={`fas ${item.icon} w-5 flex-shrink-0`}></i>
                   <span className="truncate">{item.label}</span>
@@ -205,11 +202,10 @@ export function Sidebar({
                       <button
                         key={subItem.url}
                         onClick={() => navigate(subItem.url)}
-                        className={`w-full flex items-center gap-3 px-2 py-2 rounded-md transition-all text-sm cursor-pointer ${
-                          isSubActive
+                        className={`w-full flex items-center gap-3 px-2 py-2 rounded-md transition-all text-sm cursor-pointer ${isSubActive
                             ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 border-l-4 border-blue-400 text-white font-semibold'
                             : 'text-white/80 hover:bg-slate-700 hover:text-white'
-                        }`}
+                          }`}
                       >
                         <i className="fas fa-circle text-[6px] w-4 flex-shrink-0 opacity-60"></i>
                         <span className="truncate">{subItem.label}</span>

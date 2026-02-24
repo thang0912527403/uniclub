@@ -6,7 +6,7 @@ import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCreateClubMutation } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
-import { validateClubForm, type ClubFormData } from '~/cores/validation';
+import { validateClubForm, type ClubFormData } from '~/utils/validation';
 
 
 export default function CreateClubModule() {

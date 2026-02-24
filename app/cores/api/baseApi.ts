@@ -21,9 +21,9 @@ const prepareHeaders = (headers: Headers) => {
 export const createApiWithBaseUrl = (baseUrl: string, reducerPath: string, tagTypes: string[]) => {
   return createApi({
     reducerPath,
-    baseQuery: fetchBaseQuery({ 
+    baseQuery: fetchBaseQuery({
       baseUrl,
-      prepareHeaders 
+      prepareHeaders
     }),
     tagTypes,
     endpoints: () => ({}),
@@ -33,20 +33,20 @@ export const createApiWithBaseUrl = (baseUrl: string, reducerPath: string, tagTy
 // Main API cho RecruitmentCampaign, Dashboard, Club
 export const baseApi = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ 
+  baseQuery: fetchBaseQuery({
     baseUrl: API_URLS.MAIN_SERVICE,
-    prepareHeaders 
+    prepareHeaders
   }),
-  tagTypes: ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification'],
+  tagTypes: ['RecruitmentCampaign', 'Dashboard', 'Club', 'ClubRole', 'Policy', 'User', 'Notification'],
   endpoints: () => ({}),
 });
 
 // User API với base URL riêng (ví dụ)
 export const userApi = createApi({
   reducerPath: 'userApi',
-  baseQuery: fetchBaseQuery({ 
+  baseQuery: fetchBaseQuery({
     baseUrl: API_URLS.USER_SERVICE,
-    prepareHeaders 
+    prepareHeaders
   }),
   tagTypes: ['User'],
   endpoints: () => ({}),
@@ -55,9 +55,9 @@ export const userApi = createApi({
 // Notification API với base URL riêng (ví dụ)
 export const notificationApi = createApi({
   reducerPath: 'notificationApi',
-  baseQuery: fetchBaseQuery({ 
+  baseQuery: fetchBaseQuery({
     baseUrl: API_URLS.NOTIFICATION_SERVICE,
-    prepareHeaders 
+    prepareHeaders
   }),
   tagTypes: ['Notification'],
   endpoints: () => ({}),
