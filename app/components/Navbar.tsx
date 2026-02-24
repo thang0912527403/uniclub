@@ -53,7 +53,7 @@ const Navbar: React.FC = () => {
     };
 
     const navLinks = [
-        { name: 'Trang chủ', href: '#home' },
+        { name: 'Trang chủ', href: '/home' },
         { name: 'Câu lạc bộ', href: '#clubs' },
         { name: 'Sự kiện', href: '#events' },
         { name: 'Tin tức', href: '#news' },
@@ -110,8 +110,8 @@ const Navbar: React.FC = () => {
                 <div className="flex items-center justify-between">
                     {/* Logo */}
                     <a 
-                        href="#home" 
-                        onClick={(e) => handleSmoothScroll(e, '#home')}
+                        href="/home" 
+                        onClick={(e) => handleSmoothScroll(e, '/home')}
                         className="flex items-center gap-2 group cursor-pointer"
                     >
                         <div className="bg-orange-500 p-2 rounded-lg group-hover:bg-orange-600 transition-all duration-300 group-hover:scale-105">
@@ -256,129 +256,6 @@ const Navbar: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Mobile Menu Button */}
-                    <button
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-300 cursor-pointer"
-                        aria-label="Toggle menu"
-                    >
-                        <svg
-                            className="w-6 h-6 text-gray-700"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            {isMobileMenuOpen ? (
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            ) : (
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 6h16M4 12h16M4 18h16"
-                                />
-                            )}
-                        </svg>
-                    </button>
-                </div>
-
-                {/* Mobile Menu */}
-                <div
-                    className={`md:hidden overflow-hidden transition-all duration-300 ${isMobileMenuOpen ? 'max-h-[500px] mt-4 opacity-100' : 'max-h-0 opacity-0'
-                        }`}
-                >
-                    <div className="flex flex-col gap-4 py-4 border-t border-gray-200">
-                        {navLinks.map((link) => (
-                            link.href.startsWith('#') ? (
-                                <a
-                                    key={link.name}
-                                    href={link.href}
-                                    onClick={(e) => handleSmoothScroll(e, link.href)}
-                                    className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 py-2 cursor-pointer"
-                                >
-                                    {link.name}
-                                </a>
-                            ) : (
-                                <Link
-                                    key={link.name}
-                                    to={link.href}
-                                    className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 py-2 cursor-pointer"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    {link.name}
-                                </Link>
-                            )
-                        ))}
-                        
-                        <div className="flex flex-col gap-3 pt-4 border-t border-gray-200">
-                            {user ? (
-                                /* Mobile - User logged in */
-                                <>
-                                    <div className="flex items-center gap-3 py-2">
-                                        <UserAvatar size="sm" />
-                                        <div>
-                                            <p className="text-sm font-semibold text-gray-800">{user.fullName}</p>
-                                            <p className="text-xs text-gray-500">{user.email}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <Link 
-                                        to="/profile"
-                                        className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 py-2"
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                    >
-                                        Hồ sơ cá nhân
-                                    </Link>
-                                    
-                                    <Link 
-                                        to="/my-clubs"
-                                        className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 py-2"
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                    >
-                                        Câu lạc bộ của tôi
-                                    </Link>
-                                    
-                                    <Link 
-                                        to="/auth/change-password"
-                                        className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 py-2"
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                    >
-                                        Đổi mật khẩu
-                                    </Link>
-                                    
-                                    <button 
-                                        onClick={handleLogout}
-                                        className="text-red-600 hover:text-red-700 font-medium transition-colors duration-300 py-2 text-left"
-                                    >
-                                        Đăng xuất
-                                    </button>
-                                </>
-                            ) : (
-                                /* Mobile - User not logged in */
-                                <>
-                                    <Link 
-                                        to="/auth/login"
-                                        className="text-gray-700 hover:text-orange-500 font-medium transition-colors duration-300 py-2 text-left cursor-pointer"
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                    >
-                                        Đăng nhập
-                                    </Link>
-                                    <Link 
-                                        to="/auth/register"
-                                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-300 shadow-md hover:shadow-lg cursor-pointer text-center"
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                    >
-                                        Đăng ký
-                                    </Link>
-                                </>
-                            )}
-                        </div>
-                    </div>
                 </div>
             </div>
         </nav>

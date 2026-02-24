@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { useSidebarToggle } from '../../hooks/useSidebarToggle';
-import Navbar from './components/navbar';
+import Navbar from '../../components/Navbar';
 import ProfileHeader from './components/profileHeader';
 import { useGetCurrentUserQuery, useGetUserByIdQuery } from '~/cores/api';
 

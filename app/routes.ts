@@ -1,8 +1,8 @@
 import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 export default [
-  index("routes/home.tsx"),
-
+  index("routes/_index.tsx"),
+  route("home", "routes/home.tsx"),
   // Dashboard route
   route("dashboard", "routes/dashboard.tsx"),
 
@@ -31,7 +31,7 @@ export default [
   route("*", "routes/404.tsx"),
 
   // User Profile route
-  route("user/profile", "routes/user_profile.tsx"),
+  route("profile", "routes/user_profile.tsx"),
 
   // Question route
   route("question", "routes/question.tsx"),

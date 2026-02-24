@@ -1,5 +1,4 @@
 // Component exports
-export { default as Navbar } from './Navbar';
 export { default as HeroSection } from './HeroSection';
 export { default as ClubCategories } from './ClubCategories';
 export { default as WhyChooseUs } from './WhyChooseUs';
