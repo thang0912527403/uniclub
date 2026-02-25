@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Navbar, Footer } from '../home/components';
+import { Footer } from '../home/components';
+import Navbar from '../../components/Navbar';
 import { useGetAllEventsQuery } from '~/cores/api';
 import type { EventDetailDto } from '~/cores/api/types';
 
