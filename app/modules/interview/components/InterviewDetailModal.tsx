@@ -34,6 +34,16 @@ const statusActions: Record<string, { label: string; nextStatus: string; color: 
   ],
 };
 
+const UserDisplay: React.FC<{ userId: string }> = ({ userId }) => {
+  const { data: userInfo, isFetching } = useGetUserByIdQuery(userId, { skip: !userId });
+
+  if (isFetching) {
+    return <span className="opacity-50"><i className="fa-solid fa-spinner fa-spin text-xs"></i> Đang tải...</span>;
+  }
+
+  return <span>{userInfo?.fullName || <span className="font-mono">{userId.slice(0, 12)}...</span>}</span>;
+};
+
 const InterviewDetailModal: React.FC<InterviewDetailModalProps> = ({
   isOpen,
   onClose,
@@ -52,6 +62,7 @@ const InterviewDetailModal: React.FC<InterviewDetailModalProps> = ({
 
   if (!isOpen || !interview) return null;
 
+  const isReadOnly = ['Completed', 'Cancelled'].includes(interview.status);
   const actions = statusActions[interview.status] || [];
   const hasRoom = !!interview.meetingRoom;
 
@@ -157,15 +168,21 @@ const InterviewDetailModal: React.FC<InterviewDetailModalProps> = ({
                       <p className="text-xs font-semibold text-green-700 uppercase mb-1">Phòng họp</p>
                       <p className="text-lg font-mono font-bold text-green-800">{interview.meetingRoom!.roomCode}</p>
                       <p className="text-xs text-green-600 mt-1">
-                        Trạng thái: {interview.meetingRoom!.status} • Tối đa {interview.meetingRoom!.maxParticipants} người
+                        Trạng thái: {isReadOnly ? 'Closed' : interview.meetingRoom!.status} • Tối đa {interview.meetingRoom!.maxParticipants} người
                       </p>
                     </div>
-                    <button
-                      onClick={() => onNavigateToRoom?.(interview.meetingRoom!.roomCode)}
-                      className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-medium transition-all hover:shadow-md"
-                    >
-                      Vào phòng
-                    </button>
+                    {!isReadOnly ? (
+                      <button
+                        onClick={() => onNavigateToRoom?.(interview.meetingRoom!.roomCode)}
+                        className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-medium transition-all hover:shadow-md"
+                      >
+                        Vào phòng
+                      </button>
+                    ) : (
+                      <span className="px-4 py-2 border border-gray-200 text-gray-400 bg-gray-50 rounded-xl text-sm font-medium cursor-not-allowed">
+                        Đã đóng
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -193,9 +210,10 @@ const InterviewDetailModal: React.FC<InterviewDetailModalProps> = ({
           {activeTab === 'assignments' && (
             <div className="space-y-4">
               {/* Add interviewer */}
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Thêm người phỏng vấn</h4>
-                <div className="flex gap-2">
+              {!isReadOnly && (
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Thêm người phỏng vấn</h4>
+                  <div className="flex gap-2">
                   <input
                     type="text"
                     value={newInterviewerUserId}
@@ -227,6 +245,7 @@ const InterviewDetailModal: React.FC<InterviewDetailModalProps> = ({
                   </button>
                 </div>
               </div>
+              )}
 
               {/* List */}
               {interview.assignments.length === 0 ? (
@@ -242,7 +261,7 @@ const InterviewDetailModal: React.FC<InterviewDetailModalProps> = ({
                           {a.interviewerUserId.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-800 font-mono">{a.interviewerUserId.slice(0, 12)}...</p>
+                          <p className="text-sm font-medium text-gray-800"><UserDisplay userId={a.interviewerUserId} /></p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-gray-500 flex items-center gap-1.5">
                               <i className={roleOptions.find(r => r.value === a.role)?.icon} />
@@ -252,15 +271,17 @@ const InterviewDetailModal: React.FC<InterviewDetailModalProps> = ({
                           </div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => onRemoveAssignment?.(interview.id, a.id)}
-                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        title="Xóa"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      {!isReadOnly && (
+                        <button
+                          onClick={() => onRemoveAssignment?.(interview.id, a.id)}
+                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Xóa"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -285,7 +306,7 @@ const InterviewDetailModal: React.FC<InterviewDetailModalProps> = ({
                             {a.interviewerUserId.slice(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-800">{a.role}</p>
+                            <p className="text-sm font-medium text-gray-800"><UserDisplay userId={a.interviewerUserId} /> <span className="text-gray-400 font-normal">({a.role})</span></p>
                             <p className="text-xs text-gray-400">{a.feedbackSubmittedAt ? new Date(a.feedbackSubmittedAt).toLocaleString('vi-VN') : ''}</p>
                           </div>
                         </div>

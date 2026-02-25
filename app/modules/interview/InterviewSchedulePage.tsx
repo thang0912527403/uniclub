@@ -4,6 +4,7 @@ import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import KanbanBoard from './components/KanbanBoard';
+import { SettingButton } from '~/components/SettingButton';
 import { useGetRecruitmentCampaignsQuery } from '~/cores/api';
 import Cookies from 'js-cookie';
 
@@ -126,6 +127,8 @@ const InterviewSchedulePage: React.FC = () => {
         }
         .animate-scaleIn { animation: scaleIn 0.2s ease-out forwards; }
       `}</style>
+
+      <SettingButton />
     </div>
   );
 };

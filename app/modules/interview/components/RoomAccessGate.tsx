@@ -89,7 +89,7 @@ const RoomAccessGate: React.FC<RoomAccessGateProps> = ({
             {/* Display name */}
             <div>
               <label className="block text-sm font-semibold text-white/80 mb-1.5">
-                Tên hiển thị <span className="text-red-400">*</span>
+                Tên hiển thị <span className="text-red-400"></span>
               </label>
               <input
                 type="text"
@@ -98,34 +98,10 @@ const RoomAccessGate: React.FC<RoomAccessGateProps> = ({
                 placeholder="Nhập tên của bạn"
                 className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 outline-none transition-all"
                 required
+                disabled
               />
             </div>
 
-            {/* Role */}
-            <div>
-              <label className="block text-sm font-semibold text-white/80 mb-2">Vai trò</label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: 'Candidate', label: 'Ứng viên', icon: 'fa-regular fa-user' },
-                  { value: 'Interviewer', label: 'Phỏng vấn', icon: 'fa-solid fa-microphone' },
-                  { value: 'Observer', label: 'Quan sát', icon: 'fa-regular fa-eye' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setRole(opt.value)}
-                    className={`flex flex-col items-center gap-2 px-3 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                      role === opt.value
-                        ? 'border-orange-400 bg-orange-500/20 text-white'
-                        : 'border-white/10 text-white/60 hover:border-white/30'
-                    }`}
-                  >
-                    <i className={`${opt.icon} text-lg`} />
-                    <span className="text-xs">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Error */}
             {error && (
@@ -152,7 +128,7 @@ const RoomAccessGate: React.FC<RoomAccessGateProps> = ({
                   Đang kết nối...
                 </span>
               ) : (
-                '🚀 Tham gia phòng'
+                'Tham gia'
               )}
             </button>
 
