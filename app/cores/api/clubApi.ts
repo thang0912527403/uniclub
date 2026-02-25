@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import { type Club, type ApiResponse } from './types';
+import { type Club, type ApiResponse, type ClubPostResponseDto } from './types';
 
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -46,6 +46,53 @@ export const clubApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<Club>) => response.data,
       invalidatesTags: (result, error, { id }) => [{ type: 'Club', id }, 'Club'],
     }),
+    // ─── ClubPost endpoints ─────────────────────────────────────────────
+    getClubPosts: builder.query<ClubPostResponseDto[], void>({
+      query: () => '/ClubPost',
+      transformResponse: (response: ApiResponse<ClubPostResponseDto[]>) => response.data,
+      providesTags: ['ClubPost'],
+    }),
+    getClubPostById: builder.query<ClubPostResponseDto, number>({
+      query: (id) => `/ClubPost/${id}`,
+      transformResponse: (response: ApiResponse<ClubPostResponseDto>) => response.data,
+      providesTags: (result, error, id) => [{ type: 'ClubPost', id }],
+    }),
+    createClubPost: builder.mutation<
+      ClubPostResponseDto,
+      FormData
+    >({
+      query: (formData) => ({
+        url: '/ClubPost',
+        method: 'POST',
+        body: formData,
+      }),
+      transformResponse: (response: ApiResponse<ClubPostResponseDto>) =>
+        response.data,
+      invalidatesTags: [{ type: 'ClubPost' }],
+    }),
+    updateClubPost: builder.mutation<
+      ClubPostResponseDto,
+      { id: number; formData: FormData }
+    >({
+      query: ({ id, formData }) => ({
+        url: `/ClubPost/${id}`,
+        method: 'PUT',
+        body: formData,
+      }),
+      transformResponse: (response: ApiResponse<ClubPostResponseDto>) =>
+        response.data,
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'ClubPost', id },
+        'ClubPost',
+      ],
+    }),
+    deleteClubPost: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `/ClubPost/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['ClubPost'],
+    }),
   }),
 });
 
@@ -56,4 +103,9 @@ export const {
   useUpdateClubMutation,
   useDeleteClubMutation,
   useToggleClubStatusMutation,
+  useGetClubPostsQuery,
+  useGetClubPostByIdQuery,
+  useCreateClubPostMutation,
+  useUpdateClubPostMutation,
+  useDeleteClubPostMutation,
 } = clubApi;

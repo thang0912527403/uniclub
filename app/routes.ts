@@ -13,6 +13,8 @@ export default [
   route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
   route("applications", "routes/applications.tsx"),
   route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
+  route("club/posts", "routes/clubs/clubpost.tsx"),
+  route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
 
   // Users (CRUD)
   route("users", "routes/users.tsx"),
@@ -44,6 +46,9 @@ export default [
 
   // Question route - dynamic formId from URL
   route("question/:formId?", "routes/question.tsx"),
+
+  // Chiến dịch tuyển dụng (public detail)
+  route("campaign/:id", "routes/campaign.$id.tsx"),
 
   // My applications
   route("my-applications", "routes/my-applications.tsx"),

@@ -14,7 +14,7 @@ const prepareHeaders = (headers: Headers) => {
   if (accessToken) {
     headers.set('authorization', `Bearer ${accessToken}`);
   }
-  headers.set('Content-Type', 'application/json');
+  //headers.set('Content-Type', 'application/json');
   return headers;
 };
 
