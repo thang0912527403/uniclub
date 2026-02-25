@@ -61,16 +61,24 @@ const LoginPage: React.FC = () => {
     
     try {
       const response = await login(formData).unwrap();
+      const payload = response?.data ?? response;
 
-      Cookies.set('accessToken', response?.data?.accessToken);
-      Cookies.set('refreshToken', response?.data?.refreshToken);
-      Cookies.set('user', JSON.stringify(response?.data?.user));
-
-      navigate('/');
+      if (payload?.accessToken) {
+        Cookies.set('accessToken', payload.accessToken);
+        Cookies.set('refreshToken', payload.refreshToken ?? '');
+        Cookies.set('user', JSON.stringify(payload.user ?? {}));
+        navigate('/');
+      }
     } catch (err) {
       console.error('Login failed:', err);
     }
   };
+
+  const loginErrorMessage =
+    error &&
+    ((error as { data?: { message?: string } })?.data?.message ||
+      (error as { data?: { title?: string } })?.data?.title ||
+      'Email hoặc mật khẩu không chính xác');
 
   return (
     <AuthLayout 
@@ -123,7 +131,7 @@ const LoginPage: React.FC = () => {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-600 text-sm text-center">
-              Email hoặc mật khẩu không chính xác
+              {loginErrorMessage}
             </p>
           </div>
         )}
