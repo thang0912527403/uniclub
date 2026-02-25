@@ -3,6 +3,7 @@ import { useWebRtc } from '../hooks/useWebRtc';
 import { VideoTile } from './VideoTile';
 import { ControlBar } from './ControlBar';
 import { ChatPanel } from './ChatPanel';
+import Cookies from 'js-cookie';
 
 export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({ roomId, onLeave }) => {
   const {
@@ -34,7 +35,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
   // Get current user ID from localStorage
   const getCurrentUserId = () => {
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const user = JSON.parse(Cookies.get('user') || '{}');
       return user.userId;
     } catch {
       return undefined;

@@ -19,7 +19,6 @@ const Navbar: React.FC = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Load user from localStorage
     useEffect(() => {
         const checkAuth = () => {
             const userData = Cookies.get('user');

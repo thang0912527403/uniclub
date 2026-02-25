@@ -30,4 +30,4 @@ export const createApiWithBaseUrl = (baseUrl: string, reducerPath: string, tagTy
 };
 
 // Main API cho RecruitmentCampaign, Dashboard, Club
-export const baseApi = createApiWithBaseUrl(API_URLS.MAIN_SERVICE, 'api', ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification']);
+export const baseApi = createApiWithBaseUrl(API_URLS.MAIN_SERVICE, 'api', ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification', 'Interview', 'Application']);

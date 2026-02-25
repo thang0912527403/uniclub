@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { HubConnectionBuilder, HubConnection, LogLevel } from '@microsoft/signalr';
 import type { RoomUser, UserMediaState, ChatMessage } from '../types';
-
+import Cookies from 'js-cookie';
 interface WebRtcContextType {
   connection: HubConnection | null;
   users: RoomUser[];
@@ -40,28 +40,18 @@ export const useWebRtcContext = () => {
 const rtcConfig: RTCConfiguration = {
   iceServers: [
     {
-      urls: "stun:stun.relay.metered.ca:80",
+      urls: "stun:free.stun.twilio.com:3478",
     },
     {
-      urls: "turn:global.relay.metered.ca:80",
-      username: "c8af2a6d067a2d2bd56f1a64",
-      credential: "EqNHfvLSLD6Udxsj",
+      urls: "turn:free.expressturn.com:3478",
+      username: "000000002085847899",
+      credential: "88FQ3nhiT+lQ6shQXhswDHKVD28=",
     },
     {
-      urls: "turn:global.relay.metered.ca:80?transport=tcp",
-      username: "c8af2a6d067a2d2bd56f1a64",
-      credential: "EqNHfvLSLD6Udxsj",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:443",
-      username: "c8af2a6d067a2d2bd56f1a64",
-      credential: "EqNHfvLSLD6Udxsj",
-    },
-    {
-      urls: "turns:global.relay.metered.ca:443?transport=tcp",
-      username: "c8af2a6d067a2d2bd56f1a64",
-      credential: "EqNHfvLSLD6Udxsj",
-    },
+      urls: "turn:free.expressturn.com:3478",
+      username: "000000002085848795",
+      credential: "Xm5fuYejzQfYJSJPttawHpsrcbI=",
+    }
   ]
 };
 
@@ -91,8 +81,8 @@ export const WebRtcProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Initialize SignalR Connection
   useEffect(() => {
     const initSignalR = async () => {
-      const accessToken = localStorage.getItem('accessToken');
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://ef55-58-187-78-183.ngrok-free.app';
+      const accessToken = Cookies.get('accessToken');
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://localhost:7237';
       
       const newConnection = new HubConnectionBuilder()
         .withUrl(`${backendUrl}/webrtc`, {
@@ -445,7 +435,7 @@ export const WebRtcProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setIsAudioEnabled(hasAudio);
       setIsVideoEnabled(hasVideo);
 
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const user = JSON.parse(Cookies.get('user') || '{}');
       const fullName = user.fullName || 'Guest';
       const userId = user.userId || '00000000-0000-0000-0000-000000000000';
 

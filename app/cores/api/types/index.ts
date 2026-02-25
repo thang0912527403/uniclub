@@ -5,3 +5,4 @@ export * from './club';
 export * from './department';
 export * from './user';
 export * from './application';
+export * from './interview';

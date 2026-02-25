@@ -13,9 +13,3 @@ export interface User {
   status?: string | null;
   createdAt?: string | null;
 }
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}

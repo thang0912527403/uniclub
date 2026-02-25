@@ -109,6 +109,7 @@ export const authApi = baseApi.injectEndpoints({
     // Lấy thông tin user hiện tại
     getCurrentUser: builder.query<UserInfo, void>({
       query: () => '/auth/me',
+      transformResponse: (response: ApiResponse<UserInfo>) => response.data,
       providesTags: ['User'],
     }),
   }),

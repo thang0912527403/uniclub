@@ -123,6 +123,14 @@ export function Sidebar({
         { label: 'Fund Settings', url: '/funds/settings' },
       ]
     },
+    {
+      label: 'Interview Management',
+      icon: 'fa-calendar-check',
+      subItems: [
+        { label: 'Interview Schedule', url: '/interview/schedule' },
+        { label: 'Interview Rooms', url: '/interview/room' },
+      ]
+    },
   ];
 
   return (
