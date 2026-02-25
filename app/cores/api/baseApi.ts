@@ -3,7 +3,9 @@ import Cookies from 'js-cookie';
 
 // Cấu hình base URLs cho các services
 export const API_URLS = {
-  MAIN_SERVICE: 'https://localhost:7237/api'
+  MAIN_SERVICE: 'https://localhost:7237/api',
+  USER_SERVICE: 'https://localhost:7238/api',
+  NOTIFICATION_SERVICE: 'https://localhost:7239/api',
 };
 
 // Common headers

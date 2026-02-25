@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, Link } from 'react-router';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
@@ -104,9 +104,16 @@ export default function ClubDetailModule() {
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-3">
+                                    <div className="flex flex-wrap gap-3">
+                                        <Link
+                                            to="/question"
+                                            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors inline-flex items-center"
+                                        >
+                                            <i className="fas fa-file-alt mr-2"></i>
+                                            Nộp đơn ứng tuyển
+                                        </Link>
                                         <button
-                                            onClick={() => navigate(`/clubs/${id}/edit`)}
+                                            onClick={() => navigate(`/clubs/edit/${id}`)}
                                             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                                         >
                                             <i className="fas fa-edit mr-2"></i>

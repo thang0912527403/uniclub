@@ -7,10 +7,15 @@ export default [
   route("dashboard", "routes/dashboard.tsx"),
 
   // Club routes
-  route("clubs", "routes/clubs.tsx"),
-  route("clubs/:id", "routes/clubs.$id.tsx"),
-  route("clubs/create", "routes/create-club.tsx"),
+  route("clubs", "routes/clubs/clubs.tsx"),
+  route("clubs/:id", "routes/clubs/clubs.$id.tsx"),
+  route("clubs/create", "routes/clubs/clubs.create.tsx"),
   route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
+  route("applications", "routes/applications.tsx"),
+  route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
+
+  // Users (CRUD)
+  route("users", "routes/users.tsx"),
 
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),
@@ -28,15 +33,18 @@ export default [
   route("meeting/:roomId?", "routes/meeting.tsx"),
 
   // Error routes
-  route("401", "routes/401.tsx"),
-  route("403", "routes/403.tsx"),
+  route("401", "routes/error/401.tsx"),
+  route("403", "routes/error/403.tsx"),
 
   // Catch-all route
-  route("*", "routes/404.tsx"),
+  route("*", "routes/error/404.tsx"),
 
   // User Profile route
   route("profile", "routes/user_profile.tsx"),
 
   // Question route
   route("question", "routes/question.tsx"),
+
+  // My applications
+  route("my-applications", "routes/my-applications.tsx"),
 ] satisfies RouteConfig;

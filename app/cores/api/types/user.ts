@@ -13,3 +13,35 @@ export interface User {
   status?: string | null;
   createdAt?: string | null;
 }
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
+/** Map từ CreateUserDto (backend) */
+export interface CreateUserDto {
+  fullName: string;
+  email: string;
+  password: string;
+  phoneNumber?: string | null;
+  studentId?: string | null;
+  major?: string | null;
+  dateOfBirth?: string | null; // "YYYY-MM-DD"
+  gender?: string | null;
+  address?: string | null;
+}
+
+/** Map từ UpdateUserDto (backend) */
+export interface UpdateUserDto {
+  fullName: string;
+  phoneNumber?: string | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  avatar?: string | null;
+  major?: string | null;
+  studentId?: string | null;
+  status?: string | null;
+}

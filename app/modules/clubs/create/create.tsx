@@ -59,7 +59,7 @@ export default function CreateClubModule() {
             });
             setTimeout(() => navigate('/clubs'), 1500);
         } catch (err) {
-            console.error('Failed to create club:', err);
+            console.error('Failed to create club:', error);
             showNotification({
                 type: 'error',
                 title: 'Tạo câu lạc bộ thất bại',

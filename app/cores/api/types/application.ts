@@ -1,16 +1,16 @@
 export interface CreateApplicationDto {
   formId: number;
-  userId: string; 
+  userId: string;
   status?: string | null;
-  reviewedAt?: string | null; 
+  reviewedAt?: string | null;
 }
 
 export interface ApplicationResponseDto {
   applicationId: number;
   formId: number;
-  userId: string; 
-  submissionDate: string; 
-  status: string; 
+  userId: string;
+  submissionDate: string;
+  status: string;
   reviewedAt?: string | null;
 }
 
@@ -27,7 +27,7 @@ export interface ApplicationFormResponseDto {
   formName: string;
   formTitle?: string | null;
   description?: string | null;
-  createdAt: string; 
+  createdAt: string;
 }
 
 export interface CreateApplicationQuestionDto {
@@ -47,4 +47,39 @@ export interface ApplicationQuestionResponseDto {
   displayOrder?: number | null;
 }
 
-export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | string;
+export interface CreateApplicationAnswerDto {
+  applicationId: number;
+  questionId: number;
+  answerText?: string | null;
+}
+
+export interface ApplicationAnswerResponseDto {
+  answerId: number;
+  applicationId: number;
+  questionId: number;
+  answerText?: string | null;
+}
+
+export interface ApplicationAnswerItemDto {
+  questionId: number;
+  answerText?: string | null;
+}
+
+export interface SubmitApplicationDto {
+  formId: number;
+  userId: string;
+  answers: ApplicationAnswerItemDto[];
+}
+
+export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUCCESS';
+
+export const APPLICATION_STATUS = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  SUCCESS: 'SUCCESS',
+} as const;
+
+export interface UpdateApplicationStatusDto {
+  status: string;
+}
