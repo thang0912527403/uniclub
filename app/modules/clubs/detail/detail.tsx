@@ -4,6 +4,8 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useGetClubByIdQuery } from '~/cores/api';
+import { Loading } from '~/components/Loading';
+import { Error } from '~/components/Error';
 
 export default function ClubDetailModule() {
     const { id } = useParams();
@@ -33,25 +35,18 @@ export default function ClubDetailModule() {
                 {/* Back Button */}
                 <button
                     onClick={() => navigate('/clubs')}
-                    className="mb-6 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+                    className="mb-6 cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white transition-colors"
                 >
                     <i className="fas fa-arrow-left"></i>
                     <span>Quay lại danh sách</span>
                 </button>
 
                 {/* Loading State */}
-                {isLoading && (
-                    <div className="flex items-center justify-center py-20">
-                        <i className="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
-                    </div>
-                )}
+                {isLoading && <Loading />}
 
                 {/* Error State */}
                 {error && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-                        <i className="fas fa-exclamation-circle text-red-500 text-4xl mb-3"></i>
-                        <p className="text-red-600 dark:text-red-400">Lỗi khi tải thông tin câu lạc bộ</p>
-                    </div>
+                    <Error title="Lỗi khi tải thông tin câu lạc bộ." error={error} />
                 )}
 
                 {/* Club Detail */}
@@ -90,8 +85,8 @@ export default function ClubDetailModule() {
                                                 </span>
                                             )}
                                             <span className={`px-3 py-1 rounded-full text-sm font-semibold ${club.isActive
-                                                    ? 'bg-green-500 text-white'
-                                                    : 'bg-gray-500 text-white'
+                                                ? 'bg-green-500 text-white'
+                                                : 'bg-gray-500 text-white'
                                                 }`}>
                                                 {club.isActive ? 'Hoạt động' : 'Không hoạt động'}
                                             </span>
@@ -107,12 +102,12 @@ export default function ClubDetailModule() {
                                     <div className="flex gap-3">
                                         <button
                                             onClick={() => navigate(`/clubs/edit/${id}`)}
-                                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                                            className="cursor-pointer px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                                         >
                                             <i className="fas fa-edit mr-2"></i>
                                             Chỉnh sửa
                                         </button>
-                                        <button className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <button className="cursor-pointer px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700">
                                             <i className="fas fa-share mr-2"></i>
                                             Chia sẻ
                                         </button>

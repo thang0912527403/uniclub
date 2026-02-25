@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     useGetPolicyGroupsQuery,
     useGetPoliciesByGroupQuery,
@@ -14,17 +14,31 @@ interface PolicyGroupRowProps {
     selectedPolicyIds: Set<number>;
     readOnly: boolean;
     onToggle: (policyId: number) => void;
+    onToggleAll: (policyIds: number[], selectAll: boolean) => void;
 }
 
-function PolicyGroupRow({ group, selectedPolicyIds, readOnly, onToggle }: PolicyGroupRowProps) {
+function PolicyGroupRow({ group, selectedPolicyIds, readOnly, onToggle, onToggleAll }: PolicyGroupRowProps) {
     const [expanded, setExpanded] = useState(false);
     const { data: policies, isLoading } = useGetPoliciesByGroupQuery(group.policyGroupId);
 
     const checkedCount = policies?.filter((p) => selectedPolicyIds.has(p.id)).length ?? 0;
     const total = policies?.length ?? 0;
+    const allChecked = total > 0 && checkedCount === total;
+    const someChecked = checkedCount > 0 && checkedCount < total;
+
+    const selectAllRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (selectAllRef.current) {
+            selectAllRef.current.indeterminate = someChecked;
+        }
+    }, [someChecked]);
+
     return (
         <div
-            className={`border rounded-xl overflow-hidden transition-colors border-gray-200 dark:border-gray-700`}
+            className={`border rounded-xl overflow-hidden transition-colors ${checkedCount > 0
+                ? 'border-blue-400 dark:border-blue-600'
+                : 'border-gray-200 dark:border-gray-700'
+                }`}
         >
             {/* Group header */}
             <button
@@ -36,6 +50,21 @@ function PolicyGroupRow({ group, selectedPolicyIds, readOnly, onToggle }: Policy
                     }`}
             >
                 <div className="flex items-center gap-3 min-w-0">
+                    {/* Select-all checkbox */}
+                    {!readOnly && policies && policies.length > 0 && (
+                        <input
+                            ref={selectAllRef}
+                            type="checkbox"
+                            checked={allChecked}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                onToggleAll(policies.map((p) => p.id), e.target.checked);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 accent-blue-600 flex-shrink-0 cursor-pointer"
+                            title={allChecked ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                        />
+                    )}
                     <i
                         className={`fas fa-chevron-right text-xs w-4 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-90' : ''
                             } ${checkedCount > 0 ? 'text-blue-500' : 'text-gray-400'
@@ -152,6 +181,19 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
         setDirty(true);
     };
 
+    const handleToggleAll = (policyIds: number[], selectAll: boolean) => {
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (selectAll) {
+                policyIds.forEach((id) => next.add(id));
+            } else {
+                policyIds.forEach((id) => next.delete(id));
+            }
+            return next;
+        });
+        setDirty(true);
+    };
+
     const handleSave = async () => {
         try {
             await updatePolicies({ roleId: role.clubRoleId, policyIds: [...selected] }).unwrap();
@@ -236,6 +278,7 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
                                 selectedPolicyIds={selected}
                                 readOnly={readOnly}
                                 onToggle={handleToggle}
+                                onToggleAll={handleToggleAll}
                             />
                         ))
                     ) : (

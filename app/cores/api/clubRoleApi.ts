@@ -43,7 +43,7 @@ const clubRoleApi = baseApi.injectEndpoints({
             query: ({ roleId, policyIds }) => ({
                 url: `/ClubRole/${roleId}/policies`,
                 method: 'PUT',
-                body: { policyIds },
+                body:  policyIds ,
             }),
             invalidatesTags: (result, error, { roleId }) => [{ type: 'ClubRole', id: `policies-${roleId}` }],
         }),
