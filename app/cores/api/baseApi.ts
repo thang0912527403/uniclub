@@ -10,10 +10,11 @@ export const API_URLS = {
 // Common headers
 const prepareHeaders = (headers: Headers) => {
   const accessToken = localStorage.getItem('accessToken');
+  console.log("TOKEN:", accessToken);
   if (accessToken) {
     headers.set('authorization', `Bearer ${accessToken}`);
   }
-  headers.set('Content-Type', 'application/json');
+  //headers.set('Content-Type', 'application/json');
   return headers;
 };
 
@@ -37,7 +38,7 @@ export const baseApi = createApi({
     baseUrl: API_URLS.MAIN_SERVICE,
     prepareHeaders 
   }),
-  tagTypes: ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification', 'Department', 'Application'],
+  tagTypes: ['RecruitmentCampaign', 'Dashboard', 'Club', 'ClubPost', 'User', 'Notification', 'Department', 'Application'],
   endpoints: () => ({}),
 });
 
