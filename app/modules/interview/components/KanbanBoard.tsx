@@ -82,7 +82,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ campaignId, currentUserId, on
 
   // API hooks
   const { data: interviews = [], isLoading: interviewsLoading } = useGetInterviewsQuery({ campaignId });
-  const { data: reviewedApps = [], isLoading: appsLoading } = useGetApplicationsByStatusQuery('REVIEWED');
+  const { data: reviewedApps = [], isLoading: appsLoading } = useGetApplicationsByStatusQuery('SUCCESS');
   const [createInterview] = useCreateInterviewMutation();
   const [updateStatus] = useUpdateInterviewStatusMutation();
   const [assignInterviewers] = useAssignInterviewersMutation();
@@ -94,7 +94,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ campaignId, currentUserId, on
   const columnCards = useMemo(() => {
     const result: Record<string, CandidateCardData[]> = {};
 
-    // Reviewed column - applications with status REVIEWED that don't have interviews yet
+    // SUCCESS column - applications approved into interview stage that don't have interviews yet
     const interviewedAppIds = new Set(interviews.map(iv => iv.applicationId));
     result['Reviewed'] = reviewedApps
       .filter(app => !interviewedAppIds.has(app.applicationId))

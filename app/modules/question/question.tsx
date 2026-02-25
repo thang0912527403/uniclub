@@ -1,70 +1,34 @@
 import React, { useState } from 'react';
-import Navbar from './components/navbar';
+import { useParams, useNavigate, Link } from 'react-router';
+import Navbar from '../../components/Navbar';
 import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
 import ProgressBar from './components/progressBar';
-import { useGetQuestionsByFormQuery, useSubmitApplicationMutation } from '../../cores/api/applicationApi';
+import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationByUserAndFormQuery } from '../../cores/api/applicationApi';
 import { useGetCurrentUserQuery } from '../../cores/api';
 import type { ApplicationAnswerItemDto } from '../../cores/api';
 
-const FORM_ID = 1;
-/** UserId dùng khi chưa đăng nhập (để test). Backend cần có user này trong DB nếu dùng. */
-const TEST_USER_ID = '11111111-1111-1111-1111-111111111111';
+/**
+ * Dynamic question/application form page.
+ * - Requires the user to be logged in (redirects to /auth/login if not)
+ * - formId comes from the URL: /question/:formId
+ * - Prevents double-submission (shows "already applied" state)
+ */
+const QuestionPage: React.FC = () => {
+  const { formId: formIdParam } = useParams<{ formId?: string }>();
+  const navigate = useNavigate();
 
-function getSubmitErrorMessage(error: unknown): { message: string; hint?: string } {
-  const err = error as { status?: number | string; data?: Record<string, unknown> };
-  const status = err?.status;
-  const data = err?.data;
-  let message = 'Gửi đơn thất bại. Vui lòng thử lại.';
-  let hint: string | undefined;
+  const formId = formIdParam ? Number(formIdParam) : NaN;
 
-  if (status === 'PARSING_ERROR') {
-    message = 'Backend trả về dữ liệu không phải JSON (có thể là trang lỗi HTML).';
-    hint = 'Kiểm tra: (1) API đang chạy đúng URL chưa (https://localhost:7237). (2) Endpoint POST /Application/submit có trả về JSON khi thành công hoặc khi lỗi (4xx/5xx cũng nên trả JSON, không trả trang HTML).';
-    return { message, hint };
-  }
-
-  if (data && typeof data === 'object') {
-    if (typeof data.message === 'string') message = data.message;
-    else if (typeof data.title === 'string') message = data.title;
-    else if (Array.isArray(data.errors)) {
-      const parts = (data.errors as unknown[]).map((e) => (typeof e === 'string' ? e : (e as Record<string, string>)?.message ?? String(e)));
-      message = parts.length ? parts.join('. ') : message;
-    }
-  }
-
-  if (status === 401) hint = 'Bạn cần đăng nhập để nộp đơn (hoặc kiểm tra backend có cho phép userId test).';
-  else if (status === 403) hint = 'Bạn không có quyền nộp đơn cho form này.';
-  else if (status === 404) hint = 'Form không tồn tại hoặc đã bị xóa. Kiểm tra FORM_ID và backend.';
-  else if (status === 400) hint = 'Dữ liệu không hợp lệ (userId, formId hoặc answers). Kiểm tra backend có user test trong DB.';
-
-  return { message, hint };
-}
-
-function SubmitErrorBox({ error }: { error: unknown }) {
-  const { message, hint } = getSubmitErrorMessage(error);
-  const err = error as { status?: number | string };
-  const showStatus = err?.status != null && err.status !== 'PARSING_ERROR';
-  return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
-      <p className="font-medium">{message}</p>
-      {showStatus && (
-        <p className="mt-1 text-sm opacity-90">Mã HTTP: {String(err.status)}</p>
-      )}
-      {err?.status === 'PARSING_ERROR' && (
-        <p className="mt-1 text-sm opacity-90">Mã lỗi: PARSING_ERROR</p>
-      )}
-      {hint && <p className="mt-2 text-sm border-t border-red-200 pt-2">{hint}</p>}
-    </div>
-  );
-}
-
-const App: React.FC = () => {
-  const { data: questionsData, isLoading, error } = useGetQuestionsByFormQuery(FORM_ID);
-  const { data: currentUser } = useGetCurrentUserQuery();
+  const { data: currentUser, isLoading: userLoading } = useGetCurrentUserQuery();
+  const { data: questions = [], isLoading: questionsLoading, error: questionsError } = useGetQuestionsByFormQuery(formId, { skip: !formId || isNaN(formId) });
   const [submitApplication, { isLoading: isSubmitting, error: submitError, isSuccess }] = useSubmitApplicationMutation();
-  const userId = currentUser?.userId ?? TEST_USER_ID;
-  const isTestMode = !currentUser?.userId;
+
+  // Check if user already applied to this form
+  const { data: existingApp, isLoading: checkingApp } = useGetApplicationByUserAndFormQuery(
+    { userId: currentUser?.userId ?? '', formId },
+    { skip: !currentUser?.userId || !formId || isNaN(formId) }
+  );
 
   const [answers, setAnswers] = useState<Record<number, any>>({});
 
@@ -72,9 +36,9 @@ const App: React.FC = () => {
     setAnswers(prev => {
       const isEmpty = value === '' || value === null || value === undefined || (Array.isArray(value) && value.length === 0);
       if (isEmpty) {
-        const newAnswers = { ...prev };
-        delete newAnswers[id];
-        return newAnswers;
+        const next = { ...prev };
+        delete next[id];
+        return next;
       }
       return { ...prev, [id]: value };
     });
@@ -88,37 +52,140 @@ const App: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser?.userId) return;
     const answerList: ApplicationAnswerItemDto[] = Object.entries(answers)
       .filter(([, v]) => toAnswerText(v).trim() !== '')
       .map(([questionId, value]) => ({
         questionId: Number(questionId),
-        answerText: toAnswerText(value).trim() || '',
+        answerText: toAnswerText(value).trim(),
       }));
     try {
-      await submitApplication({
-        formId: FORM_ID,
-        userId,
-        answers: answerList,
-      }).unwrap();
-    } catch (_) {
-      // submitError từ mutation để hiển thị bên dưới
-    }
+      await submitApplication({ formId, userId: currentUser.userId, answers: answerList }).unwrap();
+    } catch (_) { /* error shown via submitError */ }
   };
 
-  if (isLoading) return <div className="text-center py-20">Đang tải câu hỏi...</div>;
-  if (error) return <div className="text-center py-20 text-red-500">Đã xảy ra lỗi khi tải dữ liệu.</div>;
-  if (!questionsData?.length) {
+  // ── Guard: invalid formId ────────────────────────────────────────────────
+  if (!formIdParam || isNaN(formId)) {
     return (
-      <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A]">
+      <div className="min-h-screen bg-[#FDFCFB]">
+        <Navbar />
+        <main className="max-w-3xl mx-auto px-4 py-20 text-center">
+          <i className="fa-solid fa-triangle-exclamation text-5xl text-amber-400 mb-4 block" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Không tìm thấy biểu mẫu</h2>
+          <p className="text-gray-500 mb-6">Đường dẫn không hợp lệ. Vui lòng chọn chiến dịch tuyển dụng trước.</p>
+          <Link to="/recruitment-campaigns" className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold transition-all inline-block">
+            <i className="fa-solid fa-arrow-left mr-2" />
+            Xem chiến dịch tuyển dụng
+          </Link>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Guard: loading user ─────────────────────────────────────────────────
+  if (userLoading) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <i className="fa-solid fa-spinner fa-spin text-3xl mb-3 block" />
+          <p>Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Guard: must be logged in ────────────────────────────────────────────
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB]">
+        <Navbar />
+        <main className="max-w-md mx-auto px-4 py-20 text-center">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-10">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-orange-100 flex items-center justify-center">
+              <i className="fa-solid fa-lock text-orange-500 text-2xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Yêu cầu đăng nhập</h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Bạn cần đăng nhập để nộp đơn ứng tuyển. Vui lòng đăng nhập và thử lại.
+            </p>
+            <Link
+              to={`/auth/login?redirect=/question/${formId}`}
+              className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all mb-3"
+            >
+              <i className="fa-solid fa-right-to-bracket mr-2" />
+              Đăng nhập
+            </Link>
+            <Link to="/auth/register" className="block w-full py-3 border border-gray-200 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-xl font-medium transition-all text-sm">
+              Chưa có tài khoản? Đăng ký ngay
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Guard: loading questions ────────────────────────────────────────────
+  if (questionsLoading || checkingApp) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <i className="fa-solid fa-spinner fa-spin text-3xl mb-3 block" />
+          <p>Đang tải biểu mẫu...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (questionsError) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB]">
+        <Navbar />
+        <main className="max-w-3xl mx-auto px-4 py-20 text-center">
+          <i className="fa-solid fa-circle-exclamation text-5xl text-red-400 mb-4 block" />
+          <p className="text-red-600 font-medium">Không thể tải biểu mẫu. Vui lòng thử lại.</p>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Already applied ─────────────────────────────────────────────────────
+  if (existingApp) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB]">
+        <Navbar />
+        <main className="max-w-md mx-auto px-4 py-20 text-center">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-10">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-green-100 flex items-center justify-center">
+              <i className="fa-solid fa-circle-check text-green-500 text-3xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Đã nộp đơn</h2>
+            <p className="text-gray-500 text-sm mb-2">
+              Bạn đã nộp đơn cho biểu mẫu này.
+            </p>
+            <p className="text-xs text-gray-400 mb-6">
+              Nộp lúc: {new Date(existingApp.submissionDate).toLocaleString('vi-VN')}
+              {' • '}
+              Trạng thái: <span className="font-semibold text-gray-600">{existingApp.status}</span>
+            </p>
+            <Link to="/my-applications" className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all">
+              <i className="fa-solid fa-list mr-2" />
+              Xem đơn của tôi
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── No questions ─────────────────────────────────────────────────────────
+  if (!questions.length) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB]">
         <Navbar />
         <main className="max-w-3xl mx-auto px-4 py-16">
-          <FormHeader
-            title="Thông tin đăng ký"
-            highlight="Thành viên"
-            description="Chào mừng bạn đến với hệ thống tuyển thành viên của UniClubs."
-          />
+          <FormHeader title="Thông tin đăng ký" highlight="Thành viên" description="Chào mừng bạn đến với hệ thống tuyển thành viên của UniClubs." />
           <div className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
-            <p className="font-medium">Form chưa có câu hỏi.</p>
+            <p className="font-medium"><i className="fa-solid fa-circle-info mr-2" />Form chưa có câu hỏi.</p>
             <p className="mt-1 text-sm">Quản trị viên cần thêm câu hỏi vào form trước khi bạn có thể gửi đơn.</p>
           </div>
         </main>
@@ -126,24 +193,44 @@ const App: React.FC = () => {
     );
   }
 
+  // ── Success state ────────────────────────────────────────────────────────
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB]">
+        <Navbar />
+        <main className="max-w-md mx-auto px-4 py-20 text-center">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-10">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+              <i className="fa-solid fa-paper-plane text-green-500 text-4xl" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Nộp đơn thành công!</h2>
+            <p className="text-gray-500 text-sm mb-6">Cảm ơn bạn đã ứng tuyển. Chúng tôi sẽ liên hệ sớm.</p>
+            <Link to="/my-applications" className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all">
+              <i className="fa-solid fa-list mr-2" />
+              Xem đơn của tôi
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Main form ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A]">
       <Navbar />
-
       <main className="max-w-3xl mx-auto px-4 py-16">
         <FormHeader
           title="Thông tin đăng ký"
           highlight="Thành viên"
-          description="Chào mừng bạn đến với hệ thống tuyển thành viên của UniClubs. Vui lòng điền đầy đủ các thông tin bên dưới."
+          description={`Chào ${currentUser.fullName ?? 'bạn'}! Vui lòng điền đầy đủ các thông tin bên dưới để nộp đơn ứng tuyển.`}
         />
-
         <ProgressBar
           current={Object.keys(answers).length}
-          total={questionsData?.length || 0}
+          total={questions.length}
         />
-
         <form onSubmit={handleSubmit} className="space-y-8 mt-10">
-          {questionsData?.map((q) => (
+          {questions.map((q) => (
             <QuestionCard
               key={q.questionId}
               data={{
@@ -159,26 +246,26 @@ const App: React.FC = () => {
             />
           ))}
 
-          {isTestMode && (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-800 text-sm">
-              Đang dùng chế độ test (chưa đăng nhập). Đơn sẽ gửi với tài khoản test.
-            </div>
-          )}
           {submitError && (
-            <SubmitErrorBox error={submitError} />
-          )}
-          {isSuccess && (
-            <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-green-700">
-              Gửi đơn đăng ký thành công.
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700 flex items-start gap-3">
+              <i className="fa-solid fa-circle-exclamation mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Gửi đơn thất bại. Vui lòng thử lại.</p>
+              </div>
             </div>
           )}
+
           <div className="flex justify-end pt-4">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-[#FF6B00] hover:bg-[#E56000] disabled:opacity-70 disabled:cursor-not-allowed text-white px-12 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-orange-200 hover:-translate-y-1"
+              className="bg-[#FF6B00] hover:bg-[#E56000] disabled:opacity-70 disabled:cursor-not-allowed text-white px-12 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-orange-200 hover:-translate-y-1 flex items-center gap-2"
             >
-              {isSubmitting ? 'Đang gửi...' : 'Gửi đơn đăng ký'}
+              {isSubmitting ? (
+                <><i className="fa-solid fa-spinner fa-spin" />Đang gửi...</>
+              ) : (
+                <><i className="fa-solid fa-paper-plane" />Gửi đơn đăng ký</>
+              )}
             </button>
           </div>
         </form>
@@ -187,4 +274,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default QuestionPage;

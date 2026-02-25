@@ -38,12 +38,6 @@ export default function MyApplications() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 py-3 px-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link to="/" className="text-orange-500 hover:text-orange-600 font-bold">UniClubs</Link>
-          <Link to="/question" className="text-sm text-gray-600 dark:text-gray-400 hover:text-orange-500">Nộp đơn</Link>
-        </div>
-      </header>
       <div className="py-12 px-4 max-w-3xl mx-auto">
         {isTestMode && (
           <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 p-4 text-blue-800 dark:text-blue-200 text-sm">

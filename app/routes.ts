@@ -42,9 +42,12 @@ export default [
   // User Profile route
   route("profile", "routes/user_profile.tsx"),
 
-  // Question route
-  route("question", "routes/question.tsx"),
+  // Question route - dynamic formId from URL
+  route("question/:formId?", "routes/question.tsx"),
 
   // My applications
   route("my-applications", "routes/my-applications.tsx"),
+
+  // Campaign form manager
+  route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
 ] satisfies RouteConfig;
