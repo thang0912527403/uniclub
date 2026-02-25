@@ -11,6 +11,7 @@ import type {
   VerifyEmailRequest,
   RefreshTokenRequest,
 } from './types/auth';
+import type { ApiResponse } from './types';
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -109,6 +110,7 @@ export const authApi = baseApi.injectEndpoints({
     // Lấy thông tin user hiện tại
     getCurrentUser: builder.query<UserInfo, void>({
       query: () => '/auth/me',
+      transformResponse: (response: ApiResponse<UserInfo>) => response.data,
       providesTags: ['User'],
     }),
   }),

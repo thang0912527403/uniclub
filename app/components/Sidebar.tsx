@@ -75,6 +75,7 @@ export function Sidebar({
         { label: 'Recruitment Campaigns', url: '/club/recruitment-campaigns' },
         { label: 'Club Members', url: '/club/members' },
         { label: 'Club Activities', url: '/club/activities' },
+        { label: 'Club Posts', url: '/club/posts' }
       ]
     },
     {

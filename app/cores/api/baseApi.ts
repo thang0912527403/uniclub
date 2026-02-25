@@ -14,7 +14,7 @@ const prepareHeaders = (headers: Headers) => {
   if (accessToken) {
     headers.set('authorization', `Bearer ${accessToken}`);
   }
-  headers.set('Content-Type', 'application/json');
+  //headers.set('Content-Type', 'application/json');
   return headers;
 };
 
@@ -31,8 +31,8 @@ export const createApiWithBaseUrl = (baseUrl: string, reducerPath: string, tagTy
   });
 };
 
-// Main API cho RecruitmentCampaign, Dashboard, Club
-const BASE_TAG_TYPES = ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification', 'Department', 'Application'];
+// Main API cho RecruitmentCampaign, Dashboard, Club (+ ClubPost từ tung)
+const BASE_TAG_TYPES = ['RecruitmentCampaign', 'Dashboard', 'Club', 'ClubPost', 'User', 'Notification', 'Department', 'Application'];
 export const baseApi = createApiWithBaseUrl(API_URLS.MAIN_SERVICE, 'api', BASE_TAG_TYPES);
 
 export const userApi = createApiWithBaseUrl(API_URLS.USER_SERVICE, 'userApi', ['User']);
