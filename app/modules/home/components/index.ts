@@ -10,3 +10,4 @@ export { default as CallToAction } from './CallToAction';
 export { default as Footer } from './Footer';
 export { default as ClubNewsCard } from './ClubNewsCard';
 export { default as NewsFilter } from './NewsFilter';
+export { default as ClubPost } from './ClubPost';

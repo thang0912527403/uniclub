@@ -12,8 +12,10 @@ export default [
   route("clubs/create", "routes/clubs/clubs.create.tsx"),
   route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
   route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
-  route("club/posts", "routes/clubs/clubpost.tsx"),
+  route("club/manage-posts", "routes/clubs/clubpost.tsx"),
   route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
+  route("club/posts", "routes/clubposts/clubpost.tsx"),
+  route("club/posts/:id", "routes/clubposts/clubpost.$id.tsx"),
 
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),
