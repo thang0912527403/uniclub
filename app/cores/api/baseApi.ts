@@ -22,9 +22,9 @@ const prepareHeaders = (headers: Headers) => {
 export const createApiWithBaseUrl = (baseUrl: string, reducerPath: string, tagTypes: string[]) => {
   return createApi({
     reducerPath,
-    baseQuery: fetchBaseQuery({ 
+    baseQuery: fetchBaseQuery({
       baseUrl,
-      prepareHeaders 
+      prepareHeaders
     }),
     tagTypes,
     endpoints: () => ({}),
