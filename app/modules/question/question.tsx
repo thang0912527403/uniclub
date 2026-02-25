@@ -4,7 +4,7 @@ import Navbar from '../../components/Navbar';
 import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
 import ProgressBar from './components/progressBar';
-import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationByUserAndFormQuery } from '../../cores/api/applicationApi';
+import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationByUserAndFormQuery, useGetFormsByCampaignQuery } from '../../cores/api/applicationApi';
 import { useGetCurrentUserQuery } from '../../cores/api';
 import type { ApplicationAnswerItemDto } from '../../cores/api';
 
@@ -15,19 +15,35 @@ import type { ApplicationAnswerItemDto } from '../../cores/api';
  * - Prevents double-submission (shows "already applied" state)
  */
 const QuestionPage: React.FC = () => {
-  const { formId: formIdParam } = useParams<{ formId?: string }>();
+  const { formId: idParam } = useParams<{ formId?: string }>();
   const navigate = useNavigate();
 
-  const formId = formIdParam ? Number(formIdParam) : NaN;
+  const idFromUrl = idParam ? Number(idParam) : NaN;
+
+  // We'll try to treat the ID as both a Form ID and a Campaign ID (to find the form)
+  // 1. Fetch forms for the ID in case it's a campaign ID
+  const { data: campaignForms = [] } = useGetFormsByCampaignQuery(idFromUrl, {
+    skip: !idFromUrl || isNaN(idFromUrl),
+  });
+
+  // 2. Determine the actual form ID to use:
+  // - If it's a valid campaign with forms, use the first form's ID
+  // - Otherwise, assume the ID in the URL is the form ID itself
+  const actualFormId = campaignForms.length > 0 ? campaignForms[0].formId : idFromUrl;
 
   const { data: currentUser, isLoading: userLoading } = useGetCurrentUserQuery();
-  const { data: questions = [], isLoading: questionsLoading, error: questionsError } = useGetQuestionsByFormQuery(formId, { skip: !formId || isNaN(formId) });
+  const { 
+    data: questions = [], 
+    isLoading: questionsLoading, 
+    error: questionsError 
+  } = useGetQuestionsByFormQuery(actualFormId, { skip: !actualFormId || isNaN(actualFormId) });
+
   const [submitApplication, { isLoading: isSubmitting, error: submitError, isSuccess }] = useSubmitApplicationMutation();
 
   // Check if user already applied to this form
   const { data: existingApp, isLoading: checkingApp } = useGetApplicationByUserAndFormQuery(
-    { userId: currentUser?.userId ?? '', formId },
-    { skip: !currentUser?.userId || !formId || isNaN(formId) }
+    { userId: currentUser?.userId ?? '', formId: actualFormId },
+    { skip: !currentUser?.userId || !actualFormId || isNaN(actualFormId) }
   );
 
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -60,12 +76,12 @@ const QuestionPage: React.FC = () => {
         answerText: toAnswerText(value).trim(),
       }));
     try {
-      await submitApplication({ formId, userId: currentUser.userId, answers: answerList }).unwrap();
+      await submitApplication({ formId: actualFormId, userId: currentUser.userId, answers: answerList }).unwrap();
     } catch (_) { /* error shown via submitError */ }
   };
 
-  // ── Guard: invalid formId ────────────────────────────────────────────────
-  if (!formIdParam || isNaN(formId)) {
+  // ── Guard: invalid ID ────────────────────────────────────────────────
+  if (!idParam || isNaN(idFromUrl)) {
     return (
       <div className="min-h-screen bg-[#FDFCFB]">
         <Navbar />
@@ -109,7 +125,7 @@ const QuestionPage: React.FC = () => {
               Bạn cần đăng nhập để nộp đơn ứng tuyển. Vui lòng đăng nhập và thử lại.
             </p>
             <Link
-              to={`/auth/login?redirect=/question/${formId}`}
+              to={`/auth/login?redirect=/question/${actualFormId}`}
               className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all mb-3"
             >
               <i className="fa-solid fa-right-to-bracket mr-2" />

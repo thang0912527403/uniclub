@@ -1,73 +1,21 @@
 import { useParams, Link } from 'react-router';
-import { useGetRecruitmentCampaignQuery } from '~/cores/api';
-import type { RecruitmentCampaign } from '~/cores/api';
-import Navbar from '~/modules/home/components/Navbar';
+import { useGetRecruitmentCampaignQuery, useGetFormsByCampaignQuery } from '~/cores/api';
+import Navbar from '../components/Navbar';
 import Footer from '~/modules/home/components/Footer';
 
 export default function CampaignDetailPage() {
   const { id } = useParams();
-  const campaignId = Number(id);
-  const isPlaceholderId = campaignId <= 0;
+  const campaignId = Number(id) || 0;
 
-  const { data: apiCampaign, isLoading, error } = useGetRecruitmentCampaignQuery(campaignId, {
-    skip: isPlaceholderId,
+  const { data: campaign, isLoading, error } = useGetRecruitmentCampaignQuery(campaignId, {
+    skip: !campaignId,
   });
 
-  const placeholderCampaigns: RecruitmentCampaign[] = [
-    {
-      campaignId: 0,
-      clubId: 0,
-      campaignName: 'Chiến dịch tuyển thành viên CLB Công nghệ',
-      linkCampaign: '',
-      description:
-        'Câu lạc bộ Công nghệ đang tuyển thành viên cho năm học mới. Bạn sẽ được tham gia các buổi workshop, dự án và kết nối với cộng đồng đam mê lập trình.',
-      startDate: new Date().toISOString().slice(0, 10),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      status: 'active',
-      imageUrl: '',
-      content:
-        'Yêu cầu:\n• Sinh viên các khoa CNTT, Toán – Tin.\n• Có đam mê công nghệ, sẵn sàng học hỏi.\n• Tham gia đầy đủ các buổi sinh hoạt định kỳ.\n\nQuyền lợi:\n• Được đào tạo kỹ năng lập trình, làm dự án thực tế.\n• Tham gia sự kiện, hackathon do CLB tổ chức.',
-      createdAt: '',
-    },
-    {
-      campaignId: -1,
-      clubId: 0,
-      campaignName: 'Tuyển tình nguyện viên sự kiện',
-      linkCampaign: '',
-      description:
-        'Ban tổ chức sự kiện của trường cần tình nguyện viên hỗ trợ các chương trình trong năm. Cơ hội rèn luyện kỹ năng tổ chức và làm việc nhóm.',
-      startDate: new Date().toISOString().slice(0, 10),
-      endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      status: 'active',
-      imageUrl: '',
-      content:
-        'Công việc:\n• Hỗ trợ tổ chức sự kiện (hội trường, âm thanh, hậu cần).\n• Điều phối khách mời và người tham gia.\n• Quản lý tài liệu, vật phẩm sự kiện.\n\nThời gian: Linh hoạt theo từng sự kiện, ưu tiên cuối tuần.',
-      createdAt: '',
-    },
-    {
-      campaignId: -2,
-      clubId: 0,
-      campaignName: 'Chiến dịch kết nối sinh viên',
-      linkCampaign: '',
-      description:
-        'Chương trình kết nối sinh viên với các câu lạc bộ và cơ hội phát triển bản thân. Đăng ký để nhận tư vấn và tham gia các hoạt động phù hợp với bạn.',
-      startDate: new Date().toISOString().slice(0, 10),
-      endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      status: 'active',
-      imageUrl: '',
-      content:
-        'Nội dung:\n• Khảo sát sở thích và định hướng của sinh viên.\n• Giới thiệu các CLB phù hợp.\n• Tổ chức Ngày hội CLB, giao lưu kết nối.\n\nHãy điền form ứng tuyển để chúng tôi hiểu bạn hơn và gợi ý câu lạc bộ phù hợp.',
-      createdAt: '',
-    },
-  ];
+  const { data: forms = [] } = useGetFormsByCampaignQuery(campaignId, {
+    skip: !campaignId,
+  });
 
-  const placeholder =
-    isPlaceholderId && campaignId >= -2
-      ? placeholderCampaigns[campaignId === 0 ? 0 : campaignId === -1 ? 1 : 2]
-      : null;
-  const campaign = isPlaceholderId ? placeholder : apiCampaign;
-
-  if (!isPlaceholderId && isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-950">
         <Navbar />
@@ -80,7 +28,7 @@ export default function CampaignDetailPage() {
     );
   }
 
-  if (!campaign || (!isPlaceholderId && error)) {
+  if (!campaign || error) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-950">
         <Navbar />
@@ -100,7 +48,8 @@ export default function CampaignDetailPage() {
     );
   }
 
-  const isActive = campaign.status?.toLowerCase() === 'active';
+  const isActive = campaign.status?.toLowerCase() === 'open';
+  const firstFormId = forms.length > 0 ? forms[0].formId : null;
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
@@ -135,9 +84,21 @@ export default function CampaignDetailPage() {
                   isActive ? 'bg-green-500' : 'bg-gray-500'
                 }`}
               >
-                {isActive ? 'Đang mở' : campaign.status}
+                {isActive ? 'OPEN' : campaign.status}
               </span>
-              <h1 className="text-3xl sm:text-4xl font-bold">{campaign.campaignName}</h1>
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl sm:text-4xl font-bold">{campaign.campaignName}</h1>
+                </div>
+                {isActive && (
+                  <Link
+                    to={`/question/${campaignId}`}
+                    className="flex-shrink-0 inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                  >
+                    <i className="fas fa-paper-plane" /> Ứng tuyển ngay
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
 
@@ -186,17 +147,26 @@ export default function CampaignDetailPage() {
               </div>
             )}
 
-            {isActive && (
+            {isActive && firstFormId && (
               <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Bấm nút bên dưới để chuyển đến trang trả lời câu hỏi ứng tuyển.
                 </p>
                 <Link
-                  to="/question"
+                  to={`/question/${firstFormId}`}
                   className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg hover:shadow-xl"
                 >
                   <i className="fas fa-file-alt" /> Ứng tuyển
                 </Link>
+              </div>
+            )}
+            
+            {isActive && !firstFormId && (
+              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 flex items-start gap-3">
+                  <i className="fas fa-info-circle mt-0.5" />
+                  <p className="font-medium text-sm">Chiến dịch này đang mở nhưng chưa có biểu mẫu ứng tuyển nào. Vui lòng quay lại sau.</p>
+                </div>
               </div>
             )}
           </div>

@@ -4,8 +4,6 @@ import { useGetRecruitmentCampaignsQuery } from '~/cores/api';
 import type { RecruitmentCampaign } from '~/cores/api';
 
 function CampaignCard({ campaign }: { campaign: RecruitmentCampaign }) {
-  const isActive = campaign.status?.toLowerCase() === 'active';
-  if (!isActive) return null;
   return (
     <Link
       to={`/campaign/${campaign.campaignId}`}
@@ -48,7 +46,9 @@ function CampaignCard({ campaign }: { campaign: RecruitmentCampaign }) {
 
 export default function CampaignsSection() {
   const { data: campaigns = [], isLoading, error } = useGetRecruitmentCampaignsQuery();
-  const activeCampaigns = campaigns.filter((c) => c.status?.toLowerCase() === 'active');
+  const activeCampaigns = campaigns.filter(
+    (c) => c.status?.toLowerCase() === 'open' || c.status?.toLowerCase() === 'active'
+  );
 
   if (isLoading) {
     return (
@@ -66,52 +66,23 @@ export default function CampaignsSection() {
     );
   }
 
-  const displayCampaigns =
-    activeCampaigns.length > 0
-      ? activeCampaigns
-      : [
-          {
-            campaignId: 0,
-            clubId: 0,
-            campaignName: 'Chiến dịch tuyển thành viên CLB Công nghệ',
-            linkCampaign: '',
-            description: 'Đăng ký tham gia câu lạc bộ và nhận thông báo sự kiện.',
-            startDate: new Date().toISOString().slice(0, 10),
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-            status: 'active',
-            imageUrl: '',
-            content: '',
-            createdAt: '',
-          },
-          {
-            campaignId: -1,
-            clubId: 0,
-            campaignName: 'Tuyển tình nguyện viên sự kiện',
-            linkCampaign: '',
-            description: 'Tham gia ban tổ chức các sự kiện của trường.',
-            startDate: new Date().toISOString().slice(0, 10),
-            endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-            status: 'active',
-            imageUrl: '',
-            content: '',
-            createdAt: '',
-          },
-          {
-            campaignId: -2,
-            clubId: 0,
-            campaignName: 'Chiến dịch kết nối sinh viên',
-            linkCampaign: '',
-            description: 'Kết nối với các CLB và tìm cơ hội phát triển.',
-            startDate: new Date().toISOString().slice(0, 10),
-            endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-            status: 'active',
-            imageUrl: '',
-            content: '',
-            createdAt: '',
-          },
-        ] as RecruitmentCampaign[];
-
-  const isPlaceholder = activeCampaigns.length === 0;
+  if (activeCampaigns.length === 0) {
+    return (
+      <section className="py-14 bg-gray-50 dark:bg-gray-900/50 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 mb-8 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Chiến dịch tuyển dụng
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 text-lg mt-4">
+            Hiện tại chưa có chiến dịch tuyển dụng nào đang mở từ các câu lạc bộ.
+          </p>
+          <div className="mt-8">
+            <i className="fas fa-folder-open text-6xl text-gray-300 dark:text-gray-600" />
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-14 bg-gray-50 dark:bg-gray-900/50 overflow-hidden">
@@ -120,20 +91,18 @@ export default function CampaignsSection() {
           Chiến dịch tuyển dụng
         </h2>
         <p className="text-gray-600 dark:text-gray-400 text-lg">
-          {isPlaceholder
-            ? 'Các chiến dịch từ câu lạc bộ sẽ hiển thị tại đây.'
-            : 'Các chiến dịch đang mở từ các câu lạc bộ — bấm vào để xem chi tiết và ứng tuyển'}
+          Các chiến dịch đang mở từ các câu lạc bộ — bấm vào để xem chi tiết và ứng tuyển
         </p>
       </div>
 
       <div className="relative">
         <div className="overflow-hidden">
           <div className="flex flex-nowrap animate-marquee gap-6 py-2" style={{ width: 'max-content' }}>
-            {displayCampaigns.map((c) => (
-              <CampaignCard key={`a-${c.campaignId}-${c.campaignName}`} campaign={c} />
+            {activeCampaigns.map((c) => (
+              <CampaignCard key={`a-${c.campaignId}`} campaign={c} />
             ))}
-            {displayCampaigns.map((c) => (
-              <CampaignCard key={`b-${c.campaignId}-${c.campaignName}`} campaign={c} />
+            {activeCampaigns.map((c) => (
+              <CampaignCard key={`b-${c.campaignId}`} campaign={c} />
             ))}
           </div>
         </div>
