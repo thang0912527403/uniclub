@@ -1,5 +1,5 @@
 import React from 'react';
-import { CallToAction, ClubCategories, Footer, Navbar, HeroSection, RegistrationCards, Statistics, UpcomingEvents, WhyChooseUs } from './components';
+import { CallToAction, ClubCategories, CampaignsSection, Footer, Navbar, HeroSection, Statistics, UpcomingEvents, WhyChooseUs } from './components';
 
 const LandingPage: React.FC = () => {
     return (
@@ -10,7 +10,7 @@ const LandingPage: React.FC = () => {
             <WhyChooseUs />
             <UpcomingEvents />
             <Statistics />
-            <RegistrationCards />
+            <CampaignsSection />
             <CallToAction />
             <Footer />
         </div>

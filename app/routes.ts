@@ -43,6 +43,9 @@ export default [
   // Question route
   route("question", "routes/question.tsx"),
 
+  // Chiến dịch tuyển dụng (public detail)
+  route("campaign/:id", "routes/campaign.$id.tsx"),
+
   // My applications
   route("my-applications", "routes/my-applications.tsx"),
 ] satisfies RouteConfig;
