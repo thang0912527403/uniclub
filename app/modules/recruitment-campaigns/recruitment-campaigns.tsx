@@ -182,9 +182,18 @@ export default function RecruitmentCampaignsModule() {
                             {new Date(campaign.startDate).toLocaleDateString('vi-VN')} - {new Date(campaign.endDate).toLocaleDateString('vi-VN')}
                           </span>
                         </div>
-                        <span className="text-blue-500 hover:text-blue-600 text-sm font-semibold">
-                          Xem chi tiết →
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={e => { e.stopPropagation(); navigate(`/campaign-forms/${campaign.campaignId}`); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-all hover:shadow-md"
+                          >
+                            <i className="fa-solid fa-file-lines text-xs" />
+                            Quản lý Form
+                          </button>
+                          <span className="text-blue-500 hover:text-blue-600 text-sm font-semibold">
+                            Chi tiết →
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -1,7 +1,6 @@
 import React from 'react';
-import { CallToAction, ClubCategories, Footer, Navbar, HeroSection, RegistrationCards, Statistics, UpcomingEvents, WhyChooseUs, ClubPost } from './components';
-
-
+import { CallToAction, ClubCategories, CampaignsSection, Footer, HeroSection, Statistics, UpcomingEvents, WhyChooseUs } from './components';
+import Navbar from '../../components/Navbar';
 
 const LandingPage: React.FC = () => {
     return (
@@ -11,9 +10,8 @@ const LandingPage: React.FC = () => {
             <ClubCategories />
             <WhyChooseUs />
             <UpcomingEvents />
-            <ClubPost/>
             <Statistics />
-            <RegistrationCards />
+            <CampaignsSection />
             <CallToAction />
             <Footer />
         </div>

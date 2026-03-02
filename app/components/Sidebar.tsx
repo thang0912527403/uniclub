@@ -17,11 +17,13 @@ interface NavItem {
 interface SidebarProps {
   currentPath?: string;
   isOpen?: boolean;
+  isDark?: boolean;
+  onToggleSidebarTheme?: () => void;
 }
 
 export function Sidebar({
   currentPath = '/dashboard',
-  isOpen = true
+  isOpen = true,
 }: SidebarProps) {
   const navigate = useNavigate();
   const { toggleExpand, isExpanded } = useExpandedMenu();
@@ -92,6 +94,7 @@ export function Sidebar({
       subItems: [
         { label: 'All Recruitment Campaigns', url: '/recruitment-campaigns' },
         { label: 'Your Club Campaigns', url: '/club/recruitment-campaigns' },
+        { label: 'Approve Applications', url: '/applications' },
       ]
     },
     {
@@ -102,6 +105,13 @@ export function Sidebar({
         { label: 'Add Member', url: '/members/add' },
         { label: 'Member Roles', url: '/members/roles' },
         { label: 'Member Activity', url: '/members/activity' },
+      ]
+    },
+    {
+      label: 'Manage Users',
+      icon: 'fa-user-cog',
+      subItems: [
+        { label: 'All Users', url: '/users' },
       ]
     },
     {
@@ -122,6 +132,14 @@ export function Sidebar({
         { label: 'Transactions', url: '/funds/transactions' },
         { label: 'Expense Reports', url: '/funds/reports' },
         { label: 'Fund Settings', url: '/funds/settings' },
+      ]
+    },
+    {
+      label: 'Interview Management',
+      icon: 'fa-calendar-check',
+      subItems: [
+        { label: 'Interview Schedule', url: '/interview/schedule' },
+        { label: 'Interview Rooms', url: '/interview/room' },
       ]
     },
   ];

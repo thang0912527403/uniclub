@@ -1,16 +1,14 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import Cookies from 'js-cookie';
 
 // Cấu hình base URLs cho các services
 export const API_URLS = {
-  MAIN_SERVICE: 'https://localhost:7237/api',
-  USER_SERVICE: 'https://localhost:7238/api',
-  NOTIFICATION_SERVICE: 'https://localhost:7239/api',
+  MAIN_SERVICE: 'https://localhost:7237/api'
 };
 
 // Common headers
 const prepareHeaders = (headers: Headers) => {
-  const accessToken = localStorage.getItem('accessToken');
-  console.log("TOKEN:", accessToken);
+  const accessToken = Cookies.get('accessToken');
   if (accessToken) {
     headers.set('authorization', `Bearer ${accessToken}`);
   }
@@ -22,9 +20,9 @@ const prepareHeaders = (headers: Headers) => {
 export const createApiWithBaseUrl = (baseUrl: string, reducerPath: string, tagTypes: string[]) => {
   return createApi({
     reducerPath,
-    baseQuery: fetchBaseQuery({ 
+    baseQuery: fetchBaseQuery({
       baseUrl,
-      prepareHeaders 
+      prepareHeaders
     }),
     tagTypes,
     endpoints: () => ({}),
@@ -32,35 +30,4 @@ export const createApiWithBaseUrl = (baseUrl: string, reducerPath: string, tagTy
 };
 
 // Main API cho RecruitmentCampaign, Dashboard, Club
-export const baseApi = createApi({
-  reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: API_URLS.MAIN_SERVICE,
-    prepareHeaders 
-  }),
-  tagTypes: ['RecruitmentCampaign', 'Dashboard', 'Club', 'ClubPost', 'User', 'Notification', 'Department', 'Application'],
-  endpoints: () => ({}),
-});
-
-// User API với base URL riêng (ví dụ)
-export const userApi = createApi({
-  reducerPath: 'userApi',
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: API_URLS.USER_SERVICE,
-    prepareHeaders 
-  }),
-  tagTypes: ['User'],
-  endpoints: () => ({}),
-});
-
-// Notification API với base URL riêng (ví dụ)
-export const notificationApi = createApi({
-  reducerPath: 'notificationApi',
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: API_URLS.NOTIFICATION_SERVICE,
-    prepareHeaders 
-  }),
-  tagTypes: ['Notification'],
-  endpoints: () => ({}),
-});
-
+export const baseApi = createApiWithBaseUrl(API_URLS.MAIN_SERVICE, 'api', ['RecruitmentCampaign', 'Dashboard', 'Club', 'User', 'Notification', 'Interview', 'Application']);

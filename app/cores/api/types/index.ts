@@ -5,4 +5,7 @@ export * from './club';
 export * from './department';
 export * from './user';
 export * from './application';
+export * from './interview';
 export * from './clubPost';
+export * from './event';
+export * from './attendance';

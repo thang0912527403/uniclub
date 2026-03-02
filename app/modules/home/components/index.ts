@@ -1,5 +1,4 @@
 // Component exports
-export { default as Navbar } from './Navbar';
 export { default as HeroSection } from './HeroSection';
 export { default as ClubCategories } from './ClubCategories';
 export { default as WhyChooseUs } from './WhyChooseUs';
@@ -10,4 +9,4 @@ export { default as CallToAction } from './CallToAction';
 export { default as Footer } from './Footer';
 export { default as ClubNewsCard } from './ClubNewsCard';
 export { default as NewsFilter } from './NewsFilter';
-export { default as ClubPost } from './ClubPost';
+export { default as CampaignsSection } from './CampaignsSection';
