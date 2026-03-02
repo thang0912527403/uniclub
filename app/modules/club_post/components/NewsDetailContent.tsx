@@ -19,7 +19,7 @@ const NewsDetailContent: React.FC<{ post: ClubPostResponseDto }> = ({ post }) =>
         <div className="p-2 rounded-full group-hover:bg-orange-50">
           <ChevronLeft size={20} />
         </div>
-        Quay lại bản tin
+        Quay lại
       </button>
 
       {/* Header bài viết */}

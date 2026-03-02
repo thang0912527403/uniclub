@@ -4,10 +4,12 @@ import PostCard from './components/PostCard';
 import PostFilter from './components/PostFilter';
 import { useGetClubPostsQuery } from '~/cores/api';
 import { useGetClubsQuery } from '~/cores/api';
+import { ChevronLeft } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 const NewsPage: React.FC = () => {
   const { data: allPosts = [] } = useGetClubPostsQuery();
-
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Tất cả");
   const { data: clubs = [] } = useGetClubsQuery();
   const categories = ["Tất cả", ...clubs.map(c => c.clubName)];
@@ -35,6 +37,15 @@ const NewsPage: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
+        <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-gray-500 hover:text-orange-600 font-bold mb-8 transition-colors group"
+      >
+        <div className="p-2 rounded-full group-hover:bg-orange-50">
+          <ChevronLeft size={20} />
+        </div>
+        Quay lại
+      </button>
         {/* Filter Section */}
         <PostFilter 
           categories={categories} 
