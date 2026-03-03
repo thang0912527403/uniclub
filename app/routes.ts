@@ -20,6 +20,8 @@ export default [
 
   // Users (CRUD)
   route("users", "routes/users.tsx"),
+  route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
+  route("club-roles", "routes/club-roles.tsx"),
 
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),
