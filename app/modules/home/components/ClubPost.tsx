@@ -15,7 +15,6 @@ const ClubNewsFeed = () => {
     return (
         <div className="bg-[#fcfcfc] min-h-screen py-16 px-4">
             <div className="max-w-6xl mx-auto">
-
                 <div className="text-center mb-16">
                     <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Bản tin câu lạc bộ</h2>
                     <div className="w-20 h-1.5 bg-orange-500 mx-auto rounded-full"></div>

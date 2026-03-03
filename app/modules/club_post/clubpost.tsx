@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Navbar from '../home/components/Navbar'; 
+import Navbar from '../../components/Navbar'; 
 import PostCard from './components/PostCard';
 import PostFilter from './components/PostFilter';
 import { useGetClubPostsQuery } from '~/cores/api';

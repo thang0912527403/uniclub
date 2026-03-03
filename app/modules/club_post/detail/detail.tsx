@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import Navbar from 'app/modules/home/components/Navbar';
+import Navbar from '../../../components/Navbar';
 import NewsDetailContent from '../components/NewsDetailContent';
 import { useGetClubPostByIdQuery } from '~/cores/api';
 import type { ClubPostResponseDto } from '~/cores/api';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CallToAction, ClubCategories, CampaignsSection, Footer, HeroSection, Statistics, UpcomingEvents, WhyChooseUs } from './components';
+import { CallToAction, ClubPost, ClubCategories, CampaignsSection, Footer, HeroSection, Statistics, UpcomingEvents, WhyChooseUs } from './components';
 import Navbar from '../../components/Navbar';
 
 const LandingPage: React.FC = () => {
