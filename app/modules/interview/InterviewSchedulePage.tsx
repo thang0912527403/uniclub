@@ -355,6 +355,8 @@ const InterviewSchedulePage: React.FC = () => {
   };
 
   const bulkCancelReasonRef = useRef('');
+  const bulkAssignUserIdRef = useRef('');
+  const bulkAssignRoleRef = useRef('Interviewer');
 
   const handleBulkCancel = () => {
     bulkCancelReasonRef.current = '';
@@ -386,6 +388,112 @@ const InterviewSchedulePage: React.FC = () => {
           } catch {}
         }
         if (ok > 0) message.success(`Đã hủy ${ok} lịch phỏng vấn`);
+        setSelectedIds(new Set());
+      },
+    });
+  };
+
+  const handleBulkAssignInterviewers = () => {
+    bulkAssignUserIdRef.current = '';
+    bulkAssignRoleRef.current = 'Interviewer';
+    Modal.confirm({
+      title: 'Phân interviewer hàng loạt',
+      width: 480,
+      content: (
+        <div className="space-y-3 pt-1">
+          <p className="text-sm text-gray-600">
+            Phân người phỏng vấn cho <strong>{selectedIds.size}</strong> lịch đang chọn.
+          </p>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">User ID người phỏng vấn</label>
+            <Input
+              placeholder="Nhập User ID..."
+              onChange={(e) => { bulkAssignUserIdRef.current = e.target.value; }}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Vai trò</label>
+            <select
+              defaultValue="Interviewer"
+              onChange={(e) => { bulkAssignRoleRef.current = e.target.value; }}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-orange-400 outline-none"
+            >
+              <option value="Interviewer">Interviewer</option>
+              <option value="Lead">Lead</option>
+              <option value="Observer">Observer</option>
+              <option value="HRRepresentative">HR Representative</option>
+            </select>
+          </div>
+        </div>
+      ),
+      okText: 'Phân công',
+      okButtonProps: { style: { background: '#a855f7', borderColor: '#a855f7' } },
+      cancelText: 'Huỷ',
+      async onOk() {
+        const uid = bulkAssignUserIdRef.current.trim();
+        if (!uid) {
+          message.warning('Vui lòng nhập User ID');
+          throw new Error('cancel');
+        }
+        let ok = 0;
+        for (const id of selectedIds) {
+          try {
+            await assignInterviewers({
+              scheduleId: id,
+              dto: { interviewers: [{ interviewerUserId: uid, role: bulkAssignRoleRef.current }] },
+            }).unwrap();
+            ok++;
+          } catch {}
+        }
+        if (ok > 0) message.success(`Đã phân công interviewer cho ${ok} lịch`);
+        else message.error('Phân công thất bại');
+        setSelectedIds(new Set());
+      },
+    });
+  };
+
+  const handleBulkStartInterview = async () => {
+    Modal.confirm({
+      title: 'Bắt đầu phỏng vấn hàng loạt',
+      content: `Bạn chắc chắn muốn bắt đầu ${selectedIds.size} buổi phỏng vấn?`,
+      okText: 'Bắt đầu',
+      okButtonProps: { style: { background: '#3b82f6', borderColor: '#3b82f6' } },
+      cancelText: 'Huỷ',
+      async onOk() {
+        let ok = 0;
+        for (const id of selectedIds) {
+          try {
+            await updateStatus({ id, dto: { status: 'InProgress' } }).unwrap();
+            ok++;
+          } catch {}
+        }
+        if (ok > 0) message.success(`Đã bắt đầu ${ok} buổi phỏng vấn`);
+        setSelectedIds(new Set());
+      },
+    });
+  };
+
+  const handleBulkComplete = async () => {
+    Modal.confirm({
+      title: 'Hoàn thành phỏng vấn hàng loạt',
+      content: `Xác nhận hoàn thành ${selectedIds.size} buổi phỏng vấn?`,
+      okText: 'Hoàn thành',
+      okButtonProps: { style: { background: '#22c55e', borderColor: '#22c55e' } },
+      cancelText: 'Huỷ',
+      async onOk() {
+        let ok = 0;
+        for (const id of selectedIds) {
+          try {
+            await updateStatus({ id, dto: { status: 'Completed' } }).unwrap();
+            // Also close the room if exists
+            const interview = allInterviews.find(iv => iv.id === id);
+            if (interview?.meetingRoom?.roomCode) {
+              try { await closeRoom(interview.meetingRoom.roomCode).unwrap(); } catch {}
+            }
+            ok++;
+          } catch {}
+        }
+        if (ok > 0) message.success(`Đã hoàn thành ${ok} buổi phỏng vấn`);
         setSelectedIds(new Set());
       },
     });
@@ -501,6 +609,9 @@ const InterviewSchedulePage: React.FC = () => {
         onConfirmAll={handleBulkConfirm}
         onCancelAll={handleBulkCancel}
         onBulkCreateSchedule={handleBulkCreateSchedule}
+        onBulkAssignInterviewers={handleBulkAssignInterviewers}
+        onBulkStartInterview={handleBulkStartInterview}
+        onBulkComplete={handleBulkComplete}
         onClearSelection={() => setSelectedIds(new Set())}
       />
 
