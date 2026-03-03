@@ -218,15 +218,15 @@ export default function ClubPostModule() {
                                     </div>
 
                                     {/* Image Area */}
-                                    {post.imageUrl && (
-                                        <div className="px-5 pb-5">
+                                    <div className="relative h-[400px] md:h-[500px] rounded-[3rem] overflow-hidden shadow-2xl shadow-orange-100 mb-12">
+                                        {post.imageUrl && (
                                             <img
-                                                src="https://kenh14cdn.com/203336854389633024/2024/9/3/4581724159247437663532909006014464626380171n-17253551798752075648067-1725356318932-1725356319070839564794.jpg"
-                                                alt="Content"
-                                                className="w-full h-64 object-cover rounded-xl border dark:border-gray-700"
+                                                src={post.imageUrl}
+                                                alt={post.title}
+                                                className="w-full h-full object-cover"
                                             />
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             ))
                         )}

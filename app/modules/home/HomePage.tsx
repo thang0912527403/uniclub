@@ -10,6 +10,7 @@ const LandingPage: React.FC = () => {
             <ClubCategories />
             <WhyChooseUs />
             <UpcomingEvents />
+            <ClubPost/>
             <Statistics />
             <CampaignsSection />
             <CallToAction />
