@@ -11,7 +11,6 @@ import type {
   VerifyEmailRequest,
   RefreshTokenRequest,
 } from './types/auth';
-import type { ApiResponse } from './types';
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
