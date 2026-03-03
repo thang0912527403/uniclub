@@ -3,3 +3,4 @@ export * from './dashboard';
 export * from './auth';
 export * from './club';
 export * from './clubRole';
+export * from './clubMember';

@@ -98,7 +98,7 @@ export function Sidebar({
       label: 'Manage Members',
       icon: 'fa-users',
       subItems: [
-        { label: 'All Members', url: '/members' },
+        { label: 'All Members', url: '/clubs/1/members' },
         { label: 'Add Member', url: '/members/add' },
         { label: 'Member Roles', url: '/members/roles' },
         { label: 'Member Activity', url: '/members/activity' },

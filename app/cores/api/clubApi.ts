@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import { type Club, type ApiResponse } from './types';
+import { type Club, type ClubMember, type ApiResponse } from './types';
 
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -12,6 +12,11 @@ export const clubApi = baseApi.injectEndpoints({
       query: (id) => `/Club/${id}`,
       transformResponse: (response: ApiResponse<Club>) => response.data,
       providesTags: (result, error, id) => [{ type: 'Club', id }],
+    }),
+    getClubMembers: builder.query<ClubMember[], number>({
+      query: (clubId) => `/clubs/${clubId}/members`,
+      transformResponse: (response: ApiResponse<ClubMember[]>) => response.data,
+      providesTags: (result, error, clubId) => [{ type: 'Club', id: `members-${clubId}` }],
     }),
     createClub: builder.mutation<Club, Partial<Club>>({
       query: (club) => ({
@@ -39,12 +44,20 @@ export const clubApi = baseApi.injectEndpoints({
       invalidatesTags: ['Club'],
     }),
     toggleClubStatus: builder.mutation<Club, { id: number; isActive: boolean }>({
-      query: ({ id, isActive }) => ({
+      query: ({ id }) => ({
         url: `/Club/ChangeStatus/${id}`,
         method: 'PUT',
       }),
       transformResponse: (response: ApiResponse<Club>) => response.data,
       invalidatesTags: (result, error, { id }) => [{ type: 'Club', id }, 'Club'],
+    }),
+    updateMemberRole: builder.mutation<void, { clubId: number; memberId: number; clubRoleId: number | null }>({
+      query: ({ clubId, memberId, clubRoleId }) => ({
+        url: `/clubs/${clubId}/members/${memberId}/role`,
+        method: 'PUT',
+        body: { clubRoleId },
+      }),
+      invalidatesTags: (result, error, { clubId }) => [{ type: 'Club', id: `members-${clubId}` }],
     }),
   }),
 });
@@ -52,8 +65,10 @@ export const clubApi = baseApi.injectEndpoints({
 export const {
   useGetClubsQuery,
   useGetClubByIdQuery,
+  useGetClubMembersQuery,
   useCreateClubMutation,
   useUpdateClubMutation,
   useDeleteClubMutation,
   useToggleClubStatusMutation,
+  useUpdateMemberRoleMutation,
 } = clubApi;
