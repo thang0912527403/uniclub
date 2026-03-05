@@ -30,6 +30,12 @@ export default [
   // Meeting routes
   route("meeting/:roomId?", "routes/meeting.tsx"),
 
+  // Funds routes
+  route("funds", "routes/funds.tsx"),
+  route("funds/transactions", "routes/funds.transactions.tsx"),
+  route("funds/reports", "routes/funds.reports.tsx"),
+  route("funds/settings", "routes/funds.settings.tsx"),
+
   // Error routes
   route("401", "routes/error/401.tsx"),
   route("403", "routes/error/403.tsx"),

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
@@ -25,6 +25,8 @@ const STATUS_OPTIONS = [
   { value: 'inactive', label: 'Không hoạt động' },
   { value: 'pending', label: 'Chờ duyệt' },
 ];
+
+const PAGE_SIZE = 10;
 
 /* ─────────── Confirm Delete Modal ─────────── */
 interface ConfirmDeleteModalProps {
@@ -292,12 +294,17 @@ function UserFormModal({
   );
 }
 
-/* ─────────── Main Module ─────────── */
 export default function UsersModule() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { show: showNotification } = useNotification();
 
-  const { data: users = [], isLoading, error } = useGetUsersQuery();
+  const [currentPage, setCurrentPage] = useState(1);
+  const { data: usersData, isLoading, error } = useGetUsersQuery({
+    pageNumber: currentPage,
+    pageSize: PAGE_SIZE,
+  });
+  const users = usersData?.items ?? [];
+  const totalCount = usersData?.totalCount ?? 0;
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
   const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
   const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
@@ -305,6 +312,13 @@ export default function UsersModule() {
   const [modalOpen, setModalOpen] = useState<'create' | 'edit' | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const paginatedUsers = users;
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages >= 1) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const openCreate = () => {
     setEditingUser(null);
@@ -427,7 +441,7 @@ export default function UsersModule() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tổng số</p>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{users.length}</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{totalCount.toLocaleString()}</h3>
                   </div>
                 </div>
               </div>
@@ -488,7 +502,7 @@ export default function UsersModule() {
 
             {/* Table */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
-              {users.length === 0 ? (
+              {totalCount === 0 ? (
                 <div className="p-12 text-center">
                   <i className="fas fa-users text-6xl text-gray-400 dark:text-gray-500 mb-4" />
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Chưa có người dùng nào</h3>
@@ -530,7 +544,7 @@ export default function UsersModule() {
                       </tr>
                     </thead>
                     <tbody>
-                      {users.map((record) => (
+                      {paginatedUsers.map((record) => (
                         <tr
                           key={record.userId}
                           className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
@@ -581,6 +595,38 @@ export default function UsersModule() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {totalCount > 0 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-wrap gap-3">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Hiển thị {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)} / {totalCount.toLocaleString()} người dùng
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    >
+                      <i className="fas fa-chevron-left mr-1" />
+                      Trang trước
+                    </button>
+                    <span className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 font-medium">
+                      Trang {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    >
+                      Trang sau
+                      <i className="fas fa-chevron-right ml-1" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
