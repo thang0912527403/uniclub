@@ -1,5 +1,6 @@
 import React from 'react';
 import { CallToAction, ClubCategories, CampaignsSection, Footer, HeroSection, Statistics, UpcomingEvents, WhyChooseUs } from './components';
+import  ClubPost  from './components/ClubPost';
 import Navbar from '../../components/Navbar';
 
 const LandingPage: React.FC = () => {
@@ -8,6 +9,7 @@ const LandingPage: React.FC = () => {
             <Navbar />
             <HeroSection />
             <ClubCategories />
+            <ClubPost/>
             <WhyChooseUs />
             <UpcomingEvents />
             <Statistics />
