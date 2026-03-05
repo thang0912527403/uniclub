@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
@@ -16,8 +16,12 @@ export default function EditClubPostModule() {
         title: '',
         caption: '',
         content: '',
-        imageUrl: null as string | null
+        imageUrl: ''
     });
+
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { data: post, isLoading, isError } = useGetClubPostByIdQuery(Number(id));
 
@@ -29,12 +33,23 @@ export default function EditClubPostModule() {
                 content: post.content || '',
                 imageUrl: post.imageUrl || ''
             });
+            if (post.imageUrl) {
+                setPreviewUrl(post.imageUrl);
+            }
         }
     }, [post]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedImage(file);
+            setPreviewUrl(URL.createObjectURL(file)); // Tạo link xem trước cho file mới
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -45,8 +60,8 @@ export default function EditClubPostModule() {
         formDataToSend.append("caption", formData.caption);
         formDataToSend.append("content", formData.content);
 
-        if (formData.imageUrl) {
-            formDataToSend.append("imageUrl", formData.imageUrl);
+        if (selectedImage) {
+            formDataToSend.append('imageFile', selectedImage);
         }
 
         try {
@@ -56,7 +71,7 @@ export default function EditClubPostModule() {
             }).unwrap();
 
             alert("Cập nhật thành công!");
-            navigate("/club/posts");
+            navigate("/club/manage-posts", { state: { fromEdit: true } });
         } catch (err) {
             console.error(err);
         }
@@ -138,28 +153,42 @@ export default function EditClubPostModule() {
                         </div>
 
                         {/* Cột phải: Ảnh và Hành động */}
+                        {/* Cột phải: Ảnh và Hành động */}
                         <div className="space-y-6">
-                            {/* Ảnh đại diện bài viết */}
                             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 border border-gray-100 dark:border-gray-700">
                                 <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-4">Ảnh minh họa</h3>
-                                <div className="relative group">
-                                    {formData.imageUrl?.trim() && (
+
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleImageChange}
+                                    accept="image/*"
+                                    className="hidden"
+                                />
+
+                                <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                    {previewUrl ? (
                                         <img
-                                            src={formData.imageUrl}
+                                            src={previewUrl}
                                             alt="Preview"
-                                            className="w-full h-48 object-cover rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-600"
+                                            className="w-full h-48 object-cover rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-600 transition-opacity group-hover:opacity-75"
                                         />
+                                    ) : (
+                                        <div className="w-full h-48 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center text-gray-400">
+                                            <i className="fas fa-cloud-upload-alt text-2xl mb-2"></i>
+                                            <span className="text-[10px] font-bold">BẤM ĐỂ CHỌN ẢNH</span>
+                                        </div>
                                     )}
+
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
                                         <button type="button" className="bg-white text-gray-800 px-4 py-2 rounded-lg text-xs font-bold shadow-lg">
                                             THAY ĐỔI ẢNH
                                         </button>
                                     </div>
                                 </div>
-                                <p className="mt-3 text-[10px] text-gray-500 text-center italic">Định dạng hỗ trợ: JPG, PNG, WEBP</p>
+                                <p className="mt-3 text-[10px] text-gray-500 text-center italic">Chấp nhận JPG, PNG, WEBP</p>
                             </div>
 
-                            {/* Nút hành động */}
                             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 border border-gray-100 dark:border-gray-700 space-y-3">
                                 <button
                                     type="submit"

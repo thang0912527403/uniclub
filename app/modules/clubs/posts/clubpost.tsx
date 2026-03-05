@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useGetClubPostsQuery } from '~/cores/api/clubApi';
-import { data, useNavigate } from 'react-router';
+import { data, useNavigate, useLocation } from 'react-router';
 import { useUpdateClubPostMutation, useDeleteClubPostMutation, useCreateClubPostMutation } from '~/cores/api/clubApi';
 import { useGetCurrentUserQuery } from '~/cores/api/authApi';
 
@@ -18,11 +18,29 @@ export default function ClubPostModule() {
     const [updateClubPost] = useUpdateClubPostMutation();
     const [createClubPost, { isLoading: isCreating }] = useCreateClubPostMutation();
     const navigate = useNavigate();
+    const location = useLocation();
     const clubStats = [
         { title: 'Tổng bài viết', value: clubPosts.length, icon: 'fa-paper-plane', color: 'bg-gray-800' },
         { title: 'Đang hiển thị', value: clubPosts.filter(p => p.status !== 'inactive').length, icon: 'fa-check-circle', color: 'bg-green-500' },
         { title: 'Đã ẩn', value: clubPosts.filter(p => p.status === 'inactive').length, icon: 'fa-eye-slash', color: 'bg-red-500' },
     ];
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedImage(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setSelectedImage(null);
+        setPreviewUrl(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
 
     const handleCreatePost = async () => {
         const title = postContent.trim();
@@ -36,24 +54,31 @@ export default function ClubPostModule() {
             return;
         }
 
-        if (!clubPosts || clubPosts.length === 0) {
-            alert('Không tìm thấy câu lạc bộ để gắn bài viết. Vui lòng chọn câu lạc bộ trước.');
-            return;
-        }
+        // if (!clubPosts || clubPosts.length === 0) {
+        //     alert('Không tìm thấy câu lạc bộ để gắn bài viết. Vui lòng chọn câu lạc bộ trước.');
+        //     return;
+        // }
 
-        const clubId = clubPosts[0].clubId;
+        // const clubId = clubPosts[0].clubId;
+
+        const clubId = 1; // TODO: Cần có cách chọn câu lạc bộ cụ thể để gắn bài viết vào thay vì mặc định lấy clubId của bài viết đầu tiên
 
         const formDataToSend = new FormData();
+        if (selectedImage) {
+            formDataToSend.append('imageFile', selectedImage);
+        }
         formDataToSend.append('clubId', String(clubId));
         formDataToSend.append('userId', currentUser?.userId || '');
         formDataToSend.append('title', title);
         formDataToSend.append('caption', '');
         formDataToSend.append('content', '');
-        formDataToSend.append('status', 'PUBLISHED');
-
         try {
             await createClubPost(formDataToSend).unwrap();
             setPostContent('');
+            handleRemoveImage();
+            setTimeout(() => {
+                window.location.reload();
+            }, 1200);
         } catch (err) {
             console.error(err);
             alert('Tạo bài viết thất bại!');
@@ -127,6 +152,7 @@ export default function ClubPostModule() {
                                 <div className="w-2 h-6 bg-blue-500 rounded-full"></div>
                                 <h3 className="font-bold text-gray-800 dark:text-white">Tạo thông báo mới</h3>
                             </div>
+
                             <textarea
                                 className="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
                                 placeholder="Viết gì đó..."
@@ -134,11 +160,38 @@ export default function ClubPostModule() {
                                 value={postContent}
                                 onChange={(e) => setPostContent(e.target.value)}
                             ></textarea>
+
+                            {/* --- Khu vực hiển thị ảnh xem trước --- */}
+                            {previewUrl && (
+                                <div className="relative mt-4 w-full max-h-64 rounded-lg overflow-hidden border dark:border-gray-600">
+                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                    <button
+                                        onClick={handleRemoveImage}
+                                        className="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full hover:bg-red-600 transition-colors"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="flex justify-between items-center mt-4">
-                                <button className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-500 transition-colors">
+                                {/* Input file ẩn */}
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleImageChange}
+                                    accept="image/*"
+                                    className="hidden"
+                                />
+
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-500 transition-colors"
+                                >
                                     <i className="fas fa-image text-lg"></i>
-                                    Thêm hình ảnh
+                                    {selectedImage ? 'Thay đổi ảnh' : 'Thêm hình ảnh'}
                                 </button>
+
                                 <button
                                     onClick={handleCreatePost}
                                     disabled={isCreating}

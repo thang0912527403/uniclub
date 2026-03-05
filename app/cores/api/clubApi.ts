@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import { type Club, type ApiResponse, type ClubPostResponseDto } from './types';
+import { type Club, type ApiResponse, type ClubPostResponseDto, type CreateClubPostDto } from './types';
 
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -58,7 +58,7 @@ export const clubApi = baseApi.injectEndpoints({
       providesTags: (result, error, id) => [{ type: 'ClubPost', id }],
     }),
     createClubPost: builder.mutation<
-      ClubPostResponseDto,
+      CreateClubPostDto,
       FormData
     >({
       query: (formData) => ({
@@ -66,7 +66,7 @@ export const clubApi = baseApi.injectEndpoints({
         method: 'POST',
         body: formData,
       }),
-      transformResponse: (response: ApiResponse<ClubPostResponseDto>) =>
+      transformResponse: (response: ApiResponse<CreateClubPostDto>) =>
         response.data,
       invalidatesTags: [{ type: 'ClubPost' }],
     }),
