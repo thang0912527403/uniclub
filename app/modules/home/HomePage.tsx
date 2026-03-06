@@ -7,10 +7,10 @@ const LandingPage: React.FC = () => {
         <div className="min-h-screen bg-white">
             <Navbar />
             <HeroSection />
+            <ClubPost/>
             <ClubCategories />
             <WhyChooseUs />
             <UpcomingEvents />
-            <ClubPost/>
             <Statistics />
             <CampaignsSection />
             <CallToAction />

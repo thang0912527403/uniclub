@@ -10,3 +10,5 @@ export * from './clubPost';
 export * from './event';
 export * from './attendance';
 export * from './clubRole';
+export * from './clubRole';
+export * from './clubMember';

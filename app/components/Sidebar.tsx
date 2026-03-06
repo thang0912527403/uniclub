@@ -64,8 +64,7 @@ const clubManagerNavItems: NavItem[] = [
     label: 'Câu lạc bộ',
     icon: 'fa-building',
     subItems: [
-      { label: 'Bài đăng CLB', url: '/club/manage-posts' },
-      { label: 'Bài viết công khai', url: '/club/posts' },
+      { label: 'Bài đăng CLB', url: '/club/manage-posts' }
     ],
   },
   {

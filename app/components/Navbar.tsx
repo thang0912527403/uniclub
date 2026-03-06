@@ -56,7 +56,6 @@ const Navbar: React.FC = () => {
         { name: 'Câu lạc bộ', href: '/clubs' },
         { name: 'Sự kiện', href: '/public/events' },
         { name: 'Tin tức', href: '#news' },
-        { name: 'Họp trực tuyến', href: '/meeting' },
         { name: 'Về chúng tôi', href: '#about' },
     ];
 

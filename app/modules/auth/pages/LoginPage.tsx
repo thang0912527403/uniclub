@@ -67,6 +67,7 @@ const LoginPage: React.FC = () => {
         Cookies.set('accessToken', payload.accessToken);
         Cookies.set('refreshToken', payload.refreshToken ?? '');
         Cookies.set('user', JSON.stringify(payload.user ?? {}));
+        
         navigate('/');
       }
     } catch (err) {

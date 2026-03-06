@@ -1,102 +1,306 @@
 import React from 'react';
-import { Calendar, User, Bookmark, ChevronRight, Globe } from 'lucide-react';
+import { Clock, User, ArrowRight, TrendingUp } from 'lucide-react';
 import { useGetClubPostsQuery } from '~/cores/api';
 import { useNavigate } from 'react-router';
 
+/*
+ * UI Design System (from ui-ux-promax skill)
+ * ─────────────────────────────────────────────
+ * Style     : #66 Editorial Grid / Magazine
+ * Colors    : #71 Magazine/Blog adapted to homepage orange-500
+ * Primary   : #18181B (zinc-900) text, #F4F4F5 (zinc-100) bg
+ * Accent    : #EA580C (orange-600) / #F97316 (orange-500)
+ * Effects   : elevation-2 (0 4px 6px), elevation-3 (0 10px 20px)
+ *             gradient overlays for image legibility
+ *             smooth transitions 200-300ms
+ * Typography: Inter (bold headings) / weight 700→400 hierarchy
+ * Grid      : asymmetric CSS Grid, named areas, varied card spans
+ * Rules     : cursor-pointer, 44px min touch, alt text, aria-label
+ * ─────────────────────────────────────────────
+ */
+
+function timeAgo(dateStr: string) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(m / 60);
+    const d = Math.floor(h / 24);
+    if (m < 60) return `${m} phút`;
+    if (h < 24) return `${h} giờ`;
+    return `${d} ngày`;
+}
+
+/* ── Skeleton ─────────────────────────────── */
+function Skeleton() {
+    return (
+        <section className="py-12 bg-zinc-50">
+            <div className="max-w-7xl mx-auto px-6">
+                <div className="animate-pulse">
+                    <div className="h-5 bg-zinc-200 rounded w-40 mb-8" />
+                    <div className="grid grid-cols-12 gap-4">
+                        <div className="col-span-7 h-[420px] bg-zinc-200 rounded-2xl" />
+                        <div className="col-span-5 flex flex-col gap-4">
+                            <div className="flex-1 bg-zinc-200 rounded-2xl" />
+                            <div className="flex-1 bg-zinc-200 rounded-2xl" />
+                        </div>
+                        <div className="col-span-4 h-56 bg-zinc-200 rounded-2xl" />
+                        <div className="col-span-4 h-56 bg-zinc-200 rounded-2xl" />
+                        <div className="col-span-4 h-56 bg-zinc-200 rounded-2xl" />
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+/* ── Image with fallback ──────────────────── */
+function PostImg({ src, alt, className }: { src?: string; alt: string; className?: string }) {
+    if (!src) {
+        return (
+            <div className={`bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center ${className ?? 'w-full h-full'}`}>
+                <TrendingUp className="text-orange-300" size={32} strokeWidth={1.5} />
+            </div>
+        );
+    }
+    return <img src={src} alt={alt} loading="lazy" className={className ?? 'w-full h-full object-cover'} />;
+}
+
+/* ── Club badge ───────────────────────────── */
+function ClubBadge({ name }: { name: string }) {
+    return (
+        <span className="inline-flex items-center bg-orange-500 text-white text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">
+            {name}
+        </span>
+    );
+}
+
+/* ── Meta row ─────────────────────────────── */
+function Meta({ userName, postDate }: { userName?: string; postDate: string }) {
+    return (
+        <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1.5">
+            {userName && (
+                <span className="flex items-center gap-1 font-medium text-zinc-500">
+                    <User size={11} />
+                    {userName}
+                </span>
+            )}
+            <span className="flex items-center gap-1">
+                <Clock size={11} />
+                {timeAgo(postDate)} trước
+            </span>
+        </div>
+    );
+}
+
+/* ════════════════════════════════════════════
+   MAIN COMPONENT
+   ════════════════════════════════════════════ */
 const ClubNewsFeed = () => {
     const navigate = useNavigate();
     const { data: posts = [], isLoading, isError } = useGetClubPostsQuery();
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    };
+    if (isLoading) return <Skeleton />;
+    if (isError || posts.length === 0) return null;
+
+    const go = (id: number) => navigate(`/club/posts/${id}`);
+
+    /* Layout slots */
+    const hero = posts[0];
+    const sub1 = posts[1];
+    const sub2 = posts[2];
+    const row = posts.slice(3, 6);       // 3 medium cards
+    const mini = posts.slice(6, 10);     // 4 mini list items
 
     return (
-        <div className="bg-[#fcfcfc] min-h-screen py-16 px-4">
-            <div className="max-w-6xl mx-auto">
-                <div className="text-center mb-16">
-                    <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Bản tin câu lạc bộ</h2>
-                    <div className="w-20 h-1.5 bg-orange-500 mx-auto rounded-full"></div>
-                    <p className="mt-4 text-gray-500 font-medium">Cập nhật những tin tức mới nhất từ các CLB trong UNIC</p>
-                </div>
+        <section className="py-10 bg-zinc-50">
+            <div className="max-w-7xl mx-auto px-6">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                    {posts.map((post, index) => (
-                        <div
-                            key={post.postId}
-                            className={`group relative flex flex-col ${index === 0 ? 'md:col-span-2 lg:col-span-2' : ''}`}
-                        >
-                            {/* Image Container */}
-                            <div className="relative h-64 md:h-80 w-full overflow-hidden rounded-[2.5rem] shadow-lg shadow-orange-100/50">
-                                <div className="relative h-[400px] md:h-[500px] rounded-[3rem] overflow-hidden shadow-2xl shadow-orange-100 mb-12">
-                                    {post.imageUrl && (
-                                        <img
-                                            src={post.imageUrl}
-                                            alt={post.title}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    )}
-                                </div>
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-
-                                {/* Badge Club Name (Góc trên trái) */}
-                                <div className="absolute top-6 left-6 bg-orange-600 text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                                    <Globe size={14} />
-                                    {post.clubName}
-                                </div>
-                            </div>
-
-                            {/* Content Box (Floating) */}
-                            <div className="relative -mt-20 mx-6 bg-white p-6 md:p-8 rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-50 transition-all duration-300 group-hover:-translate-y-2">
-                                <div className="flex items-center gap-3 mb-3 text-orange-600 font-bold text-xs uppercase">
-                                    <span className="bg-orange-50 px-3 py-1 rounded-lg italic">#{post.postId} New Post</span>
-                                    <span className="text-gray-300">|</span>
-                                    <span className="flex items-center gap-1">
-                                        <Calendar size={14} /> {formatDate(post.postDate)}
-                                    </span>
-                                </div>
-
-                                <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-3 group-hover:text-orange-600 transition-colors line-clamp-2 leading-tight">
-                                    {post.title}
-                                </h3>
-
-                                <p className="text-gray-500 text-sm mb-6 line-clamp-2 leading-relaxed italic">
-                                    "{post.caption}"
-                                </p>
-
-                                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                                            <User size={16} />
-                                        </div>
-                                        <span className="text-xs font-bold text-slate-700">{post.userName}</span>
-                                    </div>
-
-                                    <button className="flex items-center gap-1 text-orange-600 font-bold text-sm hover:gap-2 transition-all"
-                                        onClick={() => navigate(`/club/posts/${post.postId}`)}
-                                    >
-                                        Xem thêm <ChevronRight size={18} />
-                                    </button>
-                                </div>
-                            </div>
+                {/* ── Header ── */}
+                <div className="flex items-center justify-between mb-7">
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-col gap-1">
+                            <div className="w-8 h-1 bg-orange-500 rounded-full" />
+                            <div className="w-5 h-1 bg-orange-300 rounded-full" />
                         </div>
-                    ))}
-                </div>
-
-                <div className="text-center mt-10">
-                    <button className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center gap-2 group cursor-pointer"
-                        onClick={() => navigate("/club/posts")}
+                        <h2 className="text-lg font-extrabold text-zinc-900 tracking-tight uppercase">
+                            Bản tin câu lạc bộ
+                        </h2>
+                    </div>
+                    <button
+                        onClick={() => navigate('/club/posts')}
+                        className="group flex items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors duration-200 cursor-pointer"
                     >
-                        Xem tất cả bản tin
-                        <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                        </svg>
+                        Xem tất cả
+                        <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform duration-200" />
                     </button>
                 </div>
 
+                {/* ══════════════════════════════════
+                    TOP SECTION: Hero (7 cols) + 2 sub (5 cols)
+                    ══════════════════════════════════ */}
+                <div className="grid grid-cols-12 gap-4 mb-4">
+
+                    {/* Hero card – overlaid gradient, big title */}
+                    {hero && (
+                        <article
+                            onClick={() => go(hero.postId)}
+                            className="col-span-12 lg:col-span-7 relative overflow-hidden rounded-2xl cursor-pointer group shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow duration-300"
+                            aria-label={hero.title}
+                            style={{ minHeight: '400px' }}
+                        >
+                            {/* Image */}
+                            <div className="absolute inset-0">
+                                <PostImg
+                                    src={hero.imageUrl}
+                                    alt={hero.title}
+                                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
+                                />
+                            </div>
+                            {/* Gradient overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-900/40 to-transparent" />
+
+                            {/* Content anchored to bottom */}
+                            <div className="absolute inset-x-0 bottom-0 p-6">
+                                <ClubBadge name={hero.clubName} />
+                                <h3 className="mt-2.5 text-xl md:text-2xl font-bold text-white leading-snug line-clamp-2 group-hover:text-orange-200 transition-colors duration-200">
+                                    {hero.title}
+                                </h3>
+                                {hero.caption && (
+                                    <p className="mt-1.5 text-sm text-zinc-300 line-clamp-2 leading-relaxed">
+                                        {hero.caption}
+                                    </p>
+                                )}
+                                <div className="flex items-center gap-3 mt-2 text-xs text-zinc-400">
+                                    {hero.userName && (
+                                        <span className="flex items-center gap-1">
+                                            <User size={11} />
+                                            {hero.userName}
+                                        </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                        <Clock size={11} />
+                                        {timeAgo(hero.postDate)} trước
+                                    </span>
+                                </div>
+                            </div>
+                        </article>
+                    )}
+
+                    {/* 2 Sub cards stacked */}
+                    <div className="col-span-12 lg:col-span-5 flex flex-col gap-4">
+                        {[sub1, sub2].map((post, i) => post && (
+                            <article
+                                key={post.postId}
+                                onClick={() => go(post.postId)}
+                                className="flex-1 relative overflow-hidden rounded-2xl cursor-pointer group shadow-[0_4px_15px_rgba(0,0,0,0.07)] hover:shadow-[0_6px_22px_rgba(0,0,0,0.13)] transition-shadow duration-300"
+                                aria-label={post.title}
+                                style={{ minHeight: '190px' }}
+                            >
+                                {/* Image */}
+                                <div className="absolute inset-0">
+                                    <PostImg
+                                        src={post.imageUrl}
+                                        alt={post.title}
+                                        className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out"
+                                    />
+                                </div>
+                                {/* Gradient */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-zinc-900/30 to-transparent" />
+
+                                {/* Content */}
+                                <div className="absolute inset-x-0 bottom-0 p-4">
+                                    <ClubBadge name={post.clubName} />
+                                    <h4 className="mt-2 text-sm md:text-base font-bold text-white leading-snug line-clamp-2 group-hover:text-orange-200 transition-colors duration-200">
+                                        {post.title}
+                                    </h4>
+                                    <div className="flex items-center gap-2 mt-1.5 text-xs text-zinc-400">
+                                        <Clock size={10} />
+                                        {timeAgo(post.postDate)} trước
+                                    </div>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                </div>
+
+                {/* ══════════════════════════════════
+                    BOTTOM SECTION: 3 medium cards + mini sidebar
+                    ══════════════════════════════════ */}
+                {row.length > 0 && (
+                    <div className="grid grid-cols-12 gap-4">
+
+                        {/* 3 medium cards */}
+                        {row.map((post) => (
+                            <article
+                                key={post.postId}
+                                onClick={() => go(post.postId)}
+                                className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white rounded-2xl overflow-hidden cursor-pointer group shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300"
+                                aria-label={post.title}
+                            >
+                                {/* Thumbnail */}
+                                <div className="h-40 overflow-hidden">
+                                    <PostImg
+                                        src={post.imageUrl}
+                                        alt={post.title}
+                                        className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-500 ease-out"
+                                    />
+                                </div>
+                                {/* Body */}
+                                <div className="p-4">
+                                    <ClubBadge name={post.clubName} />
+                                    <h4 className="mt-2 text-sm font-bold text-zinc-900 leading-snug line-clamp-2 group-hover:text-orange-500 transition-colors duration-200">
+                                        {post.title}
+                                    </h4>
+                                    <Meta userName={post.userName} postDate={post.postDate} />
+                                </div>
+                            </article>
+                        ))}
+
+                        {/* Mini list sidebar */}
+                        {mini.length > 0 && (
+                            <div className="col-span-12 lg:col-span-3 bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+                                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-zinc-100">
+                                    <div className="w-1 h-4 bg-orange-500 rounded-full" />
+                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Tin khác</span>
+                                </div>
+                                <div className="space-y-0">
+                                    {mini.map((post, idx) => (
+                                        <div
+                                            key={post.postId}
+                                            onClick={() => go(post.postId)}
+                                            className={`flex gap-3 cursor-pointer group py-3 ${idx < mini.length - 1 ? 'border-b border-zinc-100' : ''}`}
+                                        >
+                                            <div className="w-14 h-11 rounded-lg overflow-hidden shrink-0">
+                                                <PostImg
+                                                    src={post.imageUrl}
+                                                    alt={post.title}
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[12px] font-semibold text-zinc-800 line-clamp-2 leading-snug group-hover:text-orange-500 transition-colors duration-200">
+                                                    {post.title}
+                                                </p>
+                                                <p className="text-[10px] text-zinc-400 mt-1 flex items-center gap-1">
+                                                    <Clock size={9} />
+                                                    {timeAgo(post.postDate)} trước
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={() => navigate('/club/posts')}
+                                    className="mt-4 w-full text-center text-xs font-bold text-orange-500 hover:text-orange-600 py-2 border border-orange-200 hover:border-orange-400 rounded-xl transition-all duration-200 cursor-pointer hover:bg-orange-50"
+                                >
+                                    Xem thêm →
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
-        </div>
+        </section>
     );
 };
 

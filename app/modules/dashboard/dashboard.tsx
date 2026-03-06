@@ -9,7 +9,6 @@ export default function DashboardModule() {
   const { isAdmin } = useCurrentUser();
   const { isClubManager, isLoading } = useClubRole();
   const navigate = useNavigate();
-  console.log(isClubManager)
   // Regular users (not Admin, not ClubManager) → redirect to profile
   useEffect(() => {
     if (!isAdmin && !isLoading && !isClubManager) {
@@ -25,4 +24,6 @@ export default function DashboardModule() {
 
   // User with Club Manager role in any club
   if (isClubManager) return <ClubManagerDashboard />;
+
+  navigate('/auth/login', { replace: true });
 }
