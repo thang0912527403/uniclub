@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ConfirmDialog } from '~/components/ConfirmDialog';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
@@ -18,6 +19,10 @@ export default function ClubPostModule() {
     const [updateClubPost] = useUpdateClubPostMutation();
     const [createClubPost, { isLoading: isCreating }] = useCreateClubPostMutation();
     const navigate = useNavigate();
+
+    // confirm dialog state
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
     const clubStats = [
         { title: 'Tổng bài viết', value: clubPosts.length, icon: 'fa-paper-plane', color: 'bg-gray-800' },
         { title: 'Đang hiển thị', value: clubPosts.filter(p => p.status !== 'inactive').length, icon: 'fa-check-circle', color: 'bg-green-500' },
@@ -65,13 +70,20 @@ export default function ClubPostModule() {
     };
 
     const handleDelete = async (postId: number) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
-            try {
-                await deleteClubPost(postId).unwrap();
-                window.location.reload();
-            } catch (err) {
-                console.error(err);
-            }
+        setPendingDeleteId(postId);
+        setConfirmOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (pendingDeleteId === null) return;
+        try {
+            await deleteClubPost(pendingDeleteId).unwrap();
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setConfirmOpen(false);
+            setPendingDeleteId(null);
         }
     };
 
@@ -252,6 +264,16 @@ export default function ClubPostModule() {
                     </div>
                 </div>
             </main>
+
+            <ConfirmDialog
+                isOpen={confirmOpen}
+                title="Xóa bài viết"
+                message="Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác."
+                type="danger"
+                confirmText="Xóa"
+                onConfirm={confirmDelete}
+                onCancel={() => { setConfirmOpen(false); setPendingDeleteId(null); }}
+            />
         </div>
     );
 }

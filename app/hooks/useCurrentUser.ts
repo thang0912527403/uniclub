@@ -12,8 +12,8 @@ export function useCurrentUser() {
     }
   }, []);
 
-  const role = user?.role ?? null;
-  const isAdmin = role === 'Admin';
+  const roles = user?.roles ?? [];
+  const isAdmin = roles.includes('Admin');
 
-  return { user, role, isAdmin };
+  return { user, roles, isAdmin };
 }

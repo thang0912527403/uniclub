@@ -91,6 +91,39 @@ export const eventApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
         }),
+
+        registerEvent: builder.mutation<void, number>({
+            query: (eventId) => ({
+                url: `/events/${eventId}/register`,
+                method: 'POST',
+            }),
+            invalidatesTags: (result, error, id) => [{ type: 'Event', id }, 'Event'],
+        }),
+
+        startEvent: builder.mutation<{ checkInCode: string }, number>({
+            query: (eventId) => ({
+                url: `/events/${eventId}/start`,
+                method: 'PUT',
+            }),
+            invalidatesTags: (result, error, id) => [{ type: 'Event', id }, 'Event'],
+        }),
+
+        checkInEvent: builder.mutation<void, { eventId: number; checkInCode: string }>({
+            query: ({ eventId, checkInCode }) => ({
+                url: `/events/checkin`,
+                method: 'POST',
+                body: { eventId, checkInCode },
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
+        }),
+
+        completeEvent: builder.mutation<void, number>({
+            query: (eventId) => ({
+                url: `/events/${eventId}/complete`,
+                method: 'PUT',
+            }),
+            invalidatesTags: (result, error, id) => [{ type: 'Event', id }, 'Event'],
+        }),
     }),
 });
 
@@ -102,4 +135,8 @@ export const {
     useUploadEventImageMutation,
     useCreateSessionMutation,
     useOpenRegistrationMutation,
+    useRegisterEventMutation,
+    useStartEventMutation,
+    useCheckInEventMutation,
+    useCompleteEventMutation,
 } = eventApi;

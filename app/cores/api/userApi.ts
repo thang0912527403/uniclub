@@ -69,6 +69,21 @@ export const userApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ClubMembership[]>) => response.data ?? [],
       providesTags: ['User'],
     }),
+    // Upload avatar
+    uploadAvatar: builder.mutation<{ avatarUrl: string }, { id: string; file: File }>({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        return {
+          url: `/Users/${id}/avatar`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      transformResponse: (response: ApiResponse<{ avatarUrl: string }>) =>
+        response && typeof response === 'object' && 'data' in response ? response.data : (response as { avatarUrl: string }),
+      invalidatesTags: ['User'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -80,4 +95,5 @@ export const {
   useUpdateUserMutation,
   useDeleteUserMutation,
   useGetUserClubInfoQuery,
+  useUploadAvatarMutation,
 } = userApi;

@@ -7,12 +7,14 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { EventForm } from '~/modules/events/components/EventForm';
+import { useClubRole } from '~/hooks/useClubRole';
 
 export default function CreateEventPage() {
     const navigate = useNavigate();
     const { isDark, toggleTheme } = useTheme();
     const [isSidebarDark, setIsSidebarDark] = useState(true);
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+    const { clubManagerMembership } = useClubRole();
 
     const [createEvent, { isLoading }] = useCreateEventMutation();
     const [error, setError] = useState<string | null>(null);
@@ -91,6 +93,7 @@ export default function CreateEventPage() {
 
                     <div className={`${cardClass} rounded-lg shadow-md p-6`}>
                         <EventForm
+                            initialData={{ clubId: clubManagerMembership?.clubId }}
                             onSubmit={handleSubmit}
                             onCancel={handleCancel}
                             isLoading={isLoading}

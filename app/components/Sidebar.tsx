@@ -51,6 +51,8 @@ const adminNavItems: NavItem[] = [
     label: 'Sự kiện',
     icon: 'fa-calendar',
     subItems: [
+      { label: 'Tất cả sự kiện', url: '/events' },
+      { label: 'Tạo sự kiện', url: '/events/create' },
       { label: 'Lịch sự kiện', url: '/events/calendar' },
       { label: 'Báo cáo sự kiện', url: '/events/reports' },
     ],
