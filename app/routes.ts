@@ -13,11 +13,14 @@ export default [
   route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
   route("applications", "routes/applications.tsx"),
   route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
-  route("club/posts", "routes/clubs/clubpost.tsx"),
+  route("club/manage-posts", "routes/clubs/clubpost.tsx"),
   route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
+  route("club/posts", "routes/clubposts/clubpost.tsx"),
+  route("club/posts/:id", "routes/clubposts/clubpost.$id.tsx"),
 
   // Users (CRUD)
   route("users", "routes/users.tsx"),
+  route("club-roles", "routes/club-roles.tsx"),
 
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
 import { useGetAllEventsQuery } from '~/cores/api';
+import { useGetClubsQuery } from '~/cores/api/clubApi';
 import type { EventDetailDto } from '~/cores/api/types';
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
@@ -19,26 +20,27 @@ function getDay(dateStr?: string) {
 
 function getMonth(dateStr?: string) {
     if (!dateStr) return '--';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('vi-VN', { month: 'short' });
+    return new Date(dateStr).toLocaleDateString('vi-VN', { month: 'short' });
 }
 
 function getStatusLabel(status: string) {
     const map: Record<string, string> = {
-        Active: 'Đang mở',
-        Upcoming: 'Sắp diễn ra',
-        Completed: 'Đã kết thúc',
-        Cancelled: 'Đã hủy',
+        PLANNED: 'Sắp diễn ra',
+        REGISTRATION_OPEN: 'Đang mở đăng ký',
+        ONGOING: 'Đang diễn ra',
+        COMPLETED: 'Đã kết thúc',
+        CANCELED: 'Đã hủy',
     };
     return map[status] ?? status;
 }
 
 function getStatusStyle(status: string) {
     switch (status) {
-        case 'Active': return 'bg-green-100 text-green-700';
-        case 'Upcoming': return 'bg-orange-100 text-orange-700';
-        case 'Completed': return 'bg-gray-100 text-gray-600';
-        case 'Cancelled': return 'bg-red-100 text-red-700';
+        case 'PLANNED': return 'bg-blue-100 text-blue-700';
+        case 'REGISTRATION_OPEN': return 'bg-green-100 text-green-700';
+        case 'ONGOING': return 'bg-yellow-100 text-yellow-700';
+        case 'COMPLETED': return 'bg-gray-100 text-gray-600';
+        case 'CANCELED': return 'bg-red-100 text-red-700';
         default: return 'bg-gray-100 text-gray-600';
     }
 }
@@ -48,29 +50,58 @@ function isValidUrl(url?: string) {
     try { new URL(url); return true; } catch { return false; }
 }
 
+function isUpcomingWithin7Days(startDate?: string) {
+    if (!startDate) return false;
+    const now = new Date();
+    const start = new Date(startDate);
+    const diffMs = start.getTime() - now.getTime();
+    return diffMs > 0 && diffMs <= 7 * 24 * 60 * 60 * 1000;
+}
+
+/* ─── FILTER CONFIG ───────────────────────────────────────────────────────── */
+type FilterKey = 'ALL' | 'UPCOMING_7D' | 'REGISTRATION_OPEN' | 'COMPLETED';
+
+const STATUS_FILTERS: { key: FilterKey; label: string; icon: string }[] = [
+    { key: 'ALL', label: 'Tất cả', icon: 'fa-globe' },
+    { key: 'UPCOMING_7D', label: 'Sắp diễn ra', icon: 'fa-clock' },
+    { key: 'REGISTRATION_OPEN', label: 'Đang mở đăng ký', icon: 'fa-door-open' },
+    { key: 'COMPLETED', label: 'Đã kết thúc', icon: 'fa-check-circle' },
+];
+
 /* ─── EventCardPublic ──────────────────────────────────────────────────────── */
-function EventCardPublic({ event, onClick }: { event: EventDetailDto; onClick: () => void }) {
+function EventCardPublic({ event, clubName, onClick }: { event: EventDetailDto; clubName?: string; onClick: () => void }) {
+    const canRegister = event.status === 'REGISTRATION_OPEN';
+
     return (
         <div
             onClick={onClick}
             className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer flex flex-col"
         >
             {/* Image / Gradient Placeholder */}
-            {isValidUrl(event.imageUrl) ? (
-                <img
-                    src={event.imageUrl}
-                    alt={event.eventName}
-                    className="w-full h-48 object-cover"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                />
-            ) : (
-                <div className="w-full h-48 bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-                    <svg className="w-16 h-16 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                </div>
-            )}
+            <div className="relative">
+                {isValidUrl(event.imageUrl) ? (
+                    <img
+                        src={event.imageUrl}
+                        alt={event.eventName}
+                        className="w-full h-48 object-cover"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                ) : (
+                    <div className="w-full h-48 bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+                        <i className="fas fa-calendar-alt text-white text-4xl opacity-40" />
+                    </div>
+                )}
+                {/* Status badge */}
+                <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusStyle(event.status)} shadow-sm`}>
+                    {getStatusLabel(event.status)}
+                </span>
+                {/* Register badge */}
+                {canRegister && (
+                    <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold bg-green-500 text-white shadow-sm animate-pulse">
+                        <i className="fas fa-ticket-alt mr-1" />Đăng ký ngay
+                    </span>
+                )}
+            </div>
 
             {/* Date badge strip */}
             <div className="bg-orange-500 text-white px-4 py-2 flex items-center gap-3">
@@ -84,9 +115,11 @@ function EventCardPublic({ event, onClick }: { event: EventDetailDto; onClick: (
 
             {/* Content */}
             <div className="p-5 flex-1 flex flex-col gap-2">
-                <span className={`self-start px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusStyle(event.status)}`}>
-                    {getStatusLabel(event.status)}
-                </span>
+                {clubName && (
+                    <span className="text-xs font-semibold text-orange-500 uppercase tracking-wide">
+                        <i className="fas fa-building mr-1" />{clubName}
+                    </span>
+                )}
 
                 <h3 className="text-lg font-bold text-gray-900 group-hover:text-orange-500 transition-colors line-clamp-2 leading-snug">
                     {event.eventName}
@@ -98,18 +131,19 @@ function EventCardPublic({ event, onClick }: { event: EventDetailDto; onClick: (
 
                 {event.location && event.location !== 'string' && (
                     <div className="flex items-center gap-2 text-sm text-gray-500 mt-auto">
-                        <svg className="w-4 h-4 text-orange-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                        </svg>
+                        <i className="fas fa-map-marker-alt text-orange-500 flex-shrink-0" />
                         <span className="line-clamp-1">{event.location}</span>
                     </div>
                 )}
 
                 <button
                     onClick={(e) => { e.stopPropagation(); onClick(); }}
-                    className="mt-3 w-full bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:shadow-lg"
+                    className={`mt-3 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:shadow-lg ${canRegister
+                        ? 'bg-green-500 hover:bg-green-600 text-white'
+                        : 'bg-orange-500 hover:bg-orange-600 text-white'
+                        }`}
                 >
-                    Xem chi tiết
+                    {canRegister ? 'Đăng ký tham gia' : 'Xem chi tiết'}
                 </button>
             </div>
         </div>
@@ -123,7 +157,7 @@ function EventSkeleton() {
             <div className="h-48 bg-gray-200" />
             <div className="h-10 bg-orange-200" />
             <div className="p-5 space-y-3">
-                <div className="h-4 bg-gray-200 rounded w-1/3" />
+                <div className="h-3 bg-gray-200 rounded w-1/4" />
                 <div className="h-5 bg-gray-200 rounded w-4/5" />
                 <div className="h-4 bg-gray-200 rounded w-3/5" />
                 <div className="h-10 bg-gray-200 rounded-xl mt-4" />
@@ -132,29 +166,72 @@ function EventSkeleton() {
     );
 }
 
-/* ─── FILTER BAR ───────────────────────────────────────────────────────────── */
-const STATUS_FILTERS = ['Tất cả', 'Upcoming', 'Active', 'Completed'];
-
 /* ─── Main Page ────────────────────────────────────────────────────────────── */
 const PublicEventsPage: React.FC = () => {
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('Tất cả');
+    const [statusFilter, setStatusFilter] = useState<FilterKey>('ALL');
+    const [clubFilter, setClubFilter] = useState<number | 'ALL'>('ALL');
     const [page, setPage] = useState(1);
-    const PAGE_SIZE = 12;
+    const PAGE_SIZE = 100; // fetch all for client-side filtering
 
-    const { data: events = [], isLoading, error } = useGetAllEventsQuery({
-        pageNumber: page,
-        pageSize: PAGE_SIZE,
-    });
+    const { data: events = [], isLoading, error } = useGetAllEventsQuery({ pageNumber: 1, pageSize: PAGE_SIZE });
+    const { data: clubs = [] } = useGetClubsQuery();
 
-    const filtered = events.filter((ev) => {
-        const matchSearch = !search ||
-            ev.eventName.toLowerCase().includes(search.toLowerCase()) ||
-            (ev.location ?? '').toLowerCase().includes(search.toLowerCase());
-        const matchStatus = statusFilter === 'Tất cả' || ev.status === statusFilter;
-        return matchSearch && matchStatus;
-    });
+    // Build club id → name map
+    const clubMap = useMemo(() => {
+        const map: Record<number, string> = {};
+        clubs.forEach((c: any) => { if (c.clubId && c.clubName) map[c.clubId] = c.clubName; });
+        return map;
+    }, [clubs]);
+
+    // Get unique clubs that have events
+    const clubsWithEvents = useMemo(() => {
+        const ids = new Set<number>();
+        events.forEach(ev => { if (ev.clubId) ids.add(ev.clubId); });
+        return Array.from(ids).map(id => ({ id, name: clubMap[id] || `CLB #${id}` })).sort((a, b) => a.name.localeCompare(b.name));
+    }, [events, clubMap]);
+
+    // Filter events
+    const filtered = useMemo(() => {
+        return events.filter((ev) => {
+            // search
+            const matchSearch = !search ||
+                ev.eventName.toLowerCase().includes(search.toLowerCase()) ||
+                (ev.location ?? '').toLowerCase().includes(search.toLowerCase()) ||
+                (ev.description ?? '').toLowerCase().includes(search.toLowerCase());
+
+            // status filter
+            let matchStatus = true;
+            switch (statusFilter) {
+                case 'UPCOMING_7D':
+                    matchStatus = (ev.status === 'PLANNED' || ev.status === 'REGISTRATION_OPEN') && isUpcomingWithin7Days(ev.startDate);
+                    break;
+                case 'REGISTRATION_OPEN':
+                    matchStatus = ev.status === 'REGISTRATION_OPEN';
+                    break;
+                case 'COMPLETED':
+                    matchStatus = ev.status === 'COMPLETED';
+                    break;
+                case 'ALL':
+                default:
+                    matchStatus = true;
+            }
+
+            // club filter
+            const matchClub = clubFilter === 'ALL' || ev.clubId === clubFilter;
+
+            return matchSearch && matchStatus && matchClub;
+        });
+    }, [events, search, statusFilter, clubFilter]);
+
+    // Count per filter for badges
+    const counts = useMemo(() => ({
+        ALL: events.length,
+        UPCOMING_7D: events.filter(ev => (ev.status === 'PLANNED' || ev.status === 'REGISTRATION_OPEN') && isUpcomingWithin7Days(ev.startDate)).length,
+        REGISTRATION_OPEN: events.filter(ev => ev.status === 'REGISTRATION_OPEN').length,
+        COMPLETED: events.filter(ev => ev.status === 'COMPLETED').length,
+    }), [events]);
 
     return (
         <div className="min-h-screen bg-white flex flex-col">
@@ -168,10 +245,7 @@ const PublicEventsPage: React.FC = () => {
                 </div>
                 <div className="max-w-7xl mx-auto relative z-10 text-center space-y-4">
                     <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-600 px-4 py-2 rounded-full text-sm font-medium">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
+                        <i className="fas fa-calendar-alt" />
                         Sự kiện nổi bật
                     </div>
                     <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
@@ -185,33 +259,58 @@ const PublicEventsPage: React.FC = () => {
 
             {/* ── Filters ── */}
             <section className="sticky top-16 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm px-6 md:px-12 py-4">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                    {/* Search */}
-                    <div className="relative flex-1 max-w-md">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm sự kiện, địa điểm..."
-                            value={search}
-                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 transition-all"
-                        />
+                <div className="max-w-7xl mx-auto space-y-3">
+                    {/* Row 1: Search + Club dropdown */}
+                    <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+                        {/* Search */}
+                        <div className="relative flex-1 max-w-md">
+                            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Tìm kiếm sự kiện, địa điểm..."
+                                value={search}
+                                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 transition-all"
+                            />
+                        </div>
+
+                        {/* Club filter */}
+                        <div className="relative">
+                            <i className="fas fa-building absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" />
+                            <select
+                                value={clubFilter === 'ALL' ? 'ALL' : clubFilter}
+                                onChange={(e) => {
+                                    const v = e.target.value;
+                                    setClubFilter(v === 'ALL' ? 'ALL' : Number(v));
+                                    setPage(1);
+                                }}
+                                className="pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 appearance-none cursor-pointer min-w-[200px]"
+                            >
+                                <option value="ALL">Tất cả câu lạc bộ</option>
+                                {clubsWithEvents.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                            <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs" />
+                        </div>
                     </div>
 
-                    {/* Status tabs */}
+                    {/* Row 2: Status tabs */}
                     <div className="flex gap-2 flex-wrap">
-                        {STATUS_FILTERS.map((s) => (
+                        {STATUS_FILTERS.map((f) => (
                             <button
-                                key={s}
-                                onClick={() => { setStatusFilter(s); setPage(1); }}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${statusFilter === s
-                                        ? 'bg-orange-500 text-white shadow-md'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
+                                key={f.key}
+                                onClick={() => { setStatusFilter(f.key); setPage(1); }}
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer flex items-center gap-2 ${statusFilter === f.key
+                                    ? 'bg-orange-500 text-white shadow-md'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
                                     }`}
                             >
-                                {s === 'Upcoming' ? 'Sắp diễn ra' : s === 'Active' ? 'Đang mở' : s === 'Completed' ? 'Đã kết thúc' : s}
+                                <i className={`fas ${f.icon} text-xs`} />
+                                {f.label}
+                                <span className={`text-xs px-1.5 py-0.5 rounded-full ${statusFilter === f.key ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                                    {counts[f.key]}
+                                </span>
                             </button>
                         ))}
                     </div>
@@ -225,6 +324,8 @@ const PublicEventsPage: React.FC = () => {
                     {!isLoading && !error && (
                         <p className="text-sm text-gray-500 mb-6">
                             Tìm thấy <span className="font-semibold text-orange-500">{filtered.length}</span> sự kiện
+                            {statusFilter !== 'ALL' && <span> · {STATUS_FILTERS.find(f => f.key === statusFilter)?.label}</span>}
+                            {clubFilter !== 'ALL' && <span> · {clubMap[clubFilter as number] || `CLB #${clubFilter}`}</span>}
                         </p>
                     )}
 
@@ -239,9 +340,7 @@ const PublicEventsPage: React.FC = () => {
                     {error && !isLoading && (
                         <div className="text-center py-24">
                             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
+                                <i className="fas fa-exclamation-circle text-red-500 text-3xl" />
                             </div>
                             <h3 className="text-xl font-semibold text-gray-700 mb-2">Không tải được dữ liệu</h3>
                             <p className="text-gray-500 text-sm">Vui lòng thử lại sau.</p>
@@ -252,13 +351,18 @@ const PublicEventsPage: React.FC = () => {
                     {!isLoading && !error && filtered.length === 0 && (
                         <div className="text-center py-24">
                             <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-10 h-10 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
+                                <i className="fas fa-calendar-times text-orange-400 text-3xl" />
                             </div>
                             <h3 className="text-xl font-semibold text-gray-700 mb-2">Không có sự kiện nào</h3>
                             <p className="text-gray-500 text-sm">Hãy thử tìm kiếm khác hoặc xóa bộ lọc.</p>
+                            {(statusFilter !== 'ALL' || clubFilter !== 'ALL' || search) && (
+                                <button
+                                    onClick={() => { setStatusFilter('ALL'); setClubFilter('ALL'); setSearch(''); }}
+                                    className="mt-4 text-orange-500 hover:text-orange-600 font-medium text-sm transition"
+                                >
+                                    <i className="fas fa-times mr-1" />Xóa bộ lọc
+                                </button>
+                            )}
                         </div>
                     )}
 
@@ -269,31 +373,10 @@ const PublicEventsPage: React.FC = () => {
                                 <EventCardPublic
                                     key={ev.eventId}
                                     event={ev}
+                                    clubName={ev.clubId ? clubMap[ev.clubId] : undefined}
                                     onClick={() => navigate(`/public/events/${ev.eventId}`)}
                                 />
                             ))}
-                        </div>
-                    )}
-
-                    {/* Pagination */}
-                    {!isLoading && !error && events.length === PAGE_SIZE && (
-                        <div className="flex justify-center gap-3 mt-12">
-                            <button
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                                className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                            >
-                                ← Trang trước
-                            </button>
-                            <span className="px-5 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium">
-                                {page}
-                            </span>
-                            <button
-                                onClick={() => setPage((p) => p + 1)}
-                                className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
-                            >
-                                Trang sau →
-                            </button>
                         </div>
                     )}
                 </div>

@@ -10,6 +10,8 @@ export interface EventDetailDto {
     isPublic: boolean;
     status: string;
     createdAt: string;
+    maxAttendees?: number;
+    currentAttendees: number;
     sessions: SessionDto[];
 }
 

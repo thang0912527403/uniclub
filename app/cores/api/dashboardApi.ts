@@ -4,7 +4,6 @@ import { type DashboardStats, type RevenueData, type Activity, type Product } fr
 export const dashboardApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getDashboardStats: builder.query<DashboardStats, void>({
-      query: () => '/dashboard/stats',
       // Mock data for demo
       queryFn: async () => {
         await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate loading
@@ -20,7 +19,6 @@ export const dashboardApi = baseApi.injectEndpoints({
     }),
 
     getRevenueData: builder.query<RevenueData[], void>({
-      query: () => '/dashboard/revenue',
       queryFn: async () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         return {
@@ -39,7 +37,6 @@ export const dashboardApi = baseApi.injectEndpoints({
     }),
 
     getActivities: builder.query<Activity[], void>({
-      query: () => '/dashboard/activities',
       queryFn: async () => {
         await new Promise(resolve => setTimeout(resolve, 800));
         return {
@@ -53,7 +50,6 @@ export const dashboardApi = baseApi.injectEndpoints({
     }),
 
     getProducts: builder.query<Product[], void>({
-      query: () => '/dashboard/products',
       queryFn: async () => {
         await new Promise(resolve => setTimeout(resolve, 1200));
         return {

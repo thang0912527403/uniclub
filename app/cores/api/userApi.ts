@@ -6,6 +6,22 @@ export interface GetUsersResult {
   totalCount: number;
 }
 
+export interface ClubMembership {
+  clubMemberId: number;
+  userId: string;
+  fullName: string;
+  email: string;
+  avatar: string | null;
+  studentId: string | null;
+  clubId: number;
+  clubRoleId: number;
+  roleName: string;
+  joinDate: string;
+  status: string;
+  assignedBy: string | null;
+  departments: unknown[];
+}
+
 export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getUsers: builder.query<GetUsersResult, { pageNumber?: number; pageSize?: number }>({
@@ -90,6 +106,28 @@ export const userApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
+
+    // Lấy danh sách CLB và vai trò CLB của user
+    getUserClubInfo: builder.query<ClubMembership[], string>({
+      query: (userId) => `/me/clubinfo?userId=${userId}`,
+      transformResponse: (response: ApiResponse<ClubMembership[]>) => response.data ?? [],
+      providesTags: ['User'],
+    }),
+    // Upload avatar
+    uploadAvatar: builder.mutation<{ avatarUrl: string }, { id: string; file: File }>({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        return {
+          url: `/Users/${id}/avatar`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      transformResponse: (response: ApiResponse<{ avatarUrl: string }>) =>
+        response && typeof response === 'object' && 'data' in response ? response.data : (response as { avatarUrl: string }),
+      invalidatesTags: ['User'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -100,4 +138,6 @@ export const {
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
+  useGetUserClubInfoQuery,
+  useUploadAvatarMutation,
 } = userApi;

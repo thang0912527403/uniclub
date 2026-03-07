@@ -10,13 +10,12 @@ import type {
 export const attendanceApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         // đăng ký tham gia event
-        registerForEvent: builder.mutation<{ message: string }, EventRegistrationRequest>({
-            query: (request) => ({
-                url: `/events/${request.eventId}/register`,
+        registerForEvent: builder.mutation<{ message: string }, number>({
+            query: (eventId) => ({
+                url: `/events/${eventId}/register`,
                 method: 'POST',
-                body: request,
             }),
-            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+            invalidatesTags: (result, error, eventId) => [{ type: 'Event', id: eventId }],
         }),
 
         // tạo mã điểm danh — hết hạn sau 15 phút

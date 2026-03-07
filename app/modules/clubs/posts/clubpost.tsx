@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ConfirmDialog } from '~/components/ConfirmDialog';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
@@ -18,6 +19,10 @@ export default function ClubPostModule() {
     const [updateClubPost] = useUpdateClubPostMutation();
     const [createClubPost, { isLoading: isCreating }] = useCreateClubPostMutation();
     const navigate = useNavigate();
+
+    // confirm dialog state
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
     const clubStats = [
         { title: 'Tổng bài viết', value: clubPosts.length, icon: 'fa-paper-plane', color: 'bg-gray-800' },
         { title: 'Đang hiển thị', value: clubPosts.filter(p => p.status !== 'inactive').length, icon: 'fa-check-circle', color: 'bg-green-500' },
@@ -65,13 +70,20 @@ export default function ClubPostModule() {
     };
 
     const handleDelete = async (postId: number) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
-            try {
-                await deleteClubPost(postId).unwrap();
-                window.location.reload();
-            } catch (err) {
-                console.error(err);
-            }
+        setPendingDeleteId(postId);
+        setConfirmOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (pendingDeleteId === null) return;
+        try {
+            await deleteClubPost(pendingDeleteId).unwrap();
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setConfirmOpen(false);
+            setPendingDeleteId(null);
         }
     };
 
@@ -218,15 +230,15 @@ export default function ClubPostModule() {
                                     </div>
 
                                     {/* Image Area */}
-                                    {post.imageUrl && (
-                                        <div className="px-5 pb-5">
+                                    <div className="relative h-[400px] md:h-[500px] rounded-[3rem] overflow-hidden shadow-2xl shadow-orange-100 mb-12">
+                                        {post.imageUrl && (
                                             <img
-                                                src="https://kenh14cdn.com/203336854389633024/2024/9/3/4581724159247437663532909006014464626380171n-17253551798752075648067-1725356318932-1725356319070839564794.jpg"
-                                                alt="Content"
-                                                className="w-full h-64 object-cover rounded-xl border dark:border-gray-700"
+                                                src={post.imageUrl}
+                                                alt={post.title}
+                                                className="w-full h-full object-cover"
                                             />
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             ))
                         )}
@@ -252,6 +264,16 @@ export default function ClubPostModule() {
                     </div>
                 </div>
             </main>
+
+            <ConfirmDialog
+                isOpen={confirmOpen}
+                title="Xóa bài viết"
+                message="Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác."
+                type="danger"
+                confirmText="Xóa"
+                onConfirm={confirmDelete}
+                onCancel={() => { setConfirmOpen(false); setPendingDeleteId(null); }}
+            />
         </div>
     );
 }
