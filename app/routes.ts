@@ -17,6 +17,8 @@ export default [
   route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
   route("club/posts", "routes/clubposts/clubpost.tsx"),
   route("club/posts/:id", "routes/clubposts/clubpost.$id.tsx"),
+  route("club/all-clubs", "routes/clubs-homepage/clubs.tsx"),
+  route("club/all-clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
 
   // Users (CRUD)
   route("users", "routes/users.tsx"),
