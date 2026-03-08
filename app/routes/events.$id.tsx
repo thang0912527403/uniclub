@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
     useGetEventByIdQuery,
@@ -11,6 +11,8 @@ import {
     useEvaluateMemberMutation,
     useStartEventMutation,
     useCompleteEventMutation,
+    useGetMyCheckInQrQuery,
+    useCheckInByQrMutation,
 } from '~/cores/api';
 import { useGetCurrentUserQuery } from '~/cores/api/authApi';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
@@ -22,6 +24,8 @@ import { SessionList } from '~/modules/events/components/SessionList';
 import { SessionForm } from '~/modules/events/components/SessionForm';
 import { useNotification } from '~/components/Notification';
 import { ConfirmDialog } from '~/components/ConfirmDialog';
+import { QRScanner } from '~/components/QRScanner';
+import { QRCodeSVG } from 'qrcode.react';
 
 type Tab = 'sessions' | 'registration' | 'checkin';
 
@@ -54,6 +58,12 @@ export default function EventDetailPage() {
     const [ciCode, setCiCode] = useState('');
     const [ciError, setCiError] = useState<string | null>(null);
     const [ciSuccess, setCiSuccess] = useState(false);
+    // QR check-in (organizer scans → paste token)
+    const [qrToken, setQrToken] = useState('');
+    const [qrError, setQrError] = useState<string | null>(null);
+    const [qrSuccess, setQrSuccess] = useState<string | null>(null);
+    const [showQrScanner, setShowQrScanner] = useState(false);
+    const qrScanCooldownRef = useRef<{ token: string; until: number } | null>(null);
 
     // evaluate state
     const [evUserId, setEvUserId] = useState('');
@@ -80,11 +90,16 @@ export default function EventDetailPage() {
     const { data: attendees, isLoading: isLoadingAttendees, refetch: refetchAttendees } =
         useGetEventAttendeesQuery(eventId, { skip: activeTab !== 'registration' });
 
+    const { data: myCheckInQr, isLoading: isLoadingMyQr } = useGetMyCheckInQrQuery(eventId, {
+        skip: !currentUser || event?.status !== 'ONGOING',
+    });
+
     const [createSession, { isLoading: isCreatingSession }] = useCreateSessionMutation();
     const [openRegistration, { isLoading: isOpeningReg }] = useOpenRegistrationMutation();
     const [registerForEvent, { isLoading: isRegistering }] = useRegisterForEventMutation();
     const [generateCheckInCode, { isLoading: isGeneratingCode }] = useGenerateCheckInCodeMutation();
     const [checkIn, { isLoading: isCheckingIn }] = useCheckInMutation();
+    const [checkInByQr, { isLoading: isCheckingInByQr }] = useCheckInByQrMutation();
     const [evaluateMember, { isLoading: isEvaluating }] = useEvaluateMemberMutation();
     const [startEvent, { isLoading: isStarting, error: startError }] = useStartEventMutation();
     const [completeEvent, { isLoading: isCompleting, error: completeError }] = useCompleteEventMutation();
@@ -180,6 +195,39 @@ export default function EventDetailPage() {
             refetchAttendees();
         } catch (e: any) {
             setCiError(e?.data?.error ?? 'Điểm danh thất bại');
+        }
+    };
+
+    const handleCheckInByQr = async (token?: string) => {
+        let t = (token ?? qrToken).trim().replace(/\r?\n/g, '').replace(/\s+/g, ' ');
+        const tokenMatch = t.match(/[?&]token=([^&]+)/);
+        if (tokenMatch) t = decodeURIComponent(tokenMatch[1]);
+        if (!t) {
+            setQrError('Dán mã đã quét từ QR của người tham gia.');
+            setQrSuccess(null);
+            return;
+        }
+        // Tránh quét trùng: sau khi điểm danh thành công, bỏ qua cùng token trong 3 giây (scanner hay gọi onScan nhiều lần)
+        const now = Date.now();
+        const cooldown = qrScanCooldownRef.current;
+        if (cooldown && cooldown.token === t && now < cooldown.until) return;
+
+        setQrError(null);
+        setQrSuccess(null);
+        try {
+            const res = await checkInByQr({ eventId, token: t }).unwrap();
+            const msg = res.memberName ? `Đã điểm danh: ${res.memberName}` : 'Điểm danh thành công.';
+            setQrSuccess(msg);
+            setQrError(null);
+            qrScanCooldownRef.current = { token: t, until: now + 3000 };
+            if (!token) setQrToken('');
+            refetchAttendees();
+            showNotification({ type: 'success', title: 'Điểm danh', message: msg });
+        } catch (e: any) {
+            const errMsg = e?.data?.error ?? 'Mã QR không hợp lệ hoặc đã hết hạn.';
+            setQrError(errMsg);
+            setQrSuccess(null);
+            showNotification({ type: 'error', title: 'Lỗi điểm danh', message: errMsg });
         }
     };
 
@@ -625,9 +673,111 @@ export default function EventDetailPage() {
                                         </div>
                                     )}
 
-                                    {/* user check-in */}
+                                    {/* Participant: Mã QR điểm danh của tôi (để BTC quét) */}
+                                    {currentUser && event?.status === 'ONGOING' && (
+                                        <div className={`p-4 rounded-lg border ${border}`}>
+                                            <h3 className={`font-semibold mb-2 ${text}`}>Mã QR điểm danh của tôi</h3>
+                                            <p className={`text-xs mb-3 ${sub}`}>
+                                                Mã QR cũng đã được gửi qua email khi bạn đăng ký. Bạn có thể dùng mã trên màn hình này hoặc trong email — đưa cho ban tổ chức quét để điểm danh.
+                                            </p>
+                                            {isLoadingMyQr ? (
+                                                <div className="animate-pulse h-48 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+                                            ) : (myCheckInQr?.token ?? myCheckInQr?.qrContent) ? (
+                                                <div className="flex flex-col items-start gap-2">
+                                                    <div className="rounded-lg border border-gray-200 dark:border-gray-600 p-2 bg-white inline-block">
+                                                        <QRCodeSVG
+                                                            value={myCheckInQr.token ?? myCheckInQr.qrContent ?? ''}
+                                                            size={200}
+                                                            level="M"
+                                                            bgColor="#ffffff"
+                                                            fgColor="#000000"
+                                                            title="QR điểm danh"
+                                                        />
+                                                    </div>
+                                                    {myCheckInQr.expiresAt && (
+                                                        <p className={`text-xs ${sub}`}>
+                                                            Hết hạn lúc {new Date(myCheckInQr.expiresAt).toLocaleTimeString('vi-VN')}
+                                                        </p>
+                                                    )}
+                                                    {/* Dev: copy token để test điểm danh QR khi không có máy quét */}
+                                                    {import.meta.env.DEV && (
+                                                        <details className={`mt-2 text-xs ${sub}`}>
+                                                            <summary className="cursor-pointer hover:underline">Copy mã để test (chỉ hiện khi dev)</summary>
+                                                            <code className="block mt-1 p-2 bg-black/10 rounded break-all select-all" title="Copy để dán vào ô Điểm danh bằng QR">
+                                                                {myCheckInQr.token ?? myCheckInQr.qrContent}
+                                                            </code>
+                                                        </details>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className={`text-sm ${sub}`}>Bạn chưa đăng ký sự kiện này. Vui lòng đăng ký ở tab Đăng ký trước.</p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Organizer: Điểm danh bằng QR (camera hoặc dán token) */}
+                                    {isManager && (
+                                        <div className={`p-4 rounded-lg border ${border}`}>
+                                            <h3 className={`font-semibold mb-2 ${text}`}>Điểm danh bằng QR</h3>
+                                            <p className={`text-xs mb-3 ${sub}`}>
+                                                Quét mã QR của người tham gia bằng camera, hoặc dán nội dung (token) đã quét từ thiết bị khác.
+                                            </p>
+                                            <div className={`text-xs mb-3 p-3 rounded-lg border ${border} ${isDark ? 'bg-black/20' : 'bg-gray-50'}`}>
+                                                <p className={`font-medium ${text} mb-1`}>Điện thoại cần gì để quét và gửi lên server?</p>
+                                                <p className={`${sub} mb-1`}>Chỉ mở camera / app quét QR mặc định của điện thoại <strong>không đủ</strong> — không gửi được lên server. Cần:</p>
+                                                <ul className={`list-disc list-inside ${sub} space-y-0.5`}>
+                                                    <li>Mở <strong>trình duyệt</strong> (Chrome, Safari…) trên điện thoại</li>
+                                                    <li>Truy cập <strong>đúng trang web app</strong> (cùng địa chỉ với app này)</li>
+                                                    <li><strong>Đăng nhập</strong> bằng tài khoản Manager/Admin của CLB</li>
+                                                    <li>Vào sự kiện này → tab <strong>Điểm danh</strong> → bấm <strong>&quot;Quét bằng camera&quot;</strong></li>
+                                                    <li>Cho phép camera khi trình duyệt yêu cầu</li>
+                                                </ul>
+                                                <p className={`${sub} mt-1`}>Sau đó hướng camera vào mã QR (trên màn hình máy tính hoặc điện thoại người tham gia). Quét xong app sẽ tự gửi lên server và điểm danh.</p>
+                                            </div>
+
+                                            {!showQrScanner ? (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowQrScanner(true)}
+                                                        className="mb-3 px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors inline-flex items-center gap-2"
+                                                    >
+                                                        <i className="fas fa-camera" /> Quét bằng camera
+                                                    </button>
+                                                    <div className="flex flex-col sm:flex-row gap-2 max-w-md mt-2">
+                                                        <input
+                                                            type="text"
+                                                            value={qrToken}
+                                                            onChange={e => { setQrToken(e.target.value); setQrError(null); setQrSuccess(null); }}
+                                                            placeholder="Hoặc dán mã đã quét từ QR..."
+                                                            className={`flex-1 min-w-0 px-3 py-2 text-sm border rounded-lg outline-none font-mono ${inputCls}`}
+                                                        />
+                                                        <button
+                                                            onClick={() => handleCheckInByQr()}
+                                                            disabled={isCheckingInByQr || !qrToken.trim()}
+                                                            className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                                                        >
+                                                            {isCheckingInByQr ? 'Đang xử lý...' : 'Điểm danh'}
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <QRScanner
+                                                    scannerId={`event-qr-${eventId}`}
+                                                    onScan={(token) => handleCheckInByQr(token)}
+                                                    onClose={() => setShowQrScanner(false)}
+                                                    className="mt-2"
+                                                />
+                                            )}
+
+                                            {qrError && <p className="text-sm text-red-500 mt-2">{qrError}</p>}
+                                            {qrSuccess && <p className="text-sm text-green-600 font-medium mt-2">{qrSuccess}</p>}
+                                        </div>
+                                    )}
+
+                                    {/* user check-in (mã 6 ký tự) */}
                                     <div className={`p-4 rounded-lg border ${border}`}>
-                                        <h3 className={`font-semibold mb-3 ${text}`}>Điểm danh thành viên</h3>
+                                        <h3 className={`font-semibold mb-3 ${text}`}>Điểm danh bằng mã (User ID + mã 6 ký tự)</h3>
                                         <div className="space-y-2 max-w-md">
                                             <div>
                                                 <label className={`block text-xs mb-1 ${sub}`}>User ID</label>
