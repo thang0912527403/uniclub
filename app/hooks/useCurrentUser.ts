@@ -1,19 +1,8 @@
-import { useMemo } from 'react';
-import Cookies from 'js-cookie';
-import type { UserInfo } from '~/cores/api/types/auth';
+import { useAuth } from '~/components/AuthProvider';
 
 export function useCurrentUser() {
-  const user = useMemo<UserInfo | null>(() => {
-    try {
-      const raw = Cookies.get('user');
-      return raw ? (JSON.parse(raw) as UserInfo) : null;
-    } catch {
-      return null;
-    }
-  }, []);
-
+  const { user, isAdmin } = useAuth();
   const role = user?.role ?? null;
-  const isAdmin = role === 'Admin';
 
   return { user, role, isAdmin };
 }

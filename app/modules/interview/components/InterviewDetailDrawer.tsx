@@ -4,12 +4,14 @@ import type { InterviewScheduleResponse } from '~/cores/api';
 import { useGetUserByIdQuery, useConfirmAssignmentMutation } from '~/cores/api';
 import FeedbackForm from './FeedbackForm';
 import type { ProposedSlots } from './CreateInterviewModal';
+import type { ClubRole } from '~/cores/api/types';
 
 interface InterviewDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   interview: InterviewScheduleResponse | null;
   currentUserId: string;
+  clubRoles?: ClubRole[];
   onUpdateStatus?: (id: number, status: string) => void;
   onAssignInterviewer?: (scheduleId: number, userId: string, role: string) => void;
   onRemoveAssignment?: (scheduleId: number, assignmentId: number) => void;
@@ -55,6 +57,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
   onClose,
   interview,
   currentUserId,
+  clubRoles,
   onUpdateStatus,
   onAssignInterviewer,
   onRemoveAssignment,
@@ -62,7 +65,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'assignments' | 'feedback'>('info');
   const [newUserId, setNewUserId] = useState('');
-  const [newRole, setNewRole] = useState('Interviewer');
+  const [newRole, setNewRole] = useState(clubRoles?.[0]?.roleName || 'Interviewer');
   const [feedbackForAssignment, setFeedbackForAssignment] = useState<number | null>(null);
 
   const [confirmAssignment] = useConfirmAssignmentMutation();
@@ -354,9 +357,14 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                         onChange={(e) => setNewRole(e.target.value)}
                         className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:border-orange-400 outline-none"
                       >
-                        {roleOptions.map((r) => (
-                          <option key={r.value} value={r.value}>{r.label}</option>
-                        ))}
+                        {clubRoles && clubRoles.length > 0
+                          ? clubRoles.map((r) => (
+                              <option key={r.clubRoleId} value={r.roleName}>{r.roleName}</option>
+                            ))
+                          : roleOptions.map((r) => (
+                              <option key={r.value} value={r.value}>{r.label}</option>
+                            ))
+                        }
                       </select>
                       <button
                         onClick={() => {

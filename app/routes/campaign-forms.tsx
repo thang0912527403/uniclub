@@ -4,13 +4,25 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import CampaignFormManager from '~/modules/campaign-forms/CampaignFormManager';
-import { useGetRecruitmentCampaignsQuery } from '~/cores/api';
+import { useGetRecruitmentCampaignsQuery, useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api';
+import { useAuth } from '~/components/AuthProvider';
 
 export default function CampaignFormsPage() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const id = Number(campaignId);
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const { data: campaigns = [] } = useGetRecruitmentCampaignsQuery();
+  const { isAdmin, clubManagerMembership } = useAuth();
+  const clubId = clubManagerMembership?.clubId ?? 0;
+
+  const { data: adminCampaigns } = useGetRecruitmentCampaignsQuery(undefined, {
+    skip: !isAdmin
+  });
+
+  const { data: clubCampaigns } = useGetRecruitmentCampaignsByClubIdQuery(clubId, {
+    skip: isAdmin || clubId === 0
+  });
+
+  const campaigns = (isAdmin ? adminCampaigns : clubCampaigns) || [];
   const campaign = campaigns.find(c => c.campaignId === id);
 
   if (!id || isNaN(id)) {

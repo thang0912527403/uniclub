@@ -5,7 +5,7 @@ import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
 import ProgressBar from './components/progressBar';
 import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationByUserAndFormQuery, useGetFormsByCampaignQuery } from '../../cores/api/applicationApi';
-import { useGetCurrentUserQuery } from '../../cores/api';
+import { useAuth } from '~/components/AuthProvider';
 import type { ApplicationAnswerItemDto } from '../../cores/api';
 
 /**
@@ -31,7 +31,7 @@ const QuestionPage: React.FC = () => {
   // - Otherwise, assume the ID in the URL is the form ID itself
   const actualFormId = campaignForms.length > 0 ? campaignForms[0].formId : idFromUrl;
 
-  const { data: currentUser, isLoading: userLoading } = useGetCurrentUserQuery();
+  const { user: currentUser, isLoading: userLoading } = useAuth();
   const { 
     data: questions = [], 
     isLoading: questionsLoading, 

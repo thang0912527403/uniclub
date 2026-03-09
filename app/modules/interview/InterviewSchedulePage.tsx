@@ -7,6 +7,7 @@ import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { SettingButton } from '~/components/SettingButton';
 import {
   useGetRecruitmentCampaignsQuery,
+  useGetRecruitmentCampaignsByClubIdQuery,
   useGetInterviewsQuery,
   useGetApplicationsByCampaignQuery,
   useCreateInterviewMutation,
@@ -17,7 +18,7 @@ import {
   useCloseRoomMutation,
 } from '~/cores/api';
 import type { InterviewScheduleResponse, ApplicationResponseDto } from '~/cores/api';
-import Cookies from 'js-cookie';
+import { useAuth } from '~/components/AuthProvider';
 
 import StatusPipelineTabs from './components/StatusPipelineTabs';
 import type { PipelineTab } from './components/StatusPipelineTabs';
@@ -32,16 +33,25 @@ const InterviewSchedulePage: React.FC = () => {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
   // ─── Campaign selector ──────────────────────────────────────
-  const { data: campaigns = [], isLoading: campaignsLoading } = useGetRecruitmentCampaignsQuery();
+  const { user: authUser, isAdmin, clubManagerMembership, clubRoles } = useAuth();
+  const clubId = clubManagerMembership?.clubId ?? 0;
+
+  const { data: adminCampaigns, isLoading: adminLoading } = useGetRecruitmentCampaignsQuery(undefined, {
+    skip: !isAdmin
+  });
+
+  const { data: clubCampaigns, isLoading: clubLoading } = useGetRecruitmentCampaignsByClubIdQuery(clubId, {
+    skip: isAdmin || clubId === 0
+  });
+
+  const campaigns = (isAdmin ? adminCampaigns : clubCampaigns) || [];
+  const campaignsLoading = isAdmin ? adminLoading : clubLoading;
+
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const activeCampaignId = selectedCampaignId || campaigns[0]?.campaignId;
 
   // ─── Current user ────────────────────────────────────────────
-  const userCookie = Cookies.get('user');
-  let currentUserId = '';
-  try {
-    if (userCookie) currentUserId = JSON.parse(userCookie).userId || '';
-  } catch { /* ignore */ }
+  const currentUserId = authUser?.userId ?? '';
 
   // ─── Data fetching ───────────────────────────────────────────
   const { data: allInterviews = [], isLoading: interviewsLoading } = useGetInterviewsQuery(
@@ -414,14 +424,14 @@ const InterviewSchedulePage: React.FC = () => {
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Vai trò</label>
             <select
-              defaultValue="Interviewer"
+              defaultValue={clubRoles[0]?.roleName || 'Interviewer'}
               onChange={(e) => { bulkAssignRoleRef.current = e.target.value; }}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-orange-400 outline-none"
             >
-              <option value="Interviewer">Interviewer</option>
-              <option value="Lead">Lead</option>
-              <option value="Observer">Observer</option>
-              <option value="HRRepresentative">HR Representative</option>
+              {clubRoles.length > 0
+                ? clubRoles.map((r) => <option key={r.clubRoleId} value={r.roleName}>{r.roleName}</option>)
+                : <option value="Interviewer">Interviewer</option>
+              }
             </select>
           </div>
         </div>
@@ -621,6 +631,7 @@ const InterviewSchedulePage: React.FC = () => {
         onClose={() => { setDrawerOpen(false); setSelectedInterviewId(null); }}
         interview={selectedInterview || null}
         currentUserId={currentUserId}
+        clubRoles={clubRoles}
         onUpdateStatus={handleUpdateStatus}
         onAssignInterviewer={handleAssignInterviewer}
         onRemoveAssignment={handleRemoveAssignment}

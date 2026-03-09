@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { useGetCurrentUserQuery } from '~/cores/api';
+import { useAuth } from '~/components/AuthProvider';
 import { useGetApplicationsByUserQuery } from '~/cores/api/applicationApi';
 import { APPLICATION_STATUS } from '~/cores/api/types/application';
 import { Loading } from '~/components/Loading';
@@ -23,7 +23,7 @@ const statusColor: Record<string, string> = {
 };
 
 export default function MyApplications() {
-  const { data: currentUser, isLoading: loadingUser } = useGetCurrentUserQuery();
+  const { user: currentUser, isLoading: loadingUser } = useAuth();
   const userId = currentUser?.userId ?? TEST_USER_ID;
   const isTestMode = !currentUser?.userId;
   const { data: applications = [], isLoading, error } = useGetApplicationsByUserQuery(userId);

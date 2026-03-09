@@ -6,6 +6,7 @@ import { type ApiResponse, type ClubRole } from './types';
 export interface CreateClubRoleDto {
     roleName: string;
     description?: string;
+    clubId: number;
 }
 
 export interface UpdateClubRoleDto {
@@ -68,6 +69,15 @@ const clubRoleApi = baseApi.injectEndpoints({
             invalidatesTags: (result, error, { id }) => [{ type: 'ClubRole', id }, 'ClubRole'],
         }),
 
+        getClubRolesByClubId: builder.query<ClubRole[], number>({
+            query: (clubId) => `/ClubRole/club/${clubId}`,
+            transformResponse: (response: ApiResponse<ClubRole[]>) => response.data,
+            providesTags: (result, error, clubId) =>
+                result
+                    ? [...result.map(({ clubRoleId }) => ({ type: 'ClubRole' as const, id: clubRoleId })), { type: 'ClubRole', id: `club-${clubId}` }]
+                    : [{ type: 'ClubRole', id: `club-${clubId}` }],
+        }),
+
         deleteClubRole: builder.mutation<void, number>({
             query: (id) => ({
                 url: `/ClubRole/${id}`,
@@ -82,6 +92,7 @@ const clubRoleApi = baseApi.injectEndpoints({
 export const {
     useGetClubRolesQuery,
     useGetClubRoleByIdQuery,
+    useGetClubRolesByClubIdQuery,
     useGetClubRolePoliciesQuery,
     useUpdateClubRolePoliciesMutation,
     useCreateClubRoleMutation,

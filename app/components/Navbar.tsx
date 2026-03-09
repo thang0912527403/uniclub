@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
-import type { UserInfo } from '~/cores/api';
-import Cookies from 'js-cookie';
+import { useAuth } from '~/components/AuthProvider';
 
 const Navbar: React.FC = () => {
     const navigate = useNavigate();
+    const { user, logout } = useAuth();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-    const [user, setUser] = useState<UserInfo | null>(null);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -19,34 +18,8 @@ const Navbar: React.FC = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    useEffect(() => {
-        const checkAuth = () => {
-            const userData = Cookies.get('user');
-            const accessToken = Cookies.get('accessToken');
-            
-            if (userData && accessToken) {
-                try {
-                    setUser(JSON.parse(userData));
-                } catch {
-                    setUser(null);
-                }
-            } else {
-                setUser(null);
-            }
-        };
-
-        checkAuth();
-
-        // Listen for storage changes (login/logout from other tabs)
-        window.addEventListener('storage', checkAuth);
-        return () => window.removeEventListener('storage', checkAuth);
-    }, []);
-
     const handleLogout = () => {
-        Cookies.remove('accessToken');
-        Cookies.remove('refreshToken');
-        Cookies.remove('user');
-        setUser(null);
+        logout();
         setIsUserMenuOpen(false);
         navigate('/');
     };

@@ -3,12 +3,13 @@ import { useSidebarToggle } from '../../hooks/useSidebarToggle';
 import Navbar from '../../components/Navbar';
 import ProfileHeader from './components/profileHeader';
 import InterviewStatusTracker from './components/InterviewStatusTracker';
-import { useGetCurrentUserQuery, useGetUserByIdQuery } from '~/cores/api';
+import { useGetUserByIdQuery } from '~/cores/api';
+import { useAuth } from '~/components/AuthProvider';
 
 const UserProfile = () => {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const {data: me} = useGetCurrentUserQuery();
+  const { user: me } = useAuth();
   const { data: user, isLoading, error } = useGetUserByIdQuery(me?.userId || '',
     {
       skip: !me?.userId,

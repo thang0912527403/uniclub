@@ -4,10 +4,9 @@ import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { useCurrentUser } from '~/hooks/useCurrentUser';
-import { useClubRole } from '~/hooks/useClubRole';
+import { useAuth } from '~/components/AuthProvider';
 import { useGetApplicationsByClubQuery } from '~/cores/api/applicationApi';
-import { useGetRecruitmentCampaignsQuery } from '~/cores/api/recruitmentCampaignApi';
+import { useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api/recruitmentCampaignApi';
 import { useGetInterviewsQuery } from '~/cores/api/interviewApi';
 import { useGetClubByIdQuery } from '~/cores/api/clubApi';
 
@@ -96,8 +95,7 @@ function QA({ icon, label, to, g }: { icon: string; label: string; to: string; g
 // ─── Main ───────────────────────────────────────────────────────────────────
 export default function ClubManagerDashboard() {
   const { isOpen, toggle } = useSidebarToggle();
-  const { user } = useCurrentUser();
-  const { clubManagerMembership } = useClubRole();
+  const { user, clubManagerMembership } = useAuth();
   const clubId = clubManagerMembership?.clubId;
 
   // ── Fetch data scoped to this club only ────────────────────────────────
@@ -106,19 +104,13 @@ export default function ClubManagerDashboard() {
   const { data: allApplications = [], isLoading: appsLoading } =
     useGetApplicationsByClubQuery({ clubId: clubId ?? 0 }, { skip: !clubId });
 
-  const { data: allCampaigns = [], isLoading: campaignsLoading } =
-    useGetRecruitmentCampaignsQuery();
+  const { data: myCampaigns = [], isLoading: campaignsLoading } =
+    useGetRecruitmentCampaignsByClubIdQuery(clubId ?? 0, { skip: !clubId });
 
   const { data: allInterviews = [], isLoading: interviewsLoading } =
     useGetInterviewsQuery();
 
   // ── Filter to this club only ───────────────────────────────────────────
-  // Filter campaigns to this club only
-  const myCampaigns = useMemo(
-    () => allCampaigns.filter(c => c.clubId === clubId),
-    [allCampaigns, clubId]
-  );
-
   const myCampaignIds = useMemo(() => new Set(myCampaigns.map(c => c.campaignId)), [myCampaigns]);
 
   // Filter interviews via campaignId belonging to this club

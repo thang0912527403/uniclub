@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import Cookies from 'js-cookie';
+import { useAuth } from '~/components/AuthProvider';
 
 interface RoomAccessGateProps {
   roomCode?: string;
@@ -20,30 +20,18 @@ const RoomAccessGate: React.FC<RoomAccessGateProps> = ({
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState('Candidate');
 
-  // Try to get user info from cookie
+  const { user: authUser } = useAuth();
+
+  // Pre-fill display name from auth context
   React.useEffect(() => {
-    try {
-      const userCookie = Cookies.get('user');
-      if (userCookie) {
-        const user = JSON.parse(userCookie);
-        if (user.fullName) setDisplayName(user.fullName);
-      }
-    } catch { /* ignore */ }
-  }, []);
+    if (authUser?.fullName) setDisplayName(authUser.fullName);
+  }, [authUser]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomCode.trim() || !displayName.trim()) return;
 
-    const userCookie = Cookies.get('user');
-    let userId = '';
-    try {
-      if (userCookie) {
-        const user = JSON.parse(userCookie);
-        userId = user.userId || '';
-      }
-    } catch { /* ignore */ }
-
+    const userId = authUser?.userId ?? '';
     onJoinRoom(roomCode.trim(), userId, displayName.trim(), role);
   };
 

@@ -71,8 +71,7 @@ const clubManagerNavItems: NavItem[] = [
     label: 'Tuyển sinh',
     icon: 'fa-solid fa-flag',
     subItems: [
-      { label: 'Chiến dịch tuyển sinh', url: '/recruitment-campaigns' },
-      { label: 'Duyệt đơn ứng tuyển', url: '/applications' },
+      { label: 'Chiến dịch tuyển sinh', url: '/recruitment-campaigns' }
     ],
   },
   {
@@ -97,7 +96,7 @@ const clubManagerNavItems: NavItem[] = [
     icon: 'fa-users',
     subItems: [
       { label: 'Tất cả thành viên', url: '/members' },
-      { label: 'Vai trò thành viên', url: '/members/roles' },
+      { label: 'Vai trò thành viên', url: '/club-roles' },
     ],
   },
   {

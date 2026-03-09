@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { HubConnectionBuilder, HubConnection, LogLevel } from '@microsoft/signalr';
 import type { RoomUser, UserMediaState, ChatMessage } from '../types';
 import Cookies from 'js-cookie';
+import { useAuth } from '~/components/AuthProvider';
 interface WebRtcContextType {
   connection: HubConnection | null;
   users: RoomUser[];
@@ -56,6 +57,7 @@ const rtcConfig: RTCConfiguration = {
 };
 
 export const WebRtcProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user: authUser } = useAuth();
   const [connection, setConnection] = useState<HubConnection | null>(null);
   const [users, setUsers] = useState<RoomUser[]>([]);
   const [userStates, setUserStates] = useState<Record<string, UserMediaState>>({});
@@ -435,9 +437,8 @@ export const WebRtcProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setIsAudioEnabled(hasAudio);
       setIsVideoEnabled(hasVideo);
 
-      const user = JSON.parse(Cookies.get('user') || '{}');
-      const fullName = user.fullName || 'Guest';
-      const userId = user.userId || '00000000-0000-0000-0000-000000000000';
+      const fullName = authUser?.fullName || 'Guest';
+      const userId = authUser?.userId || '00000000-0000-0000-0000-000000000000';
 
       roomIdRef.current = roomId;
       await connection.invoke('JoinRoom', roomId, userId, fullName);

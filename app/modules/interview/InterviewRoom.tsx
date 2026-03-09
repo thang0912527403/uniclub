@@ -12,7 +12,7 @@ import type {
   InterviewScheduleResponse,
   InterviewAssignmentResponse,
 } from '~/cores/api';
-import Cookies from 'js-cookie';
+import { useAuth } from '~/components/AuthProvider';
 
 /**
  * InterviewRoom wraps the existing MeetingRoom (WebRTC) module
@@ -154,15 +154,9 @@ const InterviewRoom: React.FC = () => {
     skip: !urlRoomCode,
   });
 
-  // Parse current user from cookie
-  let currentUserId = '';
-  try {
-    const userCookie = Cookies.get('user');
-    if (userCookie) {
-      const user = JSON.parse(userCookie);
-      currentUserId = user.userId || '';
-    }
-  } catch { /* ignore */ }
+  // Parse current user from context
+  const { user: authUser } = useAuth();
+  const currentUserId = authUser?.userId ?? '';
 
   // ── Validation gate (only when navigated via URL with a room code) ──
   if (urlRoomCode && !isValidating) {
