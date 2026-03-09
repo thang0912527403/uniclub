@@ -53,6 +53,10 @@ export default [
   route("401", "routes/error/401.tsx"),
   route("403", "routes/error/403.tsx"),
 
+  // News routes (public)
+  route("public/news", "routes/news.tsx"),
+  route("public/news/:id", "routes/news.$id.tsx"),
+
   // Catch-all route
   route("*", "routes/error/404.tsx"),
 

@@ -1,20 +1,23 @@
-import { useNavigate } from 'react-router';
-import { useSidebarToggle } from '../../hooks/useSidebarToggle';
-import Navbar from '../../components/Navbar';
-import ProfileHeader from './components/profileHeader';
-import InterviewStatusTracker from './components/InterviewStatusTracker';
-import { useGetUserByIdQuery } from '~/cores/api';
-import { useAuth } from '~/components/AuthProvider';
+import { useNavigate } from "react-router";
+import { useSidebarToggle } from "../../hooks/useSidebarToggle";
+import Navbar from "../../components/Navbar";
+import ProfileHeader from "./components/profileHeader";
+import InterviewStatusTracker from "./components/InterviewStatusTracker";
+import InterviewerInterviewsSection from "./components/InterviewerInterviewsSection";
+import { useGetUserByIdQuery } from "~/cores/api";
+import { useAuth } from "~/components/AuthProvider";
 
 const UserProfile = () => {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { user: me } = useAuth();
-  const { data: user, isLoading, error } = useGetUserByIdQuery(me?.userId || '',
-    {
-      skip: !me?.userId,
-    }
-  );
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useGetUserByIdQuery(me?.userId || "", {
+    skip: !me?.userId,
+  });
 
   console.log(user);
 
@@ -28,7 +31,9 @@ const UserProfile = () => {
           {/* Sidebar Info */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 text-lg">Thông tin cá nhân</h3>
+              <h3 className="font-bold text-gray-800 mb-4 text-lg">
+                Thông tin cá nhân
+              </h3>
               <div className="space-y-3 text-sm text-gray-600">
                 <p>📧 {user?.email}</p>
                 <p>📞 {user?.phoneNumber}</p>
@@ -41,9 +46,9 @@ const UserProfile = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Interview Status Tracker */}
-            {me?.userId && (
-              <InterviewStatusTracker userId={me.userId} />
-            )}
+            {me?.userId && <InterviewStatusTracker userId={me.userId} />}
+            {/* Interviewer Interviews — show if user has interviewer assignments */}
+            {me?.userId && <InterviewerInterviewsSection userId={me.userId} />}
           </div>
         </div>
       </main>
