@@ -410,99 +410,115 @@ export default function EventDetailPage() {
                             {activeTab === 'registration' && (
                                 <div className="space-y-6">
 
-                                    {/* step 1: open registration */}
+                                    {/* Registration management */}
                                     {isManager && (
                                         <div className={`p-4 rounded-lg border ${border}`}>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <h3 className={`font-semibold ${text}`}>Bước 1 — Mở đăng ký</h3>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className={`font-semibold ${text}`}>Quản lý đăng ký</h3>
                                                 <span className={`text-xs px-2 py-0.5 rounded-full ${statusBadge(event.status)}`}>
                                                     {event.status}
                                                 </span>
                                             </div>
 
-                                            {event.status !== 'PLANNED' ? (
-                                                <p className={`text-sm ${sub}`}>
-                                                    {event.status === 'REGISTRATION_OPEN'
-                                                        ? 'Đăng ký đang mở. Thành viên có thể đăng ký bên dưới.'
-                                                        : `Không thể mở đăng ký khi event ở trạng thái ${event.status}.`}
-                                                </p>
-                                            ) : (
-                                                <>
-                                                    {!showRegForm ? (
-                                                        <button onClick={() => setShowRegForm(true)}
-                                                            className="mt-2 px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
-                                                            Mở đăng ký sự kiện
-                                                        </button>
-                                                    ) : (
-                                                        <div className="mt-3 space-y-3">
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                                <div>
-                                                                    <label className={`block text-xs mb-1 ${sub}`}>
-                                                                        Ngày bắt đầu đăng ký <span className="text-red-500">*</span>
-                                                                    </label>
-                                                                    <input type="datetime-local"
-                                                                        value={regForm.startDate}
-                                                                        onChange={e => setRegForm(f => ({ ...f, startDate: e.target.value }))}
-                                                                        className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className={`block text-xs mb-1 ${sub}`}>
-                                                                        Ngày kết thúc đăng ký <span className="text-red-500">*</span>
-                                                                    </label>
-                                                                    <input type="datetime-local"
-                                                                        value={regForm.endDate}
-                                                                        onChange={e => setRegForm(f => ({ ...f, endDate: e.target.value }))}
-                                                                        className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
-                                                                </div>
-                                                            </div>
-                                                            <div className="max-w-xs">
-                                                                <label className={`block text-xs mb-1 ${sub}`}>
-                                                                    Số lượng tối đa (để trống = không giới hạn)
-                                                                </label>
-                                                                <input type="number" min={1}
-                                                                    value={regForm.maxAttendees}
-                                                                    onChange={e => setRegForm(f => ({ ...f, maxAttendees: e.target.value }))}
-                                                                    placeholder="Không giới hạn"
-                                                                    className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
-                                                            </div>
-                                                            {regError && (
-                                                                <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">
-                                                                    {regError}
-                                                                </p>
-                                                            )}
-                                                            <div className="flex gap-2">
-                                                                <button onClick={handleOpenRegistration} disabled={isOpeningReg}
-                                                                    className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors">
-                                                                    {isOpeningReg ? 'Đang xử lý...' : 'Xác nhận mở đăng ký'}
-                                                                </button>
-                                                                <button onClick={() => { setShowRegForm(false); setRegError(null); }}
-                                                                    className={`px-4 py-2 text-sm border ${border} rounded-lg ${sub} hover:opacity-80 transition-colors`}>
-                                                                    Hủy
-                                                                </button>
-                                                            </div>
+                                            {/* Current registration info when REGISTRATION_OPEN */}
+                                            {event.status === 'REGISTRATION_OPEN' && !showRegForm && (
+                                                <div className="space-y-3">
+                                                    <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg ${isDark ? 'bg-green-900/20' : 'bg-green-50'}`}>
+                                                        <div>
+                                                            <p className={`text-xs ${sub}`}>Bắt đầu đăng ký</p>
+                                                            <p className={`text-sm font-medium ${text}`}>
+                                                                {event.registrationStartDate ? fmtDate(event.registrationStartDate) : 'Chưa đặt'}
+                                                            </p>
                                                         </div>
-                                                    )}
-                                                </>
+                                                        <div>
+                                                            <p className={`text-xs ${sub}`}>Kết thúc đăng ký</p>
+                                                            <p className={`text-sm font-medium ${text}`}>
+                                                                {event.registrationEndDate ? fmtDate(event.registrationEndDate) : 'Chưa đặt'}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <p className={`text-xs ${sub}`}>Số lượng tối đa</p>
+                                                            <p className={`text-sm font-medium ${text}`}>
+                                                                {event.maxAttendees ? `${event.currentAttendees}/${event.maxAttendees}` : 'Không giới hạn'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => {
+                                                        setShowRegForm(true);
+                                                        // Pre-fill with current values
+                                                        setRegForm({
+                                                            startDate: event.registrationStartDate ? new Date(event.registrationStartDate).toISOString().slice(0, 16) : '',
+                                                            endDate: event.registrationEndDate ? new Date(event.registrationEndDate).toISOString().slice(0, 16) : '',
+                                                            maxAttendees: event.maxAttendees?.toString() ?? '',
+                                                        });
+                                                    }}
+                                                        className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                                                        Chỉnh sửa thời gian đăng ký
+                                                    </button>
+                                                </div>
                                             )}
-                                        </div>
-                                    )}
 
-                                    {/* step 2: register member */}
-                                    {isManager && (
-                                        <div className={`p-4 rounded-lg border ${border}`}>
-                                            <h3 className={`font-semibold mb-3 ${text}`}>Bước 2 — Đăng ký thành viên</h3>
-                                            {event.status !== 'REGISTRATION_OPEN' ? (
-                                                <p className={`text-sm ${sub}`}>Cần mở đăng ký trước.</p>
-                                            ) : (
-                                                <div className="space-y-2">
-                                                    <div className="flex gap-2 flex-wrap">
-                                                        <input type="text" value={memberUserId}
-                                                            onChange={e => { setMemberUserId(e.target.value); setMemberError(null); setMemberSuccess(false); }}
-                                                            placeholder="Nhập User ID (GUID)..."
-                                                            className={`flex-1 min-w-0 px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
-                                                        <button onClick={handleRegisterMember} disabled={isRegistering}
-                                                            className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors whitespace-nowrap">
-                                                            {isRegistering ? 'Đang đăng ký...' : 'Đăng ký'}
+                                            {/* Non-editable states */}
+                                            {event.status !== 'PLANNED' && event.status !== 'REGISTRATION_OPEN' && (
+                                                <p className={`text-sm ${sub}`}>
+                                                    Không thể chỉnh sửa đăng ký khi event ở trạng thái {event.status}.
+                                                </p>
+                                            )}
+
+                                            {/* Open registration form (PLANNED) or Edit form (REGISTRATION_OPEN) */}
+                                            {(event.status === 'PLANNED' && !showRegForm) && (
+                                                <button onClick={() => setShowRegForm(true)}
+                                                    className="mt-2 px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                                                    Mở đăng ký sự kiện
+                                                </button>
+                                            )}
+
+                                            {showRegForm && (event.status === 'PLANNED' || event.status === 'REGISTRATION_OPEN') && (
+                                                <div className="mt-3 space-y-3">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className={`block text-xs mb-1 ${sub}`}>
+                                                                Ngày bắt đầu đăng ký <span className="text-red-500">*</span>
+                                                            </label>
+                                                            <input type="datetime-local"
+                                                                value={regForm.startDate}
+                                                                onChange={e => setRegForm(f => ({ ...f, startDate: e.target.value }))}
+                                                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
+                                                        </div>
+                                                        <div>
+                                                            <label className={`block text-xs mb-1 ${sub}`}>
+                                                                Ngày kết thúc đăng ký <span className="text-red-500">*</span>
+                                                            </label>
+                                                            <input type="datetime-local"
+                                                                value={regForm.endDate}
+                                                                onChange={e => setRegForm(f => ({ ...f, endDate: e.target.value }))}
+                                                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="max-w-xs">
+                                                        <label className={`block text-xs mb-1 ${sub}`}>
+                                                            Số lượng tối đa (để trống = không giới hạn)
+                                                        </label>
+                                                        <input type="number" min={1}
+                                                            value={regForm.maxAttendees}
+                                                            onChange={e => setRegForm(f => ({ ...f, maxAttendees: e.target.value }))}
+                                                            placeholder="Không giới hạn"
+                                                            className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
+                                                    </div>
+                                                    {regError && (
+                                                        <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">
+                                                            {regError}
+                                                        </p>
+                                                    )}
+                                                    <div className="flex gap-2">
+                                                        <button onClick={handleOpenRegistration} disabled={isOpeningReg}
+                                                            className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors">
+                                                            {isOpeningReg ? 'Đang xử lý...'
+                                                                : event.status === 'REGISTRATION_OPEN' ? 'Cập nhật thời gian' : 'Xác nhận mở đăng ký'}
+                                                        </button>
+                                                        <button onClick={() => { setShowRegForm(false); setRegError(null); }}
+                                                            className={`px-4 py-2 text-sm border ${border} rounded-lg ${sub} hover:opacity-80 transition-colors`}>
+                                                            Hủy
                                                         </button>
                                                     </div>
                                                 </div>

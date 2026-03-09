@@ -12,6 +12,8 @@ export interface EventDetailDto {
     createdAt: string;
     maxAttendees?: number;
     currentAttendees: number;
+    registrationStartDate?: string;
+    registrationEndDate?: string;
     sessions: SessionDto[];
 }
 
