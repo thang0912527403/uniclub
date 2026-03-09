@@ -3,6 +3,7 @@ import {
   type Club,
   type ApiResponse,
   type ClubPostResponseDto,
+  type ClubFund,
   type CreateFundRequestDto,
   type ProcessFundRequestDto,
   type FundHistoryItem,
@@ -101,6 +102,18 @@ export const clubApi = baseApi.injectEndpoints({
       invalidatesTags: ['ClubPost'],
     }),
     // ─── ClubFund endpoints ─────────────────────────────────────────────
+    getFundById: builder.query<ClubFund, number>({
+      query: (fundId) => `/ClubFund/${fundId}`,
+      transformResponse: (response: ApiResponse<ClubFund>) => response.data,
+      providesTags: (result, error, fundId) => [{ type: 'ClubFund', id: fundId }],
+    }),
+    getFundsByClub: builder.query<ClubFund[], number>({
+      query: (clubId) => `/ClubFund/club/${clubId}`,
+      transformResponse: (response: ApiResponse<ClubFund[]>) => response.data ?? [],
+      providesTags: (result, error, clubId) => [
+        { type: 'ClubFund', id: `club-${clubId}` },
+      ],
+    }),
     createFundRequest: builder.mutation<unknown, CreateFundRequestDto>({
       query: (body) => ({
         url: '/ClubFund/request',
@@ -141,6 +154,8 @@ export const clubApi = baseApi.injectEndpoints({
 export const {
   useGetClubsQuery,
   useGetClubByIdQuery,
+  useGetFundByIdQuery,
+  useGetFundsByClubQuery,
   useCreateClubMutation,
   useUpdateClubMutation,
   useDeleteClubMutation,

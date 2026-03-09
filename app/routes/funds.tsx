@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import Cookies from 'js-cookie';
 import {
+  useGetClubsQuery,
+  useGetFundsByClubQuery,
   useGetFundHistoryQuery,
   useCreateFundRequestMutation,
   useProcessFundRequestMutation,
@@ -10,13 +12,20 @@ import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
+import { useClubRole } from '~/hooks/useClubRole';
 import type { FundHistoryItem } from '~/cores/api';
 
 export default function FundsPage() {
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+  const { isAdmin, clubManagerMembership } = useClubRole();
 
-  const [fundId, setFundId] = useState<number>(1);
+  // Club: Admin chọn club; Club Manager dùng club của mình
+  const effectiveClubId = clubManagerMembership?.clubId ?? 0;
+  const [selectedClubId, setSelectedClubId] = useState<number>(effectiveClubId);
+  const clubId = isAdmin ? selectedClubId : effectiveClubId;
+
+  const [fundId, setFundId] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [processTarget, setProcessTarget] = useState<FundHistoryItem | null>(null);
@@ -29,11 +38,25 @@ export default function FundsPage() {
   const [createPurpose, setCreatePurpose] = useState('');
 
   const hasToken = !!Cookies.get('accessToken');
+  const { data: clubs = [] } = useGetClubsQuery(undefined, { skip: !hasToken || !isAdmin });
+  const { data: funds = [] } = useGetFundsByClubQuery(clubId, { skip: !hasToken || clubId < 1 });
   const { data: history = [], isLoading, error } = useGetFundHistoryQuery(
     { fundId, status: statusFilter || undefined },
     { skip: !hasToken || !fundId || fundId < 1 }
   );
   const isUnauthorized = error && 'status' in error && error.status === 401;
+
+  const availableFunds = funds;
+
+  useEffect(() => {
+    if (!isAdmin && effectiveClubId > 0) setSelectedClubId(effectiveClubId);
+  }, [isAdmin, effectiveClubId]);
+  useEffect(() => {
+    if (isAdmin && clubs.length > 0 && selectedClubId === 0) setSelectedClubId(clubs[0].clubId);
+  }, [isAdmin, clubs, selectedClubId]);
+  useEffect(() => {
+    if (availableFunds.length > 0 && fundId === 0) setFundId(availableFunds[0].fundId);
+  }, [availableFunds, fundId]);
 
   const [createRequest, { isLoading: isCreating }] = useCreateFundRequestMutation();
   const [processRequest, { isLoading: isProcessing }] = useProcessFundRequestMutation();
@@ -99,18 +122,42 @@ export default function FundsPage() {
         <div className="flex flex-wrap items-center gap-4 mb-6">
           <h1 className={`text-3xl font-bold ${textClass}`}>Budget Overview</h1>
           <div className="flex flex-wrap items-center gap-3">
-            <label className={`${textClass} text-sm font-medium`}>
-              Fund ID:
-            </label>
-            <input
-              type="number"
-              min={1}
+            {isAdmin && (
+              <>
+                <label className={`${textClass} text-sm font-medium`}>Câu lạc bộ:</label>
+                <select
+                  value={clubId}
+                  onChange={(e) => {
+                    setSelectedClubId(Number(e.target.value));
+                    setFundId(0);
+                  }}
+                  className={`px-3 py-2 rounded-lg border ${inputClass}`}
+                >
+                  <option value={0}>-- Chọn CLB --</option>
+                  {clubs.map((c) => (
+                    <option key={c.clubId} value={c.clubId}>
+                      {c.clubName} (ID: {c.clubId})
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+            <label className={`${textClass} text-sm font-medium`}>Quỹ:</label>
+            <select
               value={fundId}
-              onChange={(e) => setFundId(parseInt(e.target.value, 10) || 1)}
+              onChange={(e) => setFundId(Number(e.target.value))}
               className={`px-3 py-2 rounded-lg border ${inputClass}`}
-            />
+              disabled={!clubId || availableFunds.length === 0}
+            >
+              <option value={0}>-- Chọn quỹ --</option>
+              {availableFunds.map((f) => (
+                <option key={f.fundId} value={f.fundId}>
+                  {f.fundName || `Quỹ #${f.fundId}`} (ID: {f.fundId})
+                </option>
+              ))}
+            </select>
             <label className={`${textClass} text-sm font-medium`}>
-              Status:
+              Trạng thái:
             </label>
             <select
               value={statusFilter}
@@ -301,11 +348,25 @@ export default function FundsPage() {
                 {'status' in error ? `Error ${error.status}` : 'Request failed'}
               </p>
             </div>
+          ) : !clubId && !isAdmin ? (
+            <div className="p-12 text-center">
+              <i className="fas fa-users text-6xl text-gray-400 mb-4" />
+              <p className={`text-gray-500 ${textClass}`}>
+                Bạn chưa được gán vào câu lạc bộ nào. Liên hệ quản trị viên để được cấp quyền.
+              </p>
+            </div>
+          ) : !fundId || availableFunds.length === 0 ? (
+            <div className="p-12 text-center">
+              <i className="fas fa-wallet text-6xl text-gray-400 mb-4" />
+              <p className={`text-gray-500 ${textClass}`}>
+                {!clubId ? 'Chọn câu lạc bộ để xem quỹ.' : 'Câu lạc bộ này chưa có quỹ nào.'}
+              </p>
+            </div>
           ) : history.length === 0 ? (
             <div className="p-12 text-center">
               <i className="fas fa-history text-6xl text-gray-400 mb-4" />
               <p className={`text-gray-500 ${textClass}`}>
-                No history for this fund. Create a request or select another Fund ID.
+                Chưa có lịch sử giao dịch. Tạo yêu cầu mới hoặc chọn quỹ khác.
               </p>
             </div>
           ) : (

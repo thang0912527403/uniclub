@@ -19,6 +19,7 @@ export function useClubRole() {
   return {
     memberships: clubRoles,
     isClubManager,
+    isAdmin,
     clubManagerMembership: clubManagerMembership
       ? { clubId: clubManagerMembership.clubId, roleName: clubManagerMembership.roleName, level: clubManagerMembership.level }
       : undefined,

@@ -57,6 +57,16 @@ const adminNavItems: NavItem[] = [
       { label: 'Báo cáo sự kiện', url: '/events/reports' },
     ],
   },
+  {
+    label: 'Quản lý Quỹ',
+    icon: 'fa-wallet',
+    subItems: [
+      { label: 'Tổng quan', url: '/funds' },
+      { label: 'Giao dịch', url: '/funds/transactions' },
+      { label: 'Báo cáo', url: '/funds/reports' },
+      { label: 'Cài đặt', url: '/funds/settings' },
+    ],
+  },
 ];
 
 // ─── ClubManager nav: club-level management ────────────────────────────────
@@ -108,6 +118,16 @@ const clubManagerNavItems: NavItem[] = [
     icon: 'fa-sitemap',
     subItems: [
       { label: 'Tất cả bộ phận', url: '/department' },
+    ],
+  },
+  {
+    label: 'Quản lý Quỹ',
+    icon: 'fa-wallet',
+    subItems: [
+      { label: 'Tổng quan', url: '/funds' },
+      { label: 'Giao dịch', url: '/funds/transactions' },
+      { label: 'Báo cáo', url: '/funds/reports' },
+      { label: 'Cài đặt', url: '/funds/settings' },
     ],
   },
 ];
