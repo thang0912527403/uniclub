@@ -2,13 +2,9 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 interface QRScannerProps {
-    /** Optional: custom element id (default: useId()) */
     scannerId?: string;
-    /** Called when a QR code is successfully scanned; decoded text = token */
     onScan: (token: string) => void;
-    /** Optional: called when scanner is closed */
     onClose?: () => void;
-    /** Optional: class for the container */
     className?: string;
 }
 

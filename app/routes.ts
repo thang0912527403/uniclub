@@ -33,6 +33,16 @@ export default [
   // Meeting routes
   route("meeting/:roomId?", "routes/meeting.tsx"),
 
+  // Events routes
+  route("events", "routes/events.tsx"),
+  route("events/:id", "routes/events.$id.tsx"),
+  route("public/events", "routes/public.events.tsx"),
+  route("public/events/:id", "routes/public.events.$id.tsx"),
+  route("events/create", "routes/events.create.tsx"),
+  route("events/:id/edit", "routes/events.$id.edit.tsx"),
+  route("events/calendar", "routes/events.calendar.tsx"),
+  route("events/reports", "routes/events.reports.tsx"),
+
   // Funds routes
   route("funds", "routes/funds.tsx"),
   route("funds/transactions", "routes/funds.transactions.tsx"),
