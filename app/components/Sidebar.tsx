@@ -68,6 +68,7 @@ export function Sidebar({
       icon: 'fa-building',
       subItems: [
         { label: 'All Clubs', url: '/clubs' },
+        { label: 'Club Structure', url: '/clubs/1/structure' },
         { label: 'Club Roles', url: '/club-roles' },
         { label: 'Your Club Info', url: '/club/info' },
         { label: 'Manage Club Name', url: '/club/name' },

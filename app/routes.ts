@@ -12,6 +12,7 @@ export default [
   route("clubs/:id/members", "routes/clubs/clubs.$id.members.tsx"),
   route("clubs/create", "routes/clubs/clubs.create.tsx"),
   route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
+  route("clubs/:id/structure", "routes/clubs/clubs.$id.structure.tsx"),
   route("club-roles", "routes/club-roles.tsx"),
   route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
 
