@@ -1,5 +1,12 @@
 import { baseApi } from './baseApi';
-import { type Club, type ApiResponse, type ClubPostResponseDto } from './types';
+import {
+  type Club,
+  type ApiResponse,
+  type ClubPostResponseDto,
+  type CreateFundRequestDto,
+  type ProcessFundRequestDto,
+  type FundHistoryItem,
+} from './types';
 
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -93,6 +100,41 @@ export const clubApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['ClubPost'],
     }),
+    // ─── ClubFund endpoints ─────────────────────────────────────────────
+    createFundRequest: builder.mutation<unknown, CreateFundRequestDto>({
+      query: (body) => ({
+        url: '/ClubFund/request',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: ApiResponse<unknown>) => response.data,
+      invalidatesTags: ['ClubFund'],
+    }),
+    processFundRequest: builder.mutation<void, ProcessFundRequestDto>({
+      query: (body) => ({
+        url: '/ClubFund/process',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['ClubFund'],
+    }),
+    getFundHistory: builder.query<
+      FundHistoryItem[],
+      { fundId: number; status?: string }
+    >({
+      query: ({ fundId, status }) => {
+        const params = status ? { status } : undefined;
+        return {
+          url: `/ClubFund/history/${fundId}`,
+          params,
+        };
+      },
+      transformResponse: (response: ApiResponse<FundHistoryItem[]>) =>
+        response.data ?? [],
+      providesTags: (result, error, { fundId }) => [
+        { type: 'ClubFund', id: fundId },
+      ],
+    }),
   }),
 });
 
@@ -108,4 +150,7 @@ export const {
   useCreateClubPostMutation,
   useUpdateClubPostMutation,
   useDeleteClubPostMutation,
+  useCreateFundRequestMutation,
+  useProcessFundRequestMutation,
+  useGetFundHistoryQuery,
 } = clubApi;

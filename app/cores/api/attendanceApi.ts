@@ -5,6 +5,9 @@ import type {
     CheckInCodeResponse,
     EvaluateMemberRequest,
     AttendanceDetailDto,
+    CheckInQrResponse,
+    CheckInByQrRequest,
+    CheckInByQrResponse,
 } from './types/attendance';
 
 export const attendanceApi = baseApi.injectEndpoints({
@@ -50,6 +53,22 @@ export const attendanceApi = baseApi.injectEndpoints({
             query: (eventId) => `/events/${eventId}/attendees`,
             providesTags: (result, error, eventId) => [{ type: 'Event', id: eventId }],
         }),
+
+        // QR: lấy mã QR điểm danh của user hiện tại (participant mở để cho BTC quét)
+        getMyCheckInQr: builder.query<CheckInQrResponse, number>({
+            query: (eventId) => `/events/${eventId}/my-checkin-qr`,
+            providesTags: (result, error, eventId) => [{ type: 'Event', id: eventId }],
+        }),
+
+        // QR: điểm danh bằng token đọc từ QR (organizer gọi sau khi quét mã của participant)
+        checkInByQr: builder.mutation<CheckInByQrResponse, { eventId: number; token: string }>({
+            query: ({ eventId, token }) => ({
+                url: `/events/${eventId}/checkin-qr`,
+                method: 'POST',
+                body: { token },
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+        }),
     }),
 });
 
@@ -59,4 +78,6 @@ export const {
     useCheckInMutation,
     useEvaluateMemberMutation,
     useGetEventAttendeesQuery,
+    useGetMyCheckInQrQuery,
+    useCheckInByQrMutation,
 } = attendanceApi;

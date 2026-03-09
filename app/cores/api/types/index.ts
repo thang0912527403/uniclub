@@ -9,4 +9,5 @@ export * from './interview';
 export * from './clubPost';
 export * from './event';
 export * from './attendance';
+export * from './clubFund';
 export * from './clubRole';
