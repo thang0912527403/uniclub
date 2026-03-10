@@ -163,7 +163,7 @@ const QuestionModal: React.FC<{
     if (!text.trim()) return;
 
     let optionsString = '';
-    if (type === 'select') {
+    if (type === 'radio' || type === 'checkbox') {
       const validOptions = options.map(o => o.trim()).filter(o => o !== '');
       validOptions.unshift(text);
 
@@ -178,7 +178,7 @@ const QuestionModal: React.FC<{
       questionText: optionsString,
       questionType: type,
       isRequired: required,
-      questionOptions: type === 'select' ? optionsString : undefined
+      questionOptions: (type === 'radio' || type === 'checkbox') ? optionsString : undefined
     };
 
     if (editing) {
@@ -235,7 +235,8 @@ const QuestionModal: React.FC<{
                 <option value="textarea">Đoạn văn</option>
                 <option value="number">Số</option>
                 <option value="date">Ngày</option>
-                <option value="select">Lựa chọn</option>
+                <option value="radio">Lựa chọn(chỉ chọn 1)</option>
+                <option value="checkbox">Lựa chọn(nhiều lựa chọn)</option>
               </select>
             </div>
             <div className="flex flex-col justify-end pb-1">
@@ -253,7 +254,7 @@ const QuestionModal: React.FC<{
           </div>
 
           {/* Hiển thị danh sách lựa chọn nếu là loại 'select' */}
-          {type === 'select' && (
+          {(type === 'radio' || type === 'checkbox') && (
             <div className="space-y-3 animate-fadeIn">
               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
                 Các lựa chọn <span className="text-xs font-normal text-gray-400 ml-1">(Ít nhất 2)</span>
