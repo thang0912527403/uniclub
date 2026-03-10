@@ -1,20 +1,19 @@
 import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 export default [
-  index("routes/home.tsx"),
-
+  index("routes/_index.tsx"),
+  route("home", "routes/home.tsx"),
   // Dashboard route
   route("dashboard", "routes/dashboard.tsx"),
 
   // Club routes
   route("clubs", "routes/clubs/clubs.tsx"),
   route("clubs/:id", "routes/clubs/clubs.$id.tsx"),
-  route("clubs/:id/members", "routes/clubs/clubs.$id.members.tsx"),
   route("clubs/create", "routes/clubs/clubs.create.tsx"),
+  route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
   route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
   route("clubs/:id/structure", "routes/clubs/clubs.$id.structure.tsx"),
   route("club-roles", "routes/club-roles.tsx"),
-  route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
 
   // Auth routes
   route("auth/login", "routes/auth/login.tsx"),
@@ -24,6 +23,21 @@ export default [
   route("auth/verify-email", "routes/auth/verify-email.tsx"),
   route("auth/change-password", "routes/auth/change-password.tsx"),
 
+  // Interview routes
+  route("interview/schedule", "routes/interview-schedule.tsx"),
+  route("interview/room/:roomCode?", "routes/interview-room.tsx"),
+  // Event routes
+  route("events", "routes/events.tsx"),
+  route("events/create", "routes/events.create.tsx"),
+  route("events/calendar", "routes/events.calendar.tsx"),
+  route("events/reports", "routes/events.reports.tsx"),
+  route("events/:id", "routes/events.$id.tsx"),
+  route("events/:id/edit", "routes/events.$id.edit.tsx"),
+
+  // Public event routes (no auth, uses landing Navbar/Footer)
+  route("public/events", "routes/public.events.tsx"),
+  route("public/events/:id", "routes/public.events.$id.tsx"),
+
   // Meeting routes
   route("meeting/:roomId?", "routes/meeting.tsx"),
 
@@ -31,7 +45,25 @@ export default [
   route("401", "routes/error/401.tsx"),
   route("403", "routes/error/403.tsx"),
 
+  // News routes (public)
+  route("public/news", "routes/news.tsx"),
+  route("public/news/:id", "routes/news.$id.tsx"),
+
   // Catch-all route
   route("*", "routes/error/404.tsx"),
 
+  // User Profile route
+  route("profile", "routes/user_profile.tsx"),
+
+  // Question route - dynamic formId from URL
+  route("question/:formId?", "routes/question.tsx"),
+
+  // Chiến dịch tuyển dụng (public detail)
+  route("campaign/:id", "routes/campaign.$id.tsx"),
+
+  // My applications
+  route("my-applications", "routes/my-applications.tsx"),
+
+  // Campaign form manager
+  route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
 ] satisfies RouteConfig;

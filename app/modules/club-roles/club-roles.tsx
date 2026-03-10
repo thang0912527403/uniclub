@@ -6,12 +6,13 @@ import { Loading } from '~/components/Loading';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useNotification } from '~/components/Notification';
 import {
-    useGetClubRolesQuery,
     useCreateClubRoleMutation,
     useUpdateClubRoleMutation,
     useDeleteClubRoleMutation,
     type ClubRole,
 } from '~/cores/api';
+import { useGetClubRolesByClubIdQuery } from '~/cores/api/clubRoleApi';
+import { useAuth } from '~/components/AuthProvider';
 import { validateClubRoleForm, type ClubRoleFormData } from '~/utils/validation';
 import { PolicyPanel } from './components/PolicyPanel';
 
@@ -179,8 +180,11 @@ function DeleteModal({ role, onConfirm, onCancel, isLoading }: DeleteModalProps)
 export default function ClubRolesModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { show: showNotification } = useNotification();
-
-    const { data: roles, isLoading, error } = useGetClubRolesQuery();
+    const { clubId } = useAuth();
+    console.log(clubId);
+    const { data: roles, isLoading, error } = useGetClubRolesByClubIdQuery(clubId, {
+        skip: !clubId,
+    });
     const [createRole, { isLoading: isCreating }] = useCreateClubRoleMutation();
     const [updateRole, { isLoading: isUpdating }] = useUpdateClubRoleMutation();
     const [deleteRole, { isLoading: isDeleting }] = useDeleteClubRoleMutation();
@@ -199,7 +203,11 @@ export default function ClubRolesModule() {
     const handleSave = async (data: ClubRoleFormData) => {
         try {
             if (modalMode === 'create') {
-                await createRole({ roleName: data.roleName, description: data.description }).unwrap();
+                await createRole({ 
+                    roleName: data.roleName, 
+                    description: data.description,
+                    clubId: clubId
+                }).unwrap();
                 showNotification({ type: 'success', title: 'Thêm vai trò thành công!', message: `Vai trò "${data.roleName}" đã được tạo.`, duration: 3000 });
             } else if (modalMode === 'edit' && selectedRole) {
                 await updateRole({ id: selectedRole.clubRoleId, body: { roleName: data.roleName, description: data.description } }).unwrap();

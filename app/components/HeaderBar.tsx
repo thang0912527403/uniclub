@@ -3,6 +3,7 @@ interface HeaderBarProps {
   breadcrumb?: string;
   isSidebarOpen?: boolean;
   onToggleSidebar?: () => void;
+  isDark?: boolean;
 }
 
 export function HeaderBar({

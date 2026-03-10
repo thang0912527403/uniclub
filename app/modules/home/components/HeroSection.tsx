@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router';
 
 const HeroSection: React.FC = () => {
     return (
@@ -39,9 +40,12 @@ const HeroSection: React.FC = () => {
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4">
-                            <button className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-lg font-medium transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 cursor-pointer">
+                            <Link
+                                to="/question"
+                                className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-lg font-medium transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 cursor-pointer text-center"
+                            >
                                 Tham gia CLB
-                            </button>
+                            </Link>
                             <button className="border-2 border-gray-300 hover:border-orange-500 text-gray-700 hover:text-orange-500 px-8 py-4 rounded-lg font-medium transition-all duration-300 hover:shadow-md cursor-pointer">
                                 Tìm hiểu thêm
                             </button>
@@ -68,7 +72,7 @@ const HeroSection: React.FC = () => {
                     <div className="relative">
                         <div className="rounded-2xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-500">
                             <img
-                                src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&q=80"
+                                src="./src/assets/images/heroimage.png"
                                 alt="Students collaborating"
                                 className="w-full h-[500px] object-cover"
                             />

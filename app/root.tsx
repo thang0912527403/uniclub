@@ -12,6 +12,7 @@ import { NotificationProvider } from '~/components/Notification';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import type { Route } from "./+types/root";
 import "./app.css";
+import AuthProvider from "./components/AuthProvider";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -59,9 +60,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Provider store={store}>
-      <NotificationProvider>
-        <Outlet />
-      </NotificationProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <Outlet />
+        </NotificationProvider>
+      </AuthProvider>
     </Provider>
   );
 }

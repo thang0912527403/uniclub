@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { AuthLayout, FormInput, FormButton } from '../';
 import { useChangePasswordMutation } from '~/cores/api';
+import Cookies from 'js-cookie';
 
 const LockIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,10 +66,9 @@ const ChangePasswordPage: React.FC = () => {
       setSuccess(true);
       
       // Clear tokens và redirect đến login sau 3 giây
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      localStorage.removeItem('expiresAt');
+      Cookies.remove('accessToken');
+      Cookies.remove('refreshToken');
+      Cookies.remove('user');
       
       setTimeout(() => {
         navigate('/auth/login');

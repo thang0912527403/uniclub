@@ -12,7 +12,8 @@ import {
     useUpdateMemberRoleMutation,
     type ClubMember,
 } from '~/cores/api';
-import { useGetClubRolesQuery } from '~/cores/api';
+import { useGetClubRolesByClubIdQuery } from '~/cores/api/clubRoleApi';
+import { useAuth } from '~/components/AuthProvider';
 
 /* ─── Avatar placeholder ─────────────────────────────────────────────────── */
 function MemberAvatar({ member }: { member: ClubMember }) {
@@ -65,7 +66,9 @@ interface RoleCellProps {
 
 function RoleCell({ member, clubId }: RoleCellProps) {
     const { show } = useNotification();
-    const { data: roles } = useGetClubRolesQuery();
+    const { data: roles } = useGetClubRolesByClubIdQuery(clubId, {
+        skip: !clubId,
+    });
     const [updateRole, { isLoading }] = useUpdateMemberRoleMutation();
 
     const [editing, setEditing] = useState(false);
@@ -156,13 +159,16 @@ function RoleCell({ member, clubId }: RoleCellProps) {
 
 /* ─── Main module ────────────────────────────────────────────────────────── */
 export default function ClubMembersModule() {
-    const { id } = useParams();
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+    const { clubId } = useAuth();
 
-    const clubId = Number(id);
-    const { data: club } = useGetClubByIdQuery(clubId);
-    const { data: members, isLoading, error } = useGetClubMembersQuery(clubId);
+    const { data: club } = useGetClubByIdQuery(clubId, {
+        skip: !clubId,
+    });
+    const { data: members, isLoading, error } = useGetClubMembersQuery(clubId, {
+        skip: !clubId,
+    });
 
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
@@ -186,21 +192,12 @@ export default function ClubMembersModule() {
             <Sidebar currentPath="/clubs" isOpen={isSidebarOpen} />
             <HeaderBar
                 title="Thành viên Câu lạc bộ"
-                breadcrumb={`Pages / Clubs / ${club?.clubName ?? id} / Members`}
+                breadcrumb={`Pages / Clubs / ${club?.clubName ?? clubId} / Members`}
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={toggleSidebar}
             />
 
             <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
-                {/* Back */}
-                <button
-                    onClick={() => navigate(`/clubs/${id}`)}
-                    className="cursor-pointer mb-6 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white transition-colors"
-                >
-                    <i className="fas fa-arrow-left" />
-                    <span>Quay lại câu lạc bộ</span>
-                </button>
-
                 {/* Page header */}
                 <div className="flex items-center justify-between mb-6">
                     <div>
