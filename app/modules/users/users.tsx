@@ -380,16 +380,16 @@ export default function UsersModule() {
       await deleteUser(deleteTarget.userId).unwrap();
       showNotification({
         type: 'success',
-        title: 'Đã xóa người dùng',
-        message: `"${deleteTarget.fullName}" đã bị xóa.`,
+        title: 'Đã vô hiệu người dùng',
+        message: `"${deleteTarget.fullName}" đã bị vô hiệu.`,
       });
       setDeleteTarget(null);
     } catch (e: unknown) {
       const err = e as { data?: { message?: string } };
       showNotification({
         type: 'error',
-        title: 'Xóa thất bại',
-        message: err?.data?.message ?? 'Không thể xóa người dùng.',
+        title: 'Vô hiệu thất bại',
+        message: err?.data?.message ?? 'Không thể vô hiệu người dùng.',
       });
     }
   };
@@ -612,7 +612,7 @@ export default function UsersModule() {
                                 onClick={() => setDeleteTarget(record)}
                                 className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 text-sm font-medium cursor-pointer transition-colors"
                               >
-                                Xóa
+                                Vô hiệu hóa
                               </button>
                             </div>
                           </td>
