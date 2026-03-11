@@ -48,6 +48,7 @@ export interface UserInfo {
   studentId?: string;
   major?: string;
   status?: string;
+  role?: string;
 }
 
 export interface LoginResponse {

@@ -11,6 +11,7 @@ export interface User {
   major?: string | null;
   joinDate?: string | null;
   status?: string | null;
+  role?: string | null;
   createdAt?: string | null;
 }
 

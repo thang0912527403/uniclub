@@ -1,19 +1,23 @@
-import { useNavigate } from 'react-router';
-import { useSidebarToggle } from '../../hooks/useSidebarToggle';
-import Navbar from '../../components/Navbar';
-import ProfileHeader from './components/profileHeader';
-import InterviewStatusTracker from './components/InterviewStatusTracker';
-import { useGetCurrentUserQuery, useGetUserByIdQuery } from '~/cores/api';
+import { useNavigate } from "react-router";
+import { useSidebarToggle } from "../../hooks/useSidebarToggle";
+import Navbar from "../../components/Navbar";
+import ProfileHeader from "./components/profileHeader";
+import InterviewStatusTracker from "./components/InterviewStatusTracker";
+import InterviewerInterviewsSection from "./components/InterviewerInterviewsSection";
+import { useGetUserByIdQuery } from "~/cores/api";
+import { getUserId } from '~/utils/auth';
 
 const UserProfile = () => {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const {data: me} = useGetCurrentUserQuery();
-  const { data: user, isLoading, error } = useGetUserByIdQuery(me?.userId || '',
-    {
-      skip: !me?.userId,
-    }
-  );
+  const meId = getUserId();
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useGetUserByIdQuery(meId, {
+    skip: !meId,
+  });
 
   console.log(user);
 
@@ -27,7 +31,9 @@ const UserProfile = () => {
           {/* Sidebar Info */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-800 mb-4 text-lg">Thông tin cá nhân</h3>
+              <h3 className="font-bold text-gray-800 mb-4 text-lg">
+                Thông tin cá nhân
+              </h3>
               <div className="space-y-3 text-sm text-gray-600">
                 <p>📧 {user?.email}</p>
                 <p>📞 {user?.phoneNumber}</p>
@@ -40,9 +46,9 @@ const UserProfile = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Interview Status Tracker */}
-            {me?.userId && (
-              <InterviewStatusTracker userId={me.userId} />
-            )}
+            {meId && <InterviewStatusTracker userId={meId} />}
+            {/* Interviewer Interviews — show if user has interviewer assignments */}
+            {meId && <InterviewerInterviewsSection userId={meId} />}
           </div>
         </div>
       </main>

@@ -599,59 +599,346 @@ const FormsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
   );
 };
 
+// ── Inline Answer Row (expands under a table row) ──────────────────────────
+const InlineAnswerRow: React.FC<{ application: ApplicationResponseDto; colSpan: number }> = ({ application, colSpan }) => {
+  const { data: answers = [], isLoading } = useGetAnswersByApplicationQuery(application.applicationId);
+  const { data: questions = [] } = useGetQuestionsByFormQuery(application.formId);
+
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-0 py-0">
+        <div className="bg-gradient-to-r from-violet-50/80 to-purple-50/80 dark:from-violet-900/10 dark:to-purple-900/10 border-t border-b border-violet-100 dark:border-violet-800/30 px-6 py-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center">
+              <i className="fa-solid fa-message text-white text-[10px]" />
+            </span>
+            <span className="text-sm font-bold text-gray-800 dark:text-white">Câu trả lời</span>
+            <span className="text-xs text-gray-400">· Đơn #{application.applicationId}</span>
+          </div>
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-gray-400 text-sm py-4">
+              <i className="fa-solid fa-spinner fa-spin" /> Đang tải...
+            </div>
+          ) : questions.length === 0 ? (
+            <p className="text-sm text-gray-400 italic py-2">Không có câu hỏi.</p>
+          ) : (
+            <div className="grid gap-2">
+              {questions.map((q, idx) => {
+                const answer = answers.find(a => a.questionId === q.questionId);
+                return (
+                  <div key={q.questionId} className="flex gap-3 bg-white/80 dark:bg-gray-800/60 rounded-lg p-3 border border-white dark:border-gray-700/50">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-violet-500/15 text-violet-600 text-[10px] font-bold flex items-center justify-center mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-0.5">
+                        {q.questionText}
+                        {q.isRequired && <span className="text-red-400 ml-1">*</span>}
+                      </p>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                        {answer?.answerText || <span className="text-gray-400 italic text-xs">Không trả lời</span>}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+// ── Status Badge & Contextual Actions ────────────────────────────────────
+const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const sConf = statusConfig[status] ?? { label: status, cls: 'bg-gray-100 text-gray-700' };
+  const dotColor = sConf.cls.includes('amber') ? 'bg-amber-500' :
+                   sConf.cls.includes('blue') ? 'bg-blue-500' :
+                   sConf.cls.includes('red') ? 'bg-red-500' :
+                   sConf.cls.includes('green') ? 'bg-green-500' : 'bg-gray-500';
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase ${sConf.cls}`}>
+      <span className={`inline-block w-1.5 h-1.5 rounded-full ${dotColor}`} />
+      {sConf.label}
+    </span>
+  );
+};
+
+const ApplicationStatusActions: React.FC<{
+  currentStatus: string;
+  onChangeStatus: (newStatus: string) => void;
+}> = ({ currentStatus, onChangeStatus }) => {
+  // --- Flow: PENDING -> SUCCESS (Vào phỏng vấn) -> APPROVED (Đã duyệt) ---
+  
+  if (currentStatus === 'PENDING') {
+    return (
+      <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
+        <button
+          onClick={(e) => { e.stopPropagation(); onChangeStatus('SUCCESS'); }}
+          className="px-2.5 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 text-xs font-semibold rounded-lg transition-colors border border-green-200 dark:border-green-800"
+          title="Chuyển sang Vào phỏng vấn"
+        >
+          <i className="fa-solid fa-check mr-1.5" />Vào phỏng vấn
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onChangeStatus('REJECTED'); }}
+          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 text-xs font-semibold rounded-lg transition-colors border border-red-200 dark:border-red-800"
+          title="Từ chối"
+        >
+          <i className="fa-solid fa-xmark mr-1.5" />Từ chối
+        </button>
+      </div>
+    );
+  }
+
+  if (currentStatus === 'SUCCESS') {
+    return (
+      <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
+        <button
+          onClick={(e) => { e.stopPropagation(); onChangeStatus('APPROVED'); }}
+          className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 text-xs font-semibold rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
+          title="Đánh giá là Đã duyệt"
+        >
+          <i className="fa-solid fa-medal mr-1.5" />Duyệt qua
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onChangeStatus('REJECTED'); }}
+          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 text-xs font-semibold rounded-lg transition-colors border border-red-200 dark:border-red-800"
+          title="Từ chối"
+        >
+          <i className="fa-solid fa-xmark mr-1.5" />Từ chối
+        </button>
+      </div>
+    );
+  }
+
+  // If APPROVED or REJECTED
+  return (
+    <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
+      <button
+        onClick={(e) => { e.stopPropagation(); onChangeStatus('PENDING'); }}
+        className="px-2 py-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs font-medium flex items-center gap-1"
+        title="Hoàn tác về Chờ duyệt"
+      >
+        <i className="fa-solid fa-rotate-left mr-1" />Hoàn tác
+      </button>
+    </div>
+  );
+};
+
+// ── Bulk Action Bar ────────────────────────────────────────────────────────
+const BulkActionBar: React.FC<{
+  count: number;
+  onClear: () => void;
+  onBulkStatus: (status: string) => void;
+}> = ({ count, onClear, onBulkStatus }) => {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <div className="bg-indigo-600 text-white rounded-xl px-4 py-3 flex items-center justify-between shadow-lg animate-in slide-in-from-bottom">
+      <div className="flex items-center gap-3">
+        <span className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold">{count}</span>
+        <span className="text-sm font-medium">đơn đã chọn</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="relative">
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+          >
+            <i className="fa-solid fa-pen text-[10px]" />
+            Đổi trạng thái
+            <i className={`fa-solid fa-chevron-down text-[8px] transition-transform ${showMenu ? 'rotate-180' : ''}`} />
+          </button>
+          {showMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+              <div className="absolute z-50 bottom-full right-0 mb-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1.5 min-w-[150px] overflow-hidden">
+                {Object.entries(statusConfig).map(([k, v]) => (
+                  <button
+                    key={k}
+                    onClick={() => { onBulkStatus(k); setShowMenu(false); }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <button onClick={onClear} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium transition-colors">
+          Bỏ chọn
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ── Tab 2 & 3: Applications table + Response viewer ───────────────────────
+const APPS_PER_PAGE = 10;
+
 const ApplicationsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
   const { data: forms = [] } = useGetFormsByCampaignQuery(campaignId);
   const [statusFilter, setStatusFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedApp, setSelectedApp] = useState<ApplicationResponseDto | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const { data: applications = [], isLoading } = useGetApplicationsByCampaignQuery({ campaignId, status: statusFilter || undefined });
   const [updateStatus] = useUpdateApplicationStatusMutation();
 
-  // All questions from all forms for answer display
-  const allFormIds = forms.map(f => f.formId);
-  // We pick the form that matches the application's formId when viewing answers
-  const selectedFormQuestions: ApplicationQuestionResponseDto[] = [];
+  // ── Derived data ──
+  const statusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = { all: applications.length };
+    Object.keys(statusConfig).forEach(k => { counts[k] = 0; });
+    applications.forEach(a => { counts[a.status] = (counts[a.status] || 0) + 1; });
+    return counts;
+  }, [applications]);
 
+  const filteredApps = React.useMemo(() => {
+    let result = [...applications];
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(a =>
+        a.applicationId.toString().includes(q) ||
+        a.userId.toLowerCase().includes(q) ||
+        forms.find(f => f.formId === a.formId)?.formTitle?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [applications, searchQuery, forms]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredApps.length / APPS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedApps = filteredApps.slice((safePage - 1) * APPS_PER_PAGE, safePage * APPS_PER_PAGE);
+
+  // ── Handlers ──
   const handleStatusChange = async (app: ApplicationResponseDto, newStatus: string) => {
     try { await updateStatus({ id: app.applicationId, body: { status: newStatus } }).unwrap(); } catch (e) { console.error(e); }
   };
 
+  const toggleExpand = (id: number) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === pagedApps.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pagedApps.map(a => a.applicationId)));
+    }
+  };
+
+  const handleBulkStatus = async (newStatus: string) => {
+    const promises = Array.from(selectedIds).map(id =>
+      updateStatus({ id, body: { status: newStatus } }).unwrap().catch(console.error)
+    );
+    await Promise.all(promises);
+    setSelectedIds(new Set());
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
   const statuses = ['', 'PENDING', 'APPROVED', 'REJECTED', 'SUCCESS'];
+  const allSelected = pagedApps.length > 0 && selectedIds.size === pagedApps.length;
+  const TABLE_COL_COUNT = 6;
 
   return (
     <div className="space-y-4">
-      {/* Filter bar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
-          <i className="fa-solid fa-filter text-orange-500" />
-          Lọc trạng thái:
-        </span>
-        {statuses.map(s => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${statusFilter === s
-              ? 'bg-orange-500 text-white shadow'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-orange-100 dark:hover:bg-orange-900/20'
-              }`}
-          >
-            {s ? (statusConfig[s]?.label ?? s) : 'Tất cả'}
-          </button>
+      {/* ── Stats Summary ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {Object.entries(statusConfig).map(([k, v]) => (
+          <div key={k} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${v.cls}`}>
+            {v.label}: <span className="font-bold">{statusCounts[k] ?? 0}</span>
+          </div>
         ))}
-        <span className="ml-auto text-xs text-gray-500">
-          <i className="fa-solid fa-users mr-1" />{applications.length} đơn
+        <span className="ml-auto text-xs text-gray-500 font-medium">
+          <i className="fa-solid fa-users mr-1" />Tổng: {applications.length} đơn
         </span>
       </div>
 
-      {/* Table */}
+      {/* ── Filter Bar ── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        {/* Status filter tabs */}
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1 overflow-x-auto">
+          {statuses.map(s => (
+            <button
+              key={s}
+              onClick={() => { setStatusFilter(s); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                statusFilter === s
+                  ? 'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              {s ? (statusConfig[s]?.label ?? s) : 'Tất cả'}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1 max-w-xs">
+          <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+          <input
+            type="text"
+            placeholder="Tìm theo ID, userId..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600/50 rounded-xl text-xs text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 transition-all"
+          />
+          {searchQuery && (
+            <button onClick={() => { setSearchQuery(''); setCurrentPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+              <i className="fas fa-times text-[10px]" />
+            </button>
+          )}
+        </div>
+
+        <span className="text-xs text-gray-400 whitespace-nowrap hidden sm:block">
+          {filteredApps.length} kết quả
+        </span>
+      </div>
+
+      {/* ── Bulk Action Bar ── */}
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          count={selectedIds.size}
+          onClear={() => setSelectedIds(new Set())}
+          onBulkStatus={handleBulkStatus}
+        />
+      )}
+
+      {/* ── Table ── */}
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map(i => <div key={i} className="h-14 rounded-xl bg-gray-200 dark:bg-gray-700 animate-pulse" />)}
         </div>
-      ) : applications.length === 0 ? (
+      ) : filteredApps.length === 0 ? (
         <div className="text-center py-16 text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
           <i className="fa-regular fa-folder-open text-5xl mb-3 block" />
-          <p className="font-medium">Không có đơn ứng tuyển nào</p>
+          <p className="font-medium">{searchQuery ? 'Không tìm thấy đơn phù hợp' : 'Không có đơn ứng tuyển nào'}</p>
+          {searchQuery && (
+            <button onClick={() => { setSearchQuery(''); setCurrentPage(1); }} className="mt-2 text-xs text-orange-500 hover:text-orange-600 font-semibold">
+              <i className="fas fa-arrow-rotate-left mr-1" />Xóa tìm kiếm
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
@@ -659,6 +946,14 @@ const ApplicationsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700">
                 <tr>
+                  <th className="px-3 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">#</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Form</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nộp lúc</th>
@@ -667,45 +962,114 @@ const ApplicationsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                {applications.map(app => {
-                  const sConf = statusConfig[app.status] ?? { label: app.status, cls: 'bg-gray-100 text-gray-700' };
+                {pagedApps.map(app => {
+                  const isExpanded = expandedIds.has(app.applicationId);
                   return (
-                    <tr key={app.applicationId} className="hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-colors">
-                      <td className="px-4 py-3.5 font-mono text-xs text-gray-500">#{app.applicationId}</td>
-                      <td className="px-4 py-3.5 text-gray-700 dark:text-gray-300">
-                        {forms.find(f => f.formId === app.formId)?.formTitle ?? `Form #${app.formId}`}
-                      </td>
-                      <td className="px-4 py-3.5 text-gray-500 text-xs">{new Date(app.submissionDate).toLocaleString('vi-VN')}</td>
-                      <td className="px-4 py-3.5">
-                        <select
-                          value={app.status}
-                          onChange={e => handleStatusChange(app, e.target.value)}
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold outline-none border-0 cursor-pointer ${sConf.cls}`}
-                        >
-                          {Object.entries(statusConfig).map(([k, v]) => (
-                            <option key={k} value={k}>{v.label}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <button
-                          onClick={() => setSelectedApp(app)}
-                          className="px-3 py-1.5 text-xs font-semibold text-violet-600 hover:text-violet-700 bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/30 rounded-lg transition-all flex items-center gap-1.5 ml-auto"
-                        >
-                          <i className="fa-solid fa-eye text-xs" />
-                          Xem phản hồi
-                        </button>
-                      </td>
-                    </tr>
+                    <React.Fragment key={app.applicationId}>
+                      <tr className={`hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-colors ${isExpanded ? 'bg-violet-50/30 dark:bg-violet-900/10' : ''}`}>
+                        <td className="px-3 py-3.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(app.applicationId)}
+                            onChange={() => toggleSelect(app.applicationId)}
+                            onClick={e => e.stopPropagation()}
+                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          />
+                        </td>
+                        <td className="px-4 py-3.5 font-mono text-xs text-gray-500">#{app.applicationId}</td>
+                        <td className="px-4 py-3.5 text-gray-700 dark:text-gray-300 text-xs">
+                          {forms.find(f => f.formId === app.formId)?.formTitle ?? `Form #${app.formId}`}
+                        </td>
+                        <td className="px-4 py-3.5 text-gray-500 text-xs whitespace-nowrap">{new Date(app.submissionDate).toLocaleString('vi-VN')}</td>
+                        <td className="px-4 py-3.5">
+                          <StatusBadge status={app.status} />
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex items-center gap-1.5 justify-end">
+                            <ApplicationStatusActions
+                              currentStatus={app.status}
+                              onChangeStatus={(newStatus) => handleStatusChange(app, newStatus)}
+                            />
+                            
+                            <button
+                              onClick={() => toggleExpand(app.applicationId)}
+                              className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                                isExpanded
+                                  ? 'bg-violet-500 text-white shadow-sm'
+                                  : 'text-violet-600 hover:text-violet-700 bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/30'
+                              }`}
+                              title={isExpanded ? 'Thu gọn' : 'Mở rộng xem câu trả lời'}
+                            >
+                              <i className={`fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px]`} />
+                              {isExpanded ? 'Thu gọn' : 'Xem'}
+                            </button>
+                            <button
+                              onClick={() => setSelectedApp(app)}
+                              className="px-2.5 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-all flex items-center gap-1.5"
+                              title="Xem chi tiết trong modal"
+                            >
+                              <i className="fa-solid fa-expand text-[10px]" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* Inline expanded answers */}
+                      {isExpanded && <InlineAnswerRow application={app} colSpan={TABLE_COL_COUNT} />}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/20">
+              <span className="text-xs text-gray-500">
+                Trang {safePage}/{totalPages} · {filteredApps.length} đơn
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={safePage === 1}
+                  onClick={() => setCurrentPage(safePage - 1)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs"
+                >
+                  <i className="fas fa-chevron-left" />
+                </button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let page: number;
+                  if (totalPages <= 5) { page = i + 1; }
+                  else if (safePage <= 3) { page = i + 1; }
+                  else if (safePage >= totalPages - 2) { page = totalPages - 4 + i; }
+                  else { page = safePage - 2 + i; }
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all ${
+                        safePage === page
+                          ? 'bg-orange-500 text-white shadow-sm'
+                          : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+                <button
+                  disabled={safePage === totalPages}
+                  onClick={() => setCurrentPage(safePage + 1)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs"
+                >
+                  <i className="fas fa-chevron-right" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Answer viewer panel */}
+      {/* Answer modal (secondary option) */}
       {selectedApp && (
         <AnswerViewerForApp
           app={selectedApp}

@@ -5,22 +5,9 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useGetClubByIdQuery, useUpdateClubMutation } from '~/cores/api';
+import { useNotification } from '~/components/Notification';
+import { validateClubForm, type ClubFormData } from '~/utils/validation';
 
-interface ClubFormData {
-    clubName: string;
-    shortName: string;
-    description: string;
-    email: string;
-    phoneNumber: string;
-    address: string;
-    websiteUrl: string;
-    facebookUrl: string;
-    logoUrl: string;
-    coverImageUrl: string;
-    foundedDate: string;
-    isActive: boolean;
-    isPublic: boolean;
-}
 
 export default function ClubEditModule() {
     const { id } = useParams();
@@ -28,7 +15,8 @@ export default function ClubEditModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
     const { data: club, isLoading: isLoadingClub, error: loadError } = useGetClubByIdQuery(Number(id));
-    const [updateClub, { isLoading: isUpdating, error: updateError }] = useUpdateClubMutation();
+    const [updateClub, { isLoading: isUpdating }] = useUpdateClubMutation();
+    const { show: showNotification } = useNotification();
 
     const [formData, setFormData] = useState<ClubFormData>({
         clubName: '',
@@ -47,7 +35,6 @@ export default function ClubEditModule() {
     });
 
     const [formErrors, setFormErrors] = useState<Partial<Record<keyof ClubFormData, string>>>({});
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     useEffect(() => {
         if (club) {
@@ -71,56 +58,38 @@ export default function ClubEditModule() {
         }
     }, [club]);
 
-    const validateForm = (): boolean => {
-        const errors: Partial<Record<keyof ClubFormData, string>> = {};
-
-        if (!formData.clubName.trim()) errors.clubName = 'Tên câu lạc bộ là bắt buộc';
-        if (!formData.shortName.trim()) errors.shortName = 'Tên viết tắt là bắt buộc';
-        if (!formData.description.trim()) errors.description = 'Mô tả là bắt buộc';
-        if (!formData.email.trim()) {
-            errors.email = 'Email là bắt buộc';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            errors.email = 'Email không hợp lệ';
-        }
-        if (!formData.phoneNumber.trim()) errors.phoneNumber = 'Số điện thoại là bắt buộc';
-        if (!formData.address.trim()) errors.address = 'Địa chỉ là bắt buộc';
-
-        const urlPattern = /^https?:\/\/.+/;
-        if (formData.websiteUrl && !urlPattern.test(formData.websiteUrl)) {
-            errors.websiteUrl = 'URL không hợp lệ';
-        }
-        if (formData.facebookUrl && !urlPattern.test(formData.facebookUrl)) {
-            errors.facebookUrl = 'URL không hợp lệ';
-        }
-        if (formData.logoUrl && !urlPattern.test(formData.logoUrl)) {
-            errors.logoUrl = 'URL không hợp lệ';
-        }
-        if (formData.coverImageUrl && !urlPattern.test(formData.coverImageUrl)) {
-            errors.coverImageUrl = 'URL không hợp lệ';
-        }
-
-        setFormErrors(errors);
-        return Object.keys(errors).length === 0;
-    };
-
     const handleInputChange = (field: keyof ClubFormData, value: string | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         if (formErrors[field]) {
             setFormErrors(prev => ({ ...prev, [field]: undefined }));
         }
-        if (successMessage) setSuccessMessage(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validateForm()) return;
+        const validation = validateClubForm(formData);
+        if (!validation.success) {
+            setFormErrors(validation.errors);
+            return;
+        }
 
         try {
             await updateClub({ id: Number(id), club: formData }).unwrap();
-            setSuccessMessage('Cập nhật câu lạc bộ thành công!');
-            setTimeout(() => navigate(`/clubs/${id}`), 1500);
+            showNotification({
+                type: 'success',
+                title: 'Cập nhật thành công!',
+                message: `Câu lạc bộ “${formData.clubName}” đã được cập nhật.`,
+                duration: 3000,
+            });
+            navigate(`/clubs/${id}`);
         } catch (err) {
-            console.error('Failed to update club:', err);
+            const rtkErr = err as { data?: { message?: string } };
+            showNotification({
+                type: 'error',
+                title: 'Cập nhật thất bại',
+                message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
+                duration: 4000,
+            });
         }
     };
 
@@ -166,7 +135,7 @@ export default function ClubEditModule() {
                         <div className="mb-6">
                             <button
                                 onClick={() => navigate(`/clubs/${id}`)}
-                                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-2 flex items-center gap-2"
+                                className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-2 flex items-center gap-2"
                             >
                                 <i className="fas fa-arrow-left"></i>
                             </button>
@@ -174,21 +143,6 @@ export default function ClubEditModule() {
                             <p className="text-sm text-gray-600 dark:text-gray-400">Cập nhật thông tin câu lạc bộ của bạn</p>
                         </div>
 
-                        {/* Success message */}
-                        {successMessage && (
-                            <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center gap-3">
-                                <i className="fas fa-check-circle text-green-500"></i>
-                                <p className="text-green-700 dark:text-green-400">{successMessage}</p>
-                            </div>
-                        )}
-
-                        {/* Update error */}
-                        {updateError && (
-                            <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center gap-3">
-                                <i className="fas fa-times-circle text-red-500"></i>
-                                <p className="text-red-700 dark:text-red-400">Cập nhật thất bại. Vui lòng thử lại.</p>
-                            </div>
-                        )}
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Cover Image Upload */}

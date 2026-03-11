@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { AuthLayout, FormInput, FormButton } from '../';
 import { useLoginMutation, type LoginRequest } from '~/cores/api';
-import Cookies from 'js-cookie';
+import { loginUser } from '~/utils/auth';
 // Icons
 const EmailIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,10 +64,9 @@ const LoginPage: React.FC = () => {
       const payload = response?.data ?? response;
 
       if (payload?.accessToken) {
-        Cookies.set('accessToken', payload.accessToken);
-        Cookies.set('refreshToken', payload.refreshToken ?? '');
-        Cookies.set('user', JSON.stringify(payload.user ?? {}));
-        navigate('/');
+        loginUser(payload);
+        const redirectTo = new URLSearchParams(window.location.search).get('redirect') || '/home';
+        navigate(redirectTo);
       }
     } catch (err) {
       console.error('Login failed:', err);
