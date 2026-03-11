@@ -13,7 +13,7 @@ import {
     type ClubMember,
 } from '~/cores/api';
 import { useGetClubRolesByClubIdQuery } from '~/cores/api/clubRoleApi';
-import { useAuth } from '~/components/AuthProvider';
+import { getClubId } from '~/utils/auth';
 
 /* ─── Avatar placeholder ─────────────────────────────────────────────────── */
 function MemberAvatar({ member }: { member: ClubMember }) {
@@ -161,7 +161,7 @@ function RoleCell({ member, clubId }: RoleCellProps) {
 export default function ClubMembersModule() {
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-    const { clubId } = useAuth();
+    const clubId = getClubId();
 
     const { data: club } = useGetClubByIdQuery(clubId, {
         skip: !clubId,

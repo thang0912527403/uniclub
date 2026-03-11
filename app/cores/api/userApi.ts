@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import type { ApiResponse, User, CreateUserDto, UpdateUserDto } from "./types";
+import type { ApiResponse, User, CreateUserDto, UpdateUserDto, Club } from "./types";
 
 export interface ClubMembership {
   clubMemberId: number;
@@ -69,6 +69,13 @@ export const userApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ClubMembership[]>) => response.data ?? [],
       providesTags: ['User'],
     }),
+
+    // Lấy tất cả CLB mà user tham gia (trả về Club[])
+    getUserAllClubs: builder.query<Club[], string>({
+      query: (userId) => `/Users/${userId}/all-clubs`,
+      transformResponse: (response: ApiResponse<Club[]>) => response.data ?? [],
+      providesTags: ['User'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -80,4 +87,5 @@ export const {
   useUpdateUserMutation,
   useDeleteUserMutation,
   useGetUserClubInfoQuery,
+  useGetUserAllClubsQuery,
 } = userApi;

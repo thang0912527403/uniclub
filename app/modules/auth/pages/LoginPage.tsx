@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { AuthLayout, FormInput, FormButton } from '../';
 import { useLoginMutation, type LoginRequest } from '~/cores/api';
-import { useAuth } from '~/components/AuthProvider';
+import { loginUser } from '~/utils/auth';
 // Icons
 const EmailIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -18,7 +18,6 @@ const LockIcon = () => (
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const auth = useAuth();
   const [login, { isLoading, error }] = useLoginMutation();
   
   const [formData, setFormData] = useState<LoginRequest>({
@@ -65,8 +64,9 @@ const LoginPage: React.FC = () => {
       const payload = response?.data ?? response;
 
       if (payload?.accessToken) {
-        auth.login(payload);
-        navigate('/');
+        loginUser(payload);
+        const redirectTo = new URLSearchParams(window.location.search).get('redirect') || '/home';
+        navigate(redirectTo);
       }
     } catch (err) {
       console.error('Login failed:', err);

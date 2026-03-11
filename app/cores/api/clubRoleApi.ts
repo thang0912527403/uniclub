@@ -78,6 +78,12 @@ const clubRoleApi = baseApi.injectEndpoints({
                     : [{ type: 'ClubRole', id: `club-${clubId}` }],
         }),
 
+        getClubStructureRoles: builder.query<ClubRole[], number>({
+            query: (clubId) => `/club/${clubId}/role`,
+            transformResponse: (response: ApiResponse<ClubRole[]>) => response.data ?? [],
+            providesTags: (result, error, clubId) => [{ type: 'ClubRole', id: `structure-${clubId}` }],
+        }),
+
         deleteClubRole: builder.mutation<void, number>({
             query: (id) => ({
                 url: `/ClubRole/${id}`,
@@ -93,6 +99,7 @@ export const {
     useGetClubRolesQuery,
     useGetClubRoleByIdQuery,
     useGetClubRolesByClubIdQuery,
+    useGetClubStructureRolesQuery,
     useGetClubRolePoliciesQuery,
     useUpdateClubRolePoliciesMutation,
     useCreateClubRoleMutation,

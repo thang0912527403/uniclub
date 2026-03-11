@@ -4,7 +4,8 @@ import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { useAuth } from '~/components/AuthProvider';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
+import { useClubRole } from '~/hooks/useClubRole';
 import { useGetApplicationsByClubQuery } from '~/cores/api/applicationApi';
 import { useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api/recruitmentCampaignApi';
 import { useGetInterviewsQuery } from '~/cores/api/interviewApi';
@@ -95,7 +96,8 @@ function QA({ icon, label, to, g }: { icon: string; label: string; to: string; g
 // ─── Main ───────────────────────────────────────────────────────────────────
 export default function ClubManagerDashboard() {
   const { isOpen, toggle } = useSidebarToggle();
-  const { user, clubManagerMembership } = useAuth();
+  const { user } = useCurrentUser();
+  const { clubManagerMembership } = useClubRole();
   const clubId = clubManagerMembership?.clubId;
 
   // ── Fetch data scoped to this club only ────────────────────────────────

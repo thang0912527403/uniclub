@@ -10,7 +10,8 @@ import {
     useUpdateClubPostMutation,
     useDeleteClubPostMutation,
 } from '~/cores/api/clubApi';
-import { useAuth } from '~/components/AuthProvider';
+import { getUserId } from '~/utils/auth';
+import { useClubRole } from '~/hooks/useClubRole';
 import { useNavigate } from 'react-router';
 import {
     Plus, Pencil, Trash2, Eye, EyeOff,
@@ -231,7 +232,7 @@ function CreatePostModal({
 /* ═══ Main Module ══════════════════════════════════════════════ */
 export default function ClubPostModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-    const { user: authUser, clubManagerMembership } = useAuth();
+    const { clubManagerMembership } = useClubRole();
     const clubId = clubManagerMembership?.clubId ?? 0;
     const { data: clubPosts = [], isLoading } = useGetClubPostByClubIdQuery(clubId);
     const [deleteClubPost] = useDeleteClubPostMutation();
@@ -241,7 +242,7 @@ export default function ClubPostModule() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
     
-    const userId = authUser?.userId ?? '';
+    const userId = getUserId();
     const published = clubPosts.filter(p => p.status !== 'inactive' && p.status !== 'DRAFT').length;
     const hidden = clubPosts.filter(p => p.status === 'inactive').length;
 

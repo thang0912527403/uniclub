@@ -2,7 +2,8 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { HubConnectionBuilder, HubConnection, LogLevel } from '@microsoft/signalr';
 import type { RoomUser, UserMediaState, ChatMessage } from '../types';
 import Cookies from 'js-cookie';
-import { useAuth } from '~/components/AuthProvider';
+import { getUserId } from '~/utils/auth';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
 interface WebRtcContextType {
   connection: HubConnection | null;
   users: RoomUser[];
@@ -57,7 +58,7 @@ const rtcConfig: RTCConfiguration = {
 };
 
 export const WebRtcProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useCurrentUser();
   const [connection, setConnection] = useState<HubConnection | null>(null);
   const [users, setUsers] = useState<RoomUser[]>([]);
   const [userStates, setUserStates] = useState<Record<string, UserMediaState>>({});

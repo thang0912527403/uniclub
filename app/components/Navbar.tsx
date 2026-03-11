@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { useAuth } from '~/components/AuthProvider';
+import { logoutUser } from '~/utils/auth';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
 
 const Navbar: React.FC = () => {
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
+    const { user } = useCurrentUser();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -19,7 +20,7 @@ const Navbar: React.FC = () => {
     }, []);
 
     const handleLogout = () => {
-        logout();
+        logoutUser();
         setIsUserMenuOpen(false);
         navigate('/');
     };
@@ -27,6 +28,7 @@ const Navbar: React.FC = () => {
     const navLinks = [
         { name: 'Trang chủ', href: '/home' },
         { name: 'Câu lạc bộ', href: '/public/clubs' },
+        {name:'Quản lý câu lạc bộ', href: '/manage-clubs'},
         { name: 'Sự kiện', href: '/public/events' },
         { name: 'Tin tức', href: '/public/news' },
         { name: 'Về chúng tôi', href: '#about' },

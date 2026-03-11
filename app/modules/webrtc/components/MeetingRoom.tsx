@@ -3,7 +3,7 @@ import { useWebRtc } from '../hooks/useWebRtc';
 import { VideoTile } from './VideoTile';
 import { ControlBar } from './ControlBar';
 import { ChatPanel } from './ChatPanel';
-import { useAuth } from '~/components/AuthProvider';
+import { getUserId } from '~/utils/auth';
 
 export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({ roomId, onLeave }) => {
   const {
@@ -32,8 +32,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const lastReadCountRef = useRef(0);
   
-  const { user: authUser } = useAuth();
-  const currentUserId = authUser?.userId;
+  const currentUserId = getUserId();
 
   useEffect(() => {
     if (isConnected && roomId) {

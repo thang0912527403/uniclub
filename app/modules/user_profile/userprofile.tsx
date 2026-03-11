@@ -5,18 +5,18 @@ import ProfileHeader from "./components/profileHeader";
 import InterviewStatusTracker from "./components/InterviewStatusTracker";
 import InterviewerInterviewsSection from "./components/InterviewerInterviewsSection";
 import { useGetUserByIdQuery } from "~/cores/api";
-import { useAuth } from "~/components/AuthProvider";
+import { getUserId } from '~/utils/auth';
 
 const UserProfile = () => {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const { user: me } = useAuth();
+  const meId = getUserId();
   const {
     data: user,
     isLoading,
     error,
-  } = useGetUserByIdQuery(me?.userId || "", {
-    skip: !me?.userId,
+  } = useGetUserByIdQuery(meId, {
+    skip: !meId,
   });
 
   console.log(user);
@@ -46,9 +46,9 @@ const UserProfile = () => {
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* Interview Status Tracker */}
-            {me?.userId && <InterviewStatusTracker userId={me.userId} />}
+            {meId && <InterviewStatusTracker userId={meId} />}
             {/* Interviewer Interviews — show if user has interviewer assignments */}
-            {me?.userId && <InterviewerInterviewsSection userId={me.userId} />}
+            {meId && <InterviewerInterviewsSection userId={meId} />}
           </div>
         </div>
       </main>

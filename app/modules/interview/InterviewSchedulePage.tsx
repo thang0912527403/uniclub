@@ -23,7 +23,10 @@ import type {
   ApplicationResponseDto,
   ClubMember,
 } from "~/cores/api";
-import { useAuth } from "~/components/AuthProvider";
+import { getUserId } from '~/utils/auth';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
+import { useClubRole } from '~/hooks/useClubRole';
+import { useGetClubRolesByClubIdQuery } from '~/cores/api/clubRoleApi';
 
 import StatusPipelineTabs from "./components/StatusPipelineTabs";
 import type { PipelineTab } from "./components/StatusPipelineTabs";
@@ -38,13 +41,10 @@ const InterviewSchedulePage: React.FC = () => {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
   // ─── Campaign selector ──────────────────────────────────────
-  const {
-    user: authUser,
-    isAdmin,
-    clubManagerMembership,
-    clubRoles,
-  } = useAuth();
+  const { isAdmin } = useCurrentUser();
+  const { clubManagerMembership } = useClubRole();
   const clubId = clubManagerMembership?.clubId ?? 0;
+  const { data: clubRoles = [] } = useGetClubRolesByClubIdQuery(clubId, { skip: !clubId });
 
   const { data: adminCampaigns, isLoading: adminLoading } =
     useGetRecruitmentCampaignsQuery(undefined, {
@@ -65,7 +65,7 @@ const InterviewSchedulePage: React.FC = () => {
   const activeCampaignId = selectedCampaignId || campaigns[0]?.campaignId;
 
   // ─── Current user ────────────────────────────────────────────
-  const currentUserId = authUser?.userId ?? "";
+  const currentUserId = getUserId();
 
   // ─── Data fetching ───────────────────────────────────────────
   const { data: allInterviews = [], isLoading: interviewsLoading } =

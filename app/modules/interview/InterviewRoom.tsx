@@ -12,7 +12,7 @@ import type {
   InterviewScheduleResponse,
   InterviewAssignmentResponse,
 } from '~/cores/api';
-import { useAuth } from '~/components/AuthProvider';
+import { getUserId } from '~/utils/auth';
 
 /**
  * InterviewRoom wraps the existing MeetingRoom (WebRTC) module
@@ -155,8 +155,7 @@ const InterviewRoom: React.FC = () => {
   });
 
   // Parse current user from context
-  const { user: authUser } = useAuth();
-  const currentUserId = authUser?.userId ?? '';
+  const currentUserId = getUserId();
 
   // ── Validation gate (only when navigated via URL with a room code) ──
   if (urlRoomCode && !isValidating) {

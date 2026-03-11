@@ -7,7 +7,8 @@ import { Loading } from '~/components/Loading';
 import { Error } from '~/components/Error';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useGetRecruitmentCampaignsQuery, useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api';
-import { useAuth } from '~/components/AuthProvider';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
+import { useClubRole } from '~/hooks/useClubRole';
 import type { RecruitmentCampaign } from '~/cores/api/types';
 
 // ──────────────────────────────────────────────
@@ -272,7 +273,8 @@ function Pagination({ currentPage, totalPages, onPageChange }: {
 export default function RecruitmentCampaignsModule() {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const { isAdmin, clubManagerMembership } = useAuth();
+  const { isAdmin } = useCurrentUser();
+  const { clubManagerMembership } = useClubRole();
   const clubId = clubManagerMembership?.clubId ?? 0;
 
   // ── API ──

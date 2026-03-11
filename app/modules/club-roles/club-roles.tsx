@@ -12,9 +12,10 @@ import {
     type ClubRole,
 } from '~/cores/api';
 import { useGetClubRolesByClubIdQuery } from '~/cores/api/clubRoleApi';
-import { useAuth } from '~/components/AuthProvider';
+import { getClubId } from '~/utils/auth';
 import { validateClubRoleForm, type ClubRoleFormData } from '~/utils/validation';
 import { PolicyPanel } from './components/PolicyPanel';
+import { Error } from '~/components/Error';
 
 /* ─── Role Form Modal ─────────────────────────────────────────────────────── */
 interface RoleModalProps {
@@ -180,7 +181,7 @@ function DeleteModal({ role, onConfirm, onCancel, isLoading }: DeleteModalProps)
 export default function ClubRolesModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { show: showNotification } = useNotification();
-    const { clubId } = useAuth();
+    const clubId = getClubId();
     console.log(clubId);
     const { data: roles, isLoading, error } = useGetClubRolesByClubIdQuery(clubId, {
         skip: !clubId,
@@ -283,13 +284,7 @@ export default function ClubRolesModule() {
                 {isLoading ? (
                     <Loading />
                 ) : error ? (
-                    <div className="flex flex-col items-center justify-center py-20">
-                        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center mb-4">
-                            <i className="fas fa-exclamation-circle text-red-500 text-2xl"></i>
-                        </div>
-                        <p className="font-medium text-gray-700 dark:text-gray-300">Không thể tải danh sách vai trò</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Vui lòng thử lại sau.</p>
-                    </div>
+                    <Error title="Lỗi khi tải danh sách câu lạc bộ." error={error} />
                 ) : (
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
                         {filteredRoles.length === 0 ? (
