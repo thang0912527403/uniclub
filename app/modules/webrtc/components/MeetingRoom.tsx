@@ -3,7 +3,7 @@ import { useWebRtc } from '../hooks/useWebRtc';
 import { VideoTile } from './VideoTile';
 import { ControlBar } from './ControlBar';
 import { ChatPanel } from './ChatPanel';
-import Cookies from 'js-cookie';
+import { getUserId } from '~/utils/auth';
 
 export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({ roomId, onLeave }) => {
   const {
@@ -32,15 +32,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const lastReadCountRef = useRef(0);
   
-  // Get current user ID from localStorage
-  const getCurrentUserId = () => {
-    try {
-      const user = JSON.parse(Cookies.get('user') || '{}');
-      return user.userId;
-    } catch {
-      return undefined;
-    }
-  };
+  const currentUserId = getUserId();
 
   useEffect(() => {
     if (isConnected && roomId) {
@@ -331,7 +323,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
           setUnreadCount(0);
           lastReadCountRef.current = messages.length;
         }}
-        currentUserId={getCurrentUserId()}
+        currentUserId={currentUserId}
       />
     </div>
   );

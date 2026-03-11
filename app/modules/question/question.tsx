@@ -5,7 +5,8 @@ import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
 import ProgressBar from './components/progressBar';
 import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationByUserAndFormQuery, useGetFormsByCampaignQuery } from '../../cores/api/applicationApi';
-import { useGetCurrentUserQuery } from '../../cores/api';
+import { getUserId } from '~/utils/auth';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
 import type { ApplicationAnswerItemDto } from '../../cores/api';
 
 /**
@@ -31,7 +32,8 @@ const QuestionPage: React.FC = () => {
   // - Otherwise, assume the ID in the URL is the form ID itself
   const actualFormId = campaignForms.length > 0 ? campaignForms[0].formId : idFromUrl;
 
-  const { data: currentUser, isLoading: userLoading } = useGetCurrentUserQuery();
+  const currentUserId = getUserId();
+  const { user: currentUser, isLoading: userLoading } = useCurrentUser();
   const { 
     data: questions = [], 
     isLoading: questionsLoading, 
@@ -42,8 +44,8 @@ const QuestionPage: React.FC = () => {
 
   // Check if user already applied to this form
   const { data: existingApp, isLoading: checkingApp } = useGetApplicationByUserAndFormQuery(
-    { userId: currentUser?.userId ?? '', formId: actualFormId },
-    { skip: !currentUser?.userId || !actualFormId || isNaN(actualFormId) }
+    { userId: currentUserId, formId: actualFormId },
+    { skip: !currentUserId || !actualFormId || isNaN(actualFormId) }
   );
 
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -68,7 +70,7 @@ const QuestionPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.userId) return;
+    if (!currentUserId) return;
     const answerList: ApplicationAnswerItemDto[] = Object.entries(answers)
       .filter(([, v]) => toAnswerText(v).trim() !== '')
       .map(([questionId, value]) => ({
@@ -76,7 +78,7 @@ const QuestionPage: React.FC = () => {
         answerText: toAnswerText(value).trim(),
       }));
     try {
-      await submitApplication({ formId: actualFormId, userId: currentUser.userId, answers: answerList }).unwrap();
+      await submitApplication({ formId: actualFormId, userId: currentUserId, answers: answerList }).unwrap();
     } catch (_) { /* error shown via submitError */ }
   };
 
@@ -111,7 +113,7 @@ const QuestionPage: React.FC = () => {
   }
 
   // ── Guard: must be logged in ────────────────────────────────────────────
-  if (!currentUser) {
+  if (!currentUserId) {
     return (
       <div className="min-h-screen bg-[#FDFCFB]">
         <Navbar />
@@ -239,7 +241,7 @@ const QuestionPage: React.FC = () => {
         <FormHeader
           title="Thông tin đăng ký"
           highlight="Thành viên"
-          description={`Chào ${currentUser.fullName ?? 'bạn'}! Vui lòng điền đầy đủ các thông tin bên dưới để nộp đơn ứng tuyển.`}
+          description={`Chào ${currentUser?.fullName ?? 'bạn'}! Vui lòng điền đầy đủ các thông tin bên dưới để nộp đơn ứng tuyển.`}
         />
         <ProgressBar
           current={Object.keys(answers).length}

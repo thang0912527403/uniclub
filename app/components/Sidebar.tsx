@@ -19,8 +19,6 @@ interface NavItem {
 interface SidebarProps {
   currentPath?: string;
   isOpen?: boolean;
-  isDark?: boolean;
-  onToggleSidebarTheme?: () => void;
 }
 
 // ─── Admin nav: system-wide management ────────────────────────────────────
@@ -134,20 +132,17 @@ const clubManagerNavItems: NavItem[] = [
 
 export function Sidebar({
   currentPath = '/dashboard',
-  isOpen = true,
+  isOpen = true
 }: SidebarProps) {
   const navigate = useNavigate();
   const { toggleExpand, isExpanded } = useExpandedMenu();
   const sidebarRef = useRef<HTMLElement>(null);
   const isRestoringRef = useRef(false);
 
-  // Determine role from hooks (no prop needed)
   const { isAdmin } = useCurrentUser();
   const { isClubManager } = useClubRole();
 
   const navItems = isAdmin ? adminNavItems : clubManagerNavItems;
-
-  // accent colours per role
   const accentActive = isAdmin
     ? 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 border-r-4 border-violet-400 text-white font-semibold shadow-lg'
     : 'bg-gradient-to-r from-sky-500/20 to-blue-500/20 border-r-4 border-sky-400 text-white font-semibold shadow-lg';
@@ -158,7 +153,6 @@ export function Sidebar({
     ? 'bg-gradient-to-br from-violet-500 to-purple-700'
     : 'bg-gradient-to-br from-sky-500 to-blue-700';
 
-  // Restore scroll position
   useEffect(() => {
     if (sidebarRef.current && typeof window !== 'undefined') {
       const savedScrollPosition = sessionStorage.getItem('sidebarScrollPosition');
@@ -176,7 +170,6 @@ export function Sidebar({
     }
   }, [currentPath, isOpen]);
 
-  // Save scroll position
   useEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar || typeof window === 'undefined') return;
@@ -207,7 +200,6 @@ export function Sidebar({
         }
       `}</style>
 
-      {/* Logo + role pill */}
       <div className="flex items-center gap-2 mb-2 px-2">
         <div className={`w-8 h-8 ${logoGradient} rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg`}>
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,7 +213,6 @@ export function Sidebar({
         </span>
       </div>
 
-      {/* Role badge */}
       <div className="px-2 mb-6">
         <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${logoGradient} text-white shadow`}>
           <i className={`fas ${isAdmin ? 'fa-shield-alt' : 'fa-user-tie'} text-[9px]`} />
@@ -229,7 +220,6 @@ export function Sidebar({
         </span>
       </div>
 
-      {/* Navigation */}
       <nav className="space-y-1 overflow-hidden">
         {navItems.map((item) => {
           const hasSubItems = item.subItems && item.subItems.length > 0;

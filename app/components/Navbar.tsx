@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
-import type { UserInfo } from '~/cores/api';
-import Cookies from 'js-cookie';
+import { logoutUser } from '~/utils/auth';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
 
 const Navbar: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useCurrentUser();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-    const [user, setUser] = useState<UserInfo | null>(null);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -19,44 +19,18 @@ const Navbar: React.FC = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    useEffect(() => {
-        const checkAuth = () => {
-            const userData = Cookies.get('user');
-            const accessToken = Cookies.get('accessToken');
-            
-            if (userData && accessToken) {
-                try {
-                    setUser(JSON.parse(userData));
-                } catch {
-                    setUser(null);
-                }
-            } else {
-                setUser(null);
-            }
-        };
-
-        checkAuth();
-
-        // Listen for storage changes (login/logout from other tabs)
-        window.addEventListener('storage', checkAuth);
-        return () => window.removeEventListener('storage', checkAuth);
-    }, []);
-
     const handleLogout = () => {
-        Cookies.remove('accessToken');
-        Cookies.remove('refreshToken');
-        Cookies.remove('user');
-        setUser(null);
+        logoutUser();
         setIsUserMenuOpen(false);
         navigate('/');
     };
 
     const navLinks = [
         { name: 'Trang chủ', href: '/home' },
-        { name: 'Câu lạc bộ', href: '/clubs' },
+        { name: 'Câu lạc bộ', href: '/public/clubs' },
+        {name:'Quản lý câu lạc bộ', href: '/manage-clubs'},
         { name: 'Sự kiện', href: '/public/events' },
-        { name: 'Tin tức', href: '#news' },
-        { name: 'Họp trực tuyến', href: '/meeting' },
+        { name: 'Tin tức', href: '/public/news' },
         { name: 'Về chúng tôi', href: '#about' },
     ];
 

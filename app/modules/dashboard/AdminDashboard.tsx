@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
-import { Sidebar } from '~/components/Sidebar';
-import { HeaderBar } from '~/components/HeaderBar';
-import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
+import { SettingButton } from '~/components/SettingButton';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 
 // ─── Animated Number ───────────────────────────────────────────────────────
@@ -164,9 +162,9 @@ const activities = [
 ];
 
 export default function AdminDashboard() {
-  const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+  
   const { user } = useCurrentUser();
-
+  const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const stats: StatCardProps[] = [
     { title: 'Tổng Câu lạc bộ', value: 24, change: '+2 tháng này', positive: true, gradient: 'bg-gradient-to-br from-violet-500 to-purple-700', icon: 'fa-layer-group', delay: 0, suffix: '' },
     { title: 'Thành Viên', value: 1284, change: '+18% so với tháng trước', positive: true, gradient: 'bg-gradient-to-br from-sky-500 to-blue-700', icon: 'fa-users', delay: 100, suffix: '' },
@@ -177,14 +175,8 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
       <SettingButton />
-      <Sidebar currentPath="/dashboard" isOpen={isSidebarOpen} />
-      <HeaderBar
-        title="Admin Dashboard"
-        breadcrumb="Pages / Dashboard"
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={toggleSidebar}
-      />
-
+      
+      
       <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
 
         {/* Welcome Banner */}

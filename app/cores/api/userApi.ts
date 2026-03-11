@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import type { ApiResponse, User, CreateUserDto, UpdateUserDto } from "./types";
+import type { ApiResponse, User, CreateUserDto, UpdateUserDto, Club } from "./types";
 
 export interface GetUsersResult {
   items: User[];
@@ -113,7 +113,6 @@ export const userApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ClubMembership[]>) => response.data ?? [],
       providesTags: ['User'],
     }),
-    // Upload avatar
     uploadAvatar: builder.mutation<{ avatarUrl: string }, { id: string; file: File }>({
       query: ({ id, file }) => {
         const formData = new FormData();
@@ -128,6 +127,11 @@ export const userApi = baseApi.injectEndpoints({
         response && typeof response === 'object' && 'data' in response ? response.data : (response as { avatarUrl: string }),
       invalidatesTags: ['User'],
     }),
+    getUserAllClubs: builder.query<Club[], string>({
+      query: (userId) => `/Users/${userId}/all-clubs`,
+      transformResponse: (response: ApiResponse<Club[]>) => response.data ?? [],
+      providesTags: ['User'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -140,4 +144,5 @@ export const {
   useDeleteUserMutation,
   useGetUserClubInfoQuery,
   useUploadAvatarMutation,
+  useGetUserAllClubsQuery,
 } = userApi;

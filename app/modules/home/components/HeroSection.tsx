@@ -72,7 +72,7 @@ const HeroSection: React.FC = () => {
                     <div className="relative">
                         <div className="rounded-2xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-500">
                             <img
-                                src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&q=80"
+                                src="./src/assets/images/heroimage.png"
                                 alt="Students collaborating"
                                 className="w-full h-[500px] object-cover"
                             />

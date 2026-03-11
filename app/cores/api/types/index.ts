@@ -11,3 +11,5 @@ export * from './event';
 export * from './attendance';
 export * from './clubFund';
 export * from './clubRole';
+export * from './clubRole';
+export * from './clubMember';
