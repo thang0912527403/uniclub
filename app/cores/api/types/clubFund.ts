@@ -9,8 +9,11 @@ export interface ClubFund {
   updatedAt?: string;
 }
 
+export type FundTransactionType = 'INCOME' | 'EXPENSE';
+
 export interface CreateFundRequestDto {
   fundId: number;
+  transactionType: FundTransactionType;
   amount: number;
   description: string;
   purpose?: string;
