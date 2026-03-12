@@ -106,6 +106,7 @@ export const clubApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['ClubPost'],
     }),
+    // ─── ClubFund endpoints ─────────────────────────────────────────────
     getFundById: builder.query<ClubFund, number>({
       query: (fundId) => `/ClubFund/${fundId}`,
       transformResponse: (response: ApiResponse<ClubFund>) => response.data,
@@ -117,6 +118,20 @@ export const clubApi = baseApi.injectEndpoints({
       providesTags: (result, error, clubId) => [
         { type: 'ClubFund', id: `club-${clubId}` },
       ],
+    }),
+    createFund: builder.mutation<ClubFund, { clubId: number; fundName?: string; description?: string }>({
+      query: (body) => ({
+        url: '/ClubFund',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: ApiResponse<ClubFund>) => response.data,
+      invalidatesTags: ['ClubFund'],
+    }),
+    getMyClubsForFunds: builder.query<Club[], void>({
+      query: () => '/ClubFund/my-clubs',
+      transformResponse: (response: ApiResponse<Club[]>) => response.data ?? [],
+      providesTags: ['ClubFund', 'Club'],
     }),
     createFundRequest: builder.mutation<unknown, CreateFundRequestDto>({
       query: (body) => ({
@@ -169,6 +184,8 @@ export const {
   useGetClubMembersQuery,
   useGetFundByIdQuery,
   useGetFundsByClubQuery,
+  useCreateFundMutation,
+  useGetMyClubsForFundsQuery,
   useCreateClubMutation,
   useUpdateClubMutation,
   useDeleteClubMutation,
