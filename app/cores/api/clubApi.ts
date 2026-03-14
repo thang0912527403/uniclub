@@ -5,6 +5,7 @@ import {
   type ClubPostResponseDto,
   type ClubMember,
   type ClubFund,
+  type ApproveFundDto,
   type CreateFundRequestDto,
   type ProcessFundRequestDto,
   type FundHistoryItem,
@@ -167,6 +168,16 @@ export const clubApi = baseApi.injectEndpoints({
         { type: 'ClubFund', id: fundId },
       ],
     }),
+    /** Duyệt/từ chối quỹ (chỉ Manager). POST /api/ClubFund/approve */
+    approveFund: builder.mutation<ClubFund, ApproveFundDto>({
+      query: (body) => ({
+        url: '/ClubFund/approve',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: ApiResponse<ClubFund>) => response.data,
+      invalidatesTags: ['ClubFund'],
+    }),
     updateMemberRole: builder.mutation<void, { clubId: number; memberId: number; clubRoleId: number | null }>({
       query: ({ clubId, memberId, clubRoleId }) => ({
         url: `/clubs/${clubId}/members/${memberId}/role`,
@@ -199,5 +210,6 @@ export const {
   useCreateFundRequestMutation,
   useProcessFundRequestMutation,
   useGetFundHistoryQuery,
+  useApproveFundMutation,
   useUpdateMemberRoleMutation,
 } = clubApi;

@@ -64,6 +64,8 @@ export default function EventDetailPage() {
     const [qrSuccess, setQrSuccess] = useState<string | null>(null);
     const [showQrScanner, setShowQrScanner] = useState(false);
     const qrScanCooldownRef = useRef<{ token: string; until: number } | null>(null);
+    /** Tránh request 404 (token đã dùng) ghi đè thông báo thành công khi scanner gọi onScan nhiều lần */
+    const qrSuccessLockRef = useRef(false);
 
     // evaluate state
     const [evUserId, setEvUserId] = useState('');
@@ -207,23 +209,33 @@ export default function EventDetailPage() {
             setQrSuccess(null);
             return;
         }
-        // Tránh quét trùng: sau khi điểm danh thành công, bỏ qua cùng token trong 3 giây (scanner hay gọi onScan nhiều lần)
+        // Tránh gửi nhiều request cùng token: bỏ qua nếu vừa gửi (hoặc vừa thành công) với token này trong 5 giây
         const now = Date.now();
         const cooldown = qrScanCooldownRef.current;
         if (cooldown && cooldown.token === t && now < cooldown.until) return;
 
         setQrError(null);
         setQrSuccess(null);
+        qrScanCooldownRef.current = { token: t, until: now + 5000 };
         try {
             const res = await checkInByQr({ eventId, token: t }).unwrap();
             const msg = res.memberName ? `Đã điểm danh: ${res.memberName}` : 'Điểm danh thành công.';
             setQrSuccess(msg);
             setQrError(null);
-            qrScanCooldownRef.current = { token: t, until: now + 3000 };
+            qrSuccessLockRef.current = true;
+            setTimeout(() => { qrSuccessLockRef.current = false; }, 5000);
             if (!token) setQrToken('');
             refetchAttendees();
             showNotification({ type: 'success', title: 'Điểm danh', message: msg });
         } catch (e: any) {
+            if (qrSuccessLockRef.current) {
+                showNotification({
+                    type: 'info',
+                    title: 'Điểm danh',
+                    message: 'Đã điểm danh rồi. Nếu bạn vừa quét thành công, hãy bỏ điện thoại ra.',
+                });
+                return;
+            }
             const errMsg = e?.data?.error ?? 'Mã QR không hợp lệ hoặc đã hết hạn.';
             setQrError(errMsg);
             setQrSuccess(null);

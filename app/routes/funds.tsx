@@ -4,23 +4,36 @@ import Cookies from 'js-cookie';
 import {
   useGetClubsQuery,
   useGetFundsByClubQuery,
-  useGetFundHistoryQuery,
   useCreateFundMutation,
-  useCreateFundRequestMutation,
-  useProcessFundRequestMutation,
+  useApproveFundMutation,
   useGetMyClubsForFundsQuery,
 } from '~/cores/api';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
+import { useNotification } from '~/components/Notification';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useClubRole } from '~/hooks/useClubRole';
-import type { FundHistoryItem } from '~/cores/api';
+import type { ClubFund } from '~/cores/api';
+
+function fundStatusLabel(f: ClubFund): string {
+  const s = String(f.status ?? '').toUpperCase();
+  if (s === 'PENDING') return 'Chờ duyệt';
+  if (s === 'APPROVED') return 'Đã duyệt';
+  if (s === 'REJECTED') return 'Từ chối';
+  return '—';
+}
+
+/** Quỹ đang chờ duyệt (so sánh không phân biệt hoa thường) */
+function isPendingFund(f: ClubFund): boolean {
+  return String(f.status ?? '').toUpperCase() === 'PENDING';
+}
 
 export default function FundsPage() {
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const { isAdmin, clubManagerMembership } = useClubRole();
+  const { isAdmin, clubManagerMembership, canApproveFund } = useClubRole();
+  const { show: showNotification } = useNotification();
 
   const hasToken = !!Cookies.get('accessToken');
   const { data: clubs = [] } = useGetClubsQuery(undefined, { skip: !hasToken || !isAdmin });
@@ -38,31 +51,11 @@ export default function FundsPage() {
     ? clubs.length > 0
     : effectiveClubId > 0 || myClubsFromApi.length > 0;
 
-  const [fundId, setFundId] = useState<number>(0);
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [processTarget, setProcessTarget] = useState<FundHistoryItem | null>(null);
-  const [processApproved, setProcessApproved] = useState(true);
-  const [processNote, setProcessNote] = useState('');
-
-  // Create fund form state
   const [showCreateFundForm, setShowCreateFundForm] = useState(false);
   const [newFundName, setNewFundName] = useState('');
   const [newFundDescription, setNewFundDescription] = useState('');
 
-  // Create request form state
-  const [createAmount, setCreateAmount] = useState('');
-  const [createDescription, setCreateDescription] = useState('');
-  const [createPurpose, setCreatePurpose] = useState('');
-  const [createTransactionType, setCreateTransactionType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
-
   const { data: funds = [] } = useGetFundsByClubQuery(clubId, { skip: !hasToken || clubId < 1 });
-  const { data: history = [], isLoading, error } = useGetFundHistoryQuery(
-    { fundId, status: statusFilter || undefined },
-    { skip: !hasToken || !fundId || fundId < 1 }
-  );
-  const isUnauthorized = error && 'status' in error && error.status === 401;
-
   const availableFunds = funds;
 
   useEffect(() => {
@@ -75,13 +68,10 @@ export default function FundsPage() {
   useEffect(() => {
     if (isAdmin && clubs.length > 0 && selectedClubId === 0) setSelectedClubId(clubs[0].clubId);
   }, [isAdmin, clubs, selectedClubId]);
-  useEffect(() => {
-    if (availableFunds.length > 0 && fundId === 0) setFundId(availableFunds[0].fundId);
-  }, [availableFunds, fundId]);
+  // Không tự chọn quỹ: user bấm vào quỹ trong danh sách mới xem chi tiết
 
-  const [createRequest, { isLoading: isCreating }] = useCreateFundRequestMutation();
-  const [processRequest, { isLoading: isProcessing }] = useProcessFundRequestMutation();
   const [createFund, { isLoading: isCreatingFund }] = useCreateFundMutation();
+  const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
 
   const bgClass = isDark ? 'bg-[#0f1729]' : 'bg-slate-50';
   const cardClass = isDark ? 'bg-[#151827]' : 'bg-white';
@@ -102,46 +92,11 @@ export default function FundsPage() {
       setShowCreateFundForm(false);
       setNewFundName('');
       setNewFundDescription('');
-    } catch (err) {
+      showNotification({ type: 'success', title: 'Đã tạo quỹ', message: 'Quỹ đã được tạo. Nếu bạn là Vice Manager, quỹ sẽ chờ Manager duyệt.' });
+    } catch (err: unknown) {
       console.error('Create fund failed:', err);
-    }
-  };
-
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const amount = parseFloat(createAmount);
-    if (!fundId || isNaN(amount) || amount <= 0 || !createDescription.trim()) return;
-    try {
-      await createRequest({
-        fundId,
-        transactionType: createTransactionType,
-        amount,
-        description: createDescription.trim(),
-        purpose: createPurpose.trim() || undefined,
-      }).unwrap();
-      setShowCreateForm(false);
-      setCreateAmount('');
-      setCreateDescription('');
-      setCreatePurpose('');
-      setCreateTransactionType('EXPENSE');
-    } catch (err) {
-      console.error('Create fund request failed:', err);
-    }
-  };
-
-  const handleProcessSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!processTarget) return;
-    try {
-      await processRequest({
-        requestId: processTarget.id,
-        approved: processApproved,
-        note: processNote.trim() || undefined,
-      }).unwrap();
-      setProcessTarget(null);
-      setProcessNote('');
-    } catch (err) {
-      console.error('Process fund request failed:', err);
+      const msg = (err as { data?: { message?: string } })?.data?.message ?? (err as Error)?.message ?? 'Không thể tạo quỹ.';
+      showNotification({ type: 'error', title: 'Lỗi tạo quỹ', message: String(msg) });
     }
   };
 
@@ -268,7 +223,7 @@ export default function FundsPage() {
             </div>
           </div>
 
-          <div className={`${cardClass} border border-slate-200/70 dark:border-slate-700/70 rounded-2xl shadow-sm px-4 py-4 md:px-6 md:py-4 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4`}>
+          <div className={`${cardClass} border border-slate-200/70 dark:border-slate-700/70 rounded-2xl shadow-sm px-4 py-4 md:px-6 flex flex-wrap items-center justify-between gap-4`}>
             <div className="flex flex-wrap items-center gap-3">
               {isAdmin && (
                 <div className="flex flex-col gap-1 min-w-[220px]">
@@ -277,10 +232,7 @@ export default function FundsPage() {
                   </span>
                   <select
                     value={clubId}
-                    onChange={(e) => {
-                      setSelectedClubId(Number(e.target.value));
-                      setFundId(0);
-                    }}
+                    onChange={(e) => setSelectedClubId(Number(e.target.value))}
                     className={`px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/70 ${inputClass}`}
                   >
                     <option value={0}>-- Chọn CLB --</option>
@@ -292,232 +244,18 @@ export default function FundsPage() {
                   </select>
                 </div>
               )}
-              <div className="flex flex-col gap-1 min-w-[200px]">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Quỹ
-                </span>
-                <select
-                  value={fundId}
-                  onChange={(e) => setFundId(Number(e.target.value))}
-                  className={`px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/70 ${inputClass}`}
-                  disabled={!clubId || availableFunds.length === 0}
-                >
-                  <option value={0}>-- Chọn quỹ --</option>
-                  {availableFunds.map((f) => (
-                    <option key={f.fundId} value={f.fundId}>
-                      {f.fundName || `Quỹ #${f.fundId}`} (ID: {f.fundId})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1 min-w-[160px]">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Trạng thái
-                </span>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className={`px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/70 ${inputClass}`}
-                >
-                  <option value="">Tất cả</option>
-                  <option value="Pending">Đang chờ</option>
-                  <option value="Approved">Đã duyệt</option>
-                  <option value="Rejected">Từ chối</option>
-                </select>
-              </div>
             </div>
-
-            <div className="flex flex-wrap items-center gap-3 justify-end">
+            {clubId > 0 && (
               <button
-                onClick={() => setShowCreateForm(true)}
+                onClick={() => setShowCreateFundForm(true)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-500 text-white rounded-xl hover:from-sky-600 hover:to-indigo-600 transition-colors text-sm font-semibold shadow-md cursor-pointer"
               >
                 <i className="fas fa-plus" />
-                Tạo yêu cầu quỹ
+                Tạo quỹ mới
               </button>
-            </div>
+            )}
           </div>
         </div>
-
-        {showCreateForm && (
-          <div className={`${cardClass} border border-slate-200/70 dark:border-slate-700/70 rounded-2xl shadow-sm p-5`}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className={`text-lg font-semibold ${textClass}`}>
-                  Tạo yêu cầu quỹ
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Gửi yêu cầu thu/chi cho quỹ đang chọn. Ban quản lý sẽ xem xét và duyệt.
-                </p>
-              </div>
-              <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-500">
-                <i className="fas fa-file-invoice-dollar" />
-              </div>
-            </div>
-            <form onSubmit={handleCreateSubmit} className="space-y-4 max-w-xl">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-1">
-                  <label className={`block text-xs font-semibold mb-1.5 uppercase tracking-wide ${textClass}`}>
-                    Số tiền
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-3 flex items-center text-xs text-slate-400">VND</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={createAmount}
-                      onChange={(e) => setCreateAmount(e.target.value)}
-                      className={`w-full pl-11 pr-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/70 ${inputClass}`}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="md:col-span-1">
-                  <label className={`block text-xs font-semibold mb-1.5 uppercase tracking-wide ${textClass}`}>
-                    Loại giao dịch
-                  </label>
-                  <select
-                    value={createTransactionType}
-                    onChange={(e) =>
-                      setCreateTransactionType(e.target.value === 'INCOME' ? 'INCOME' : 'EXPENSE')
-                    }
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/70 ${inputClass}`}
-                  >
-                    <option value="INCOME">Thu (INCOME)</option>
-                    <option value="EXPENSE">Chi (EXPENSE)</option>
-                  </select>
-                </div>
-                <div className="md:col-span-1">
-                  <label className={`block text-xs font-semibold mb-1.5 uppercase tracking-wide ${textClass}`}>
-                    Nội dung
-                  </label>
-                  <input
-                    type="text"
-                    value={createDescription}
-                    onChange={(e) => setCreateDescription(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/70 ${inputClass}`}
-                    placeholder="VD: Thu tiền áo CLB"
-                    required
-                  />
-                </div>
-                <div className="md:col-span-1">
-                  <label className={`block text-xs font-semibold mb-1.5 uppercase tracking-wide ${textClass}`}>
-                    Mục đích (tuỳ chọn)
-                  </label>
-                  <input
-                    type="text"
-                    value={createPurpose}
-                    onChange={(e) => setCreatePurpose(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/70 ${inputClass}`}
-                    placeholder="Chi tiết mục đích sử dụng"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                <button
-                  type="submit"
-                  disabled={isCreating}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-500 text-white rounded-xl hover:from-sky-600 hover:to-indigo-600 disabled:opacity-60 text-sm font-semibold cursor-pointer"
-                >
-                  {isCreating && <i className="fas fa-spinner fa-spin text-xs" />}
-                  {isCreating ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-medium border ${isDark ? 'bg-slate-800/80 border-slate-700 text-slate-100 hover:bg-slate-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'}`}
-                >
-                  Hủy
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {processTarget && (
-          <div className="fixed inset-0 bg-black/55 flex items-center justify-center z-50 p-4">
-            <div className={`${cardClass} rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800/80 max-w-md w-full overflow-hidden`}>
-              <div className="px-6 pt-5 pb-3 flex items-center justify-between border-b border-slate-200/70 dark:border-slate-700/70 bg-gradient-to-r from-emerald-500/10 to-sky-500/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-500">
-                    <i className="fas fa-check-double" />
-                  </div>
-                  <div>
-                    <h2 className={`text-lg font-semibold ${textClass}`}>
-                      Xử lý yêu cầu #{processTarget.id}
-                    </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Xem xét và duyệt hoặc từ chối yêu cầu rút/thu quỹ này.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProcessTarget(null);
-                    setProcessNote('');
-                  }}
-                  className="cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                >
-                  <i className="fas fa-times" />
-                </button>
-              </div>
-              <form onSubmit={handleProcessSubmit} className="px-6 py-4 space-y-4">
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={processApproved}
-                      onChange={() => setProcessApproved(true)}
-                    />
-                    <span className={textClass}>Duyệt yêu cầu</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={!processApproved}
-                      onChange={() => setProcessApproved(false)}
-                    />
-                    <span className={textClass}>Từ chối</span>
-                  </label>
-                </div>
-                <div>
-                  <label className={`block text-xs font-semibold mb-1.5 uppercase tracking-wide ${textClass}`}>
-                    Ghi chú (tuỳ chọn)
-                  </label>
-                  <textarea
-                    value={processNote}
-                    onChange={(e) => setProcessNote(e.target.value)}
-                    rows={3}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 ${inputClass}`}
-                    placeholder="Lý do duyệt / từ chối, ghi chú cho người tạo yêu cầu..."
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={isProcessing}
-                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white ${processApproved ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'} disabled:opacity-60 cursor-pointer`}
-                  >
-                    {isProcessing && <i className="fas fa-spinner fa-spin text-xs" />}
-                    {isProcessing ? 'Đang xử lý...' : processApproved ? 'Duyệt yêu cầu' : 'Từ chối yêu cầu'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProcessTarget(null);
-                      setProcessNote('');
-                    }}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-medium border ${isDark ? 'bg-slate-800/80 border-slate-700 text-slate-100 hover:bg-slate-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'}`}
-                  >
-                    Đóng
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         <div className={`${cardClass} rounded-2xl shadow-sm border border-slate-200/70 dark:border-slate-700/70 overflow-hidden`}>
           {!hasToken ? (
@@ -541,35 +279,6 @@ export default function FundsPage() {
               <div className="animate-pulse h-8 bg-gray-300 dark:bg-slate-600 rounded w-1/3 mx-auto mb-4" />
               <p className={`text-sm ${textClass}`}>Đang tải danh sách câu lạc bộ...</p>
             </div>
-          ) : isLoading ? (
-            <div className="p-8 text-center">
-              <div className="animate-pulse h-8 bg-gray-300 dark:bg-slate-600 rounded w-1/3 mx-auto mb-4" />
-              <div className="animate-pulse h-4 bg-gray-300 dark:bg-slate-600 rounded w-2/3 mx-auto" />
-            </div>
-          ) : isUnauthorized ? (
-            <div className="p-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
-              <h3 className="text-amber-800 dark:text-amber-200 font-semibold">
-                Session expired or not logged in
-              </h3>
-              <p className="text-amber-700 dark:text-amber-300 text-sm mt-2 mb-4">
-                Please log in again to view fund history.
-              </p>
-              <Link
-                to="/auth/login"
-                className="inline-block px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors text-sm"
-              >
-                Log in again
-              </Link>
-            </div>
-          ) : error ? (
-            <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
-              <h3 className="text-red-800 dark:text-red-200 font-semibold">
-                Error loading fund history
-              </h3>
-              <p className="text-red-600 dark:text-red-300 text-sm mt-2">
-                {((error as any)?.status ? `Error ${(error as any).status}` : 'Request failed')}
-              </p>
-            </div>
           ) : !isAdmin && !isLoadingMyClubs && !hasAnyClub ? (
             <div className="p-12 text-center">
               <i className="fas fa-users text-6xl text-gray-400 mb-4" />
@@ -577,103 +286,129 @@ export default function FundsPage() {
                 Bạn chưa được gán vào câu lạc bộ nào. Liên hệ quản trị viên để được cấp quyền.
               </p>
             </div>
-          ) : !fundId || availableFunds.length === 0 ? (
+          ) : !clubId ? (
+            <div className="p-12 text-center">
+              <p className={`text-gray-500 ${textClass}`}>Chọn câu lạc bộ để xem danh sách quỹ.</p>
+            </div>
+          ) : availableFunds.length === 0 ? (
             <div className="px-6 py-10 flex items-center justify-center">
               <div className="max-w-md w-full text-center">
                 <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-lg mb-5">
                   <i className="fas fa-wallet text-2xl" />
                 </div>
-                <p className={`text-base ${textClass} font-semibold mb-2`}>
-                  {clubId ? 'Câu lạc bộ này chưa có quỹ nào.' : 'Chọn câu lạc bộ để xem quỹ.'}
-                </p>
+                <p className={`text-base ${textClass} font-semibold mb-2`}>Câu lạc bộ này chưa có quỹ nào.</p>
                 <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
-                  Quỹ giúp theo dõi thu chi minh bạch cho từng câu lạc bộ. Hãy tạo quỹ đầu tiên để bắt đầu quản lý tài chính.
+                  Tạo quỹ đầu tiên để bắt đầu quản lý tài chính.
                 </p>
-                {clubId > 0 && (
-                  <button
-                    onClick={() => setShowCreateFundForm(true)}
-                    className="mt-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-semibold shadow-md hover:from-sky-600 hover:to-indigo-600 cursor-pointer"
-                  >
-                    <i className="fas fa-plus" />
-                    Tạo quỹ mới
-                  </button>
-                )}
+                <button
+                  onClick={() => setShowCreateFundForm(true)}
+                  className="mt-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-semibold shadow-md hover:from-sky-600 hover:to-indigo-600 cursor-pointer"
+                >
+                  <i className="fas fa-plus" />
+                  Tạo quỹ mới
+                </button>
               </div>
             </div>
-          ) : history.length === 0 ? (
-            <div className="p-12 text-center">
-              <i className="fas fa-history text-6xl text-gray-400 mb-4" />
-              <p className={`text-gray-500 ${textClass}`}>
-                Chưa có lịch sử giao dịch. Tạo yêu cầu mới hoặc chọn quỹ khác.
-              </p>
-            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className={isDark ? 'bg-slate-700' : 'bg-gray-100'}>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-slate-200">
-                      ID
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-slate-200">
-                      Amount
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-slate-200">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-slate-200">
-                      Description
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-slate-200">
-                      Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-slate-200">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map((item) => (
-                    <tr
-                      key={item.id}
-                      className={`border-t ${isDark ? 'border-slate-600' : 'border-gray-200'}`}
-                    >
-                      <td className="px-4 py-3 text-sm">{item.id}</td>
-                      <td className="px-4 py-3 text-sm">{item.amount}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            item.status === 'Approved'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
-                              : item.status === 'Rejected'
-                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
-                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200'
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">{item.description ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm">
-                        {item.createdAt
-                          ? new Date(item.createdAt).toLocaleDateString()
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        {item.status === 'Pending' && (
-                          <button
-                            onClick={() => setProcessTarget(item)}
-                            className="text-blue-500 hover:text-blue-600 text-sm font-medium"
-                          >
-                            Process
-                          </button>
-                        )}
-                      </td>
+            <>
+              {/* Bảng danh sách quỹ */}
+              <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between">
+                <h2 className={`text-base font-semibold ${textClass}`}>Danh sách quỹ</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className={isDark ? 'bg-slate-700/80' : 'bg-gray-100'}>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-slate-200">Tên quỹ</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-slate-200">Trạng thái</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-slate-200">Số dư</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-slate-200">Thao tác</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {availableFunds.map((f) => (
+                      <tr
+                        key={f.fundId}
+                        className={`border-t ${isDark ? 'border-slate-600' : 'border-gray-200'} ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'}`}
+                      >
+                        <td className="px-4 py-3">
+                          <Link
+                            to={`/funds/${f.fundId}`}
+                            className={`font-medium ${textClass} hover:text-sky-600 dark:hover:text-sky-400`}
+                          >
+                            {f.fundName || `Quỹ #${f.fundId}`}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              String(f.status ?? '').toUpperCase() === 'APPROVED'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
+                                : String(f.status ?? '').toUpperCase() === 'REJECTED'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
+                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+                            }`}
+                          >
+                            {fundStatusLabel(f)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                          {typeof f.balance === 'number' ? `${f.balance.toLocaleString('vi-VN')} ₫` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {isPendingFund(f) && canApproveFund && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={isApprovingFund}
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                      await approveFund({ fundId: f.fundId, action: 'APPROVE' }).unwrap();
+                                      showNotification({ type: 'success', title: 'Đã duyệt quỹ', message: `${f.fundName || `Quỹ #${f.fundId}`} đã được duyệt.` });
+                                    } catch (err) {
+                                      console.error(err);
+                                      showNotification({ type: 'error', title: 'Lỗi', message: 'Không thể duyệt quỹ.' });
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 cursor-pointer"
+                                >
+                                  Duyệt
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isApprovingFund}
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                      await approveFund({ fundId: f.fundId, action: 'REJECT' }).unwrap();
+                                      showNotification({ type: 'success', title: 'Đã từ chối quỹ', message: `${f.fundName || `Quỹ #${f.fundId}`} đã bị từ chối.` });
+                                    } catch (err) {
+                                      console.error(err);
+                                      showNotification({ type: 'error', title: 'Lỗi', message: 'Không thể từ chối quỹ.' });
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/90 text-white hover:bg-red-600 disabled:opacity-50 cursor-pointer"
+                                >
+                                  Từ chối
+                                </button>
+                              </>
+                            )}
+                            <Link
+                              to={`/funds/${f.fundId}`}
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-500 text-white hover:bg-sky-600 inline-block"
+                            >
+                              Xem chi tiết
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </main>

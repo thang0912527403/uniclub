@@ -50,6 +50,7 @@ export default [
     route("events/:id/edit", "routes/events.$id.edit.tsx"),
 
     route("funds", "routes/funds.tsx"),
+    route("funds/:fundId", "routes/funds.$fundId.tsx"),
     route("funds/transactions", "routes/funds.transactions.tsx"),
     route("funds/reports", "routes/funds.reports.tsx"),
     route("funds/settings", "routes/funds.settings.tsx"),
