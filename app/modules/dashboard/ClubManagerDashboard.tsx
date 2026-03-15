@@ -160,7 +160,7 @@ export default function ClubManagerDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
       <SettingButton />
-      <Sidebar currentPath="/dashboard" isOpen={isOpen} />
+      <Sidebar currentPath="/dashboard" isOpen={isOpen} onClose={toggle} />
       <HeaderBar
         title={club?.clubName ? club.clubName : 'Quản lý Câu lạc bộ'}
         breadcrumb="Trang chủ / Dashboard"
@@ -168,7 +168,7 @@ export default function ClubManagerDashboard() {
         onToggleSidebar={toggle}
       />
 
-      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isOpen ? 'ml-64' : 'ml-0'}`}>
+      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isOpen ? 'md:ml-64' : 'ml-0'}`}>
 
         {/* Hero */}
         <div className="relative rounded-3xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 p-6 mb-8 overflow-hidden shadow-2xl">

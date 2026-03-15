@@ -102,7 +102,7 @@ export default function FundsPage() {
 
   return (
     <div className="min-h-screen">
-      <Sidebar currentPath="/funds" isOpen={isSidebarOpen} />
+      <Sidebar currentPath="/funds" isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
         title="Quản lý quỹ câu lạc bộ"
         breadcrumb="Tài chính / Quản lý quỹ"
@@ -112,7 +112,7 @@ export default function FundsPage() {
 
       <main
         className={`pt-24 pb-10 px-4 md:px-8 ${bgClass} transition-all duration-300 min-h-screen ${
-          isSidebarOpen ? 'ml-64' : 'ml-0'
+          isSidebarOpen ? 'md:ml-64' : 'ml-0'
         }`}
       >
         <div className="max-w-6xl mx-auto space-y-6">

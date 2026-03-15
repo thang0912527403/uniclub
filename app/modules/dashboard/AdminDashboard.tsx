@@ -177,7 +177,7 @@ export default function AdminDashboard() {
       <SettingButton />
       
       
-      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
 
         {/* Welcome Banner */}
         <div className="relative rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 p-6 mb-8 overflow-hidden shadow-xl">

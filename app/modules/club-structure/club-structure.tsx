@@ -170,7 +170,8 @@ function ListView({ roles, actionProps }: { roles: ClubRole[]; actionProps: Omit
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-      <table className="w-full">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px]">
         <thead>
           <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
             <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">#</th>
@@ -242,6 +243,7 @@ function ListView({ roles, actionProps }: { roles: ClubRole[]; actionProps: Omit
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -452,7 +454,7 @@ export default function ClubStructureModule() {
   return (
     <div className="min-h-screen">
       <SettingButton />
-      <Sidebar currentPath={`/clubs/${id}/structure`} isOpen={isSidebarOpen} />
+      <Sidebar currentPath={`/clubs/${id}/structure`} isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
         title="Cấu trúc Câu lạc bộ"
         breadcrumb={`Pages / Clubs / ${id} / Structure`}
@@ -460,7 +462,7 @@ export default function ClubStructureModule() {
         onToggleSidebar={toggleSidebar}
       />
 
-      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
         {/* Top bar: Back + Add + View Toggle */}
         <div className="flex items-center justify-between mb-8">
           <button onClick={() => navigate(`/clubs/${id}`)}

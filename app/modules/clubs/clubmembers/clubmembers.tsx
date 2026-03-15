@@ -189,7 +189,7 @@ export default function ClubMembersModule() {
     return (
         <div className="min-h-screen">
             <SettingButton />
-            <Sidebar currentPath="/clubs" isOpen={isSidebarOpen} />
+            <Sidebar currentPath="/clubs" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Thành viên Câu lạc bộ"
                 breadcrumb={`Pages / Clubs / ${club?.clubName ?? clubId} / Members`}
@@ -197,7 +197,7 @@ export default function ClubMembersModule() {
                 onToggleSidebar={toggleSidebar}
             />
 
-            <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+            <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                 {/* Page header */}
                 <div className="flex items-center justify-between mb-6">
                     <div>

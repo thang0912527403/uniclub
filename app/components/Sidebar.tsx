@@ -19,6 +19,9 @@ interface NavItem {
 interface SidebarProps {
   currentPath?: string;
   isOpen?: boolean;
+  onClose?: () => void;
+  isDark?: boolean;
+  onToggleSidebarTheme?: () => void;
 }
 
 // ─── Admin nav: system-wide management ────────────────────────────────────
@@ -132,7 +135,8 @@ const clubManagerNavItems: NavItem[] = [
 
 export function Sidebar({
   currentPath = '/dashboard',
-  isOpen = true
+  isOpen = true,
+  onClose,
 }: SidebarProps) {
   const navigate = useNavigate();
   const { toggleExpand, isExpanded } = useExpandedMenu();
@@ -185,11 +189,22 @@ export function Sidebar({
   }, []);
 
   return (
-    <aside
-      ref={sidebarRef}
-      className={`w-64 min-w-[256px] max-w-[256px] h-screen fixed left-0 top-0 p-4 bg-slate-800 transition-all duration-300 overflow-y-auto overflow-x-hidden scrollbar-hide ${isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-    >
+    <>
+      {isOpen && onClose && (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Đóng menu"
+          onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden transition-opacity"
+        />
+      )}
+      <aside
+        ref={sidebarRef}
+        className={`w-64 min-w-[256px] max-w-[256px] h-screen fixed left-0 top-0 z-50 p-4 bg-slate-800 transition-all duration-300 overflow-y-auto overflow-x-hidden scrollbar-hide ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+      >
       <style>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
@@ -246,7 +261,12 @@ export function Sidebar({
                 </button>
               ) : (
                 <button
-                  onClick={() => item.url && navigate(item.url)}
+                  onClick={() => {
+                    if (item.url) {
+                      onClose?.();
+                      navigate(item.url);
+                    }
+                  }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer ${isActive
                     ? accentActive
                     : 'text-white/70 hover:bg-white/5'
@@ -264,7 +284,10 @@ export function Sidebar({
                     return (
                       <button
                         key={subItem.url}
-                        onClick={() => navigate(subItem.url)}
+                        onClick={() => {
+                          onClose?.();
+                          navigate(subItem.url);
+                        }}
                         className={`w-full flex items-center gap-3 px-2 py-2 rounded-md transition-all text-sm cursor-pointer ${isSubActive
                           ? accentSubActive
                           : 'text-white/80 hover:bg-slate-700 hover:text-white'
@@ -282,5 +305,6 @@ export function Sidebar({
         })}
       </nav>
     </aside>
+    </>
   );
 }

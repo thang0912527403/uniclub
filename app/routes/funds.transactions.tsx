@@ -16,6 +16,7 @@ export default function FundsTransactionsPage() {
       <Sidebar
         currentPath="/funds/transactions"
         isOpen={isSidebarOpen}
+        onClose={toggleSidebar}
       />
       <HeaderBar
         title="Transactions"
@@ -25,7 +26,7 @@ export default function FundsTransactionsPage() {
       />
       <main
         className={`pt-24 p-6 ${bgClass} transition-all duration-300 min-h-screen ${
-          isSidebarOpen ? 'ml-64' : 'ml-0'
+          isSidebarOpen ? 'md:ml-64' : 'ml-0'
         }`}
       >
         <div className={`${cardClass} rounded-lg shadow-md p-12 text-center`}>

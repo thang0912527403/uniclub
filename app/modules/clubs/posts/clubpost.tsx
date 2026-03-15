@@ -262,7 +262,7 @@ export default function ClubPostModule() {
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-gray-900">
             <SettingButton />
-            <Sidebar currentPath="/club-posts" isOpen={isSidebarOpen} />
+            <Sidebar currentPath="/club-posts" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Quản lý Bảng tin"
                 breadcrumb="Pages / Club Management / Posts"
@@ -274,7 +274,7 @@ export default function ClubPostModule() {
                 <CreatePostModal onClose={() => setShowModal(false)} clubId={clubId} userId={userId} />
             )}
 
-            <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+            <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
 
                 {/* ── Stats Row ── */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

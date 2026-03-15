@@ -57,6 +57,7 @@ export default function CreateEventPage() {
                 currentPath="/events/create"
                 onToggleSidebarTheme={() => setIsSidebarDark(!isSidebarDark)}
                 isOpen={isSidebarOpen}
+                onClose={toggleSidebar}
             />
 
             <HeaderBar
@@ -67,7 +68,7 @@ export default function CreateEventPage() {
                 onToggleSidebar={toggleSidebar}
             />
 
-            <main className={`pt-24 p-6 ${bgClass} transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'
+            <main className={`pt-24 p-6 ${bgClass} transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'
                 }`}>
                 <div className="max-w-4xl mx-auto">
                     <div className="flex items-center gap-3 mb-6">

@@ -42,7 +42,7 @@ export default function ApplicationsPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <SettingButton />
-      <Sidebar currentPath="/applications" isOpen={isSidebarOpen} />
+      <Sidebar currentPath="/applications" isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
         title="Duyệt đơn ứng tuyển"
         breadcrumb="Tuyển sinh / Đơn ứng tuyển"
@@ -51,7 +51,7 @@ export default function ApplicationsPage() {
       />
       <main
         className={`pt-24 p-6 transition-all duration-300 min-h-screen ${
-          isSidebarOpen ? 'ml-64' : 'ml-0'
+          isSidebarOpen ? 'md:ml-64' : 'ml-0'
         }`}
       >
         {isLoading && <Loading message="Đang tải đơn ứng tuyển..." />}

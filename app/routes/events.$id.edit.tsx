@@ -46,9 +46,9 @@ export default function EditEventPage() {
     if (isLoadingEvent) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
                 <HeaderBar title="Edit Event" isSidebarOpen={isSidebarOpen} />
-                <main className={`pt-24 p-6 ${bgClass} min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+                <main className={`pt-24 p-6 ${bgClass} min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                     <div className="animate-pulse space-y-4 max-w-4xl mx-auto">
                         <div className="h-12 bg-gray-300 rounded"></div>
                         <div className="h-64 bg-gray-300 rounded"></div>
@@ -61,9 +61,9 @@ export default function EditEventPage() {
     if (!event) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
                 <HeaderBar title="Edit Event" isSidebarOpen={isSidebarOpen} />
-                <main className={`pt-24 p-6 ${bgClass} min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+                <main className={`pt-24 p-6 ${bgClass} min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                     <div className="bg-red-50 border border-red-200 rounded p-4">
                         <h3 className="text-red-800 font-semibold">Event not found</h3>
                     </div>
@@ -84,6 +84,7 @@ export default function EditEventPage() {
             <Sidebar
                 currentPath="/events"
                 isOpen={isSidebarOpen}
+                onClose={toggleSidebar}
             />
 
             <HeaderBar
@@ -93,7 +94,7 @@ export default function EditEventPage() {
                 onToggleSidebar={toggleSidebar}
             />
 
-            <main className={`pt-24 p-6 ${bgClass} transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'
+            <main className={`pt-24 p-6 ${bgClass} transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'
                 }`}>
                 <div className="max-w-4xl mx-auto">
                     <div className="flex items-center gap-3 mb-6">

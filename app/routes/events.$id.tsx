@@ -304,9 +304,9 @@ export default function EventDetailPage() {
     if (isLoading) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
-                <HeaderBar title="Chi tiết sự kiện" isSidebarOpen={isSidebarOpen} />
-                <main className={`pt-24 p-6 ${bg} min-h-screen`}>
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+                <HeaderBar title="Chi tiết sự kiện" isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />
+                <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                     <div className="animate-pulse max-w-5xl mx-auto space-y-4">
                         <div className="h-56 bg-gray-300 rounded-xl" />
                         <div className="h-32 bg-gray-200 rounded-xl" />
@@ -319,9 +319,9 @@ export default function EventDetailPage() {
     if (error || !event) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
-                <HeaderBar title="Chi tiết sự kiện" isSidebarOpen={isSidebarOpen} />
-                <main className={`pt-24 p-6 ${bg} min-h-screen`}>
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+                <HeaderBar title="Chi tiết sự kiện" isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />
+                <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-xl mx-auto">
                         <p className="text-red-700 font-medium">Không tìm thấy sự kiện.</p>
                     </div>
@@ -344,7 +344,7 @@ export default function EventDetailPage() {
                 onThemeToggle={toggleTheme}
                 position="bottom-right"
             />
-            <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+            <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Chi tiết sự kiện"
                 breadcrumb={`Events / ${event.eventName}`}
@@ -352,7 +352,7 @@ export default function EventDetailPage() {
                 onToggleSidebar={toggleSidebar}
             />
 
-            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                 <div className="max-w-5xl mx-auto space-y-5">
                     {/* back */}
                     <button onClick={() => navigate('/events')}

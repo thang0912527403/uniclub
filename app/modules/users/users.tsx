@@ -271,7 +271,7 @@ function UserFormModal({
               </select>
             </div>
           )}
-          <div className="flex gap-3 justify-end pt-4">
+          <div className="flex flex-wrap gap-3 justify-end pt-4">
             <button
               type="button"
               onClick={onClose}
@@ -410,7 +410,7 @@ export default function UsersModule() {
     <div className="min-h-screen">
       <SettingButton />
 
-      <Sidebar currentPath="/users" isOpen={isSidebarOpen} />
+      <Sidebar currentPath="/users" isOpen={isSidebarOpen} onClose={toggleSidebar} />
 
       <HeaderBar
         title="Quản lý Người dùng"
@@ -421,7 +421,7 @@ export default function UsersModule() {
 
       <main
         className={`pt-24 p-6 transition-all duration-300 min-h-screen ${
-          isSidebarOpen ? 'ml-64' : 'ml-0'
+          isSidebarOpen ? 'md:ml-64' : 'ml-0'
         } bg-gradient-to-b from-violet-50 via-white to-violet-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950`}
       >
         {isLoading && <Loading message="Đang tải danh sách người dùng..." />}
