@@ -262,10 +262,7 @@ export function Sidebar({
               ) : (
                 <button
                   onClick={() => {
-                    if (item.url) {
-                      onClose?.();
-                      navigate(item.url);
-                    }
+                    if (item.url) navigate(item.url);
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer ${isActive
                     ? accentActive
@@ -284,10 +281,7 @@ export function Sidebar({
                     return (
                       <button
                         key={subItem.url}
-                        onClick={() => {
-                          onClose?.();
-                          navigate(subItem.url);
-                        }}
+                        onClick={() => navigate(subItem.url)}
                         className={`w-full flex items-center gap-3 px-2 py-2 rounded-md transition-all text-sm cursor-pointer ${isSubActive
                           ? accentSubActive
                           : 'text-white/80 hover:bg-slate-700 hover:text-white'

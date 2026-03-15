@@ -24,7 +24,7 @@ export default function DashboardModule() {
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />
-   <AdminDashboard />;
+   <AdminDashboard isSidebarOpen={isSidebarOpen} />;
 
    </div>);
    

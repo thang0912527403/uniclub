@@ -161,10 +161,14 @@ const activities = [
   { icon: 'fa-check-circle', color: 'bg-pink-500', title: 'Ứng viên đã được chấp nhận', subtitle: '2 giờ trước' },
 ];
 
-export default function AdminDashboard() {
-  
+interface AdminDashboardProps {
+  isSidebarOpen?: boolean;
+}
+
+export default function AdminDashboard({ isSidebarOpen: isSidebarOpenProp }: AdminDashboardProps = {}) {
   const { user } = useCurrentUser();
-  const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+  const { isOpen: isSidebarOpenFromHook } = useSidebarToggle();
+  const isSidebarOpen = isSidebarOpenProp ?? isSidebarOpenFromHook;
   const stats: StatCardProps[] = [
     { title: 'Tổng Câu lạc bộ', value: 24, change: '+2 tháng này', positive: true, gradient: 'bg-gradient-to-br from-violet-500 to-purple-700', icon: 'fa-layer-group', delay: 0, suffix: '' },
     { title: 'Thành Viên', value: 1284, change: '+18% so với tháng trước', positive: true, gradient: 'bg-gradient-to-br from-sky-500 to-blue-700', icon: 'fa-users', delay: 100, suffix: '' },
