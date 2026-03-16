@@ -142,7 +142,7 @@ const CreateClubRequestPage: React.FC = () => {
                 </div>
 
                 {/* Thông tin thêm bên dưới card */}
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-orange-50 dark:bg-orange-500/5 p-4 rounded-2xl flex items-start gap-3">
                         <i className="fa-solid fa-circle-info text-orange-500 mt-1" />
                         <p className="text-xs text-orange-800 dark:text-orange-200/70">Yêu cầu sẽ được xét duyệt trong 3-5 ngày làm việc.</p>
@@ -151,10 +151,10 @@ const CreateClubRequestPage: React.FC = () => {
                         <i className="fa-solid fa-shield-check text-amber-500 mt-1" />
                         <p className="text-xs text-amber-800 dark:text-amber-200/70">Đảm bảo tên câu lạc bộ không vi phạm quy chuẩn văn hóa.</p>
                     </div>
-                    <div className="bg-blue-50 dark:bg-blue-500/5 p-4 rounded-2xl flex items-start gap-3">
+                    {/* <div className="bg-blue-50 dark:bg-blue-500/5 p-4 rounded-2xl flex items-start gap-3">
                         <i className="fa-solid fa-envelope-open-text text-blue-500 mt-1" />
                         <p className="text-xs text-blue-800 dark:text-blue-200/70">Kết quả xét duyệt sẽ được gửi qua email cá nhân.</p>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </div>

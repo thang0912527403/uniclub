@@ -1,5 +1,5 @@
 import { useNavigate, Link } from 'react-router';
-import { useGetUserAllClubsQuery } from '~/cores/api/userApi';
+import { useGetManagedClubsQuery, useGetUserAllClubsQuery } from '~/cores/api/userApi';
 import { getUserId, setClubId } from '~/utils/auth';
 import { SettingButton } from '~/components/SettingButton';
 import type { Club } from '~/cores/api/types';
@@ -88,6 +88,9 @@ export default function MyClubsModule() {
   const { data: hasPendingRequest } = useCheckPendingRequestQuery(userId, {
     skip: !userId,
   });
+
+  const { data: managedClubs } = useGetManagedClubsQuery(getUserId());
+
   const { data: userRequests, isLoading: requestLoading } =
     useGetClubRequestsByUserIdQuery(userId, {
       skip: !userId,
@@ -162,10 +165,10 @@ export default function MyClubsModule() {
             </div>
           )}
 
-          {!canCreateRequest && !hasPendingRequest && (
+          {!canCreateRequest && !hasPendingRequest && managedClubs?.length === 0 && (
             <div className="mt-10 pt-8 border-t border-gray-200 dark:border-gray-700">
               <Link
-                to="/clubs/request"
+                to="/club/request"
                 className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-[0.98]"
               >
                 <i className="fas fa-plus-circle text-lg"></i>
