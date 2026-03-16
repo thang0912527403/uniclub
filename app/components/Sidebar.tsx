@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { useExpandedMenu } from '~/hooks/useExpandedMenu';
 import { useEffect, useRef } from 'react';
+import { getClubId } from '~/utils/auth';
 
 interface SubMenuItem {
   label: string;
@@ -68,7 +69,7 @@ export function Sidebar({
       icon: 'fa-building',
       subItems: [
         { label: 'All Clubs', url: '/clubs' },
-        { label: 'Club Structure', url: '/clubs/1/structure' },
+        { label: 'Club Structure', url: `/clubs/${getClubId() || 1}/structure` },
         { label: 'Club Roles', url: '/club-roles' },
         { label: 'Your Club Info', url: '/club/info' },
         { label: 'Manage Club Name', url: '/club/name' },
@@ -99,7 +100,7 @@ export function Sidebar({
       label: 'Manage Members',
       icon: 'fa-users',
       subItems: [
-        { label: 'All Members', url: '/clubs/1/members' },
+        { label: 'All Members', url: `/clubs/${getClubId() || 1}/members` },
         { label: 'Add Member', url: '/members/add' },
         { label: 'Member Roles', url: '/members/roles' },
         { label: 'Member Activity', url: '/members/activity' },

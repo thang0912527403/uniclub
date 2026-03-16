@@ -22,7 +22,7 @@ import type { ClubRole, ClubRolePolicy, ClubDepartment } from '~/cores/api/types
 /* ─── Config ──────────────────────────────────────────────────────────────── */
 
 const LEVEL_CONFIG: Record<number, { gradient: string; badge: string; label: string; icon: string }> = {
-  0: { gradient: 'from-gray-500 to-gray-600', badge: 'bg-gray-500', label: 'Chưa phân cấp', icon: 'fa-user' },
+  0: { gradient: 'from-gray-500 to-gray-600', badge: 'bg-gray-500', label: 'Manager', icon: 'fa-user' },
   1: { gradient: 'from-amber-500 to-yellow-500', badge: 'bg-amber-500', label: 'Cấp 1', icon: 'fa-crown' },
   2: { gradient: 'from-sky-500 to-blue-500', badge: 'bg-sky-500', label: 'Cấp 2', icon: 'fa-user-tie' },
   3: { gradient: 'from-emerald-500 to-green-500', badge: 'bg-emerald-500', label: 'Cấp 3', icon: 'fa-users' },
@@ -582,31 +582,104 @@ function RoleModal({ initial, departments, onClose, onSave, isSaving, isManager 
 
 /* ─── Delete Confirm Modal ────────────────────────────────────────────────── */
 
-function DeleteModal({ role, onConfirm, onCancel, isLoading }: { role: ClubRole; onConfirm: () => Promise<void>; onCancel: () => void; isLoading: boolean }) {
+function DeleteModal({
+  role,
+  departments,
+  onConfirm,
+  onCancel,
+  isLoading,
+}: {
+  role: ClubRole;
+  departments: ClubDepartment[];
+  onConfirm: () => Promise<void>;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  // Detect if this role is a department manager
+  const managedDept = departments.find((d) => d.manager?.clubRoleId === role.clubRoleId);
+  const isManager = !!managedDept;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onCancel}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-            <i className="fas fa-trash text-red-600 dark:text-red-400 text-xl"></i>
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isManager ? 'bg-amber-100 dark:bg-amber-900' : 'bg-red-100 dark:bg-red-900'}`}>
+            <i className={`text-xl ${isManager ? 'fas fa-exclamation-triangle text-amber-600 dark:text-amber-400' : 'fas fa-trash text-red-600 dark:text-red-400'}`}></i>
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Xóa vai trò</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              {isManager ? 'Xóa trưởng phòng' : 'Xóa vai trò'}
+            </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">{role.roleName}</p>
           </div>
         </div>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">
-          Bạn có chắc muốn xóa vai trò <span className="font-semibold">"{role.roleName}"</span>? Hành động này không thể hoàn tác.
-        </p>
+
+        {isManager ? (
+          <>
+            {/* Cascading warning */}
+            <div className="mb-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 p-4">
+              <div className="flex items-start gap-2 mb-2">
+                <i className="fas fa-exclamation-triangle text-amber-500 mt-0.5"></i>
+                <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                  Cảnh báo: Hành động này sẽ xóa theo phòng ban!
+                </p>
+              </div>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                Vai trò <span className="font-semibold">"{role.roleName}"</span> là trưởng phòng của phòng ban{' '}
+                <span className="font-semibold">"{managedDept!.departmentName}"</span>. Khi xóa vai trò này, toàn bộ phòng ban và các vai trò đi kèm cũng sẽ bị xóa:
+              </p>
+              <ul className="space-y-1.5 text-sm text-amber-800 dark:text-amber-200">
+                <li className="flex items-center gap-2">
+                  <i className="fas fa-building text-indigo-500 text-xs w-4"></i>
+                  <span className="font-medium">Phòng ban:</span>
+                  <span>{managedDept!.departmentName}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <i className="fas fa-crown text-amber-500 text-xs w-4"></i>
+                  <span className="font-medium">Trưởng phòng:</span>
+                  <span>{role.roleName}</span>
+                </li>
+                {managedDept!.roles.length > 0 && (
+                  <li>
+                    <div className="flex items-start gap-2">
+                      <i className="fas fa-users text-blue-500 text-xs w-4 mt-0.5"></i>
+                      <div>
+                        <span className="font-medium">{managedDept!.roles.length} vai trò thành viên:</span>
+                        <ul className="ml-2 mt-1 space-y-0.5">
+                          {managedDept!.roles.map((r) => (
+                            <li key={r.clubRoleId} className="flex items-center gap-1.5">
+                              <i className="fas fa-circle text-[5px] opacity-50"></i>
+                              {r.roleName}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </li>
+                )}
+              </ul>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+              Bạn có chắc chắn muốn tiếp tục? <span className="font-semibold text-red-500">Hành động này không thể hoàn tác.</span>
+            </p>
+          </>
+        ) : (
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Bạn có chắc muốn xóa vai trò <span className="font-semibold">"{role.roleName}"</span>? Hành động này không thể hoàn tác.
+          </p>
+        )}
+
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} disabled={isLoading}
             className="cursor-pointer px-5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
             Hủy
           </button>
           <button onClick={onConfirm} disabled={isLoading}
-            className="cursor-pointer px-5 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+            className={`cursor-pointer px-5 py-2 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed ${
+              isManager ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'
+            }`}>
             {isLoading && <i className="fas fa-spinner fa-spin text-sm"></i>}
-            Xóa vai trò
+            {isManager ? 'Xóa phòng ban & vai trò' : 'Xóa vai trò'}
           </button>
         </div>
       </div>
@@ -1014,7 +1087,13 @@ export default function ClubStructureModule() {
       )}
 
       {deleteTarget && (
-        <DeleteModal role={deleteTarget} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} isLoading={isDeleting} />
+        <DeleteModal
+          role={deleteTarget}
+          departments={departments}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+          isLoading={isDeleting}
+        />
       )}
     </div>
   );
