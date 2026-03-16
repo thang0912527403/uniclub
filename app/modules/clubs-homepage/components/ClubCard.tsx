@@ -12,7 +12,7 @@ const ClubCard: React.FC<{ club: Club }> = ({ club }) => {
     const navigate = useNavigate();
 
     const handleCardClick = () => {
-        navigate(`/clubs/all-clubs/${club.clubId}`);
+        navigate(`/club/all-clubs/${club.clubId}`);
     };
 
     return (

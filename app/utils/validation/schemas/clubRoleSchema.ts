@@ -3,8 +3,8 @@ import { requiredString, parseErrors } from './commonSchemas';
 
 export const clubRoleSchema = z.object({
     roleName: requiredString('Tên vai trò'),
-    description: z.string().optional(),
-    level: z.number({ required_error: 'Cấp bậc là bắt buộc' }).int().min(0, 'Cấp bậc phải >= 0'),
+    description: z.string().max(255, 'Mô tả không được vượt quá 255 ký tự'),
+    level: z.number({ error: 'Cấp bậc là bắt buộc' }).int().min(0, 'Cấp bậc phải >= 0'),
 });
 
 export type ClubRoleFormData = z.infer<typeof clubRoleSchema>;
