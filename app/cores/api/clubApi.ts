@@ -11,6 +11,10 @@ import {
   type FundHistoryItem,
 } from './types';
 
+type ClubFundScoped = { clubId: number };
+type FundScoped = { clubId: number; fundId: number };
+type FundLocationResponse = { fundId: number; clubId: number };
+
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getClubs: builder.query<Club[], void>({
@@ -108,21 +112,21 @@ export const clubApi = baseApi.injectEndpoints({
       invalidatesTags: ['ClubPost'],
     }),
     // ─── ClubFund endpoints ─────────────────────────────────────────────
-    getFundById: builder.query<ClubFund, number>({
-      query: (fundId) => `/ClubFund/${fundId}`,
+    getFundById: builder.query<ClubFund, FundScoped>({
+      query: ({ clubId, fundId }) => `/clubs/${clubId}/funds/${fundId}`,
       transformResponse: (response: ApiResponse<ClubFund>) => response.data,
-      providesTags: (result, error, fundId) => [{ type: 'ClubFund', id: fundId }],
+      providesTags: (result, error, { fundId }) => [{ type: 'ClubFund', id: fundId }],
     }),
     getFundsByClub: builder.query<ClubFund[], number>({
-      query: (clubId) => `/ClubFund/club/${clubId}`,
+      query: (clubId) => `/clubs/${clubId}/funds`,
       transformResponse: (response: ApiResponse<ClubFund[]>) => response.data ?? [],
       providesTags: (result, error, clubId) => [
         { type: 'ClubFund', id: `club-${clubId}` },
       ],
     }),
     createFund: builder.mutation<ClubFund, { clubId: number; fundName?: string; description?: string }>({
-      query: (body) => ({
-        url: '/ClubFund',
+      query: ({ clubId, ...body }) => ({
+        url: `/clubs/${clubId}/funds`,
         method: 'POST',
         body,
       }),
@@ -134,18 +138,18 @@ export const clubApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<Club[]>) => response.data ?? [],
       providesTags: ['ClubFund', 'Club'],
     }),
-    createFundRequest: builder.mutation<unknown, CreateFundRequestDto>({
-      query: (body) => ({
-        url: '/ClubFund/request',
+    createFundRequest: builder.mutation<unknown, CreateFundRequestDto & ClubFundScoped>({
+      query: ({ clubId, ...body }) => ({
+        url: `/clubs/${clubId}/funds/request`,
         method: 'POST',
         body,
       }),
       transformResponse: (response: ApiResponse<unknown>) => response.data,
       invalidatesTags: ['ClubFund'],
     }),
-    processFundRequest: builder.mutation<void, ProcessFundRequestDto>({
-      query: (body) => ({
-        url: '/ClubFund/process',
+    processFundRequest: builder.mutation<void, ProcessFundRequestDto & ClubFundScoped>({
+      query: ({ clubId, ...body }) => ({
+        url: `/clubs/${clubId}/funds/process`,
         method: 'POST',
         body,
       }),
@@ -153,12 +157,12 @@ export const clubApi = baseApi.injectEndpoints({
     }),
     getFundHistory: builder.query<
       FundHistoryItem[],
-      { fundId: number; status?: string }
+      { clubId: number; fundId: number; status?: string }
     >({
-      query: ({ fundId, status }) => {
+      query: ({ clubId, fundId, status }) => {
         const params = status ? { status } : undefined;
         return {
-          url: `/ClubFund/history/${fundId}`,
+          url: `/clubs/${clubId}/funds/history/${fundId}`,
           params,
         };
       },
@@ -168,10 +172,10 @@ export const clubApi = baseApi.injectEndpoints({
         { type: 'ClubFund', id: fundId },
       ],
     }),
-    /** Duyệt/từ chối quỹ (chỉ Manager). POST /api/ClubFund/approve */
-    approveFund: builder.mutation<ClubFund, ApproveFundDto>({
-      query: (body) => ({
-        url: '/ClubFund/approve',
+    /** Duyệt/từ chối quỹ (chỉ Manager). POST /api/clubs/{clubId}/funds/approve */
+    approveFund: builder.mutation<ClubFund, ApproveFundDto & ClubFundScoped>({
+      query: ({ clubId, ...body }) => ({
+        url: `/clubs/${clubId}/funds/approve`,
         method: 'POST',
         body,
       }),
@@ -185,6 +189,10 @@ export const clubApi = baseApi.injectEndpoints({
         body: { clubRoleId },
       }),
       invalidatesTags: (result, error, { clubId }) => [{ type: 'Club', id: `members-${clubId}` }],
+    }),
+    getFundLocation: builder.query<FundLocationResponse, number>({
+      query: (fundId) => `/funds/${fundId}/location`,
+      transformResponse: (response: ApiResponse<FundLocationResponse>) => response.data,
     }),
   }),
 });
@@ -212,4 +220,5 @@ export const {
   useGetFundHistoryQuery,
   useApproveFundMutation,
   useUpdateMemberRoleMutation,
+  useGetFundLocationQuery,
 } = clubApi;
