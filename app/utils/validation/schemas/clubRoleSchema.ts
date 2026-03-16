@@ -5,6 +5,7 @@ export const clubRoleSchema = z.object({
     roleName: requiredString('Tên vai trò'),
     description: z.string().optional(),
     level: z.number({ required_error: 'Cấp bậc là bắt buộc' }).int().min(0, 'Cấp bậc phải >= 0'),
+    departmentId: z.number().nullable().optional(),
 });
 
 export type ClubRoleFormData = z.infer<typeof clubRoleSchema>;

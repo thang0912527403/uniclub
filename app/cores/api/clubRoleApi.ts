@@ -1,5 +1,6 @@
 import { baseApi } from './baseApi';
 import { type ApiResponse, type ClubRole } from './types';
+import type { ClubStructure } from './types/clubRole';
 
 
 
@@ -8,12 +9,20 @@ export interface CreateClubRoleDto {
     description?: string;
     level: number;
     clubId: number;
+    departmentId?: number | null;
 }
 
 export interface UpdateClubRoleDto {
     roleName: string;
     description?: string;
     level: number;
+    departmentId?: number | null;
+}
+
+export interface CreateClubDepartmentDto {
+    name: string;
+    description?: string;
+    managerRoleLevel: number;
 }
 
 const clubRoleApi = baseApi.injectEndpoints({
@@ -93,6 +102,21 @@ const clubRoleApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: (result, error, { roleId }) => [{ type: 'ClubRole', id: roleId }, 'ClubRole'],
         }),
+
+        createClubDepartment: builder.mutation<void, { clubId: number; body: CreateClubDepartmentDto }>({
+            query: ({ clubId, body }) => ({
+                url: `/club/${clubId}/Department`,
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['ClubRole'],
+        }),
+
+        getClubStructure: builder.query<ClubStructure, number>({
+            query: (clubId) => `/Club/${clubId}/club-structure`,
+            transformResponse: (response: ApiResponse<ClubStructure>) => response.data!,
+            providesTags: (result, error, clubId) => [{ type: 'ClubRole', id: `clubstructure-${clubId}` }, 'ClubRole'],
+        }),
     }),
     overrideExisting: false,
 });
@@ -107,4 +131,6 @@ export const {
     useCreateClubRoleMutation,
     useUpdateClubRoleMutation,
     useDeleteClubRoleMutation,
+    useGetClubStructureQuery,
+    useCreateClubDepartmentMutation,
 } = clubRoleApi;
