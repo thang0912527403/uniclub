@@ -527,7 +527,6 @@ function RoleModal({ initial, departments, onClose, onSave, isSaving, isManager 
             <div className={`flex rounded-lg border overflow-hidden transition-colors ${errors.level ? 'border-red-500' : 'border-gray-300 dark:border-gray-700 focus-within:border-blue-500'} ${form.departmentId && !isManager ? 'opacity-75' : ''}`}>
               <input
                 type="number"
-                min={0}
                 value={form.level}
                 disabled={!!form.departmentId && !isManager}
                 onChange={(e) => { setForm((p) => ({ ...p, level: Number(e.target.value) })); if (errors.level) setErrors((p) => ({ ...p, level: undefined })); }}
@@ -662,10 +661,10 @@ function DepartmentModal({ onClose, onSave, isSaving }: DepartmentModalProps) {
           {/* Cấp trưởng phòng */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Cấp vai trò trưởng phòng <span className="text-red-500">*</span>
+              Cấp bậc <span className="text-red-500">*</span>
             </label>
             <div className={`flex rounded-lg border overflow-hidden transition-colors ${errors.managerRoleLevel ? 'border-red-500' : 'border-gray-300 dark:border-gray-700 focus-within:border-indigo-500'}`}>
-              <input type="number" min={0} value={form.managerRoleLevel}
+              <input type="number" min={1} value={form.managerRoleLevel}
                 onChange={(e) => { setForm((p) => ({ ...p, managerRoleLevel: Number(e.target.value) })); if (errors.managerRoleLevel) setErrors((p) => ({ ...p, managerRoleLevel: undefined })); }}
                 className="flex-1 px-4 py-2.5 text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />

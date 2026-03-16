@@ -4,7 +4,7 @@ import { requiredString, parseErrors } from './commonSchemas';
 export const clubRoleSchema = z.object({
     roleName: requiredString('Tên vai trò'),
     description: z.string().optional(),
-    level: z.number({ required_error: 'Cấp bậc là bắt buộc' }).int().min(0, 'Cấp bậc phải >= 0'),
+    level: z.number().int().min(1, 'Cấp bậc phải >= 1'),
     departmentId: z.number().nullable().optional(),
 });
 
