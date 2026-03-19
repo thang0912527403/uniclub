@@ -3,6 +3,7 @@ import { useExpandedMenu } from '~/hooks/useExpandedMenu';
 import { useEffect, useRef } from 'react';
 import { useGetManagedClubsQuery } from '~/cores/api/userApi';
 import { getUserId } from '~/utils/auth';
+import { getClubId } from '~/utils/auth';
 
 interface SubMenuItem {
   label: string;
