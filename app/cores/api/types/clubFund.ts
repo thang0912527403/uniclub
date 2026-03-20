@@ -1,5 +1,15 @@
 export type ClubFundStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
+export interface PagedResult<T> {
+  items: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
 export interface ClubFund {
   fundId: number;
   clubId: number;

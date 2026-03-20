@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams } from 'react-router';
-import { Gavel, X, HandCoins, Loader2 } from 'lucide-react';
+import { Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   useGetFundByIdQuery,
   useGetFundCapabilitiesQuery,
@@ -28,6 +28,7 @@ function resolveMinContributeVnd(): number {
 }
 
 const MIN_FUND_TX_AMOUNT = resolveMinContributeVnd();
+const FUND_HISTORY_PAGE_SIZE = 20;
 
 function formatCountdown(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -153,8 +154,13 @@ export default function FundDetailPageByClub() {
   const [contributePollError, setContributePollError] = useState<string | null>(null);
   const [contributePollTimedOut, setContributePollTimedOut] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [historyPage, setHistoryPage] = useState(1);
 
   const isInvalidParams = !clubIdParam || !fundIdParam || isNaN(clubId) || isNaN(fundId) || clubId < 1 || fundId < 1;
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [clubId, fundId]);
 
   const {
     data: caps,
@@ -188,14 +194,23 @@ export default function FundDetailPageByClub() {
     { clubId, fundId },
     { skip: skipFundQueries }
   );
-  const { data: history = [], isLoading: isLoadingHistory, error: historyError, refetch: refetchHistory } = useGetFundHistoryQuery(
+  const {
+    data: historyPaged,
+    isLoading: isLoadingHistory,
+    error: historyError,
+    refetch: refetchHistory,
+  } = useGetFundHistoryQuery(
     {
       clubId,
       fundId,
+      page: historyPage,
+      pageSize: FUND_HISTORY_PAGE_SIZE,
       scope: historyScope,
     },
-    { skip: skipFundQueries }
+    { skip: skipFundQueries },
   );
+  const history = historyPaged?.items ?? [];
+  const historyMeta = historyPaged;
   const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
   const [contributeToFund, { isLoading: isContributing }] = useContributeToFundMutation();
   const [fetchPayStatus] = useLazyGetContributeTransactionStatusQuery();
@@ -593,40 +608,83 @@ export default function FundDetailPageByClub() {
                     </div>
                   ) : historyError ? (
                     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-700 dark:text-red-200 text-sm" role="alert">
-                      Lỗi tải lịch sử.
+                      {typeof historyError === 'object' && historyError && 'data' in historyError
+                        ? (historyError as { data?: { message?: string } }).data?.message || 'Lỗi tải lịch sử.'
+                        : 'Lỗi tải lịch sử.'}
                     </div>
-                  ) : history.length === 0 ? (
+                  ) : (historyMeta?.totalCount ?? 0) === 0 ? (
                     <p className={`${t.type.muted} py-4`}>Chưa có lịch sử.</p>
                   ) : (
-                    <div className="overflow-x-auto" role="region" aria-label="Bảng lịch sử giao dịch quỹ">
-                      <table className="w-full min-w-[480px]">
-                        <thead>
-                          <tr className="bg-slate-100 dark:bg-slate-800">
-                            <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Người gửi</th>
-                            <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Số tiền</th>
-                            <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Mô tả</th>
-                            <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Thời gian nộp</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {history.map((item) => (
-                            <tr
-                              key={item.transactionId ?? item.id ?? `${item.fundId}-${item.createdAt}-${item.updatedAt}`}
-                              className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-200"
-                            >
-                              <td className={`px-4 py-2 ${t.type.body}`}>{fundHistorySenderLabel(item)}</td>
-                              <td className={`px-4 py-2 ${t.type.body} whitespace-nowrap`}>
-                                {item.amount != null ? `${Number(item.amount).toLocaleString('vi-VN')} ₫` : '—'}
-                              </td>
-                              <td className={`px-4 py-2 ${t.type.body}`}>{item.description?.trim() ? item.description : '—'}</td>
-                              <td className={`px-4 py-2 text-sm ${t.type.muted} whitespace-nowrap`}>
-                                {formatFundHistoryDateTime(fundHistoryContributionTimeIso(item))}
-                              </td>
+                    <>
+                      <div className="overflow-x-auto" role="region" aria-label="Bảng lịch sử giao dịch quỹ">
+                        <table className="w-full min-w-[480px]">
+                          <thead>
+                            <tr className="bg-slate-100 dark:bg-slate-800">
+                              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Người gửi</th>
+                              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Số tiền</th>
+                              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Mô tả</th>
+                              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Thời gian nộp</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {history.length === 0 ? (
+                              <tr>
+                                <td colSpan={4} className={`px-4 py-6 text-center ${t.type.muted}`}>
+                                  Không có giao dịch trên trang này.
+                                </td>
+                              </tr>
+                            ) : (
+                              history.map((item) => (
+                                <tr
+                                  key={item.transactionId ?? item.id ?? `${item.fundId}-${item.createdAt}-${item.updatedAt}`}
+                                  className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-200"
+                                >
+                                  <td className={`px-4 py-2 ${t.type.body}`}>{fundHistorySenderLabel(item)}</td>
+                                  <td className={`px-4 py-2 ${t.type.body} whitespace-nowrap`}>
+                                    {item.amount != null ? `${Number(item.amount).toLocaleString('vi-VN')} ₫` : '—'}
+                                  </td>
+                                  <td className={`px-4 py-2 ${t.type.body}`}>{item.description?.trim() ? item.description : '—'}</td>
+                                  <td className={`px-4 py-2 text-sm ${t.type.muted} whitespace-nowrap`}>
+                                    {formatFundHistoryDateTime(fundHistoryContributionTimeIso(item))}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      {historyMeta &&
+                      (historyMeta.hasPreviousPage || historyMeta.hasNextPage || (historyMeta.totalPages ?? 0) > 1) ? (
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700 pt-4">
+                          <p className={`text-sm ${t.type.muted}`}>
+                            {(historyMeta.totalCount ?? 0).toLocaleString('vi-VN')} giao dịch · Trang {historyMeta.pageNumber}
+                            {(historyMeta.totalPages ?? 0) > 0 ? ` / ${historyMeta.totalPages}` : ''}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={!historyMeta.hasPreviousPage}
+                              onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                              className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none`}
+                              aria-label="Trang trước"
+                            >
+                              <ChevronLeft className="w-4 h-4 shrink-0" aria-hidden />
+                              Trước
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!historyMeta.hasNextPage}
+                              onClick={() => setHistoryPage((p) => p + 1)}
+                              className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none`}
+                              aria-label="Trang sau"
+                            >
+                              Sau
+                              <ChevronRight className="w-4 h-4 shrink-0" aria-hidden />
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
                   )}
                 </div>
               </section>

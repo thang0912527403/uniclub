@@ -14,7 +14,66 @@ import {
   type PayosFundContributionReturn,
   type ClubFundCapabilities,
   type FundHistoryScope,
+  type PagedResult,
 } from './types';
+
+function normalizePagedResult<T>(raw: unknown): PagedResult<T> {
+  const empty = (): PagedResult<T> => ({
+    items: [],
+    pageNumber: 1,
+    pageSize: 10,
+    totalCount: 0,
+    totalPages: 0,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  });
+  if (raw == null) return empty();
+  if (Array.isArray(raw)) {
+    const items = raw as T[];
+    const n = items.length;
+    return {
+      items,
+      pageNumber: 1,
+      pageSize: n || 10,
+      totalCount: n,
+      totalPages: n > 0 ? 1 : 0,
+      hasPreviousPage: false,
+      hasNextPage: false,
+    };
+  }
+  const d = raw as Record<string, unknown>;
+  const items = Array.isArray(d.items) ? (d.items as T[]) : [];
+  const pageNumber = Math.max(1, Number(d.pageNumber) || 1);
+  const pageSize = Math.max(1, Number(d.pageSize) || 10);
+  const rawTc = d.totalCount;
+  let totalCountFinal: number;
+  if (rawTc != null && rawTc !== '' && Number.isFinite(Number(rawTc))) {
+    totalCountFinal = Math.max(0, Number(rawTc));
+  } else {
+    totalCountFinal = items.length;
+  }
+  let totalPages = Number(d.totalPages);
+  if (!Number.isFinite(totalPages) || totalPages < 1) {
+    totalPages =
+      totalCountFinal > 0 && pageSize > 0 ? Math.ceil(totalCountFinal / pageSize) : 0;
+  }
+  const hasPreviousPage =
+    typeof d.hasPreviousPage === 'boolean' ? d.hasPreviousPage : pageNumber > 1;
+  const hasNextPage =
+    typeof d.hasNextPage === 'boolean'
+      ? d.hasNextPage
+      : totalPages > 0 && pageNumber < totalPages;
+
+  return {
+    items,
+    pageNumber,
+    pageSize,
+    totalCount: totalCountFinal,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+  };
+}
 
 type ClubFundScoped = { clubId: number };
 type FundScoped = { clubId: number; fundId: number };
@@ -141,10 +200,17 @@ export const clubApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ClubFund>) => response.data,
       providesTags: (result, error, { fundId }) => [{ type: 'ClubFund', id: fundId }],
     }),
-    getFundsByClub: builder.query<ClubFund[], number>({
-      query: (clubId) => `/clubs/${clubId}/funds`,
-      transformResponse: (response: ApiResponse<ClubFund[]>) => response.data ?? [],
-      providesTags: (result, error, clubId) => [
+    getFundsByClub: builder.query<
+      PagedResult<ClubFund>,
+      { clubId: number; page?: number; pageSize?: number }
+    >({
+      query: ({ clubId, page = 1, pageSize = 10 }) => ({
+        url: `/clubs/${clubId}/funds`,
+        params: { page, pageSize },
+      }),
+      transformResponse: (response: ApiResponse<PagedResult<ClubFund> | ClubFund[]>) =>
+        normalizePagedResult<ClubFund>(response.data),
+      providesTags: (result, error, { clubId }) => [
         { type: 'ClubFund', id: `club-${clubId}` },
       ],
     }),
@@ -170,25 +236,27 @@ export const clubApi = baseApi.injectEndpoints({
     }),
 
     getFundHistory: builder.query<
-      FundHistoryItem[],
+      PagedResult<FundHistoryItem>,
       {
         clubId: number;
         fundId: number;
+        page?: number;
+        pageSize?: number;
         status?: string;
         scope?: FundHistoryScope;
       }
     >({
-      query: ({ clubId, fundId, status, scope }) => {
-        const params: Record<string, string> = {};
+      query: ({ clubId, fundId, page = 1, pageSize = 10, status, scope }) => {
+        const params: Record<string, string | number> = { page, pageSize };
         if (status) params.status = status;
         if (scope === 'contributions' || scope === 'mine') params.scope = scope;
         return {
           url: `/clubs/${clubId}/funds/history/${fundId}`,
-          params: Object.keys(params).length ? params : undefined,
+          params,
         };
       },
-      transformResponse: (response: ApiResponse<FundHistoryItem[]>) =>
-        response.data ?? [],
+      transformResponse: (response: ApiResponse<PagedResult<FundHistoryItem> | FundHistoryItem[]>) =>
+        normalizePagedResult<FundHistoryItem>(response.data),
       providesTags: (result, error, { fundId }) => [
         { type: 'ClubFund', id: fundId },
       ],

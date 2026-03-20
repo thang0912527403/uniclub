@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import Cookies from 'js-cookie';
 import {
   Wallet,
@@ -9,6 +9,7 @@ import {
   Clock,
   Lock,
   Users,
+  ChevronLeft,
   ChevronRight,
   Loader2,
   CheckCircle,
@@ -78,11 +79,26 @@ function fundListBalanceVnd(f: ClubFund): number | null {
   return null;
 }
 
+function parseFundListPage(v: string | null): number {
+  const n = parseInt(v ?? '1', 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+/** 1–100, mặc định 10 (khớp BE). */
+function parseFundListPageSize(v: string | null): number {
+  const n = parseInt(v ?? '10', 10);
+  if (!Number.isFinite(n) || n < 1 || n > 100) return 10;
+  return n;
+}
+
 export default function FundsPage() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isAdmin } = useClubRole();
   const { userId } = useCurrentUser();
   const { show: showNotification } = useNotification();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fundListPage = parseFundListPage(searchParams.get('page'));
+  const fundListPageSize = parseFundListPageSize(searchParams.get('pageSize'));
 
   const hasToken = !!Cookies.get('accessToken');
   const { data: clubs = [] } = useGetClubsQuery(undefined, { skip: !hasToken || !isAdmin });
@@ -136,13 +152,54 @@ export default function FundsPage() {
     (caps !== undefined && !canViewFunds);
 
   const {
-    data: funds = [],
+    data: fundsPaged,
     error: fundsError,
     isLoading: isLoadingFunds,
-  } = useGetFundsByClubQuery(clubId, { skip: skipFundsQuery });
-  const availableFunds = funds;
+  } = useGetFundsByClubQuery(
+    { clubId, page: fundListPage, pageSize: fundListPageSize },
+    { skip: skipFundsQuery },
+  );
+  const availableFunds = fundsPaged?.items ?? [];
+  const fundsMeta = fundsPaged;
+  const totalFundCount = fundsMeta?.totalCount ?? 0;
   const isForbiddenFunds =
     fundsError && typeof fundsError === 'object' && 'status' in fundsError && fundsError.status === 403;
+  const fundsBadRequest =
+    fundsError && typeof fundsError === 'object' && 'status' in fundsError && fundsError.status === 400;
+  const fundsErrorMessage =
+    fundsError && typeof fundsError === 'object' && 'data' in fundsError
+      ? (fundsError as { data?: { message?: string } }).data?.message
+      : undefined;
+
+  const prevClubForPagingRef = useRef<number>(0);
+  useEffect(() => {
+    if (clubId < 1) return;
+    if (prevClubForPagingRef.current !== 0 && prevClubForPagingRef.current !== clubId) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('page', '1');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+    prevClubForPagingRef.current = clubId;
+  }, [clubId, setSearchParams]);
+
+  const setFundListPage = (page: number) => {
+    const p = Math.max(1, page);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('page', String(p));
+        if (fundListPageSize !== 10) next.set('pageSize', String(fundListPageSize));
+        else next.delete('pageSize');
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   useEffect(() => {
     if (!hasToken) return;
@@ -538,6 +595,19 @@ export default function FundsPage() {
                   Hãy chọn câu lạc bộ khác ở thanh phía trên, hoặc liên hệ quản trị viên để được cấp quyền.
                 </p>
               </div>
+            ) : fundsError && !isForbiddenFunds ? (
+              <div className="p-8 text-center space-y-2" role="alert">
+                <p className={`${t.type.body} text-red-600 dark:text-red-400`}>
+                  {fundsBadRequest && fundsErrorMessage
+                    ? fundsErrorMessage
+                    : fundsErrorMessage || 'Không tải được danh sách quỹ.'}
+                </p>
+                {fundsBadRequest ? (
+                  <p className={`text-sm ${t.type.muted}`}>
+                    Tham số phân trang: trang bắt đầu từ 1; pageSize từ 1 đến 100.
+                  </p>
+                ) : null}
+              </div>
             ) : isLoadingFunds ? (
               <div className="p-8 text-center">
                 <Loader2
@@ -546,7 +616,7 @@ export default function FundsPage() {
                 />
                 <p className={t.type.body}>Đang tải danh sách quỹ...</p>
               </div>
-            ) : availableFunds.length === 0 ? (
+            ) : totalFundCount === 0 ? (
               <div className="px-6 py-12 flex items-center justify-center">
                 <div className="max-w-md w-full text-center">
                   <div
@@ -588,22 +658,31 @@ export default function FundsPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className={t.type.sectionTitle}>
-                        Bạn có {availableFunds.filter(isPendingFund).length} quỹ đang chờ duyệt
+                        Trên trang này có {availableFunds.filter(isPendingFund).length} quỹ đang chờ duyệt
                       </p>
                       <p className={t.type.muted}>
-                        Dùng nút Duyệt hoặc Từ chối trong từng thẻ quỹ để xử lý.
+                        Dùng nút Duyệt hoặc Từ chối trong từng thẻ; xem các trang khác nếu danh sách nhiều quỹ.
                       </p>
                     </div>
                   </div>
                 )}
 
-                <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600">
+                <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 flex flex-wrap items-end justify-between gap-2">
                   <h2 id="fund-list-heading" className={t.type.sectionTitle}>
                     Danh sách quỹ
                   </h2>
+                  {fundsMeta && totalFundCount > 0 ? (
+                    <p className={`text-sm ${t.type.muted}`}>
+                      Tổng {totalFundCount.toLocaleString('vi-VN')} quỹ · Trang {fundsMeta.pageNumber}
+                      {fundsMeta.totalPages > 0 ? ` / ${fundsMeta.totalPages}` : ''}
+                    </p>
+                  ) : null}
                 </div>
 
                 {/* Card grid: each fund = card (dashboard-style) */}
+                {availableFunds.length === 0 ? (
+                  <p className={`p-8 text-center ${t.type.muted}`}>Không có quỹ trên trang này.</p>
+                ) : (
                 <div
                   className="p-4 md:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                   role="list"
@@ -728,6 +807,38 @@ export default function FundsPage() {
                     );
                   })}
                 </div>
+                )}
+
+                {fundsMeta && (fundsMeta.hasPreviousPage || fundsMeta.hasNextPage || fundsMeta.totalPages > 1) ? (
+                  <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-600 flex flex-wrap items-center justify-between gap-3">
+                    <p className={`text-sm ${t.type.muted}`}>
+                      Hiển thị {availableFunds.length.toLocaleString('vi-VN')} /{' '}
+                      {totalFundCount.toLocaleString('vi-VN')} quỹ
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!fundsMeta.hasPreviousPage}
+                        onClick={() => setFundListPage(fundListPage - 1)}
+                        className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none`}
+                        aria-label="Trang trước"
+                      >
+                        <ChevronLeft className="w-4 h-4 shrink-0" aria-hidden />
+                        Trước
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!fundsMeta.hasNextPage}
+                        onClick={() => setFundListPage(fundListPage + 1)}
+                        className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none`}
+                        aria-label="Trang sau"
+                      >
+                        Sau
+                        <ChevronRight className="w-4 h-4 shrink-0" aria-hidden />
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </>
             )}
           </section>
