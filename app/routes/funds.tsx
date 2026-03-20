@@ -18,14 +18,17 @@ import {
 import {
   useGetClubsQuery,
   useGetFundsByClubQuery,
+  useGetFundCapabilitiesQuery,
   useCreateFundMutation,
   useApproveFundMutation,
+  useGetUserClubInfoQuery,
 } from '~/cores/api';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { useNotification } from '~/components/Notification';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useClubRole } from '~/hooks/useClubRole';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
 import type { ClubFund } from '~/cores/api';
 import { fundTokens as t } from './funds.design-tokens';
 
@@ -65,37 +68,89 @@ function isPendingFund(f: ClubFund): boolean {
   return String(f.status ?? '').toUpperCase() === 'PENDING';
 }
 
+function fundListBalanceVnd(f: ClubFund): number | null {
+  if (typeof f.currentBalance === 'number' && Number.isFinite(f.currentBalance)) {
+    return f.currentBalance;
+  }
+  if (typeof f.balance === 'number' && Number.isFinite(f.balance)) {
+    return f.balance;
+  }
+  return null;
+}
+
 export default function FundsPage() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const { isAdmin, clubManagerMembership, canApproveFund } = useClubRole();
+  const { isAdmin } = useClubRole();
+  const { userId } = useCurrentUser();
   const { show: showNotification } = useNotification();
 
   const hasToken = !!Cookies.get('accessToken');
   const { data: clubs = [] } = useGetClubsQuery(undefined, { skip: !hasToken || !isAdmin });
 
-  const effectiveClubId = clubManagerMembership?.clubId ?? 0;
-  const [selectedClubId, setSelectedClubId] = useState<number>(effectiveClubId);
-  const clubId = isAdmin ? selectedClubId : selectedClubId || effectiveClubId;
-  const hasAnyClub = isAdmin
-    ? clubs.length > 0
-    : effectiveClubId > 0;
+  const {
+    data: userMemberships = [],
+    error: userMembershipsError,
+    isLoading: isLoadingUserMemberships,
+  } = useGetUserClubInfoQuery(userId, { skip: !hasToken || isAdmin || !userId });
+
+  const activeMemberships = (Array.isArray(userMemberships) ? userMemberships : []).filter(
+    (m) => String(m?.status ?? '').toUpperCase() === 'ACTIVE'
+  );
+  const memberClubOptions = activeMemberships.map((m) => ({
+    clubId: m.clubId,
+    label: `CLB #${m.clubId} • ${m.roleName || `RoleId ${m.clubRoleId}`}`,
+  }));
+
+  const [selectedClubId, setSelectedClubId] = useState<number>(0);
+  const clubId = selectedClubId;
+  const hasAnyClub = isAdmin ? clubs.length > 0 : memberClubOptions.length > 0;
 
   const [showCreateFundForm, setShowCreateFundForm] = useState(false);
   const [newFundName, setNewFundName] = useState('');
-  const [newFundDescription, setNewFundDescription] = useState('');
+  const [newInitialAmount, setNewInitialAmount] = useState('0');
+  /** yyyy-mm-dd — cuối ngày UTC; để trống = không giới hạn nhận nộp */
+  const [newFundExpiresDate, setNewFundExpiresDate] = useState('');
+
+  const {
+    data: caps,
+    isLoading: capsLoading,
+    isError: capsIsError,
+    error: capsError,
+  } = useGetFundCapabilitiesQuery(clubId, { skip: !hasToken || clubId < 1 });
+  const capsErrorStatus =
+    capsError && typeof capsError === 'object' && 'status' in capsError
+      ? (capsError as { status: number }).status
+      : undefined;
+  const capsForbidden = capsIsError && capsErrorStatus === 403;
+  const capsOtherError = capsIsError && capsErrorStatus !== 403;
+  const canViewFunds = caps?.canViewFunds ?? false;
+  const canCreateFundCap = caps?.canCreateFund ?? false;
+  const canApproveOrRejectFundEntity = caps?.canApproveOrRejectFundEntity ?? false;
+
+  const skipFundsQuery =
+    !hasToken ||
+    clubId < 1 ||
+    capsLoading ||
+    capsForbidden ||
+    capsOtherError ||
+    (caps !== undefined && !canViewFunds);
 
   const {
     data: funds = [],
     error: fundsError,
     isLoading: isLoadingFunds,
-  } = useGetFundsByClubQuery(clubId, { skip: !hasToken || clubId < 1 });
+  } = useGetFundsByClubQuery(clubId, { skip: skipFundsQuery });
   const availableFunds = funds;
   const isForbiddenFunds =
     fundsError && typeof fundsError === 'object' && 'status' in fundsError && fundsError.status === 403;
 
   useEffect(() => {
-    if (!isAdmin && effectiveClubId > 0 && selectedClubId === 0) setSelectedClubId(effectiveClubId);
-  }, [isAdmin, effectiveClubId, selectedClubId]);
+    if (!hasToken) return;
+    if (!isAdmin) {
+      if (selectedClubId === 0 && memberClubOptions.length > 0) setSelectedClubId(memberClubOptions[0].clubId);
+      return;
+    }
+  }, [hasToken, isAdmin, memberClubOptions, selectedClubId]);
   useEffect(() => {
     if (isAdmin && clubs.length > 0 && selectedClubId === 0) setSelectedClubId(clubs[0].clubId);
   }, [isAdmin, clubs, selectedClubId]);
@@ -106,16 +161,26 @@ export default function FundsPage() {
   const bgClass = 'bg-slate-50 dark:bg-[#0F172A]';
   const handleCreateFundSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clubId || !newFundName.trim()) return;
+    const initialAmount = Number(newInitialAmount);
+    if (!clubId || !newFundName.trim() || isNaN(initialAmount) || initialAmount < 0) return;
+    let expiresAt: string | undefined;
+    if (newFundExpiresDate.trim()) {
+      const [y, m, d] = newFundExpiresDate.split('-').map(Number);
+      if (y && m && d) {
+        expiresAt = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999)).toISOString();
+      }
+    }
     try {
       await createFund({
         clubId,
         fundName: newFundName.trim(),
-        description: newFundDescription.trim() || undefined,
+        initialAmount,
+        ...(expiresAt ? { expiresAt } : {}),
       }).unwrap();
       setShowCreateFundForm(false);
       setNewFundName('');
-      setNewFundDescription('');
+      setNewInitialAmount('0');
+      setNewFundExpiresDate('');
       showNotification({
         type: 'success',
         title: 'Đã tạo quỹ',
@@ -123,11 +188,12 @@ export default function FundsPage() {
       });
     } catch (err: unknown) {
       console.error('Create fund failed:', err);
+      const status = (err as { status?: number })?.status;
       const msg =
         (err as { data?: { message?: string } })?.data?.message ??
         (err as Error)?.message ??
-        'Không thể tạo quỹ.';
-      showNotification({ type: 'error', title: 'Lỗi tạo quỹ', message: String(msg) });
+        (status === 403 ? 'Bạn không có quyền tạo quỹ trong CLB này.' : 'Không thể tạo quỹ.');
+      showNotification({ type: 'error', title: 'Lỗi tạo quỹ', message: `${String(msg)}${status ? ` (HTTP ${status})` : ''}` });
     }
   };
 
@@ -204,17 +270,37 @@ export default function FundsPage() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="fund-desc" className={`block ${t.type.label} mb-1.5`}>
-                        Mô tả (tuỳ chọn)
+                      <label htmlFor="fund-initial-amount" className={`block ${t.type.label} mb-1.5`}>
+                        Số dư ban đầu
                       </label>
-                      <textarea
-                        id="fund-desc"
-                        value={newFundDescription}
-                        onChange={(e) => setNewFundDescription(e.target.value)}
-                        rows={3}
-                        className={`${t.input} resize-none`}
-                        placeholder="Mục đích sử dụng quỹ, quy định chi tiêu..."
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-3 flex items-center text-xs text-slate-400" aria-hidden>VND</span>
+                        <input
+                          id="fund-initial-amount"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={newInitialAmount}
+                          onChange={(e) => setNewInitialAmount(e.target.value)}
+                          className={`${t.input} pl-11`}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="fund-expires" className={`block ${t.type.label} mb-1.5`}>
+                        Hạn nhận nộp tiền (tuỳ chọn, UTC)
+                      </label>
+                      <input
+                        id="fund-expires"
+                        type="date"
+                        value={newFundExpiresDate}
+                        onChange={(e) => setNewFundExpiresDate(e.target.value)}
+                        className={t.input}
                       />
+                      <p className={`mt-1 text-xs ${t.type.muted}`}>
+                        Ngày cuối cùng quỹ còn nhận nộp (theo ngày UTC). Để trống nếu không giới hạn.
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-end gap-3 pt-2">
@@ -249,28 +335,63 @@ export default function FundsPage() {
                 Theo dõi thu chi, duyệt yêu cầu rút quỹ và quản lý ngân sách minh bạch.
               </p>
             </div>
-            <div
-              className={`${t.card.base} ${t.space.card} flex items-center gap-3 border-slate-200 dark:border-slate-600`}
-              role="status"
-              aria-label="Phân quyền"
-            >
-              <div
-                className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0"
-                aria-hidden
-              >
-                <Shield className="w-5 h-5" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm">
-                  Phân quyền theo CLB
-                </p>
-                <p className={t.type.muted}>
-                  {isAdmin
-                    ? 'Bạn đang xem với quyền quản trị.'
-                    : 'Bạn đang xem với quyền quản lý CLB.'}
-                </p>
-              </div>
-            </div>
+            {clubId > 0 && hasToken && !capsLoading && !capsForbidden && !capsOtherError && canViewFunds
+              ? (() => {
+                  const showMgmtBanner =
+                    canApproveOrRejectFundEntity || canCreateFundCap;
+                  const roleLine =
+                    caps?.clubRoleName != null && String(caps.clubRoleName).trim() !== ''
+                      ? `${caps.clubRoleName}${
+                          caps.clubRoleLevel != null && caps.clubRoleLevel !== undefined
+                            ? ` • Cấp ${caps.clubRoleLevel}`
+                            : ''
+                        }`
+                      : null;
+                  if (showMgmtBanner) {
+                    return (
+                      <div
+                        className={`${t.card.base} ${t.space.card} flex items-center gap-3 border-slate-200 dark:border-slate-600`}
+                        role="status"
+                        aria-label="Phân quyền"
+                      >
+                        <div
+                          className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0"
+                          aria-hidden
+                        >
+                          <Shield className="w-5 h-5" aria-hidden />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm">
+                            Phân quyền theo CLB
+                          </p>
+                          <p className={t.type.muted}>
+                            {isAdmin
+                              ? 'Bạn đang xem với quyền quản trị.'
+                              : roleLine
+                                ? `Vai trò trong CLB: ${roleLine}.`
+                                : 'Bạn có quyền thao tác quản trị quỹ trong phạm vi được cấp.'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (roleLine) {
+                    return (
+                      <div
+                        className={`${t.card.base} ${t.space.card} flex items-center gap-3 border-slate-200 dark:border-slate-600`}
+                        role="status"
+                        aria-label="Vai trò CLB"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm">Vai trò trong CLB</p>
+                          <p className={t.type.muted}>{roleLine}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              : null}
           </header>
 
           {/* Toolbar: club selector + CTA */}
@@ -278,29 +399,34 @@ export default function FundsPage() {
             className={`${t.card.base} ${t.space.card} flex flex-wrap items-center justify-between gap-4 border-slate-200 dark:border-slate-600`}
           >
             <div className="flex flex-wrap items-center gap-3">
-              {isAdmin && (
-                <div className="flex flex-col gap-1 min-w-[220px]">
-                  <label htmlFor="club-select" className={t.type.label}>
-                    Câu lạc bộ
-                  </label>
-                  <select
-                    id="club-select"
-                    value={clubId}
-                    onChange={(e) => setSelectedClubId(Number(e.target.value))}
-                    className={t.input}
-                    aria-label="Chọn câu lạc bộ"
-                  >
-                    <option value={0}>-- Chọn CLB --</option>
-                    {clubs.map((c) => (
+              <div className="flex flex-col gap-1 min-w-[240px]">
+                <label htmlFor="club-select" className={t.type.label}>
+                  Câu lạc bộ
+                </label>
+                <select
+                  id="club-select"
+                  value={clubId}
+                  onChange={(e) => setSelectedClubId(Number(e.target.value))}
+                  className={t.input}
+                  aria-label="Chọn câu lạc bộ"
+                  disabled={!hasToken || (isAdmin ? clubs.length === 0 : memberClubOptions.length === 0)}
+                >
+                  <option value={0}>-- Chọn CLB --</option>
+                  {isAdmin
+                    ? clubs.map((c) => (
                       <option key={c.clubId} value={c.clubId}>
                         {c.clubName} (ID: {c.clubId})
                       </option>
+                    ))
+                    : memberClubOptions.map((c) => (
+                      <option key={c.clubId} value={c.clubId}>
+                        {c.label}
+                      </option>
                     ))}
-                  </select>
-                </div>
-              )}
+                </select>
+              </div>
             </div>
-            {clubId > 0 && (
+            {clubId > 0 && canCreateFundCap && canViewFunds && !capsLoading && !capsForbidden && !isForbiddenFunds && (
               <button
                 type="button"
                 onClick={() => setShowCreateFundForm(true)}
@@ -342,23 +468,62 @@ export default function FundsPage() {
                 >
                   <Users className="w-8 h-8" aria-hidden />
                 </div>
-                <p className={t.type.body}>
-                  Bạn chưa được gán vào câu lạc bộ nào. Liên hệ quản trị viên để được cấp quyền.
-                </p>
+                {isLoadingUserMemberships ? (
+                  <p className={t.type.body}>Đang tải danh sách CLB của bạn...</p>
+                ) : (
+                  <>
+                    <p className={t.type.body}>
+                      Bạn chưa được gán vào câu lạc bộ nào (hoặc hệ thống chưa trả được danh sách CLB).
+                    </p>
+                    {userMembershipsError && (
+                      <p className={`mt-2 text-sm ${t.type.muted}`}>
+                        Membership error:{' '}
+                        {String(
+                          ((typeof userMembershipsError === 'object' && userMembershipsError && 'status' in userMembershipsError && userMembershipsError.status) ||
+                            'unknown')
+                        )}
+                      </p>
+                    )}
+                    <p className={`mt-2 text-sm ${t.type.muted}`}>
+                      Nếu bạn chắc chắn đã thuộc CLB (vd ID=7) mà vẫn rỗng, hãy kiểm tra API `/me/clubinfo?userId=...` có trả membership ACTIVE cho CLB đó không.
+                    </p>
+                  </>
+                )}
               </div>
             ) : !clubId ? (
               <div className="p-12 text-center">
                 <p className={t.type.body}>Chọn câu lạc bộ để xem danh sách quỹ.</p>
               </div>
-            ) : isLoadingFunds ? (
+            ) : capsLoading ? (
               <div className="p-8 text-center">
                 <Loader2
                   className="w-8 h-8 animate-spin text-slate-400 dark:text-slate-500 mx-auto mb-4"
                   aria-hidden
                 />
-                <p className={t.type.body}>Đang tải danh sách quỹ...</p>
+                <p className={t.type.body}>Đang kiểm tra quyền truy cập quỹ...</p>
               </div>
-            ) : isForbiddenFunds ? (
+            ) : capsOtherError ? (
+              <div className="p-12 text-center">
+                <p className={`${t.type.body} text-red-600 dark:text-red-400`}>
+                  Không tải được quyền quỹ (capabilities). Thử lại sau.
+                </p>
+              </div>
+            ) : capsForbidden || isForbiddenFunds ? (
+              <div className="p-12 text-center">
+                <div
+                  className="mx-auto w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4"
+                  aria-hidden
+                >
+                  <Shield className="w-8 h-8" aria-hidden />
+                </div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-2">
+                  Bạn không thuộc CLB này hoặc không có quyền xem quỹ
+                </h2>
+                <p className={t.type.body}>
+                  Hãy chọn câu lạc bộ khác ở thanh phía trên, hoặc liên hệ quản trị viên.
+                </p>
+              </div>
+            ) : !canViewFunds ? (
               <div className="p-12 text-center">
                 <div
                   className="mx-auto w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-4"
@@ -373,6 +538,14 @@ export default function FundsPage() {
                   Hãy chọn câu lạc bộ khác ở thanh phía trên, hoặc liên hệ quản trị viên để được cấp quyền.
                 </p>
               </div>
+            ) : isLoadingFunds ? (
+              <div className="p-8 text-center">
+                <Loader2
+                  className="w-8 h-8 animate-spin text-slate-400 dark:text-slate-500 mx-auto mb-4"
+                  aria-hidden
+                />
+                <p className={t.type.body}>Đang tải danh sách quỹ...</p>
+              </div>
             ) : availableFunds.length === 0 ? (
               <div className="px-6 py-12 flex items-center justify-center">
                 <div className="max-w-md w-full text-center">
@@ -386,19 +559,23 @@ export default function FundsPage() {
                   <p className={`${t.type.body} mb-4`}>
                     Tạo quỹ đầu tiên để bắt đầu quản lý tài chính.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateFundForm(true)}
-                    className={`${t.btn.cta} inline-flex items-center gap-2`}
-                  >
-                    <Plus className="w-5 h-5 shrink-0" aria-hidden />
-                    Tạo quỹ mới
-                  </button>
+                  {canCreateFundCap ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateFundForm(true)}
+                      className={`${t.btn.cta} inline-flex items-center gap-2`}
+                    >
+                      <Plus className="w-5 h-5 shrink-0" aria-hidden />
+                      Tạo quỹ mới
+                    </button>
+                  ) : (
+                    <p className={`${t.type.muted} text-sm`}>Bạn không có quyền tạo quỹ mới trong CLB này.</p>
+                  )}
                 </div>
               </div>
             ) : (
               <>
-                {canApproveFund && availableFunds.some(isPendingFund) && (
+                {canApproveOrRejectFundEntity && availableFunds.some(isPendingFund) && (
                   <div
                     className={`${t.card.base} ${t.space.card} flex items-center gap-3 border-slate-200 dark:border-slate-600 bg-amber-50/50 dark:bg-amber-900/10`}
                     role="alert"
@@ -432,7 +609,9 @@ export default function FundsPage() {
                   role="list"
                   aria-label="Danh sách quỹ"
                 >
-                  {availableFunds.map((f) => (
+                  {availableFunds.map((f) => {
+                    const listBalance = fundListBalanceVnd(f);
+                    return (
                     <div
                       key={f.fundId}
                       role="listitem"
@@ -452,17 +631,23 @@ export default function FundsPage() {
                           {f.fundName || `Quỹ #${f.fundId}`}
                         </h3>
                         <p className={`mt-1 text-lg font-semibold text-slate-700 dark:text-slate-200`}>
-                          {typeof f.balance === 'number'
-                            ? `${f.balance.toLocaleString('vi-VN')} ₫`
-                            : '—'}
+                          {listBalance != null ? `${listBalance.toLocaleString('vi-VN')} ₫` : '—'}
                         </p>
+                        {f.expiresAt ? (
+                          <p className={`mt-1 text-xs ${t.type.muted}`}>
+                            Hạn nhận nộp (UTC): {new Date(f.expiresAt).toLocaleDateString('vi-VN')}
+                          </p>
+                        ) : null}
+                        {String(f.status ?? '').toUpperCase() === 'APPROVED' && f.canAcceptContributions === false ? (
+                          <p className="mt-1 text-xs text-amber-800 dark:text-amber-200/90">Không còn nhận nộp tiền</p>
+                        ) : null}
                         <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
                           Xem chi tiết
                           <ChevronRight className="w-4 h-4 shrink-0" aria-hidden />
                         </span>
                       </Link>
                       <div className="px-4 pb-4 pt-0 flex flex-wrap items-center gap-2 border-t border-slate-100 dark:border-slate-700 mt-auto">
-                        {isPendingFund(f) && canApproveFund && (
+                        {isPendingFund(f) && canApproveOrRejectFundEntity && (
                           <>
                             <button
                               type="button"
@@ -540,7 +725,8 @@ export default function FundsPage() {
                         </Link>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}

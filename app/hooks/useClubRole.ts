@@ -17,6 +17,13 @@ function isManagerRole(roleName: string | null | undefined): boolean {
   );
 }
 
+/** Vice/Phó (được quản lý đợt thu, nhưng không duyệt quỹ) */
+function isViceRole(roleName: string | null | undefined): boolean {
+  const r = (roleName ?? '').trim().toLowerCase();
+  if (!r) return false;
+  return r.startsWith('phó') || r.includes('phó nhóm') || r.includes('vice');
+}
+
 /** ClubRoleId 1 thường là Manager (tùy backend). Dùng khi API không trả roleName. */
 const DEFAULT_MANAGER_ROLE_ID = 1;
 
@@ -39,6 +46,10 @@ export function useClubRole() {
     (m?.status ?? '').toUpperCase() === 'ACTIVE' &&
     (isManagerRole(m?.roleName) || m?.clubRoleId === DEFAULT_MANAGER_ROLE_ID);
 
+  const isViceOrManager = (m: ClubMembership) =>
+    (m?.status ?? '').toUpperCase() === 'ACTIVE' &&
+    (isViceRole(m?.roleName) || isManagerRole(m?.roleName) || m?.clubRoleId === DEFAULT_MANAGER_ROLE_ID);
+
   const isClubManager = !isAdmin && memberships.some(isManager);
 
   const clubManagerMembership = memberships.find(isManager);
@@ -46,11 +57,15 @@ export function useClubRole() {
   /** True nếu user là Manager/Admin (được duyệt quỹ PENDING). Vice Manager = false. */
   const canApproveFund = isAdmin || memberships.some(isManager);
 
+  /** True nếu user là Vice/Manager/Admin (được tạo/đóng đợt thu). */
+  const canManageFundCollections = isAdmin || memberships.some(isViceOrManager);
+
   return {
     memberships,
     isClubManager,
     isAdmin,
     canApproveFund,
+    canManageFundCollections,
     clubManagerMembership: clubManagerMembership
       ? { clubId: clubManagerMembership.clubId, roleName: clubManagerMembership.roleName, level: (clubManagerMembership as ClubMembership & { level?: number }).level }
       : undefined,

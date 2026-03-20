@@ -10,6 +10,9 @@ export default [
   route("auth/reset-password", "routes/auth/reset-password.tsx"),
   route("auth/verify-email", "routes/auth/verify-email.tsx"),
 
+  route("payos/return", "routes/payos.return.tsx"),
+  route("payos/cancel", "routes/payos.cancel.tsx"),
+
   route("public/events", "routes/public.events.tsx"),
   route("public/events/:id", "routes/public.events.$id.tsx"),
   route("public/news", "routes/news.tsx"),

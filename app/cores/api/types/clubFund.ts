@@ -1,20 +1,20 @@
-/** Trạng thái quỹ: PENDING (chờ Manager duyệt), APPROVED, REJECTED */
 export type ClubFundStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
-/** Fund model - trả về từ GET /ClubFund/{fundId} và GET /ClubFund/club/{clubId} */
 export interface ClubFund {
   fundId: number;
   clubId: number;
   fundName?: string;
+  currentBalance?: number;
+  totalAmount?: number;
   balance?: number;
   description?: string;
-  /** Trạng thái duyệt quỹ. Chỉ quỹ APPROVED mới được tạo yêu cầu THU/CHI. */
   status?: ClubFundStatus;
   createdAt?: string;
   updatedAt?: string;
+  expiresAt?: string | null;
+  canAcceptContributions?: boolean;
 }
 
-/** Body cho POST /ClubFund/approve – chỉ Manager mới gọi được */
 export interface ApproveFundDto {
   fundId: number;
   action: 'APPROVE' | 'REJECT';
@@ -30,10 +30,17 @@ export interface CreateFundRequestDto {
   purpose?: string;
 }
 
-export interface ProcessFundRequestDto {
-  requestId: number;
-  approved: boolean;
-  note?: string;
+export interface ClubFundCapabilities {
+  canViewFunds: boolean;
+  canContribute: boolean;
+  canCreateFund: boolean;
+  canApproveOrRejectFundEntity: boolean;
+  hasViewFinancePolicy: boolean;
+  hasCreateFinancePolicy: boolean;
+  hasEditFinancePolicy: boolean;
+  clubRoleName?: string | null;
+  clubRoleLevel?: number | null;
+  isActiveClubMember: boolean;
 }
 
 export interface CreateFundRequestResponse {
@@ -41,14 +48,66 @@ export interface CreateFundRequestResponse {
   message?: string;
 }
 
+export type FundHistoryScope = 'all' | 'contributions' | 'mine';
+
 export interface FundHistoryItem {
-  id: number;
+  transactionId?: number;
+  id?: number;
   fundId: number;
   amount: number;
   status: string;
   description?: string;
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
+  transactionDate?: string;
   requestedBy?: string;
   processedBy?: string;
+  memberName?: string;
+  userName?: string;
+  userFullName?: string;
+  contributorName?: string;
+  senderName?: string;
+  createdByName?: string;
+  isMemberContribution?: boolean;
+}
+
+export interface CreateFundDto {
+  fundName: string;
+  initialAmount: number;
+  expiresAt?: string;
+}
+
+export interface ContributeToFundDto {
+  fundId: number;
+  amount: number;
+  categoryId?: number;
+  description?: string;
+}
+
+export interface ContributeToFundResponse {
+  transactionId: number;
+  checkoutUrl?: string;
+  qrCode?: string;
+  paymentLinkId?: string;
+  amount?: number;
+  paymentLinkExpiresAtUtc?: string;
+  message?: string;
+}
+
+export interface FundContributeTransactionStatus {
+  transactionId: number;
+  fundId: number;
+  status?: string;
+  amount?: number;
+  isPaid: boolean;
+  isPaymentLinkExpired: boolean;
+  paymentLinkExpiresAtUtc?: string | null;
+  message?: string;
+}
+
+export interface PayosFundContributionReturn {
+  clubId: number;
+  fundId: number;
+  isPaid: boolean;
+  message?: string;
 }
