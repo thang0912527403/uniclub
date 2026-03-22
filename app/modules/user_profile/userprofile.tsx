@@ -247,7 +247,7 @@ const UserProfile = () => {
           </div>
         </div>
 
-        {/* ─── Interview tracker (from 547370a) ───────────── */}
+        {/* ─── Interview tracker ───────────── */}
         {meId && <InterviewStatusTracker userId={meId} />}
         {meId && <InterviewerInterviewsSection userId={meId} />}
 

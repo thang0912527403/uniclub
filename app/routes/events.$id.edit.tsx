@@ -482,9 +482,9 @@ export default function EditEventPage() {
     if (isLoadingEvent) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
                 <HeaderBar title="Sửa sự kiện" isSidebarOpen={isSidebarOpen} />
-                <main className={`pt-24 p-6 ${bg} min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+                <main className={`pt-24 p-6 ${bg} min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                     <div className="animate-pulse space-y-4 max-w-[1400px] mx-auto">
                         <div className="h-12 bg-gray-300 rounded" />
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -503,7 +503,7 @@ export default function EditEventPage() {
     if (!event) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
                 <HeaderBar title="Sửa sự kiện" isSidebarOpen={isSidebarOpen} />
                 <main className={`pt-24 p-6 ${bg} min-h-screen`}>
                     <div className="bg-red-50 border border-red-200 rounded p-4 max-w-xl mx-auto">
@@ -526,7 +526,7 @@ export default function EditEventPage() {
                 onThemeToggle={toggleTheme}
                 position="bottom-right"
             />
-            <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+            <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Sửa sự kiện"
                 breadcrumb={`Sự kiện / ${event.eventName} / Sửa`}
@@ -534,10 +534,8 @@ export default function EditEventPage() {
                 onToggleSidebar={toggleSidebar}
             />
 
-            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                 <div className="max-w-[1400px] mx-auto">
-
-                    {/* Page header */}
                     <div className="flex items-center gap-3 mb-6">
                         <button onClick={() => navigate(`/events/${id}`)}
                             className={`p-2 rounded-lg ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}>

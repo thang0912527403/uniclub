@@ -271,7 +271,7 @@ function UserFormModal({
               </select>
             </div>
           )}
-          <div className="flex gap-3 justify-end pt-4">
+          <div className="flex flex-wrap gap-3 justify-end pt-4">
             <button
               type="button"
               onClick={onClose}
@@ -380,16 +380,16 @@ export default function UsersModule() {
       await deleteUser(deleteTarget.userId).unwrap();
       showNotification({
         type: 'success',
-        title: 'Đã xóa người dùng',
-        message: `"${deleteTarget.fullName}" đã bị xóa.`,
+        title: 'Đã vô hiệu người dùng',
+        message: `"${deleteTarget.fullName}" đã bị vô hiệu.`,
       });
       setDeleteTarget(null);
     } catch (e: unknown) {
       const err = e as { data?: { message?: string } };
       showNotification({
         type: 'error',
-        title: 'Xóa thất bại',
-        message: err?.data?.message ?? 'Không thể xóa người dùng.',
+        title: 'Vô hiệu thất bại',
+        message: err?.data?.message ?? 'Không thể vô hiệu người dùng.',
       });
     }
   };
@@ -410,19 +410,19 @@ export default function UsersModule() {
     <div className="min-h-screen">
       <SettingButton />
 
-      <Sidebar currentPath="/users" isOpen={isSidebarOpen} />
+      <Sidebar currentPath="/users" isOpen={isSidebarOpen} onClose={toggleSidebar} />
 
       <HeaderBar
         title="Quản lý Người dùng"
-        breadcrumb="Pages / Users"
+        breadcrumb="Bảng điều khiển / Người dùng"
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />
 
       <main
-        className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${
-          isSidebarOpen ? 'ml-64' : 'ml-0'
-        }`}
+        className={`pt-24 p-6 transition-all duration-300 min-h-screen ${
+          isSidebarOpen ? 'md:ml-64' : 'ml-0'
+        } bg-gradient-to-b from-violet-50 via-white to-violet-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950`}
       >
         {isLoading && <Loading message="Đang tải danh sách người dùng..." />}
 
@@ -433,84 +433,109 @@ export default function UsersModule() {
         {!isLoading && !error && (
           <>
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-users text-white text-xl" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tổng số</p>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{totalCount.toLocaleString()}</h3>
-                  </div>
+            <section className="mb-8">
+              <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-violet-900 dark:text-violet-100">
+                    Tổng quan người dùng
+                  </h2>
+                  <p className="text-sm text-violet-700/80 dark:text-violet-200/70">
+                    Theo dõi trạng thái thành viên trong câu lạc bộ của bạn.
+                  </p>
                 </div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-check-circle text-white text-xl" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Hoạt động</p>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {users.filter((u) => u.status === 'active').length}
-                    </h3>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gray-500 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-pause-circle text-white text-xl" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Không hoạt động</p>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {users.filter((u) => u.status === 'inactive').length}
-                    </h3>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-clock text-white text-xl" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Chờ duyệt</p>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {users.filter((u) => u.status === 'pending').length}
-                    </h3>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions Bar */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={openCreate}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer flex items-center gap-2"
-                >
-                  <i className="fas fa-plus" />
-                  Thêm người dùng
-                </button>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
-              {totalCount === 0 ? (
-                <div className="p-12 text-center">
-                  <i className="fas fa-users text-6xl text-gray-400 dark:text-gray-500 mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Chưa có người dùng nào</h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">Thêm người dùng đầu tiên để bắt đầu</p>
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={openCreate}
-                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer"
+                    className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex items-center gap-2"
+                  >
+                    <i className="fas fa-plus" />
+                    Thêm người dùng
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-white/90 dark:bg-gray-900/70 rounded-2xl shadow-sm border border-violet-100/60 dark:border-gray-700 p-6 hover:border-violet-300 hover:-translate-y-0.5 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-violet-600 rounded-xl flex items-center justify-center shadow-sm">
+                      <i className="fas fa-users text-white text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Tổng số
+                      </p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {totalCount.toLocaleString()}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/90 dark:bg-gray-900/70 rounded-2xl shadow-sm border border-violet-100/60 dark:border-gray-700 p-6 hover:border-violet-300 hover:-translate-y-0.5 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center shadow-sm">
+                      <i className="fas fa-check-circle text-white text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Hoạt động
+                      </p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {users.filter((u) => u.status === 'active').length}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/90 dark:bg-gray-900/70 rounded-2xl shadow-sm border border-violet-100/60 dark:border-gray-700 p-6 hover:border-violet-300 hover:-translate-y-0.5 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-slate-500 rounded-xl flex items-center justify-center shadow-sm">
+                      <i className="fas fa-pause-circle text-white text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Không hoạt động
+                      </p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {users.filter((u) => u.status === 'inactive').length}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/90 dark:bg-gray-900/70 rounded-2xl shadow-sm border border-violet-100/60 dark:border-gray-700 p-6 hover:border-violet-300 hover:-translate-y-0.5 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center shadow-sm">
+                      <i className="fas fa-clock text-white text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Chờ duyệt
+                      </p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {users.filter((u) => u.status === 'pending').length}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Table */}
+            <div className="bg-white/95 dark:bg-gray-900/80 rounded-2xl shadow-sm border border-violet-100/70 dark:border-gray-700 overflow-hidden">
+              {totalCount === 0 ? (
+                <div className="p-12 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center">
+                    <i className="fas fa-users text-3xl" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    Chưa có người dùng nào
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+                    Tạo người dùng đầu tiên để khởi động hệ thống thành viên.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openCreate}
+                    className="px-6 py-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
                   >
                     Thêm người dùng
                   </button>
@@ -519,26 +544,26 @@ export default function UsersModule() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[800px]">
                     <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      <tr className="border-b border-gray-200 dark:border-gray-700 bg-violet-50/80 dark:bg-violet-900/30">
+                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-violet-900 dark:text-violet-50">
                           Họ tên
                         </th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-violet-900 dark:text-violet-50">
                           Email
                         </th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-violet-900 dark:text-violet-50">
                           SĐT
                         </th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-violet-900 dark:text-violet-50">
                           Mã SV
                         </th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-violet-900 dark:text-violet-50">
                           Chuyên ngành
                         </th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-violet-900 dark:text-violet-50">
                           Trạng thái
                         </th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        <th className="text-right py-3 px-4 text-xs md:text-sm font-semibold text-violet-900 dark:text-violet-50">
                           Thao tác
                         </th>
                       </tr>
@@ -547,7 +572,7 @@ export default function UsersModule() {
                       {paginatedUsers.map((record) => (
                         <tr
                           key={record.userId}
-                          className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                          className="border-b border-gray-100 dark:border-gray-800 hover:bg-violet-50/70 dark:hover:bg-gray-800/70 transition-colors"
                         >
                           <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
                             {record.fullName}
@@ -578,16 +603,16 @@ export default function UsersModule() {
                               <button
                                 type="button"
                                 onClick={() => openEdit(record)}
-                                className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium cursor-pointer"
+                                className="text-violet-600 dark:text-violet-300 hover:text-violet-700 dark:hover:text-violet-200 text-sm font-medium cursor-pointer transition-colors"
                               >
                                 Sửa
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setDeleteTarget(record)}
-                                className="text-red-600 dark:text-red-400 hover:underline text-sm font-medium cursor-pointer"
+                                className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 text-sm font-medium cursor-pointer transition-colors"
                               >
-                                Xóa
+                                Vô hiệu hóa
                               </button>
                             </div>
                           </td>
@@ -600,7 +625,7 @@ export default function UsersModule() {
 
               {/* Pagination */}
               {totalCount > 0 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-wrap gap-3">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-wrap gap-3 bg-white/80 dark:bg-gray-900/60">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Hiển thị {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)} / {totalCount.toLocaleString()} người dùng
                   </p>
@@ -609,7 +634,7 @@ export default function UsersModule() {
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      className="px-4 py-2 rounded-lg border border-violet-100 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       <i className="fas fa-chevron-left mr-1" />
                       Trang trước
@@ -621,7 +646,7 @@ export default function UsersModule() {
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      className="px-4 py-2 rounded-lg border border-violet-100 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       Trang sau
                       <i className="fas fa-chevron-right ml-1" />

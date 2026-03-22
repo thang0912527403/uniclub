@@ -93,13 +93,13 @@ export default function EditClubPostModule() {
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-gray-900">
             <SettingButton />
-            <Sidebar currentPath="/club-posts" isOpen={isSidebarOpen} />
+            <Sidebar currentPath="/club-posts" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar title="Chỉnh sửa bài viết" breadcrumb="Pages / Club Posts / Edit"
                 isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />
 
             {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-            <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+            <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                 {/* Back */}
                 <button onClick={() => navigate(-1)}
                     className="mb-6 group flex items-center gap-2 text-sm font-semibold text-zinc-400 hover:text-orange-500 transition-colors cursor-pointer">

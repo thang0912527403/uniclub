@@ -71,6 +71,8 @@ export default function EventDetailPage() {
     const [qrSuccess, setQrSuccess] = useState<string | null>(null);
     const [showQrScanner, setShowQrScanner] = useState(false);
     const qrScanCooldownRef = useRef<{ token: string; until: number } | null>(null);
+    /** Tránh request 404 (token đã dùng) ghi đè thông báo thành công khi scanner gọi onScan nhiều lần */
+    const qrSuccessLockRef = useRef(false);
 
     // confirm dialog state
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -278,23 +280,33 @@ export default function EventDetailPage() {
             setQrSuccess(null);
             return;
         }
-        // Tránh quét trùng: sau khi điểm danh thành công, bỏ qua cùng token trong 3 giây (scanner hay gọi onScan nhiều lần)
+        // Tránh gửi nhiều request cùng token: bỏ qua nếu vừa gửi (hoặc vừa thành công) với token này trong 5 giây
         const now = Date.now();
         const cooldown = qrScanCooldownRef.current;
         if (cooldown && cooldown.token === t && now < cooldown.until) return;
 
         setQrError(null);
         setQrSuccess(null);
+        qrScanCooldownRef.current = { token: t, until: now + 5000 };
         try {
             const res = await checkInByQr({ eventId, clubId: event?.clubId ?? 0, token: t }).unwrap();
             const msg = res.memberName ? `Đã điểm danh: ${res.memberName}` : 'Điểm danh thành công.';
             setQrSuccess(msg);
             setQrError(null);
-            qrScanCooldownRef.current = { token: t, until: now + 3000 };
+            qrSuccessLockRef.current = true;
+            setTimeout(() => { qrSuccessLockRef.current = false; }, 5000);
             if (!token) setQrToken('');
             refetchAttendees();
             showNotification({ type: 'success', title: 'Điểm danh', message: msg });
         } catch (e: any) {
+            if (qrSuccessLockRef.current) {
+                showNotification({
+                    type: 'info',
+                    title: 'Điểm danh',
+                    message: 'Đã điểm danh rồi. Nếu bạn vừa quét thành công, hãy bỏ điện thoại ra.',
+                });
+                return;
+            }
             const errMsg = e?.data?.error ?? 'Mã QR không hợp lệ hoặc đã hết hạn.';
             setQrError(errMsg);
             setQrSuccess(null);
@@ -349,9 +361,9 @@ export default function EventDetailPage() {
     if (isLoading) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
-                <HeaderBar title="Chi tiết sự kiện" isSidebarOpen={isSidebarOpen} />
-                <main className={`pt-24 p-6 ${bg} min-h-screen`}>
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+                <HeaderBar title="Chi tiết sự kiện" isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />
+                <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                     <div className="animate-pulse max-w-5xl mx-auto space-y-4">
                         <div className="h-56 bg-gray-300 rounded-xl" />
                         <div className="h-32 bg-gray-200 rounded-xl" />
@@ -364,9 +376,9 @@ export default function EventDetailPage() {
     if (error || !event) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
-                <HeaderBar title="Chi tiết sự kiện" isSidebarOpen={isSidebarOpen} />
-                <main className={`pt-24 p-6 ${bg} min-h-screen`}>
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+                <HeaderBar title="Chi tiết sự kiện" isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />
+                <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-xl mx-auto">
                         <p className="text-red-700 font-medium">Không tìm thấy sự kiện.</p>
                     </div>
@@ -404,7 +416,7 @@ export default function EventDetailPage() {
                 onThemeToggle={toggleTheme}
                 position="bottom-right"
             />
-            <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+            <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Chi tiết sự kiện"
                 breadcrumb={`Events / ${event.eventName}`}
@@ -412,7 +424,7 @@ export default function EventDetailPage() {
                 onToggleSidebar={toggleSidebar}
             />
 
-            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                 <div className="max-w-5xl mx-auto space-y-5">
                     {/* back */}
                     <button onClick={() => navigate('/events')}

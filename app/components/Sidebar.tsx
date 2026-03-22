@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router';
 import { useExpandedMenu } from '~/hooks/useExpandedMenu';
 import { useEffect, useRef } from 'react';
-import { getClubId } from '~/utils/auth';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
+import { useClubRole } from '~/hooks/useClubRole';
 
 interface SubMenuItem {
   label: string;
@@ -18,6 +19,9 @@ interface NavItem {
 interface SidebarProps {
   currentPath?: string;
   isOpen?: boolean;
+  onClose?: () => void;
+  isDark?: boolean;
+  onToggleSidebarTheme?: () => void;
 }
 
 // ─── Admin nav: system-wide management ────────────────────────────────────
@@ -52,6 +56,16 @@ const adminNavItems: NavItem[] = [
       { label: 'Tạo sự kiện', url: '/events/create' },
       { label: 'Lịch sự kiện', url: '/events/calendar' },
       { label: 'Báo cáo sự kiện', url: '/events/reports' },
+    ],
+  },
+  {
+    label: 'Quản lý Quỹ',
+    icon: 'fa-wallet',
+    subItems: [
+      { label: 'Tổng quan', url: '/funds' },
+      { label: 'Giao dịch', url: '/funds/transactions' },
+      { label: 'Báo cáo', url: '/funds/reports' },
+      { label: 'Cài đặt', url: '/funds/settings' },
     ],
   },
 ];
@@ -96,7 +110,7 @@ const clubManagerNavItems: NavItem[] = [
     label: 'Thành viên',
     icon: 'fa-users',
     subItems: [
-      { label: 'Tất cả thành viên', url: `/clubs/${getClubId() || 1}/members` },
+      { label: 'Tất cả thành viên', url: '/members' },
       { label: 'Vai trò thành viên', url: '/members/roles' },
     ],
   },
@@ -108,10 +122,13 @@ const clubManagerNavItems: NavItem[] = [
     ],
   },
   {
-    label: 'Quỹ CLB',
+    label: 'Quản lý Quỹ',
     icon: 'fa-wallet',
     subItems: [
-      { label: 'Quản lý quỹ', url: '/funds' },
+      { label: 'Tổng quan', url: '/funds' },
+      { label: 'Giao dịch', url: '/funds/transactions' },
+      { label: 'Báo cáo', url: '/funds/reports' },
+      { label: 'Cài đặt', url: '/funds/settings' },
     ],
   },
 ];
@@ -119,14 +136,27 @@ const clubManagerNavItems: NavItem[] = [
 export function Sidebar({
   currentPath = '/dashboard',
   isOpen = true,
-  navItems: navItemsProp,
-}: SidebarProps & { navItems?: NavItem[] }) {
+  onClose,
+}: SidebarProps) {
   const navigate = useNavigate();
   const { toggleExpand, isExpanded } = useExpandedMenu();
   const sidebarRef = useRef<HTMLElement>(null);
   const isRestoringRef = useRef(false);
 
-  // Restore scroll position
+  const { isAdmin } = useCurrentUser();
+  const { isClubManager } = useClubRole();
+
+  const navItems = isAdmin ? adminNavItems : clubManagerNavItems;
+  const accentActive = isAdmin
+    ? 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 border-r-4 border-violet-400 text-white font-semibold shadow-lg'
+    : 'bg-gradient-to-r from-sky-500/20 to-blue-500/20 border-r-4 border-sky-400 text-white font-semibold shadow-lg';
+  const accentSubActive = isAdmin
+    ? 'bg-gradient-to-r from-violet-500/30 to-purple-500/30 border-l-4 border-violet-400 text-white font-semibold'
+    : 'bg-gradient-to-r from-sky-500/30 to-blue-500/30 border-l-4 border-sky-400 text-white font-semibold';
+  const logoGradient = isAdmin
+    ? 'bg-gradient-to-br from-violet-500 to-purple-700'
+    : 'bg-gradient-to-br from-sky-500 to-blue-700';
+
   useEffect(() => {
     if (sidebarRef.current && typeof window !== 'undefined') {
       const savedScrollPosition = sessionStorage.getItem('sidebarScrollPosition');
@@ -144,7 +174,6 @@ export function Sidebar({
     }
   }, [currentPath, isOpen]);
 
-  // Save scroll position
   useEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar || typeof window === 'undefined') return;
@@ -159,14 +188,23 @@ export function Sidebar({
     return () => sidebar.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navItems = navItemsProp ?? clubManagerNavItems;
-
   return (
-    <aside
-      ref={sidebarRef}
-      className={`w-64 min-w-[256px] max-w-[256px] h-screen fixed left-0 top-0 p-4 bg-slate-800 transition-all duration-300 overflow-y-auto overflow-x-hidden scrollbar-hide ${isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-    >
+    <>
+      {isOpen && onClose && (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Đóng menu"
+          onClick={onClose}
+          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden transition-opacity"
+        />
+      )}
+      <aside
+        ref={sidebarRef}
+        className={`w-64 min-w-[256px] max-w-[256px] h-screen fixed left-0 top-0 z-50 p-4 bg-slate-800 transition-all duration-300 overflow-y-auto overflow-x-hidden scrollbar-hide ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+      >
       <style>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
@@ -177,10 +215,9 @@ export function Sidebar({
         }
       `}</style>
 
-      {/* Logo */}
-      <div className="flex items-center gap-2 mb-8 px-2">
-        <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center flex-shrink-0">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex items-center gap-2 mb-2 px-2">
+        <div className={`w-8 h-8 ${logoGradient} rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg`}>
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
@@ -191,7 +228,13 @@ export function Sidebar({
         </span>
       </div>
 
-      {/* Navigation */}
+      <div className="px-2 mb-6">
+        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${logoGradient} text-white shadow`}>
+          <i className={`fas ${isAdmin ? 'fa-shield-alt' : 'fa-user-tie'} text-[9px]`} />
+          {isAdmin ? 'Quản trị viên' : isClubManager ? 'Quản lý CLB' : 'Thành viên'}
+        </span>
+      </div>
+
       <nav className="space-y-1 overflow-hidden">
         {navItems.map((item) => {
           const hasSubItems = item.subItems && item.subItems.length > 0;
@@ -218,10 +261,12 @@ export function Sidebar({
                 </button>
               ) : (
                 <button
-                  onClick={() => item.url && navigate(item.url)}
+                  onClick={() => {
+                    if (item.url) navigate(item.url);
+                  }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer ${isActive
-                      ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-r-4 border-blue-500 text-white font-semibold shadow-lg'
-                      : 'text-white/70 hover:bg-white/5'
+                    ? accentActive
+                    : 'text-white/70 hover:bg-white/5'
                     }`}
                 >
                   <i className={`fas ${item.icon} w-5 flex-shrink-0`}></i>
@@ -238,8 +283,8 @@ export function Sidebar({
                         key={subItem.url}
                         onClick={() => navigate(subItem.url)}
                         className={`w-full flex items-center gap-3 px-2 py-2 rounded-md transition-all text-sm cursor-pointer ${isSubActive
-                            ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 border-l-4 border-blue-400 text-white font-semibold'
-                            : 'text-white/80 hover:bg-slate-700 hover:text-white'
+                          ? accentSubActive
+                          : 'text-white/80 hover:bg-slate-700 hover:text-white'
                           }`}
                       >
                         <i className="fas fa-circle text-[6px] w-4 flex-shrink-0 opacity-60"></i>
@@ -254,6 +299,7 @@ export function Sidebar({
         })}
       </nav>
     </aside>
+    </>
   );
 }
 

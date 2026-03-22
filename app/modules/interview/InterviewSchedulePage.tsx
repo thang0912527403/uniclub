@@ -739,7 +739,7 @@ const InterviewSchedulePage: React.FC = () => {
 
   return (
     <div className="min-h-screen">
-      <Sidebar currentPath="/interview/schedule" isOpen={isSidebarOpen} />
+      <Sidebar currentPath="/interview/schedule" isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
         title="Lịch phỏng vấn"
         breadcrumb="Interview / Schedule"
@@ -749,7 +749,7 @@ const InterviewSchedulePage: React.FC = () => {
 
       <main
         className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${
-          isSidebarOpen ? "ml-64" : "ml-0"
+          isSidebarOpen ? "md:ml-64" : "ml-0"
         }`}
       >
         {/* Header */}

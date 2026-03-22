@@ -274,7 +274,7 @@ export default function CreateEventPage() {
                 onThemeToggle={toggleTheme}
                 position="bottom-right"
             />
-            <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+            <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Tạo sự kiện mới"
                 breadcrumb="Sự kiện / Tạo mới"
@@ -282,10 +282,8 @@ export default function CreateEventPage() {
                 onToggleSidebar={toggleSidebar}
             />
 
-            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                 <div className="max-w-[1400px] mx-auto">
-
-                    {/* Page header */}
                     <div className="flex items-center gap-3 mb-6">
                         <button onClick={() => navigate('/events')}
                             className={`p-2 rounded-lg ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}>

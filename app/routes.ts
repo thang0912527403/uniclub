@@ -5,25 +5,22 @@ export default [
   index("routes/_index.tsx"),
   route("home", "routes/home.tsx"),
 
-  // Auth routes
   route("auth/login", "routes/auth/login.tsx"),
   route("auth/register", "routes/auth/register.tsx"),
   route("auth/forgot-password", "routes/auth/forgot-password.tsx"),
   route("auth/reset-password", "routes/auth/reset-password.tsx"),
   route("auth/verify-email", "routes/auth/verify-email.tsx"),
 
+  // PayOS callback routes (public)
+  route("payos/return", "routes/payos.return.tsx"),
+  route("payos/cancel", "routes/payos.cancel.tsx"),
+
   // Public event routes
   route("public/events", "routes/public.events.tsx"),
   route("public/events/:id", "routes/public.events.$id.tsx"),
-
-  // Public news routes
   route("public/news", "routes/news.tsx"),
   route("public/news/:id", "routes/news.$id.tsx"),
-
-  // Public campaign detail
   route("campaign/:id", "routes/campaign.$id.tsx"),
-
-  // Question route (public - has own auth guard)
   route("question/:formId?", "routes/question.tsx"),
 
   // Error routes
@@ -38,17 +35,19 @@ export default [
     route("auth/change-password", "routes/auth/change-password.tsx"),
     route("my-applications", "routes/my-applications.tsx"),
 
+    // User management
+    route("users", "routes/users.tsx"),
+
     // Club management
-    route("manage-clubs", "routes/my-clubs.tsx"),
     route("clubs", "routes/clubs/clubs.tsx"),
     route("clubs/:id", "routes/clubs/clubs.$id.tsx"),
     route("clubs/create", "routes/clubs/clubs.create.tsx"),
     route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
     route("clubs/:id/structure", "routes/clubs/clubs.$id.structure.tsx"),
+    route("clubs/:id/funds/:fundId", "routes/clubs/clubs.$id.funds.$fundId.tsx"),
     route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
     route("club-roles", "routes/club-roles.tsx"),
-    route("users", "routes/users.tsx"),
-    route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
+    route("manage-clubs", "routes/my-clubs.tsx"),
 
     // Club content management
     route("club/manage-posts", "routes/clubs/clubpost.tsx"),
@@ -58,12 +57,16 @@ export default [
 
     // Recruitment & Applications
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
+    route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
 
     // Interview routes
     route("interview/schedule", "routes/interview-schedule.tsx"),
     route("interview/room/:roomCode?", "routes/interview-room.tsx"),
 
-    // Event management
+    // Question (campaign applications form)
+    route("question-applications", "routes/question-applications.tsx"),
+
+    // Events
     route("events", "routes/events.tsx"),
     route("events/create", "routes/events.create.tsx"),
     route("events/calendar", "routes/events.calendar.tsx"),
@@ -71,11 +74,9 @@ export default [
     route("events/:id", "routes/events.$id.tsx"),
     route("events/:id/edit", "routes/events.$id.edit.tsx"),
 
-    // Question (campaign applications form)
-    route("question-applications", "routes/question-applications.tsx"),
-
-    // Funds routes
+    // Funds
     route("funds", "routes/funds.tsx"),
+    route("funds/:fundId", "routes/funds.$fundId.tsx"),
     route("funds/transactions", "routes/funds.transactions.tsx"),
     route("funds/reports", "routes/funds.reports.tsx"),
     route("funds/settings", "routes/funds.settings.tsx"),

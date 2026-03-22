@@ -142,7 +142,7 @@ export default function ClubRolesModule() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <SettingButton />
-            <Sidebar currentPath="/club-roles" isOpen={isSidebarOpen} />
+            <Sidebar currentPath="/club-roles" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Phân quyền Vai Trò"
                 breadcrumb="Pages / Club Roles"
@@ -150,7 +150,7 @@ export default function ClubRolesModule() {
                 onToggleSidebar={toggleSidebar}
             />
 
-            <main className={`pt-24 px-6 pb-8 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+            <main className={`pt-24 px-6 pb-8 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                 {/* Stats Cards */}
                 {!isLoading && !error && allRoles.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

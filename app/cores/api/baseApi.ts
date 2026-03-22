@@ -3,9 +3,20 @@ import Cookies from 'js-cookie';
 
 /** Khi mở qua localhost → gọi thẳng backend; khi mở qua ngrok/proxy → dùng /api (cùng origin). */
 function getMainServiceBaseUrl(): string {
-  if (typeof window === 'undefined') return import.meta.env.VITE_API_URL ?? 'https://localhost:7237/api';
+  const rawEnv = import.meta.env.VITE_API_URL as string | undefined;
+  const normalize = (u: string) => {
+    const base = u.endsWith('/') ? u.slice(0, -1) : u;
+    // Nếu env chỉ là host (vd http://localhost:7237) thì tự thêm /api cho khớp chuẩn backend
+    if (base.endsWith('/api')) return base;
+    return `${base}/api`;
+  };
+
+  if (typeof window === 'undefined') return normalize(rawEnv ?? 'https://localhost:7237');
   const origin = window.location.origin;
-  if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) return 'https://localhost:7237/api';
+  // Khi chạy local: ưu tiên VITE_API_URL (hỗ trợ http/https + port tuỳ máy)
+  if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+    return normalize(rawEnv ?? 'https://localhost:7237');
+  }
   return '/api';
 }
 

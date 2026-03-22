@@ -347,7 +347,7 @@ export default function RecruitmentCampaignsModule() {
   return (
     <div className="min-h-screen">
       <SettingButton />
-      <Sidebar currentPath="/recruitment-campaigns" isOpen={isSidebarOpen} />
+      <Sidebar currentPath="/recruitment-campaigns" isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
         title="Quản lý Chiến dịch Tuyển dụng"
         breadcrumb="Pages / Recruitment Campaigns"
@@ -355,7 +355,7 @@ export default function RecruitmentCampaignsModule() {
         onToggleSidebar={toggleSidebar}
       />
 
-      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
         {/* Loading */}
         {isLoading && <Loading />}
 

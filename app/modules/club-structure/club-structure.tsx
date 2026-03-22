@@ -885,7 +885,7 @@ export default function ClubStructureModule() {
   return (
     <div className="min-h-screen">
       <SettingButton />
-      <Sidebar currentPath={`/clubs/${id}/structure`} isOpen={isSidebarOpen} />
+      <Sidebar currentPath={`/clubs/${id}/structure`} isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
         title="Cấu trúc Câu lạc bộ"
         breadcrumb={`Pages / Clubs / ${id} / Structure`}
@@ -893,7 +893,7 @@ export default function ClubStructureModule() {
         onToggleSidebar={toggleSidebar}
       />
 
-      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
         {/* Top bar: Back + Add + View Toggle */}
         <div className="flex items-center justify-between mb-8">
           <button onClick={() => navigate(`/clubs/${id}`)}
