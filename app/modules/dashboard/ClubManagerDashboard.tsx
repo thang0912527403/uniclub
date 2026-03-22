@@ -7,7 +7,7 @@ import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { useClubRole } from '~/hooks/useClubRole';
 import { useGetApplicationsByClubQuery } from '~/cores/api/applicationApi';
-import { useGetRecruitmentCampaignsQuery } from '~/cores/api/recruitmentCampaignApi';
+import { useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api/recruitmentCampaignApi';
 import { useGetInterviewsQuery } from '~/cores/api/interviewApi';
 import { useGetClubByIdQuery } from '~/cores/api/clubApi';
 import { useGetAllEventsQuery } from '~/cores/api';
@@ -107,8 +107,8 @@ export default function ClubManagerDashboard() {
   const { data: allApplications = [], isLoading: appsLoading } =
     useGetApplicationsByClubQuery({ clubId: clubId ?? 0 }, { skip: !clubId });
 
-  const { data: allCampaigns = [], isLoading: campaignsLoading } =
-    useGetRecruitmentCampaignsQuery();
+  const { data: myCampaigns = [], isLoading: campaignsLoading } =
+    useGetRecruitmentCampaignsByClubIdQuery(clubId ?? 0, { skip: !clubId });
 
   const { data: allInterviews = [], isLoading: interviewsLoading } =
     useGetInterviewsQuery();
@@ -117,11 +117,6 @@ export default function ClubManagerDashboard() {
     useGetAllEventsQuery({ pageNumber: 1, pageSize: 100 });
 
   // ── Filter to this club only ───────────────────────────────────────────
-  const myCampaigns = useMemo(
-    () => allCampaigns.filter(c => c.clubId === clubId),
-    [allCampaigns, clubId]
-  );
-
   const myCampaignIds = useMemo(() => new Set(myCampaigns.map(c => c.campaignId)), [myCampaigns]);
 
   const myInterviews = useMemo(

@@ -1,16 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import Navbar from '../../components/Navbar';
-import { useGetCurrentUserQuery } from '~/cores/api/authApi';
 import { useGetUserByIdQuery, useUpdateUserMutation, useUploadAvatarMutation } from '~/cores/api/userApi';
 import { useNotification } from '~/components/Notification';
 import { ConfirmDialog } from '~/components/ConfirmDialog';
 import type { UpdateUserDto } from '~/cores/api/types/user';
+import { getUserId } from '~/utils/auth';
+import ProfileHeader from './components/profileHeader';
+import InterviewStatusTracker from './components/InterviewStatusTracker';
+import InterviewerInterviewsSection from './components/InterviewerInterviewsSection';
 
 const UserProfile = () => {
   const navigate = useNavigate();
-  const { data: me } = useGetCurrentUserQuery();
-  const { data: user, isLoading, refetch } = useGetUserByIdQuery(me?.userId || '', { skip: !me?.userId });
+  const meId = getUserId();
+  const { data: user, isLoading, refetch } = useGetUserByIdQuery(meId, { skip: !meId });
   const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
   const [uploadAvatar, { isLoading: isUploadingAvatar }] = useUploadAvatarMutation();
   const { show: showNotification } = useNotification();
@@ -49,27 +52,28 @@ const UserProfile = () => {
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !me?.userId) return;
-
+    if (!file || !meId) return;
     try {
-      const result = await uploadAvatar({ id: me.userId, file }).unwrap();
+      await uploadAvatar({ id: meId, file }).unwrap();
       showNotification({ type: 'success', title: 'Thành công', message: 'Cập nhật ảnh đại diện thành công!' });
       refetch();
-    } catch (err: any) {
-      showNotification({ type: 'error', title: 'Lỗi', message: err?.data?.message ?? 'Không thể tải ảnh lên' });
+    } catch (err: unknown) {
+      const msg = (err as { data?: { message?: string } })?.data?.message ?? 'Không thể tải ảnh lên';
+      showNotification({ type: 'error', title: 'Lỗi', message: msg });
     }
   };
 
   const handleSave = async () => {
-    if (!me?.userId) return;
+    if (!meId) return;
     try {
-      await updateUser({ id: me.userId, data: form }).unwrap();
+      await updateUser({ id: meId, data: form }).unwrap();
       showNotification({ type: 'success', title: 'Thành công', message: 'Cập nhật hồ sơ thành công!' });
       setIsEditing(false);
       setShowSaveConfirm(false);
       refetch();
-    } catch (err: any) {
-      showNotification({ type: 'error', title: 'Lỗi', message: err?.data?.message ?? 'Cập nhật thất bại' });
+    } catch (err: unknown) {
+      const msg = (err as { data?: { message?: string } })?.data?.message ?? 'Cập nhật thất bại';
+      showNotification({ type: 'error', title: 'Lỗi', message: msg });
       setShowSaveConfirm(false);
     }
   };
@@ -106,10 +110,13 @@ const UserProfile = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
       <Navbar />
 
-      <main className="max-w-4xl mx-auto px-4 py-8 mt-16">
+      <main className="max-w-5xl mx-auto px-4 py-8 mt-16">
+
+        {/* ─── Profile Header ─────────────────────────────── */}
+        {user && <ProfileHeader user={user} />}
 
         {/* ─── Cover + Avatar ─────────────────────────────── */}
-        <div className="relative mb-20">
+        <div className="relative mb-20 mt-6">
           <div className="h-48 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl shadow-lg" />
 
           {/* Avatar */}
@@ -177,8 +184,8 @@ const UserProfile = () => {
           </div>
         </div>
 
-        {/* ─── Info Cards ─────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* ─── Info Cards + Interview Tracker ─────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
           {/* Basic Info */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
@@ -239,6 +246,11 @@ const UserProfile = () => {
             </div>
           </div>
         </div>
+
+        {/* ─── Interview tracker (from 547370a) ───────────── */}
+        {meId && <InterviewStatusTracker userId={meId} />}
+        {meId && <InterviewerInterviewsSection userId={meId} />}
+
       </main>
 
       {/* Save Confirm Dialog */}

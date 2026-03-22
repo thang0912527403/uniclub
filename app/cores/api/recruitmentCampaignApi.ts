@@ -8,6 +8,12 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<RecruitmentCampaign[]>) => response.data,
       providesTags: ['RecruitmentCampaign'],
     }),
+    
+    getRecruitmentCampaignsByClubId: builder.query<RecruitmentCampaign[], number>({
+      query: (clubId) => `/recruitment-campaign/club/${clubId}`,
+      transformResponse: (response: ApiResponse<RecruitmentCampaign[]>) => response.data,
+      providesTags: (result, error, clubId) => [{ type: 'RecruitmentCampaign', id: `club-${clubId}` }],
+    }),
 
     getRecruitmentCampaign: builder.query<RecruitmentCampaign, number>({
       query: (id) => `/recruitment-campaign/${id}`,
@@ -45,6 +51,7 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
 
 export const {
   useGetRecruitmentCampaignsQuery,
+  useGetRecruitmentCampaignsByClubIdQuery,
   useGetRecruitmentCampaignQuery,
   useCreateRecruitmentCampaignMutation,
   useUpdateRecruitmentCampaignMutation,
