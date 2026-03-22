@@ -4,7 +4,8 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import {
-    useGetClubPostByClubIdQuery,
+    // useGetClubPostByClubIdQuery,
+    useGetClubPostsQuery,
     useCreateClubPostMutation,
     useUpdateClubPostMutation,
     useDeleteClubPostMutation,
@@ -221,7 +222,8 @@ export default function ClubPostModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { clubManagerMembership } = useClubRole();
     const clubId = clubManagerMembership?.clubId ?? 0;
-    const { data: clubPosts = [], isLoading } = useGetClubPostByClubIdQuery(clubId);
+    const { data: allPosts = [], isLoading } = useGetClubPostsQuery();
+    const clubPosts = allPosts.filter(p => p.clubId === clubId);
     const [deleteClubPost] = useDeleteClubPostMutation();
     const [updateClubPost] = useUpdateClubPostMutation();
     const navigate = useNavigate();

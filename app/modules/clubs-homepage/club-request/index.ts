@@ -1,0 +1,1 @@
+export {default as ClubRequestPage} from './clubrequest';

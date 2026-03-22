@@ -136,6 +136,11 @@ export const userApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<Club[]>) => response.data ?? [],
       providesTags: ['User'],
     }),
+    getManagedClubs: builder.query<Club[], string>({
+      query: (userId) => `/Users/${userId}/managed-clubs`,
+      transformResponse: (response: ApiResponse<Club[]>) => response.data,
+      providesTags: ['Club'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -149,4 +154,5 @@ export const {
   useGetUserClubInfoQuery,
   useUploadAvatarMutation,
   useGetUserAllClubsQuery,
+  useGetManagedClubsQuery
 } = userApi;

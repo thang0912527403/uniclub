@@ -1,22 +1,15 @@
 import React, { useState } from 'react';
 import Navbar from '../../components/Navbar';
-import PostCard from './components/PostCard';
-import PostFilter from './components/PostFilter';
-import { useGetClubPostsQuery } from '~/cores/api';
+import ClubCard from './components/ClubCard';
+// import PostFilter from './components/PostFilter';
 import { useGetClubsQuery } from '~/cores/api';
 import { ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 const NewsPage: React.FC = () => {
-  const { data: allPosts = [] } = useGetClubPostsQuery();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Tất cả");
   const { data: clubs = [] } = useGetClubsQuery();
-  const categories = ["Tất cả", ...clubs.map(c => c.clubName)];
-
-  const filteredPosts = activeTab === "Tất cả" 
-    ? allPosts 
-    : allPosts.filter(p => p.clubName === activeTab);
 
   return (
     <div className="bg-[#FAFAFA] min-h-screen">
@@ -26,11 +19,11 @@ const NewsPage: React.FC = () => {
       <div className="pt-32 pb-16 bg-white border-b border-gray-50">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 uppercase tracking-tight">
-            Khám phá <span className="text-orange-500 italic">Bản tin</span>
+            Khám phá <span className="text-orange-500 italic">Câu lạc bộ</span>
           </h2>
           <div className="w-24 h-1.5 bg-orange-500 mx-auto rounded-full mb-6"></div>
           <p className="max-w-2xl mx-auto text-gray-500 font-medium">
-            Nơi tổng hợp những hoạt động, thông báo và chia sẻ thú vị nhất từ cộng đồng các câu lạc bộ tại UNIC.
+            Nơi tổng hợp các câu lạc bộ trong hệ thống UNIC.
           </p>
         </div>
       </div>
@@ -47,29 +40,29 @@ const NewsPage: React.FC = () => {
         Quay lại
       </button>
         {/* Filter Section */}
-        <PostFilter 
+        {/* <PostFilter 
           categories={categories} 
           activeTab={activeTab} 
           setActiveTab={setActiveTab} 
-        />
+        /> */}
 
         {/* Grid Posts */}
-        {filteredPosts.length > 0 ? (
+        {clubs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredPosts.map((post) => (
-              <PostCard key={post.postId} post={post} />
+            {clubs.map((club) => (
+              <ClubCard key={club.clubId} club={club} />
             ))}
           </div>
         ) : (
           <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-gray-100">
-             <p className="text-gray-400 font-medium">Chưa có bản tin nào thuộc danh mục này.</p>
+             <p className="text-gray-400 font-medium">Chưa có câu lạc bộ nào.</p>
           </div>
         )}
 
         {/* Pagination (Tùy chọn) */}
         <div className="mt-20 flex justify-center">
           <button className="bg-white text-orange-600 border border-orange-100 px-10 py-3 rounded-full font-bold hover:bg-orange-500 hover:text-white transition-all duration-300 shadow-sm">
-            Tải thêm bài viết
+            Tải thêm câu lạc bộ
           </button>
         </div>
       </div>

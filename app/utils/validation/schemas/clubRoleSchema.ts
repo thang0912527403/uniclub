@@ -3,7 +3,7 @@ import { requiredString, parseErrors } from './commonSchemas';
 
 export const clubRoleSchema = z.object({
     roleName: requiredString('Tên vai trò'),
-    description: z.string().optional(),
+    description: z.string().max(255, 'Mô tả không được vượt quá 255 ký tự'),
     level: z.number().int().min(1, 'Cấp bậc phải >= 1'),
     departmentId: z.number().nullable().optional(),
 });
