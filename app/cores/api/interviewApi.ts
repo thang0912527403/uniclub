@@ -16,6 +16,17 @@ import type {
   FeedbackSummaryResponse,
   GetInterviewsParams,
   ApiResponse,
+  EvaluationCriterionResponse,
+  CreateEvaluationCriterionDto,
+  UpdateEvaluationCriterionDto,
+  AssignCriteriaDto,
+  SubmitCriteriaFeedbackDto,
+  EvaluationSummaryResponse,
+  CandidateComparisonItem,
+  SubmitDecisionsDto,
+  CampaignDecisionResponse,
+  PublishResultDto,
+  PublishStatusResponse,
 } from './types';
 
 export const interviewApi = baseApi.injectEndpoints({
@@ -193,6 +204,106 @@ export const interviewApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<FeedbackSummaryResponse>) => response.data,
       providesTags: (result, error, scheduleId) => [{ type: 'Interview', id: scheduleId }],
     }),
+
+    // ═══════════════════════════════════════════════════════════
+    //  Evaluation Criteria
+    // ═══════════════════════════════════════════════════════════
+
+    getCampaignCriteria: builder.query<EvaluationCriterionResponse[], number>({
+      query: (campaignId) => `/interviews/campaign/${campaignId}/criteria`,
+      transformResponse: (response: ApiResponse<EvaluationCriterionResponse[]>) => response.data,
+      providesTags: (result, error, campaignId) => [{ type: 'Interview' as const, id: `CRITERIA_${campaignId}` }],
+    }),
+
+    createCriterion: builder.mutation<EvaluationCriterionResponse, { campaignId: number; dto: CreateEvaluationCriterionDto }>({
+      query: ({ campaignId, dto }) => ({
+        url: `/interviews/campaign/${campaignId}/criteria`,
+        method: 'POST',
+        body: dto,
+      }),
+      transformResponse: (response: ApiResponse<EvaluationCriterionResponse>) => response.data,
+      invalidatesTags: (result, error, { campaignId }) => [{ type: 'Interview', id: `CRITERIA_${campaignId}` }],
+    }),
+
+    updateCriterion: builder.mutation<EvaluationCriterionResponse, { criterionId: number; dto: UpdateEvaluationCriterionDto; campaignId: number }>({
+      query: ({ criterionId, dto }) => ({
+        url: `/interviews/criteria/${criterionId}`,
+        method: 'PUT',
+        body: dto,
+      }),
+      transformResponse: (response: ApiResponse<EvaluationCriterionResponse>) => response.data,
+      invalidatesTags: (result, error, { campaignId }) => [{ type: 'Interview', id: `CRITERIA_${campaignId}` }],
+    }),
+
+    deleteCriterion: builder.mutation<void, { criterionId: number; campaignId: number }>({
+      query: ({ criterionId }) => ({
+        url: `/interviews/criteria/${criterionId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, { campaignId }) => [{ type: 'Interview', id: `CRITERIA_${campaignId}` }],
+    }),
+
+    assignCriteria: builder.mutation<void, { scheduleId: number; assignmentId: number; dto: AssignCriteriaDto }>({
+      query: ({ scheduleId, assignmentId, dto }) => ({
+        url: `/interviews/${scheduleId}/assignments/${assignmentId}/criteria`,
+        method: 'PUT',
+        body: dto,
+      }),
+      invalidatesTags: (result, error, { scheduleId }) => [{ type: 'Interview', id: scheduleId }],
+    }),
+
+    // ═══════════════════════════════════════════════════════════
+    //  Criteria-based Feedback & Evaluation
+    // ═══════════════════════════════════════════════════════════
+
+    submitCriteriaFeedback: builder.mutation<void, { scheduleId: number; assignmentId: number; dto: SubmitCriteriaFeedbackDto }>({
+      query: ({ scheduleId, assignmentId, dto }) => ({
+        url: `/interviews/${scheduleId}/assignments/${assignmentId}/criteria-feedback`,
+        method: 'POST',
+        body: dto,
+      }),
+      invalidatesTags: (result, error, { scheduleId }) => [{ type: 'Interview', id: scheduleId }],
+    }),
+
+    getEvaluationSummary: builder.query<EvaluationSummaryResponse, number>({
+      query: (scheduleId) => `/interviews/${scheduleId}/evaluation-summary`,
+      transformResponse: (response: ApiResponse<EvaluationSummaryResponse>) => response.data,
+      providesTags: (result, error, scheduleId) => [{ type: 'Interview', id: scheduleId }],
+    }),
+
+    getCampaignComparison: builder.query<CandidateComparisonItem[], number>({
+      query: (campaignId) => `/interviews/campaign/${campaignId}/comparison`,
+      transformResponse: (response: ApiResponse<CandidateComparisonItem[]>) => response.data,
+      providesTags: (result, error, campaignId) => [{ type: 'Interview' as const, id: `COMPARISON_${campaignId}` }],
+    }),
+
+    // ═══════════════════════════════════════════════════════════
+    //  Decisions & Publish
+    // ═══════════════════════════════════════════════════════════
+
+    submitDecisions: builder.mutation<CampaignDecisionResponse[], { campaignId: number; dto: SubmitDecisionsDto }>({
+      query: ({ campaignId, dto }) => ({
+        url: `/interviews/campaign/${campaignId}/decisions`,
+        method: 'POST',
+        body: dto,
+      }),
+      transformResponse: (response: ApiResponse<CampaignDecisionResponse[]>) => response.data,
+      invalidatesTags: (result, error, { campaignId }) => [{ type: 'Interview' as const, id: `COMPARISON_${campaignId}` }],
+    }),
+
+    publishResults: builder.mutation<PublishStatusResponse, { campaignId: number; dto: PublishResultDto }>({
+      query: ({ campaignId, dto }) => ({
+        url: `/interviews/campaign/${campaignId}/publish`,
+        method: 'POST',
+        body: dto,
+      }),
+      transformResponse: (response: ApiResponse<PublishStatusResponse>) => response.data,
+    }),
+
+    getPublishStatus: builder.query<PublishStatusResponse, number>({
+      query: (campaignId) => `/interviews/campaign/${campaignId}/publish-status`,
+      transformResponse: (response: ApiResponse<PublishStatusResponse>) => response.data,
+    }),
   }),
   overrideExisting: false,
 });
@@ -217,4 +328,17 @@ export const {
   useGetRoomByCodeQuery,
   useSubmitFeedbackMutation,
   useGetFeedbackSummaryQuery,
+  // Evaluation
+  useGetCampaignCriteriaQuery,
+  useCreateCriterionMutation,
+  useUpdateCriterionMutation,
+  useDeleteCriterionMutation,
+  useAssignCriteriaMutation,
+  useSubmitCriteriaFeedbackMutation,
+  useGetEvaluationSummaryQuery,
+  useGetCampaignComparisonQuery,
+  useSubmitDecisionsMutation,
+  usePublishResultsMutation,
+  useGetPublishStatusQuery,
 } = interviewApi;
+

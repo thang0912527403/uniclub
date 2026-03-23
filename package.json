@@ -9,6 +9,7 @@
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@microsoft/signalr": "^10.0.0",
     "@react-router/node": "7.12.0",
