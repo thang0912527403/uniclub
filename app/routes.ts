@@ -24,7 +24,7 @@ export default [
   route("campaign/:id", "routes/campaign.$id.tsx"),
 
   // Question route (public - has own auth guard)
-  route("question/:formId?", "routes/question.tsx"),
+  route("application-form/:formId?", "routes/question.tsx"),
 
   // Error routes
   route("401", "routes/error/401.tsx"),

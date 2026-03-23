@@ -49,7 +49,7 @@ export default function CampaignFormsPage() {
         onToggleSidebar={toggleSidebar}
       />
       <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
-        <CampaignFormManager campaignId={id} campaignName={campaign?.campaignName} />
+        <CampaignFormManager campaignId={id} clubId={clubId} campaignName={campaign?.campaignName} />
       </main>
     </div>
   );
