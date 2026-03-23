@@ -4,7 +4,7 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import {
-    useGetClubPostByClubIdQuery,
+    // useGetClubPostByClubIdQuery,
     useGetClubPostsQuery,
     useCreateClubPostMutation,
     useUpdateClubPostMutation,

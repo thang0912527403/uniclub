@@ -11,9 +11,11 @@ export default function CampaignDetailPage() {
     skip: !campaignId,
   });
 
-  const { data: forms = [] } = useGetFormsByCampaignQuery(campaignId, {
-    skip: !campaignId,
-  });
+  const clubId = campaign?.clubId ?? 0;
+  const { data: forms = [] } = useGetFormsByCampaignQuery(
+    { clubId, campaignId },
+    { skip: !campaignId || !clubId },
+  );
 
   if (isLoading) {
     return (

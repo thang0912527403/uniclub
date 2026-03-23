@@ -12,8 +12,8 @@ import {
     useUpdateMemberRoleMutation,
     type ClubMember,
 } from '~/cores/api';
-import { useGetClubRolesByClubIdQuery } from '~/cores/api/clubRoleApi';
-import { getClubId } from '~/utils/auth';
+import { useGetClubStructureRolesQuery } from '~/cores/api/clubRoleApi';
+
 
 /* ─── Avatar placeholder ─────────────────────────────────────────────────── */
 function MemberAvatar({ member }: { member: ClubMember }) {
@@ -46,7 +46,7 @@ function MemberAvatar({ member }: { member: ClubMember }) {
 
 /* ─── Status badge ───────────────────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
-    const active = status === 'ACTIVE';
+    const active = status?.toUpperCase() === 'ACTIVE';
     return (
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${active
             ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
@@ -66,7 +66,7 @@ interface RoleCellProps {
 
 function RoleCell({ member, clubId }: RoleCellProps) {
     const { show } = useNotification();
-    const { data: roles } = useGetClubRolesByClubIdQuery(clubId, {
+    const { data: roles } = useGetClubStructureRolesQuery(clubId, {
         skip: !clubId,
     });
     const [updateRole, { isLoading }] = useUpdateMemberRoleMutation();
@@ -160,8 +160,9 @@ function RoleCell({ member, clubId }: RoleCellProps) {
 /* ─── Main module ────────────────────────────────────────────────────────── */
 export default function ClubMembersModule() {
     const navigate = useNavigate();
+    const { clubId: clubIdParam } = useParams<{ clubId: string }>();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-    const clubId = getClubId();
+    const clubId = Number(clubIdParam) || 0;
 
     const { data: club } = useGetClubByIdQuery(clubId, {
         skip: !clubId,

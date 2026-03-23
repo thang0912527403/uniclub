@@ -5,6 +5,7 @@ import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
 import ProgressBar from './components/progressBar';
 import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationByUserAndFormQuery, useGetFormsByCampaignQuery } from '../../cores/api/applicationApi';
+import { useGetRecruitmentCampaignQuery } from '../../cores/api';
 import { getUserId } from '~/utils/auth';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import type { ApplicationAnswerItemDto } from '../../cores/api';
@@ -21,31 +22,38 @@ const QuestionPage: React.FC = () => {
 
   const idFromUrl = idParam ? Number(idParam) : NaN;
 
-  // We'll try to treat the ID as both a Form ID and a Campaign ID (to find the form)
-  // 1. Fetch forms for the ID in case it's a campaign ID
-  const { data: campaignForms = [] } = useGetFormsByCampaignQuery(idFromUrl, {
+  // 1. Fetch campaign first to get clubId (treat idFromUrl as campaignId)
+  const { data: campaign } = useGetRecruitmentCampaignQuery(idFromUrl, {
     skip: !idFromUrl || isNaN(idFromUrl),
   });
+  // const clubId = campaign?.clubId ?? 0;
+  const clubId = 1;
 
-  // 2. Determine the actual form ID to use:
+  // 2. Fetch forms for the campaign (requires clubId)
+  const { data: campaignForms = [] } = useGetFormsByCampaignQuery(
+    { clubId, campaignId: idFromUrl },
+    { skip: !idFromUrl || isNaN(idFromUrl) || !clubId },
+  );
+
+  // 3. Determine the actual form ID to use:
   // - If it's a valid campaign with forms, use the first form's ID
   // - Otherwise, assume the ID in the URL is the form ID itself
   const actualFormId = campaignForms.length > 0 ? campaignForms[0].formId : idFromUrl;
 
   const currentUserId = getUserId();
   const { user: currentUser, isLoading: userLoading } = useCurrentUser();
-  const { 
-    data: questions = [], 
-    isLoading: questionsLoading, 
-    error: questionsError 
-  } = useGetQuestionsByFormQuery(actualFormId, { skip: !actualFormId || isNaN(actualFormId) });
+  const {
+    data: questions = [],
+    isLoading: questionsLoading,
+    error: questionsError
+  } = useGetQuestionsByFormQuery({ clubId, formId: actualFormId }, { skip: !actualFormId || isNaN(actualFormId) || !clubId });
 
   const [submitApplication, { isLoading: isSubmitting, error: submitError, isSuccess }] = useSubmitApplicationMutation();
 
   // Check if user already applied to this form
   const { data: existingApp, isLoading: checkingApp } = useGetApplicationByUserAndFormQuery(
-    { userId: currentUserId, formId: actualFormId },
-    { skip: !currentUserId || !actualFormId || isNaN(actualFormId) }
+    { clubId, userId: currentUserId, formId: actualFormId },
+    { skip: !currentUserId || !actualFormId || isNaN(actualFormId) || !clubId }
   );
 
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -78,7 +86,7 @@ const QuestionPage: React.FC = () => {
         answerText: toAnswerText(value).trim(),
       }));
     try {
-      await submitApplication({ formId: actualFormId, userId: currentUserId, answers: answerList }).unwrap();
+      await submitApplication({ clubId, formId: actualFormId, userId: currentUserId, answers: answerList }).unwrap();
     } catch (_) { /* error shown via submitError */ }
   };
 
@@ -241,7 +249,7 @@ const QuestionPage: React.FC = () => {
         <FormHeader
           title="Thông tin đăng ký"
           highlight="Thành viên"
-          description={`Chào ${currentUser?.fullName ?? 'bạn'}! Vui lòng điền đầy đủ các thông tin bên dưới để nộp đơn ứng tuyển.`}
+          description={`Chào ${currentUser?.fullName ?? 'bạn'}! Hãy hoàn thành các câu hỏi trong đơn ứng tuyển.`}
         />
         <ProgressBar
           current={Object.keys(answers).length}

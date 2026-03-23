@@ -61,7 +61,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ data, value, onChange }) =>
                 name={`q-${data.questionId}`}
                 value={opt}
                 checked={isRadio ? textValue === opt : (Array.isArray(value) ? value : []).includes(opt)}
-                onChange={() => handleCheckboxChange(opt)}
+                onChange={() => (isRadio ? onChange(opt) : handleCheckboxChange(opt))}
                 className="w-5 h-5 accent-[#FF6B00] cursor-pointer"
               />
               <span className="text-gray-700 font-medium group-hover:text-[#FF6B00] transition-colors">

@@ -4,15 +4,19 @@ import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { useCreateClubMutation } from '~/cores/api';
+import { useCreateClubMutation, useCreateClubRoleMutation, useAssignClubRoleMutation } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
 import { validateClubForm, type ClubFormData } from '~/utils/validation';
+import { getUserId } from '~/utils/auth';
 
 
 export default function CreateClubModule() {
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const [createClub, { isLoading, error }] = useCreateClubMutation();
+    const [createClubRole] = useCreateClubRoleMutation();
+    const [assignClubRole] = useAssignClubRoleMutation();
+    const currentUserId = getUserId();
     const { show: showNotification } = useNotification();
 
     const [formData, setFormData] = useState<ClubFormData>({
@@ -50,21 +54,41 @@ export default function CreateClubModule() {
         setFormErrors({});
 
         try {
-            await createClub(formData).unwrap();
+            const club = await createClub(formData).unwrap();
+            const clubId = club.clubId;
+
+            const role = await createClubRole({
+                clubId: clubId,
+                roleName: "Chủ nhiệm",
+                description: "Vai trò chủ nhiệm câu lạc bộ, có toàn quyền quản lý và điều hành các hoạt động của câu lạc bộ.",
+                level: 0
+            }).unwrap();
+
+            await assignClubRole({
+                userId: currentUserId,
+                clubId: clubId,
+                clubRoleId: role.clubRoleId
+            }).unwrap();
+
             showNotification({
                 type: 'success',
                 title: 'Tạo câu lạc bộ thành công!',
                 message: `Câu lạc bộ "${formData.clubName}" đã được tạo thành công.`,
                 duration: 3000,
             });
+
             setTimeout(() => navigate('/clubs'), 1500);
+
         } catch (err) {
-            console.error('Failed to create club:', error);
+
+            console.error(err);
+
             showNotification({
                 type: 'error',
                 title: 'Tạo câu lạc bộ thất bại',
                 message: 'Vui lòng kiểm tra lại thông tin và thử lại.',
             });
+
         }
     };
 

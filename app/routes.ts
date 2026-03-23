@@ -24,7 +24,7 @@ export default [
   route("campaign/:id", "routes/campaign.$id.tsx"),
 
   // Question route (public - has own auth guard)
-  route("question/:formId?", "routes/question.tsx"),
+  route("application-form/:formId?", "routes/question.tsx"),
 
   // Error routes
   route("401", "routes/error/401.tsx"),
@@ -45,9 +45,14 @@ export default [
     route("clubs/create", "routes/clubs/clubs.create.tsx"),
     route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
     route("clubs/:id/structure", "routes/clubs/clubs.$id.structure.tsx"),
+    route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
     route("club-roles", "routes/club-roles.tsx"),
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
     route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
+    route("club/all-clubs", "routes/clubs-homepage/clubs.tsx"),
+    route("club/all-clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
+    route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
+    route("club/all-requests", "routes/clubs/clubrequests.tsx"),
 
     // Interview routes
     route("interview/schedule", "routes/interview-schedule.tsx"),

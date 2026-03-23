@@ -23,6 +23,7 @@ export function loginUser(payload: LoginResponse) {
   if (payload.user?.userId) {
     Cookies.set('userId', payload.user.userId);
   }
+  window.dispatchEvent(new Event('authchange'));
 }
 
 export function logoutUser() {
@@ -30,6 +31,7 @@ export function logoutUser() {
   Cookies.remove('refreshToken');
   Cookies.remove('userId');
   Cookies.remove('clubId');
+  window.dispatchEvent(new Event('authchange'));
 }
 
 export function setClubId(clubId: number) {

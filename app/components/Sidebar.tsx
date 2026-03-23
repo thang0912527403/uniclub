@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router';
 import { useExpandedMenu } from '~/hooks/useExpandedMenu';
 import { useEffect, useRef } from 'react';
+import { useGetManagedClubsQuery } from '~/cores/api/userApi';
+import { getUserId } from '~/utils/auth';
+import { getClubId } from '~/utils/auth';
 
 interface SubMenuItem {
   label: string;
@@ -46,6 +49,8 @@ export function Sidebar({
     }
   }, [currentPath, isOpen]);
 
+  const { data: managedClubs, isLoading, error } = useGetManagedClubsQuery(getUserId());
+  const clubId = managedClubs?.[0]?.clubId;
   // Save scroll position
   useEffect(() => {
     const sidebar = sidebarRef.current;
@@ -68,13 +73,14 @@ export function Sidebar({
       icon: 'fa-building',
       subItems: [
         { label: 'All Clubs', url: '/clubs' },
-        { label: 'Club Structure', url: '/clubs/1/structure' },
+        { label: 'Club Structure', url: `/clubs/${clubId}/structure` },
         { label: 'Club Roles', url: '/club-roles' },
         { label: 'Your Club Info', url: '/club/info' },
         { label: 'Manage Club Name', url: '/club/name' },
         { label: 'Recruitment Campaigns', url: '/club/recruitment-campaigns' },
         { label: 'Club Members', url: '/club/members' },
         { label: 'Club Activities', url: '/club/activities' },
+        { label: 'Club Requests', url: '/club/all-requests' }
       ]
     },
     {
@@ -99,7 +105,7 @@ export function Sidebar({
       label: 'Manage Members',
       icon: 'fa-users',
       subItems: [
-        { label: 'All Members', url: '/clubs/1/members' },
+        { label: 'All Members', url: `/clubs/${getClubId() || 1}/members` },
         { label: 'Add Member', url: '/members/add' },
         { label: 'Member Roles', url: '/members/roles' },
         { label: 'Member Activity', url: '/members/activity' },

@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import { type Club, type ApiResponse, type ClubPostResponseDto , type ClubMember} from './types';
+import { type Club, type ApiResponse, type ClubPostResponseDto, type CreateClubPostDto, type ClubMember } from './types';
 
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -62,18 +62,16 @@ export const clubApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ClubPostResponseDto>) => response.data,
       providesTags: (result, error, id) => [{ type: 'ClubPost', id }],
     }),
-    getClubPostByClubId: builder.query<ClubPostResponseDto[], number>({
-      query: (clubId) => `/ClubPost/club/${clubId}`,
-      transformResponse: (response: ApiResponse<ClubPostResponseDto[]>) => response.data,
-      providesTags: (result, error, clubId) => [{ type: 'ClubPost', id: `club-${clubId}` }],
-    }),
-    createClubPost: builder.mutation<ClubPostResponseDto, FormData>({
+    createClubPost: builder.mutation<
+      CreateClubPostDto,
+      FormData
+    >({
       query: (formData) => ({
         url: '/ClubPost',
         method: 'POST',
         body: formData,
       }),
-      transformResponse: (response: ApiResponse<ClubPostResponseDto>) =>
+      transformResponse: (response: ApiResponse<CreateClubPostDto>) =>
         response.data,
       invalidatesTags: [{ type: 'ClubPost' }],
     }),
@@ -118,7 +116,7 @@ export const {
   useToggleClubStatusMutation,
   useGetClubPostsQuery,
   useGetClubPostByIdQuery,
-  useGetClubPostByClubIdQuery,
+  // useGetClubPostByClubIdQuery,
   useCreateClubPostMutation,
   useUpdateClubPostMutation,
   useDeleteClubPostMutation,
