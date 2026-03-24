@@ -162,6 +162,7 @@ export default function EditEventPage() {
     const [confirmModal, setConfirmModal] = useState(false);
     const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState<'info' | 'time'>('info');
 
     // ── Session Quick Modal (tạo/sửa trực tiếp từ calendar) ──
     const [sessionModal, setSessionModal] = useState<{
@@ -550,70 +551,113 @@ export default function EditEventPage() {
                         </div>
                     )}
 
-                    {/* TOP: Form info + Registration inline — 1 card full width */}
-                    <div className={`${card} rounded-xl shadow-sm p-6 mb-6`}>
-                        <EventForm
-                            initialData={{
-                                ...event,
-                                startDate: form.startDate ? toIso(form.startDate) : event.startDate,
-                                endDate: form.endDate ? toIso(form.endDate) : event.endDate,
-                            }}
-                            onChange={(data) => setForm(prev => ({ ...prev, ...data }))}
-                            onSubmit={handleSubmit}
-                            onCancel={() => navigate(`/events/${id}`)}
-                            isLoading={isSaving}
-                            isDark={isDark}
-                            mode="edit"
-                            formId="event-edit-form"
-                            hideActions={true}
-                        />
+                    {/* ── Tab Switcher ── */}
+                    <div className="flex gap-1 mb-6">
+                        <button
+                            onClick={() => setActiveTab('info')}
+                            className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'info'
+                                ? 'bg-blue-500 text-white shadow-md'
+                                : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+                            }`}
+                        >
+                            <i className="fas fa-edit mr-2" />Thông tin sự kiện
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('time')}
+                            className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'time'
+                                ? 'bg-blue-500 text-white shadow-md'
+                                : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+                            }`}
+                        >
+                            <i className="fas fa-calendar-alt mr-2" />Thời gian sự kiện
+                        </button>
+                    </div>
 
-                        {/* Registration — ngang, ngay dưới form */}
-                        <div className={`mt-5 pt-5 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                            <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                                <span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" />
-                                Thời gian đăng ký
-                            </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Bắt đầu đăng ký</label>
-                                    <DTPicker
-                                        value={form.regStart}
-                                        onChange={v => setForm(prev => ({ ...prev, regStart: v }))}
-                                        placeholder="Chọn ngày bắt đầu"
-                                        isDark={isDark}
-                                    />
-                                </div>
-                                <div>
-                                    <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Kết thúc đăng ký</label>
-                                    <DTPicker
-                                        value={form.regEnd}
-                                        onChange={v => setForm(prev => ({ ...prev, regEnd: v }))}
-                                        placeholder="Chọn ngày kết thúc"
-                                        isDark={isDark}
-                                    />
+                    {/* ── Tab: Thông tin sự kiện ── */}
+                    {activeTab === 'info' && (
+                        <div className={`${card} rounded-xl shadow-sm p-6`}>
+                            <EventForm
+                                initialData={{
+                                    ...event,
+                                    startDate: form.startDate ? toIso(form.startDate) : event.startDate,
+                                    endDate: form.endDate ? toIso(form.endDate) : event.endDate,
+                                }}
+                                onChange={(data) => setForm(prev => ({ ...prev, ...data }))}
+                                onSubmit={handleSubmit}
+                                onCancel={() => navigate(`/events/${id}`)}
+                                isLoading={isSaving}
+                                isDark={isDark}
+                                mode="edit"
+                                formId="event-edit-form"
+                                hideActions={true}
+                            />
+                        </div>
+                    )}
+
+                    {/* ── Tab: Thời gian sự kiện ── */}
+                    {activeTab === 'time' && (
+                        <div className="space-y-5">
+                            {/* Thời gian đăng ký */}
+                            <div className={`${card} rounded-xl shadow-sm p-5`}>
+                                <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                                    <span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" />
+                                    Thời gian đăng ký
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Bắt đầu đăng ký</label>
+                                        <DTPicker
+                                            value={form.regStart}
+                                            onChange={v => setForm(prev => ({ ...prev, regStart: v }))}
+                                            placeholder="Chọn ngày bắt đầu"
+                                            isDark={isDark}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Kết thúc đăng ký</label>
+                                        <DTPicker
+                                            value={form.regEnd}
+                                            onChange={v => setForm(prev => ({ ...prev, regEnd: v }))}
+                                            placeholder="Chọn ngày kết thúc"
+                                            isDark={isDark}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    {/* BOTTOM: Calendar — full width */}
-                    <div className={`${card} rounded-xl shadow-sm p-4`}>
-                        <EventCalendarPanel
-                            state={calState}
-                            onMainEventChange={handleMainEventChange}
-                            onRegistrationChange={handleRegistrationChange}
-                            onSessionChange={handleSessionChange}
-                            onSessionCreate={handleSessionCreate}
-                            onSessionClick={handleSessionClick}
-                            eventTimeConstraint={
-                                form.startDate && form.endDate
-                                    ? { start: toIso(form.startDate), end: toIso(form.endDate) }
-                                    : null
-                            }
-                            isDark={isDark}
-                        />
-                    </div>
+                            {/* Calendar */}
+                            <div className={`${card} rounded-xl shadow-sm p-4`}>
+                                <EventCalendarPanel
+                                    state={calState}
+                                    onMainEventChange={handleMainEventChange}
+                                    onRegistrationChange={handleRegistrationChange}
+                                    onSessionChange={handleSessionChange}
+                                    onSessionCreate={handleSessionCreate}
+                                    onSessionClick={handleSessionClick}
+                                    onSetEventTime={(start, end) => {
+                                        setForm(prev => ({
+                                            ...prev,
+                                            startDate: dateToLocal(start),
+                                            endDate: dateToLocal(end),
+                                        }));
+                                    }}
+                                    onSetRegistrationTime={(start, end) => {
+                                        setForm(prev => ({
+                                            ...prev,
+                                            regStart: dateToLocal(start),
+                                            regEnd: dateToLocal(end),
+                                        }));
+                                    }}
+                                    eventTimeConstraint={
+                                        form.startDate && form.endDate
+                                            ? { start: toIso(form.startDate), end: toIso(form.endDate) }
+                                            : null
+                                    }
+                                    isDark={isDark}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {/* ── Nút Lưu tất cả thay đổi — cuối trang ── */}
                     <div className={`mt-6 p-5 rounded-xl ${card} shadow-sm border-2 ${isDark ? 'border-blue-500/30' : 'border-blue-200'}`}>

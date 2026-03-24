@@ -18,8 +18,11 @@ import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { EventForm } from '~/modules/events/components/EventForm';
 import { EventCalendarPanel } from '~/modules/events/components/EventCalendarPanel';
+import { SessionQuickModal } from '~/modules/events/components/SessionQuickModal';
 import type { CalendarState } from '~/modules/events/components/EventCalendarPanel';
+import type { SessionQuickModalData } from '~/modules/events/components/SessionQuickModal';
 import { useClubRole } from '~/hooks/useClubRole';
+import { getClubId } from '~/utils/auth';
 
 // ────────────────────────── Form State Types ──────────────────────────
 
@@ -155,10 +158,11 @@ export default function CreateEventPage() {
     const { isDark, toggleTheme } = useTheme();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { clubManagerMembership } = useClubRole();
-    const clubId = clubManagerMembership?.clubId ?? 0;
+    const clubId = getClubId();
 
     const [createEvent, { isLoading: isCreating }] = useCreateEventMutation();
     const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'info' | 'time'>('info');
 
     // ── Shared Form State ──
     const [form, setForm] = useState<FormState>({
@@ -240,6 +244,61 @@ export default function CreateEventPage() {
         setForm(prev => ({ ...prev, sessions: prev.sessions.filter(s => s.id !== id) }));
     };
 
+    // ── Session Quick Modal (giống Edit) ──
+    const [sessionModal, setSessionModal] = useState<{
+        mode: 'create' | 'edit';
+        sessionId?: number;
+        start: string;
+        end: string;
+    } | null>(null);
+
+    const handleSessionCreate = useCallback((start: Date, end: Date) => {
+        setSessionModal({ mode: 'create', start: dateToLocal(start), end: dateToLocal(end) });
+    }, []);
+
+    const handleSessionClick = useCallback((sessionId: number) => {
+        const s = form.sessions.find(x => x.id === sessionId);
+        if (!s) return;
+        setSessionModal({ mode: 'edit', sessionId, start: s.startTime, end: s.endTime });
+    }, [form.sessions]);
+
+    const handleSessionModalConfirm = useCallback((data: SessionQuickModalData) => {
+        if (!sessionModal) return;
+        if (sessionModal.mode === 'create') {
+            setForm(prev => ({
+                ...prev,
+                sessions: [...prev.sessions, {
+                    id: nextTempId(),
+                    sessionName: data.sessionName,
+                    startTime: data.start,
+                    endTime: data.end,
+                    location: data.location,
+                    description: data.description,
+                }],
+            }));
+        } else if (sessionModal.mode === 'edit' && sessionModal.sessionId != null) {
+            const sid = sessionModal.sessionId;
+            setForm(prev => ({
+                ...prev,
+                sessions: prev.sessions.map(s => s.id === sid ? {
+                    ...s,
+                    sessionName: data.sessionName,
+                    startTime: data.start,
+                    endTime: data.end,
+                    location: data.location,
+                    description: data.description,
+                } : s),
+            }));
+        }
+        setSessionModal(null);
+    }, [sessionModal]);
+
+    const handleSessionModalDelete = useCallback(() => {
+        if (!sessionModal?.sessionId) return;
+        removeSession(sessionModal.sessionId);
+        setSessionModal(null);
+    }, [sessionModal]);
+
     // ── Submit — 1 lần duy nhất ──
     const handleSubmit = async (submitData: any) => {
         try {
@@ -257,10 +316,10 @@ export default function CreateEventPage() {
         }
     };
 
-    const bg   = isDark ? 'bg-[#1a1d2e]' : 'bg-[#f5f7fa]';
+    const bg = isDark ? 'bg-[#1a1d2e]' : 'bg-[#f5f7fa]';
     const card = isDark ? 'bg-[#242838]' : 'bg-white';
-    const text = isDark ? 'text-white'   : 'text-gray-900';
-    const sub  = isDark ? 'text-gray-400' : 'text-gray-500';
+    const text = isDark ? 'text-white' : 'text-gray-900';
+    const sub = isDark ? 'text-gray-400' : 'text-gray-500';
     const inputCls = isDark
         ? 'bg-[#1a1d2e] border-gray-600 text-white'
         : 'bg-white border-gray-300 text-gray-900';
@@ -298,145 +357,146 @@ export default function CreateEventPage() {
                         </div>
                     )}
 
-                    {/* 2-column layout */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                    {/* ── Tab Switcher ── */}
+                    <div className="flex gap-1 mb-6">
+                        <button
+                            onClick={() => setActiveTab('info')}
+                            className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'info'
+                                ? 'bg-blue-500 text-white shadow-md'
+                                : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+                            }`}
+                        >
+                            <i className="fas fa-edit mr-2" />Thông tin sự kiện
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('time')}
+                            className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'time'
+                                ? 'bg-blue-500 text-white shadow-md'
+                                : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+                            }`}
+                        >
+                            <i className="fas fa-calendar-alt mr-2" />Thời gian sự kiện
+                        </button>
+                    </div>
 
-                        {/* ── LEFT: Form ── */}
+                    {/* ── Tab: Thông tin sự kiện ── */}
+                    {activeTab === 'info' && (
+                        <div className={`${card} rounded-xl shadow-sm p-6`}>
+                            <EventForm
+                                initialData={{
+                                    clubId,
+                                    startDate: form.startDate,
+                                    endDate: form.endDate,
+                                    isOnline: form.isOnline,
+                                    isPublic: form.isPublic,
+                                    requiresApproval: form.requiresApproval,
+                                }}
+                                onChange={(data) => handleFormChange(data)}
+                                onSubmit={handleSubmit}
+                                onCancel={() => navigate('/events')}
+                                isLoading={isCreating}
+                                isDark={isDark}
+                                mode="create"
+                            />
+                        </div>
+                    )}
+
+                    {/* ── Tab: Thời gian sự kiện ── */}
+                    {activeTab === 'time' && (
                         <div className="space-y-5">
-                            {/* Main event form */}
-                            <div className={`${card} rounded-xl shadow-sm p-6`}>
-                                <EventForm
-                                    initialData={{
-                                        clubId,
-                                        startDate: form.startDate,
-                                        endDate: form.endDate,
-                                        isOnline: form.isOnline,
-                                        isPublic: form.isPublic,
-                                        requiresApproval: form.requiresApproval,
-                                    }}
-                                    onChange={(data) => handleFormChange(data)}
-                                    onSubmit={handleSubmit}
-                                    onCancel={() => navigate('/events')}
-                                    isLoading={isCreating}
-                                    isDark={isDark}
-                                    mode="create"
-                                />
-                            </div>
-
-                            {/* Registration period */}
+                            {/* Thời gian đăng ký */}
                             <div className={`${card} rounded-xl shadow-sm p-5`}>
-                                <h2 className={`font-semibold mb-4 flex items-center gap-2 ${text}`}>
-                                    <span className="w-3 h-3 rounded-sm bg-green-500 inline-block" />
+                                <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                                    <span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" />
                                     Thời gian đăng ký
-                                    <span className={`ml-auto text-xs font-normal ${sub}`}>(tùy chọn)</span>
-                                </h2>
+                                </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label className={`block text-xs mb-1 ${sub}`}>Bắt đầu đăng ký</label>
+                                        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Bắt đầu đăng ký</label>
                                         <DTPicker
                                             value={form.regStart}
                                             onChange={v => handleFormChange({ regStart: v })}
-                                            placeholder="Chọn ngày bắt đầu đăng ký"
+                                            placeholder="Chọn ngày bắt đầu"
                                             isDark={isDark}
                                         />
                                     </div>
                                     <div>
-                                        <label className={`block text-xs mb-1 ${sub}`}>Kết thúc đăng ký</label>
+                                        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Kết thúc đăng ký</label>
                                         <DTPicker
                                             value={form.regEnd}
                                             onChange={v => handleFormChange({ regEnd: v })}
-                                            placeholder="Chọn ngày kết thúc đăng ký"
+                                            placeholder="Chọn ngày kết thúc"
                                             isDark={isDark}
                                         />
                                     </div>
                                 </div>
-                                <p className={`text-xs mt-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                    Block xanh lá trên lịch — kéo thả để điều chỉnh.
-                                </p>
                             </div>
 
-                            {/* Sessions */}
-                            <div className={`${card} rounded-xl shadow-sm p-5`}>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h2 className={`font-semibold flex items-center gap-2 ${text}`}>
-                                        <span className="w-3 h-3 rounded-sm bg-purple-500 inline-block" />
-                                        Phiên sự kiện ({form.sessions.length})
-                                    </h2>
-                                    <button onClick={addSession}
-                                        className="px-3 py-1.5 text-xs bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors">
-                                        <i className="fas fa-plus mr-1" /> Thêm phiên
-                                    </button>
-                                </div>
-
-                                {form.sessions.length === 0 && (
-                                    <p className={`text-sm ${sub}`}>Chưa có phiên nào. Thêm phiên hoặc kéo trên lịch.</p>
-                                )}
-
-                                <div className="space-y-3">
-                                    {form.sessions.map(s => (
-                                        <div key={s.id} className={`p-4 rounded-lg border ${border}`}>
-                                            <div className="flex items-center justify-between mb-3">
-                                                <span className="text-xs font-semibold text-purple-500">Phiên #{Math.abs(s.id)}</span>
-                                                <button onClick={() => removeSession(s.id)}
-                                                    className="text-xs text-red-500 hover:text-red-700">
-                                                    <i className="fas fa-trash" />
-                                                </button>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <input
-                                                    type="text"
-                                                    value={s.sessionName}
-                                                    onChange={e => updateSession(s.id, { sessionName: e.target.value })}
-                                                    placeholder="Tên phiên"
-                                                    className={`w-full px-3 py-1.5 text-sm border rounded-lg outline-none ${inputCls}`}
-                                                />
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div>
-                                                        <label className={`block text-xs mb-0.5 ${sub}`}>Bắt đầu</label>
-                                                        <DTPicker
-                                                            value={s.startTime}
-                                                            onChange={v => updateSession(s.id, { startTime: v })}
-                                                            placeholder="Chọn giờ"
-                                                            isDark={isDark}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className={`block text-xs mb-0.5 ${sub}`}>Kết thúc</label>
-                                                        <DTPicker
-                                                            value={s.endTime}
-                                                            onChange={v => updateSession(s.id, { endTime: v })}
-                                                            placeholder="Chọn giờ"
-                                                            isDark={isDark}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    value={s.location}
-                                                    onChange={e => updateSession(s.id, { location: e.target.value })}
-                                                    placeholder="Địa điểm phiên (tùy chọn)"
-                                                    className={`w-full px-3 py-1.5 text-sm border rounded-lg outline-none ${inputCls}`}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                            {/* Calendar */}
+                            <div className={`${card} rounded-xl shadow-sm p-4`}>
+                                <EventCalendarPanel
+                                    state={calState}
+                                    onMainEventChange={handleMainEventChange}
+                                    onRegistrationChange={handleRegistrationChange}
+                                    onSessionChange={handleSessionChange}
+                                    onSessionCreate={handleSessionCreate}
+                                    onSessionClick={handleSessionClick}
+                                    onSetEventTime={(start, end) => {
+                                        setForm(prev => ({
+                                            ...prev,
+                                            startDate: dateToLocal(start),
+                                            endDate: dateToLocal(end),
+                                        }));
+                                    }}
+                                    onSetRegistrationTime={(start, end) => {
+                                        setForm(prev => ({
+                                            ...prev,
+                                            regStart: dateToLocal(start),
+                                            regEnd: dateToLocal(end),
+                                        }));
+                                    }}
+                                    eventTimeConstraint={
+                                        form.startDate && form.endDate
+                                            ? { start: toIso(form.startDate), end: toIso(form.endDate) }
+                                            : null
+                                    }
+                                    isDark={isDark}
+                                />
                             </div>
                         </div>
-
-                        {/* ── RIGHT: Calendar ── */}
-                        <div className={`${card} rounded-xl shadow-sm p-4 xl:sticky xl:top-24`}>
-                            <EventCalendarPanel
-                                state={calState}
-                                onMainEventChange={handleMainEventChange}
-                                onRegistrationChange={handleRegistrationChange}
-                                onSessionChange={handleSessionChange}
-                                isDark={isDark}
-                            />
-                        </div>
-                    </div>
+                    )}
                 </div>
             </main>
+
+            {/* Session Quick Modal */}
+            {sessionModal && (
+                <SessionQuickModal
+                    mode={sessionModal.mode}
+                    initialData={{
+                        sessionName: sessionModal.mode === 'edit'
+                            ? form.sessions.find(s => s.id === sessionModal.sessionId)?.sessionName ?? ''
+                            : '',
+                        start: sessionModal.start,
+                        end: sessionModal.end,
+                        location: sessionModal.mode === 'edit'
+                            ? form.sessions.find(s => s.id === sessionModal.sessionId)?.location ?? ''
+                            : '',
+                        description: sessionModal.mode === 'edit'
+                            ? form.sessions.find(s => s.id === sessionModal.sessionId)?.description ?? ''
+                            : '',
+                        sessionType: 'main',
+                    }}
+                    eventBounds={
+                        form.startDate && form.endDate
+                            ? { start: toIso(form.startDate), end: toIso(form.endDate) }
+                            : null
+                    }
+                    onConfirm={handleSessionModalConfirm}
+                    onDelete={sessionModal.mode === 'edit' ? handleSessionModalDelete : undefined}
+                    onClose={() => setSessionModal(null)}
+                    isDark={isDark}
+                />
+            )}
         </div>
     );
 }

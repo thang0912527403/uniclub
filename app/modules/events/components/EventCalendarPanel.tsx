@@ -116,6 +116,16 @@ interface EventCalendarPanelProps {
     onSessionClick?: (id: number) => void;
 
     /**
+     * Called when user drags on calendar in 'set-event' mode to set event start/end.
+     */
+    onSetEventTime?: (start: Date, end: Date) => void;
+
+    /**
+     * Called when user drags on calendar in 'set-reg' mode to set registration start/end.
+     */
+    onSetRegistrationTime?: (start: Date, end: Date) => void;
+
+    /**
      * Giới hạn kéo chọn trong khung giờ Event (selectConstraint).
      * null = không giới hạn.
      */
@@ -133,27 +143,22 @@ export function EventCalendarPanel({
     onSessionChange,
     onSessionCreate,
     onSessionClick,
+    onSetEventTime,
+    onSetRegistrationTime,
     eventTimeConstraint,
     isDark = false,
 }: EventCalendarPanelProps) {
     const calendarRef = useRef<FullCalendar>(null);
 
-    /** 'create' = kéo chọn/click tạo phiên | 'move' = kéo main event | 'move-reg' = kéo đăng ký */
-    const [calMode, setCalMode] = useState<'create' | 'move' | 'move-reg'>('create');
+    /** 3 chế độ: 'event' = đặt/di chuyển SK | 'session' = tạo phiên | 'registration' = đặt/di chuyển ĐK */
+    const [calMode, setCalMode] = useState<'event' | 'session' | 'registration'>(
+        onSetEventTime ? 'event' : 'session'
+    );
 
     // ── Build event list ──────────────────────────────────
     const events: EventInput[] = [];
 
     if (state.mainEvent?.start && state.mainEvent?.end) {
-        // Background — tô màu xanh cả ô ngày trong month view và safe-zone trong week/day view
-        events.push({
-            id: 'main-bg',
-            start: state.mainEvent.start,
-            end: state.mainEvent.end,
-            display: 'background',
-            backgroundColor: COLORS.mainEvent.bg,
-            extendedProps: { type: 'bg' },
-        });
         // Foreground — block lớn trong week/day view, editable theo calMode
         events.push({
             id: 'main',
@@ -163,9 +168,10 @@ export function EventCalendarPanel({
             backgroundColor: COLORS.mainEvent.bg,
             borderColor: COLORS.mainEvent.border,
             textColor: COLORS.mainEvent.text,
-            editable: calMode === 'move',
-            startEditable: calMode === 'move',
-            durationEditable: calMode === 'move',
+            editable: calMode === 'event',
+            startEditable: calMode === 'event',
+            durationEditable: calMode === 'event',
+            classNames: ['unic-main-event'],
             extendedProps: { type: 'main', origStart: state.mainEvent.start, origEnd: state.mainEvent.end },
         });
     }
@@ -180,10 +186,10 @@ export function EventCalendarPanel({
             backgroundColor: COLORS.registration.bg,
             borderColor: COLORS.registration.border,
             textColor: COLORS.registration.text,
-            // editable chỉ khi mode 'move-reg'
-            editable: calMode === 'move-reg',
-            startEditable: calMode === 'move-reg',
-            durationEditable: calMode === 'move-reg',
+            // editable khi mode 'registration'
+            editable: calMode === 'registration',
+            startEditable: calMode === 'registration',
+            durationEditable: calMode === 'registration',
             extendedProps: { type: 'registration' },
         });
     }
@@ -256,19 +262,28 @@ export function EventCalendarPanel({
         }
     };
 
-    // ── dateSelect (kéo chọn vùng) ───────────────────────
+    // ── dateSelect (kéo chọn vùng) — dispatch theo calMode ──
     const handleDateSelect = (info: DateSelectArg) => {
         calendarRef.current?.getApi().unselect();
-        onSessionCreate?.(info.start, info.end);
+        if (calMode === 'event') {
+            onSetEventTime?.(info.start, info.end);
+        } else if (calMode === 'registration') {
+            onSetRegistrationTime?.(info.start, info.end);
+        } else {
+            onSessionCreate?.(info.start, info.end);
+        }
     };
 
-    // ── dateClick (click đơn vào ô trống) ────────────────
+    // ── dateClick (click đơn vào ô trống) — dispatch theo calMode ──
     const handleDateClick = (info: DateClickArg) => {
-        // Chỉ trigger nếu không có onSessionCreate listener
-        // (tránh double-trigger khi dùng cả select và click)
-        if (!onSessionCreate) return;
-        const end = new Date(info.date.getTime() + 3_600_000); // +1h
-        onSessionCreate(info.date, end);
+        const end = new Date(info.date.getTime() + 3_600_000);
+        if (calMode === 'event') {
+            onSetEventTime?.(info.date, end);
+        } else if (calMode === 'registration') {
+            onSetRegistrationTime?.(info.date, end);
+        } else if (onSessionCreate) {
+            onSessionCreate(info.date, end);
+        }
     };
 
     // ── eventClick ────────────────────────────────────────
@@ -303,44 +318,50 @@ export function EventCalendarPanel({
                 </span>
 
                 {/* Toggle mode */}
-                {onSessionCreate && (
+                {(onSessionCreate || onSetEventTime || onSetRegistrationTime) && (
                     <div className={`flex rounded-lg border overflow-hidden text-xs font-medium ml-2 ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
-                        <button
-                            type="button"
-                            onClick={() => setCalMode('create')}
-                            className={`px-3 py-1.5 transition-colors ${
-                                calMode === 'create'
-                                    ? 'bg-purple-500 text-white'
-                                    : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
-                            }`}
-                            title="Kéo chọn vùng thời gian hoặc click để tạo phiên mới"
-                        >
-                            <i className="fas fa-plus mr-1" />Tạo phiên
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setCalMode('move')}
-                            className={`px-3 py-1.5 transition-colors ${
-                                calMode === 'move'
-                                    ? 'bg-blue-500 text-white'
-                                    : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
-                            }`}
-                            title="Kéo block xanh để dịch chuyển sự kiện và tất cả phiên"
-                        >
-                            <i className="fas fa-arrows-alt mr-1" />Di chuyển SK
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setCalMode('move-reg')}
-                            className={`px-3 py-1.5 transition-colors ${
-                                calMode === 'move-reg'
-                                    ? 'bg-green-500 text-white'
-                                    : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
-                            }`}
-                            title="Kéo block xanh lá để điều chỉnh thời gian đăng ký"
-                        >
-                            <i className="fas fa-calendar-edit mr-1" />Đăng ký
-                        </button>
+                        {onSetEventTime && (
+                            <button
+                                type="button"
+                                onClick={() => setCalMode('event')}
+                                className={`px-3 py-1.5 transition-colors ${
+                                    calMode === 'event'
+                                        ? 'bg-blue-500 text-white'
+                                        : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
+                                }`}
+                                title="Kéo đặt thời gian sự kiện hoặc kéo block xanh để di chuyển"
+                            >
+                                <i className="fas fa-calendar-alt mr-1" />Sự kiện
+                            </button>
+                        )}
+                        {onSessionCreate && (
+                            <button
+                                type="button"
+                                onClick={() => setCalMode('session')}
+                                className={`px-3 py-1.5 transition-colors ${
+                                    calMode === 'session'
+                                        ? 'bg-purple-500 text-white'
+                                        : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
+                                }`}
+                                title="Kéo chọn vùng thời gian hoặc click để tạo phiên mới"
+                            >
+                                <i className="fas fa-plus mr-1" />Tạo phiên
+                            </button>
+                        )}
+                        {(onSetRegistrationTime || true) && (
+                            <button
+                                type="button"
+                                onClick={() => setCalMode('registration')}
+                                className={`px-3 py-1.5 transition-colors ${
+                                    calMode === 'registration'
+                                        ? 'bg-green-500 text-white'
+                                        : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
+                                }`}
+                                title="Kéo đặt thời gian đăng ký hoặc kéo block xanh lá để di chuyển"
+                            >
+                                <i className="fas fa-user-plus mr-1" />Đăng ký
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -371,34 +392,7 @@ export function EventCalendarPanel({
                 </div>
             )}
 
-            {/* Hint bar */}
-            <div className={`px-4 py-2 text-xs flex items-center gap-2 border-b ${isDark
-                ? 'bg-[#242838] border-gray-700 text-gray-500'
-                : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
-                {onSessionCreate ? (
-                    <>
-                        <i className="fas fa-mouse-pointer" />
-                        Kéo chọn vùng thời gian để tạo phiên · Click block để sửa/xóa
-                    </>
-                ) : (
-                    <>
-                        <i className="fas fa-hand-pointer" />
-                        Kéo block để đổi ngày · Kéo mép dưới để thay đổi thời lượng
-                    </>
-                )}
-            </div>
 
-            {/* Empty state */}
-            {!hasEvents && (
-                <div className={`flex flex-col items-center justify-center py-14 ${isDark ? 'bg-[#1a1d2e]' : 'bg-white'}`}>
-                    <i className={`fas fa-calendar-plus text-4xl mb-3 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
-                    <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {onSessionCreate
-                            ? 'Kéo chọn vùng thời gian trên lịch để tạo phiên mới'
-                            : 'Nhập thông tin để hiển thị trên lịch'}
-                    </p>
-                </div>
-            )}
 
             {/* FullCalendar */}
             <div style={{ background: calBg, color: calText }}>
@@ -424,6 +418,22 @@ export function EventCalendarPanel({
                     .unic-fc .fc-event-resizer { opacity: 0.6; transition: opacity .15s; }
                     .unic-fc .fc-event-resizer:hover { opacity: 1; }
                     .unic-fc .fc-now-indicator-line { border-color: #ef4444; }
+                    /* Main event block — thu hẹp bên phải để còn chỗ click tạo session */
+                    .unic-fc .unic-main-event {
+                        width: 28% !important;
+                        right: 0 !important;
+                        left: auto !important;
+                        margin-left: auto !important;
+                        opacity: 0.85;
+                        font-size: 0.68rem !important;
+                        writing-mode: vertical-rl;
+                        text-orientation: mixed;
+                        overflow: hidden;
+                    }
+                    .unic-fc .unic-main-event .fc-event-main {
+                        padding: 4px 2px;
+                        writing-mode: vertical-rl;
+                    }
                     .unic-fc .fc-timegrid-now-indicator-arrow {
                         border-top-color: #ef4444; border-bottom-color: #ef4444;
                     }
@@ -448,20 +458,20 @@ export function EventCalendarPanel({
                         eventStartEditable={true}
                         eventDurationEditable={true}
                         droppable={true}
-                        // ─── Select (tạo session mới) ──────────────────
-                        selectable={!!onSessionCreate}
+                        // ─── Select (tạo session / đặt event / đặt đăng ký) ──
+                        selectable={!!(onSessionCreate || onSetEventTime || onSetRegistrationTime)}
                         selectMirror={true}
                         unselectAuto={true}
                         longPressDelay={300}
-                        selectConstraint={eventTimeConstraint ?? undefined}
+                        selectConstraint={calMode === 'session' ? (eventTimeConstraint ?? undefined) : undefined}
                         selectOverlap={(stillEvent) =>
-                            (stillEvent.extendedProps?.type as string) !== 'session'
+                            calMode !== 'session' || (stillEvent.extendedProps?.type as string) !== 'session'
                         }
                         // ─── Handlers ─────────────────────────────────
                         eventDrop={handleEventDrop}
                         eventResize={handleEventResize}
-                        select={onSessionCreate ? handleDateSelect : undefined}
-                        dateClick={onSessionCreate ? handleDateClick : undefined}
+                        select={handleDateSelect}
+                        dateClick={handleDateClick}
                         eventClick={onSessionClick ? handleEventClick : undefined}
                         // ─── UI / locale ──────────────────────────────
                         locale="vi"
