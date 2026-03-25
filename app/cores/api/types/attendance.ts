@@ -32,7 +32,7 @@ export interface AttendanceDetailDto {
     memberName: string;
     studentId?: string;
     registrationDate: string;
-    attendanceStatus: 'REGISTERED' | 'PRESENT' | 'ABSENT' | 'CANCELLED';
+    attendanceStatus: 'PENDING' | 'REGISTERED' | 'WAITLIST' | 'PRESENT' | 'ABSENT' | 'CANCELLED';
     checkInTime?: string;
     score?: number;
     comment?: string;

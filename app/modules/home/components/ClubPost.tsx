@@ -110,6 +110,60 @@ const ClubNewsFeed = () => {
     const row = posts.slice(3, 6);       // 3 medium cards
     const mini = posts.slice(6, 10);     // 4 mini list items
 
+    if (isLoading) {
+        return (
+            <div className="bg-[#fcfcfc] py-8 px-4">
+                <div className="max-w-4xl mx-auto">
+
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Bản tin câu lạc bộ</h2>
+                        <div className="w-12 h-1 bg-orange-500 mx-auto rounded-full"></div>
+                        <p className="mt-2 text-sm text-gray-500">Cập nhật những tin tức mới nhất từ các CLB trong UNIC</p>
+                    </div>
+
+                    <div className="py-6 flex items-center justify-center text-sm text-gray-600">Đang tải...</div>
+
+                </div>
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <div className="bg-[#fcfcfc] py-8 px-4">
+                <div className="max-w-4xl mx-auto">
+
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Bản tin câu lạc bộ</h2>
+                        <div className="w-12 h-1 bg-orange-500 mx-auto rounded-full"></div>
+                        <p className="mt-2 text-sm text-gray-500">Cập nhật những tin tức mới nhất từ các CLB trong UNIC</p>
+                    </div>
+
+                    <div className="py-6 flex items-center justify-center text-sm text-gray-600">Lỗi khi tải dữ liệu</div>
+
+                </div>
+            </div>
+        );
+    }
+
+    if (!posts || posts.length === 0) {
+        return (
+            <div className="bg-[#fcfcfc] py-8 px-4">
+                <div className="max-w-4xl mx-auto">
+
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Bản tin câu lạc bộ</h2>
+                        <div className="w-12 h-1 bg-orange-500 mx-auto rounded-full"></div>
+                        <p className="mt-2 text-sm text-gray-500">Cập nhật những tin tức mới nhất từ các CLB trong UNIC</p>
+                    </div>
+
+                    <div className="py-6 flex items-center justify-center text-sm text-gray-600">Không có bài viết nào để hiển thị</div>
+
+                </div>
+            </div>
+        );
+    }
+
     return (
         <section className="py-10 bg-zinc-50">
             <div className="max-w-7xl mx-auto px-6">

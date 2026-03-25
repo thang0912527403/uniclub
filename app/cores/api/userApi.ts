@@ -113,6 +113,8 @@ export const userApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ClubMembership[]>) => response.data ?? [],
       providesTags: ['User'],
     }),
+
+    // Upload avatar
     uploadAvatar: builder.mutation<{ avatarUrl: string }, { id: string; file: File }>({
       query: ({ id, file }) => {
         const formData = new FormData();
@@ -127,10 +129,17 @@ export const userApi = baseApi.injectEndpoints({
         response && typeof response === 'object' && 'data' in response ? response.data : (response as { avatarUrl: string }),
       invalidatesTags: ['User'],
     }),
+
+    // Lấy tất cả CLB mà user tham gia (trả về Club[])
     getUserAllClubs: builder.query<Club[], string>({
       query: (userId) => `/Users/${userId}/all-clubs`,
       transformResponse: (response: ApiResponse<Club[]>) => response.data ?? [],
       providesTags: ['User'],
+    }),
+    getManagedClubs: builder.query<Club[], string>({
+      query: (userId) => `/Users/${userId}/managed-clubs`,
+      transformResponse: (response: ApiResponse<Club[]>) => response.data,
+      providesTags: ['Club'],
     }),
   }),
   overrideExisting: false,
@@ -145,4 +154,5 @@ export const {
   useGetUserClubInfoQuery,
   useUploadAvatarMutation,
   useGetUserAllClubsQuery,
+  useGetManagedClubsQuery
 } = userApi;

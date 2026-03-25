@@ -241,7 +241,7 @@ const QuestionPage: React.FC = () => {
         <FormHeader
           title="Thông tin đăng ký"
           highlight="Thành viên"
-          description={`Chào ${currentUser?.fullName ?? 'bạn'}! Vui lòng điền đầy đủ các thông tin bên dưới để nộp đơn ứng tuyển.`}
+          description={`Chào ${currentUser?.fullName ?? 'bạn'}! Hãy hoàn thành các câu hỏi trong đơn ứng tuyển.`}
         />
         <ProgressBar
           current={Object.keys(answers).length}

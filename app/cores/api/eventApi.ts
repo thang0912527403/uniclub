@@ -5,6 +5,8 @@ import {
     type UpdateEventRequest,
     type SessionDto,
     type CreateSessionRequest,
+    type UpdateSessionRequest,
+    type DeleteSessionRequest,
     type OpenRegistrationRequest
 } from './types';
 
@@ -20,6 +22,8 @@ function buildEventFormData(data: Record<string, any>, image?: File): FormData {
 
 export const eventApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
+        // ===== PUBLIC endpoints (api/events) =====
+
         getAllEvents: builder.query<EventDetailDto[], { pageNumber?: number; pageSize?: number }>({
             query: ({ pageNumber = 1, pageSize = 10 } = {}) =>
                 `/events?pageNumber=${pageNumber}&pageSize=${pageSize}`,
@@ -31,13 +35,15 @@ export const eventApi = baseApi.injectEndpoints({
             providesTags: (result, error, id) => [{ type: 'Event', id }],
         }),
 
+        // ===== CLUB-SCOPED endpoints (api/club/{clubId}/events) =====
+
         /**
          * Create event with optional image — all in one multipart/form-data request.
-         * image is attached as the 'image' field if provided.
+         * clubId is used in the URL path, image is attached as the 'image' field.
          */
-        createEvent: builder.mutation<EventDetailDto, CreateEventRequest & { image?: File }>({
-            query: ({ image, ...data }) => ({
-                url: '/events',
+        createEvent: builder.mutation<EventDetailDto, CreateEventRequest & { clubId: number; image?: File }>({
+            query: ({ image, clubId, ...data }) => ({
+                url: `/club/${clubId}/events`,
                 method: 'POST',
                 body: buildEventFormData(data, image),
                 formData: true,
@@ -47,11 +53,10 @@ export const eventApi = baseApi.injectEndpoints({
 
         /**
          * Update event with optional new image — all in one multipart/form-data request.
-         * image is attached as the 'image' field if provided.
          */
-        updateEvent: builder.mutation<EventDetailDto, UpdateEventRequest & { image?: File }>({
-            query: ({ image, ...data }) => ({
-                url: `/events/${data.eventId}`,
+        updateEvent: builder.mutation<EventDetailDto, UpdateEventRequest & { clubId: number; image?: File }>({
+            query: ({ image, clubId, ...data }) => ({
+                url: `/club/${clubId}/events/${data.eventId}`,
                 method: 'PUT',
                 body: buildEventFormData(data, image),
                 formData: true,
@@ -60,12 +65,12 @@ export const eventApi = baseApi.injectEndpoints({
         }),
 
         /** Standalone image re-upload for an existing event (edit page) */
-        uploadEventImage: builder.mutation<{ message: string; eventId: number; imageUrl: string }, { eventId: number; file: File }>({
-            query: ({ eventId, file }) => {
+        uploadEventImage: builder.mutation<{ message: string; eventId: number; imageUrl: string }, { clubId: number; eventId: number; file: File }>({
+            query: ({ clubId, eventId, file }) => {
                 const formData = new FormData();
                 formData.append('image', file);
                 return {
-                    url: `/events/${eventId}/image`,
+                    url: `/club/${clubId}/events/${eventId}/image`,
                     method: 'POST',
                     body: formData,
                     formData: true,
@@ -74,23 +79,42 @@ export const eventApi = baseApi.injectEndpoints({
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
         }),
 
-        createSession: builder.mutation<SessionDto, CreateSessionRequest>({
-            query: (session) => ({
-                url: `/events/${session.eventId}/sessions`,
+        createSession: builder.mutation<SessionDto, CreateSessionRequest & { clubId: number }>({
+            query: ({ clubId, ...session }) => ({
+                url: `/club/${clubId}/events/${session.eventId}/sessions`,
                 method: 'POST',
                 body: session,
             }),
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
         }),
 
-        openRegistration: builder.mutation<EventDetailDto, OpenRegistrationRequest>({
-            query: (request) => ({
-                url: `/events/${request.eventId}/open-registration`,
+        updateSession: builder.mutation<SessionDto, UpdateSessionRequest & { clubId: number }>({
+            query: ({ clubId, eventId, scheduleId, ...body }) => ({
+                url: `/club/${clubId}/events/${eventId}/sessions/${scheduleId}`,
+                method: 'PUT',
+                body: { scheduleId, eventId, ...body },
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+        }),
+
+        deleteSession: builder.mutation<void, DeleteSessionRequest & { clubId: number }>({
+            query: ({ clubId, eventId, scheduleId }) => ({
+                url: `/club/${clubId}/events/${eventId}/sessions/${scheduleId}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+        }),
+
+        openRegistration: builder.mutation<EventDetailDto, OpenRegistrationRequest & { clubId: number }>({
+            query: ({ clubId, ...request }) => ({
+                url: `/club/${clubId}/events/${request.eventId}/open-registration`,
                 method: 'PATCH',
                 body: request,
             }),
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
         }),
+
+        // ===== USER-FACING event actions (api/events — still on public route) =====
 
         registerEvent: builder.mutation<void, number>({
             query: (eventId) => ({
@@ -100,29 +124,29 @@ export const eventApi = baseApi.injectEndpoints({
             invalidatesTags: (result, error, id) => [{ type: 'Event', id }, 'Event'],
         }),
 
-        startEvent: builder.mutation<{ checkInCode: string }, number>({
-            query: (eventId) => ({
-                url: `/events/${eventId}/start`,
+        startEvent: builder.mutation<{ checkInCode: string }, { clubId: number; eventId: number }>({
+            query: ({ clubId, eventId }) => ({
+                url: `/club/${clubId}/events/${eventId}/start`,
                 method: 'PUT',
             }),
-            invalidatesTags: (result, error, id) => [{ type: 'Event', id }, 'Event'],
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
         }),
 
         checkInEvent: builder.mutation<void, { eventId: number; checkInCode: string }>({
             query: ({ eventId, checkInCode }) => ({
-                url: `/events/checkin`,
+                url: `/events/${eventId}/checkin`,
                 method: 'POST',
                 body: { eventId, checkInCode },
             }),
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
         }),
 
-        completeEvent: builder.mutation<void, number>({
-            query: (eventId) => ({
-                url: `/events/${eventId}/complete`,
+        completeEvent: builder.mutation<void, { clubId: number; eventId: number }>({
+            query: ({ clubId, eventId }) => ({
+                url: `/club/${clubId}/events/${eventId}/complete`,
                 method: 'PUT',
             }),
-            invalidatesTags: (result, error, id) => [{ type: 'Event', id }, 'Event'],
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
         }),
     }),
 });
@@ -134,6 +158,8 @@ export const {
     useUpdateEventMutation,
     useUploadEventImageMutation,
     useCreateSessionMutation,
+    useUpdateSessionMutation,
+    useDeleteSessionMutation,
     useOpenRegistrationMutation,
     useRegisterEventMutation,
     useStartEventMutation,

@@ -1,122 +1,90 @@
 import React from 'react';
-import type { ClubCategory } from '../types';
+import { useNavigate } from 'react-router';
+import { useGetClubsQuery } from '~/cores/api';
+import { Users, ArrowRight } from 'lucide-react';
 
 const ClubCategories: React.FC = () => {
-    const categories: ClubCategory[] = [
-        {
-            id: 1,
-            title: 'Công nghệ & Khoa học',
-            description: 'Khám phá thế giới công nghệ, lập trình và khoa học máy tính',
-            icon: 'code',
-            image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&q=80',
-            members: 1200,
-            clubs: 15
-        },
-        {
-            id: 2,
-            title: 'Văn hóa & Nghệ thuật',
-            description: 'Thể hiện tài năng nghệ thuật và khám phá văn hóa đa dạng',
-            icon: 'palette',
-            image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=800&q=80',
-            members: 890,
-            clubs: 12
-        },
-        {
-            id: 3,
-            title: 'Thể thao & Sức khỏe',
-            description: 'Rèn luyện sức khỏe và tinh thần thể thao đồng đội',
-            icon: 'sports',
-            image: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=800&q=80',
-            members: 1500,
-            clubs: 20
-        }
-    ];
-
-    const getIcon = (iconName: string) => {
-        const icons = {
-            code: (
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                </svg>
-            ),
-            palette: (
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                </svg>
-            ),
-            sports: (
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            )
-        };
-        return icons[iconName as keyof typeof icons] || icons.code;
-    };
+    const { data: clubs = [] } = useGetClubsQuery();
+    const navigate = useNavigate();
 
     return (
-        <section className="py-16 px-6 md:px-12 bg-gray-50">
+        <section className="py-20 px-6 md:px-12 bg-gray-50">
             <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                        Câu lạc bộ hàng đầu
+                <div className="text-center mb-16">
+                    <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-4 uppercase tracking-tight">
+                        Câu lạc bộ <span className="text-orange-500">hàng đầu</span>
                     </h2>
-                    <p className="text-gray-600 text-lg">
-                        Tham gia các câu lạc bộ phù hợp với sở thích và đam mê của bạn
+                    <div className="w-20 h-1.5 bg-orange-500 mx-auto rounded-full mb-6"></div>
+                    <p className="text-gray-500 text-lg font-medium max-w-2xl mx-auto">
+                        Khám phá và tham gia vào những cộng đồng năng động, nơi đam mê của bạn được tỏa sáng.
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-8">
-                    {categories.map((category) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {clubs.slice(0, 6).map((club) => (
                         <div
-                            key={category.id}
-                            className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer"
+                            key={club.clubId}
+                            onClick={() => navigate(`/club/all-clubs/${club.clubId}`)}
+                            className="group bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 flex flex-col h-full border border-gray-100"
                         >
-                            <div className="relative h-48 overflow-hidden">
+                            {/* Image Header */}
+                            <div className="relative aspect-video overflow-hidden">
                                 <img
-                                    src={category.image}
-                                    alt={category.title}
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    src={club.coverImageUrl || 'https://i.ytimg.com/vi/Cq2uAOsK930/maxresdefault.jpg'}
+                                    alt={club.clubName}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                                <div className="absolute bottom-4 left-4 text-white">
-                                    {getIcon(category.icon)}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                                
+                                {/* Logo Overlay */}
+                                <div className="absolute bottom-4 left-4 flex items-center gap-3">
+                                    <div className="w-12 h-12 p-1 bg-white rounded-xl shadow-lg">
+                                        <img 
+                                            src={club.logoUrl || 'https://yt3.googleusercontent.com/YaAFWY03ER0DfF77HAyMqNlRxmJiSEDq_I7ZF0MlcgRcVzOhIhZfB8QlwNhAuVXZesi2I2zy=s900-c-k-c0x00ffffff-no-rj'} 
+                                            alt="logo" 
+                                            className="w-full h-full object-contain rounded-lg" 
+                                        />
+                                    </div>
+                                    <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">
+                                        {club.shortName}
+                                    </span>
                                 </div>
                             </div>
 
-                            <div className="p-6">
-                                <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-orange-500 transition-colors">
-                                    {category.title}
+                            {/* Content Body */}
+                            <div className="p-8 flex flex-col flex-grow">
+                                {/* Title - Cố định 1 dòng để cân đối */}
+                                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors line-clamp-1 uppercase tracking-tight">
+                                    {club.clubName}
                                 </h3>
-                                <p className="text-gray-600 mb-4 line-clamp-2">
-                                    {category.description}
+
+                                {/* Description - Cố định 2 dòng */}
+                                <p className="text-gray-500 text-sm leading-relaxed mb-6 line-clamp-2 flex-grow">
+                                    {club.description || "Chưa có mô tả chi tiết cho câu lạc bộ này. Hãy nhấn khám phá để tìm hiểu thêm."}
                                 </p>
 
-                                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                                    <span className="flex items-center gap-1">
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                                        </svg>
-                                        {category.members} thành viên
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
-                                        </svg>
-                                        {category.clubs} CLB
-                                    </span>
+                                {/* Footer Info */}
+                                <div className="flex items-center justify-between pt-6 border-t border-gray-50 mt-auto">
+                                    <div className="flex items-center gap-2 text-gray-400 font-bold text-xs uppercase tracking-widest">
+                                        <Users size={16} className="text-orange-500" />
+                                        <span>{club.memberCount} Thành viên</span>
+                                    </div>
+                                    
+                                    <div className="text-orange-500 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                                        <ArrowRight size={20} />
+                                    </div>
                                 </div>
-
-                                <button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-lg font-medium transition-all duration-300 hover:shadow-lg cursor-pointer">
-                                    Khám phá
-                                </button>
                             </div>
                         </div>
                     ))}
                 </div>
 
+                {/* Bottom Action */}
                 <div className="text-center mt-10">
-                    <button className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center gap-2 group cursor-pointer">
-                        Xem tất cả CLB
+                    <button className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center gap-2 group cursor-pointer"
+                        onClick={() => navigate("/club/all-clubs")}
+                    >
+                        Xem tất cả câu lạc bộ
                         <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                         </svg>

@@ -9,6 +9,7 @@ import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { useClubRole } from '~/hooks/useClubRole';
+import { getClubId } from '~/utils/auth';
 import { EventCard } from '~/modules/events/components/EventCard';
 
 export default function EventsPage() {
@@ -16,7 +17,8 @@ export default function EventsPage() {
     const { isDark, toggleTheme } = useTheme();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { isAdmin } = useCurrentUser();
-    const { isClubManager, clubManagerMembership } = useClubRole();
+    const { isClubManager } = useClubRole();
+    const cookieClubId = getClubId();
 
     const [pageNumber, setPageNumber] = useState(1);
     const pageSize = 12;
@@ -29,9 +31,9 @@ export default function EventsPage() {
     const filteredEvents = useMemo(() => {
         if (!allEvents) return [];
 
-        // Club Manager → only their club's events
-        if (isClubManager && !isAdmin && clubManagerMembership?.clubId) {
-            return allEvents.filter(e => e.clubId === clubManagerMembership.clubId);
+        // Club Manager → only their club's events (clubId from cookie set by /manage-clubs)
+        if (isClubManager && !isAdmin && cookieClubId) {
+            return allEvents.filter(e => e.clubId === cookieClubId);
         }
 
         // Admin with club filter
@@ -41,7 +43,7 @@ export default function EventsPage() {
 
         // Admin with 'all' → show everything
         return allEvents;
-    }, [allEvents, isAdmin, isClubManager, clubManagerMembership, selectedClubId]);
+    }, [allEvents, isAdmin, isClubManager, cookieClubId, selectedClubId]);
 
     // Paginate the filtered results
     const paginatedEvents = useMemo(() => {
@@ -117,9 +119,9 @@ export default function EventsPage() {
                         )}
 
                         {/* Show club badge for manager */}
-                        {isClubManager && !isAdmin && clubManagerMembership && (
+                        {isClubManager && !isAdmin && cookieClubId > 0 && (
                             <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                                Club ID: {clubManagerMembership.clubId}
+                                Club ID: {cookieClubId}
                             </span>
                         )}
                     </div>

@@ -12,6 +12,19 @@ export interface ClubRole {
     level: number;
     memberCount: number;
     policies: ClubRolePolicy[];
-    clubId: number;
+    clubId?: number;
     createdAt?: string;
+}
+
+export interface ClubDepartment {
+    departmentId: number;
+    departmentName: string;
+    description?: string;
+    manager: ClubRole | null;
+    roles: ClubRole[];
+}
+
+export interface ClubStructure {
+    standaloneRoles: ClubRole[];
+    departments: ClubDepartment[];
 }

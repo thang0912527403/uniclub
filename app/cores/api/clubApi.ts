@@ -3,6 +3,7 @@ import {
   type Club,
   type ApiResponse,
   type ClubPostResponseDto,
+  type CreateClubPostDto,
   type ClubMember,
   type ClubFund,
   type ApproveFundDto,
@@ -79,6 +80,7 @@ type ClubFundScoped = { clubId: number };
 type FundScoped = { clubId: number; fundId: number };
 type FundLocationResponse = { fundId: number; clubId: number };
 
+
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getClubs: builder.query<Club[], void>({
@@ -140,18 +142,16 @@ export const clubApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ClubPostResponseDto>) => response.data,
       providesTags: (result, error, id) => [{ type: 'ClubPost', id }],
     }),
-    getClubPostByClubId: builder.query<ClubPostResponseDto[], number>({
-      query: (clubId) => `/ClubPost/club/${clubId}`,
-      transformResponse: (response: ApiResponse<ClubPostResponseDto[]>) => response.data,
-      providesTags: (result, error, clubId) => [{ type: 'ClubPost', id: `club-${clubId}` }],
-    }),
-    createClubPost: builder.mutation<ClubPostResponseDto, FormData>({
+    createClubPost: builder.mutation<
+      CreateClubPostDto,
+      FormData
+    >({
       query: (formData) => ({
         url: '/ClubPost',
         method: 'POST',
         body: formData,
       }),
-      transformResponse: (response: ApiResponse<ClubPostResponseDto>) =>
+      transformResponse: (response: ApiResponse<CreateClubPostDto>) =>
         response.data,
       invalidatesTags: [{ type: 'ClubPost' }],
     }),
@@ -320,6 +320,7 @@ export const clubApi = baseApi.injectEndpoints({
         };
       },
     }),
+    // ─── Member Roles ───────────────────────────────────────────────────
     updateMemberRole: builder.mutation<void, { clubId: number; memberId: number; clubRoleId: number | null }>({
       query: ({ clubId, memberId, clubRoleId }) => ({
         url: `/clubs/${clubId}/members/${memberId}/role`,
@@ -351,7 +352,7 @@ export const {
   useToggleClubStatusMutation,
   useGetClubPostsQuery,
   useGetClubPostByIdQuery,
-  useGetClubPostByClubIdQuery,
+  // useGetClubPostByClubIdQuery,
   useCreateClubPostMutation,
   useUpdateClubPostMutation,
   useDeleteClubPostMutation,

@@ -302,3 +302,6 @@ export function Sidebar({
     </>
   );
 }
+
+// Export named nav items for use by AdminDashboard / other layouts
+export { adminNavItems, clubManagerNavItems };

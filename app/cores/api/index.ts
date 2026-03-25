@@ -12,3 +12,4 @@ export * from './departmentApi';
 export * from './userApi';
 export * from './applicationApi';
 export * from './interviewApi';
+export * from './notificationApi';

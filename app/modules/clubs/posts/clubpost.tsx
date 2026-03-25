@@ -4,7 +4,7 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import {
-    useGetClubPostByClubIdQuery,
+    // useGetClubPostByClubIdQuery,
     useGetClubPostsQuery,
     useCreateClubPostMutation,
     useUpdateClubPostMutation,
@@ -19,19 +19,7 @@ import {
     TrendingUp, FileText, CheckCircle2, EyeOff as HideIcon,
     Calendar, User, ArrowUpRight
 } from 'lucide-react';
-
-/* ═══════════════════════════════════════════════════════════
-   Design system (ui-ux-promax skill)
-   Style    : #39 Bento Grids + #19 Soft UI Evolution
-   Colors   : orange-500 primary (match homepage)
-              White cards, zinc-50 background
-   Effects  : elevation-1: 0 2px 8px rgba(0,0,0,0.06)
-              elevation-2: 0 8px 24px rgba(0,0,0,0.10)
-              hover:shadow on cards, hover:-translate-y-0.5
-              transitions 150-300ms
-   Rules    : cursor-pointer, 44px min touch targets
-              Lucide icons only, alt text on all images
-══════════════════════════════════════════════════════════ */
+import { ConfirmDialog } from '~/components/ConfirmDialog';
 
 /* ── Stat Card ─────────────────────────────────────────── */
 function StatCard({ label, value, icon: Icon, gradient }: {
@@ -234,22 +222,32 @@ export default function ClubPostModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { clubManagerMembership } = useClubRole();
     const clubId = clubManagerMembership?.clubId ?? 0;
-    const { data: clubPosts = [], isLoading } = useGetClubPostByClubIdQuery(clubId);
+    const { data: allPosts = [], isLoading } = useGetClubPostsQuery();
+    const clubPosts = allPosts.filter(p => p.clubId === clubId);
     const [deleteClubPost] = useDeleteClubPostMutation();
     const [updateClubPost] = useUpdateClubPostMutation();
     const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
-    
+    // Confirm dialog state
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
     const userId = getUserId();
     const published = clubPosts.filter(p => p.status !== 'inactive' && p.status !== 'DRAFT').length;
     const hidden = clubPosts.filter(p => p.status === 'inactive').length;
 
-    const handleDelete = async (postId: number) => {
-        if (!window.confirm('Bạn có chắc muốn xóa bài viết này?')) return;
-        try { await deleteClubPost(postId).unwrap(); }
+    const handleDelete = (postId: number) => {
+        setPendingDeleteId(postId);
+        setConfirmOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (pendingDeleteId === null) return;
+        try { await deleteClubPost(pendingDeleteId).unwrap(); }
         catch { alert('Xóa thất bại!'); }
+        finally { setConfirmOpen(false); setPendingDeleteId(null); }
     };
 
     const handleToggleStatus = async (postId: number, status: string) => {

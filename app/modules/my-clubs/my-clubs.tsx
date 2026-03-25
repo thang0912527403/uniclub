@@ -1,8 +1,12 @@
 import { useNavigate, Link } from 'react-router';
-import { useGetUserAllClubsQuery } from '~/cores/api/userApi';
+import { useGetManagedClubsQuery, useGetUserAllClubsQuery } from '~/cores/api/userApi';
 import { getUserId, setClubId } from '~/utils/auth';
 import { SettingButton } from '~/components/SettingButton';
 import type { Club } from '~/cores/api/types';
+import { useHasUserPolicyQuery } from '~/cores/api';
+import { ca } from 'zod/locales';
+import { useCheckPendingRequestQuery } from '~/cores/api/clubRequestApi';
+import { useGetClubRequestsByUserIdQuery } from '~/cores/api/clubRequestApi';
 
 function ClubRow({ club }: { club: Club }) {
   const navigate = useNavigate();
@@ -12,7 +16,7 @@ function ClubRow({ club }: { club: Club }) {
     navigate('/dashboard');
   };
 
-  const isActive = club.status === 'Active' || club.status === 'ACTIVE';
+  const isActive = club.status.toLowerCase() === 'active';
 
   return (
     <div
@@ -34,11 +38,10 @@ function ClubRow({ club }: { club: Club }) {
           <h3 className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {club.clubName}
           </h3>
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0 ${
-            isActive
-              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-          }`}>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0 ${isActive
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+            }`}>
             <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
             {isActive ? 'Hoạt động' : club.status}
           </span>
@@ -78,6 +81,20 @@ export default function MyClubsModule() {
     skip: !userId,
   });
 
+  const { data: canCreateRequest } = useHasUserPolicyQuery({ userId, policyTitle: 'CreateClubRequest' }, {
+    skip: !userId,
+  });
+
+  const { data: hasPendingRequest } = useCheckPendingRequestQuery(userId, {
+    skip: !userId,
+  });
+
+  const { data: managedClubs } = useGetManagedClubsQuery(getUserId());
+
+  const { data: userRequests, isLoading: requestLoading } =
+    useGetClubRequestsByUserIdQuery(userId, {
+      skip: !userId,
+    });
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
@@ -145,6 +162,81 @@ export default function MyClubsModule() {
               >
                 <i className="fas fa-search"></i> Khám phá câu lạc bộ
               </Link>
+            </div>
+          )}
+
+          {!canCreateRequest && !hasPendingRequest && managedClubs?.length === 0 && (
+            <div className="mt-10 pt-8 border-t border-gray-200 dark:border-gray-700">
+              <Link
+                to="/club/request"
+                className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-[0.98]"
+              >
+                <i className="fas fa-plus-circle text-lg"></i>
+                <span>Gửi yêu cầu mở câu lạc bộ</span>
+              </Link>
+              <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">
+                Bạn muốn thành lập một cộng đồng mới? Hãy bắt đầu ngay hôm nay!
+              </p>
+            </div>)}
+          {userRequests && userRequests.length > 0 && (
+            <div className="mt-10">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Yêu cầu mở câu lạc bộ của bạn
+              </h2>
+
+              <div className="overflow-x-auto bg-white dark:bg-gray-800/80 backdrop-blur border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm">
+                <table className="min-w-full text-sm">
+
+                  <thead className="bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-200">
+                    <tr>
+                      <th className="px-5 py-3 text-left font-semibold">Club Name</th>
+                      <th className="px-5 py-3 text-left font-semibold">Description</th>
+                      <th className="px-5 py-3 text-left font-semibold">Reason</th>
+                      <th className="px-5 py-3 text-left font-semibold">Status</th>
+                      <th className="px-5 py-3 text-left font-semibold">Created At</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                    {userRequests.map((req) => (
+                      <tr
+                        key={req.requestId}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
+                      >
+                        <td className="px-5 py-4 font-medium text-gray-900 dark:text-white">
+                          {req.clubName}
+                        </td>
+
+                        <td className="px-5 py-4 text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                          {req.description}
+                        </td>
+
+                        <td className="px-5 py-4 text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                          {req.reason}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <span
+                            className={`px-3 py-1 text-xs rounded-full font-semibold ${req.status === "Pending"
+                                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+                                : req.status === "Approved"
+                                  ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                                  : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                              }`}
+                          >
+                            {req.status}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
+                          {new Date(req.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+
+                </table>
+              </div>
             </div>
           )}
         </div>
