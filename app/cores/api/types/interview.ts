@@ -85,6 +85,7 @@ export interface InterviewAssignmentResponse {
   interviewerUserId: string;
   role: string;
   hasConfirmed: boolean;
+  assignedCriteriaIds?: string | null;
   feedbackNotes?: string | null;
   result?: string | null;
   score?: number | null;

@@ -59,6 +59,15 @@ const adminNavItems: NavItem[] = [
     ],
   },
   {
+    label: 'Phỏng vấn',
+    icon: 'fa-calendar-check',
+    subItems: [
+      { label: 'Lịch phỏng vấn', url: '/interview/schedule' },
+      { label: 'Phòng phỏng vấn', url: '/interview/room' },
+      { label: 'So sánh ứng viên', url: '/interview/comparison' },
+    ],
+  },
+  {
     label: 'Quản lý Quỹ',
     icon: 'fa-wallet',
     subItems: [
@@ -95,6 +104,7 @@ const clubManagerNavItems: NavItem[] = [
     subItems: [
       { label: 'Lịch phỏng vấn', url: '/interview/schedule' },
       { label: 'Phòng phỏng vấn', url: '/interview/room' },
+      { label: 'So sánh ứng viên', url: '/interview/comparison' },
     ],
   },
   {

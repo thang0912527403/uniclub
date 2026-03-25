@@ -67,6 +67,7 @@ export default [
     // Interview routes
     route("interview/schedule", "routes/interview-schedule.tsx"),
     route("interview/room/:roomCode?", "routes/interview-room.tsx"),
+    route("interview/comparison", "routes/interview-comparison.tsx"),
 
     // Question (campaign applications form)
     route("question-applications", "routes/question-applications.tsx"),
