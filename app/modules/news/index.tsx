@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { Footer } from "../home/components";
 import Navbar from "../../components/Navbar";
-import { useGetClubPostsQuery } from "~/cores/api/clubApi";
+import { useGetAllClubPostsQuery } from "~/cores/api/clubApi";
 import type { ClubPostResponseDto } from "~/cores/api";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
@@ -163,7 +163,7 @@ const NewsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 12;
 
-  const { data: posts = [], isLoading, error } = useGetClubPostsQuery();
+  const { data: posts = [], isLoading, error } = useGetAllClubPostsQuery();
 
   /* Unique club names for filter tabs */
   const clubNames = useMemo(() => {

@@ -316,13 +316,14 @@ const QuestionModal: React.FC<{
 // ── Sub-component: Form Card ─────────────────────────────────────────────
 const FormCard: React.FC<{
   form: ApplicationFormResponseDto;
+  clubId: number;
   isSelected: boolean;
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
-}> = ({ form, isSelected, onSelect, onEdit, onDelete }) => {
+}> = ({ form, clubId, isSelected, onSelect, onEdit, onDelete }) => {
   const [copied, setCopied] = useState(false);
-  const applyUrl = `${window.location.origin}/question/${form.formId}`;
+  const applyUrl = `${window.location.origin}/question/${form.formId}?clubId=${clubId}`;
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -362,7 +363,7 @@ const FormCard: React.FC<{
       {/* Apply / Share row */}
       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
         <Link
-          to={`/question/${form.formId}`}
+          to={`/question/${form.formId}?clubId=${clubId}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-all"
@@ -510,6 +511,7 @@ const FormsTab: React.FC<{ campaignId: number; clubId: number }> = ({ campaignId
               <FormCard
                 key={form.formId}
                 form={form}
+                clubId={clubId}
                 isSelected={selectedFormId === form.formId}
                 onSelect={() => setSelectedFormId(form.formId)}
                 onEdit={() => { setEditingForm(form); setShowFormModal(true); }}

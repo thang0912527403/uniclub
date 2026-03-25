@@ -1,3 +1,4 @@
+import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import { baseApi } from './baseApi';
 import {
   type Club,
@@ -131,49 +132,105 @@ export const clubApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<Club>) => response.data,
       invalidatesTags: (result, error, { id }) => [{ type: 'Club', id }, 'Club'],
     }),
-    // ─── ClubPost endpoints ─────────────────────────────────────────────
-    getClubPosts: builder.query<ClubPostResponseDto[], void>({
-      query: () => '/ClubPost',
+    // ─── ClubPost: /api/club/{clubId}/posts (không còn /ClubPost flat) ─────────
+    getClubPostsByClubId: builder.query<ClubPostResponseDto[], number>({
+      query: (clubId) => `/club/${clubId}/posts`,
       transformResponse: (response: ApiResponse<ClubPostResponseDto[]>) => response.data,
+      providesTags: (result, error, clubId) => [{ type: 'ClubPost', id: `club-${clubId}` }],
+    }),
+    /** Trang chủ / news: gộp bài từ mọi CLB (gọi lần lượt theo từng clubId). */
+    getAllClubPosts: builder.query<ClubPostResponseDto[], void>({
+      async queryFn(_arg, _api, _extraOptions, baseQuery) {
+        const clubsRes = await baseQuery('/Club');
+        if (clubsRes.error) {
+          return { error: clubsRes.error as FetchBaseQueryError };
+        }
+        const raw = clubsRes.data as ApiResponse<Club[]>;
+        const clubs = raw?.data ?? [];
+        const all: ClubPostResponseDto[] = [];
+        for (const club of clubs) {
+          const r = await baseQuery(`/club/${club.clubId}/posts`);
+          if (!r.error && r.data) {
+            const inner = r.data as ApiResponse<ClubPostResponseDto[]>;
+            all.push(...(inner.data ?? []));
+          }
+        }
+        return { data: all };
+      },
       providesTags: ['ClubPost'],
     }),
-    getClubPostById: builder.query<ClubPostResponseDto, number>({
-      query: (id) => `/ClubPost/${id}`,
-      transformResponse: (response: ApiResponse<ClubPostResponseDto>) => response.data,
-      providesTags: (result, error, id) => [{ type: 'ClubPost', id }],
+    getClubPostById: builder.query<ClubPostResponseDto, { postId: number; clubId?: number }>({
+      async queryFn({ postId, clubId }, _api, _extraOptions, baseQuery) {
+        if (clubId != null && clubId > 0) {
+          const r = await baseQuery(`/club/${clubId}/posts/${postId}`);
+          if (r.error) {
+            return { error: r.error as FetchBaseQueryError };
+          }
+          const raw = r.data as ApiResponse<ClubPostResponseDto>;
+          return { data: raw.data };
+        }
+        const clubsRes = await baseQuery('/Club');
+        if (clubsRes.error) {
+          return { error: clubsRes.error as FetchBaseQueryError };
+        }
+        const clubs = (clubsRes.data as ApiResponse<Club[]>).data ?? [];
+        for (const c of clubs) {
+          const r = await baseQuery(`/club/${c.clubId}/posts/${postId}`);
+          if (!r.error && r.data) {
+            const raw = r.data as ApiResponse<ClubPostResponseDto>;
+            if (raw?.data) {
+              return { data: raw.data };
+            }
+          }
+        }
+        return {
+          error: {
+            status: 404,
+            statusText: 'Not Found',
+            data: 'Post not found',
+          } as FetchBaseQueryError,
+        };
+      },
+      providesTags: (result, error, { postId }) => [{ type: 'ClubPost', id: postId }],
     }),
-    createClubPost: builder.mutation<
-      CreateClubPostDto,
-      FormData
-    >({
-      query: (formData) => ({
-        url: '/ClubPost',
+    createClubPost: builder.mutation<CreateClubPostDto, { clubId: number; formData: FormData }>({
+      query: ({ clubId, formData }) => ({
+        url: `/club/${clubId}/posts`,
         method: 'POST',
         body: formData,
       }),
-      transformResponse: (response: ApiResponse<CreateClubPostDto>) =>
-        response.data,
-      invalidatesTags: [{ type: 'ClubPost' }],
+      transformResponse: (response: ApiResponse<CreateClubPostDto>) => response.data,
+      invalidatesTags: (result, error, { clubId }) => [
+        { type: 'ClubPost', id: `club-${clubId}` },
+        'ClubPost',
+      ],
     }),
-    updateClubPost: builder.mutation<ClubPostResponseDto, { id: number; formData: FormData }>({
-      query: ({ id, formData }) => ({
-        url: `/ClubPost/${id}`,
+    updateClubPost: builder.mutation<
+      ClubPostResponseDto,
+      { clubId: number; id: number; formData: FormData }
+    >({
+      query: ({ clubId, id, formData }) => ({
+        url: `/club/${clubId}/posts/${id}`,
         method: 'PUT',
         body: formData,
       }),
-      transformResponse: (response: ApiResponse<ClubPostResponseDto>) =>
-        response.data,
-      invalidatesTags: (result, error, { id }) => [
+      transformResponse: (response: ApiResponse<ClubPostResponseDto>) => response.data,
+      invalidatesTags: (result, error, { clubId, id }) => [
+        { type: 'ClubPost', id: `club-${clubId}` },
         { type: 'ClubPost', id },
         'ClubPost',
       ],
     }),
-    deleteClubPost: builder.mutation<void, number>({
-      query: (id) => ({
-        url: `/ClubPost/${id}`,
+    deleteClubPost: builder.mutation<void, { clubId: number; id: number }>({
+      query: ({ clubId, id }) => ({
+        url: `/club/${clubId}/posts/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['ClubPost'],
+      invalidatesTags: (result, error, { clubId, id }) => [
+        { type: 'ClubPost', id: `club-${clubId}` },
+        { type: 'ClubPost', id },
+        'ClubPost',
+      ],
     }),
     // ─── ClubFund endpoints ─────────────────────────────────────────────
     getFundCapabilities: builder.query<ClubFundCapabilities, number>({
@@ -350,9 +407,9 @@ export const {
   useUpdateClubMutation,
   useDeleteClubMutation,
   useToggleClubStatusMutation,
-  useGetClubPostsQuery,
+  useGetClubPostsByClubIdQuery,
+  useGetAllClubPostsQuery,
   useGetClubPostByIdQuery,
-  // useGetClubPostByClubIdQuery,
   useCreateClubPostMutation,
   useUpdateClubPostMutation,
   useDeleteClubPostMutation,

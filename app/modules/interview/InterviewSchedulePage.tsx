@@ -44,7 +44,6 @@ const InterviewSchedulePage: React.FC = () => {
   const { isAdmin } = useCurrentUser();
   const { clubManagerMembership } = useClubRole();
   const clubId = clubManagerMembership?.clubId ?? 0;
-  const { data: clubRoles = [] } = useGetClubRolesByClubIdQuery(clubId, { skip: !clubId });
 
   const { data: adminCampaigns, isLoading: adminLoading } =
     useGetRecruitmentCampaignsQuery(undefined, {
@@ -63,6 +62,14 @@ const InterviewSchedulePage: React.FC = () => {
     null,
   );
   const activeCampaignId = selectedCampaignId || campaigns[0]?.campaignId;
+  const activeCampaign = campaigns.find((c) => c.campaignId === activeCampaignId);
+  /** Admin không có club trong JWT: lấy clubId từ chiến dịch đang chọn để gọi API scoped theo club */
+  const effectiveClubId = isAdmin ? (activeCampaign?.clubId ?? 0) : clubId;
+
+  const { data: clubRoles = [] } = useGetClubRolesByClubIdQuery(
+    effectiveClubId,
+    { skip: !effectiveClubId },
+  );
 
   // ─── Current user ────────────────────────────────────────────
   const currentUserId = getUserId();
@@ -75,8 +82,8 @@ const InterviewSchedulePage: React.FC = () => {
     );
   const { data: reviewedApps = [], isLoading: appsLoading } =
     useGetApplicationsByCampaignQuery(
-      { clubId, campaignId: activeCampaignId!, status: "SUCCESS" },
-      { skip: !activeCampaignId },
+      { clubId: effectiveClubId, campaignId: activeCampaignId!, status: "SUCCESS" },
+      { skip: !activeCampaignId || !effectiveClubId },
     );
 
   // ─── Mutations ───────────────────────────────────────────────
@@ -579,9 +586,9 @@ const InterviewSchedulePage: React.FC = () => {
     });
   };
 
-  // Fetch club members for bulk assign
-  const { data: bulkClubMembers = [] } = useGetClubMembersQuery(clubId, {
-    skip: !clubId,
+  // Fetch club members for bulk assign (admin: theo CLB của chiến dịch đang chọn)
+  const { data: bulkClubMembers = [] } = useGetClubMembersQuery(effectiveClubId, {
+    skip: !effectiveClubId,
   });
   const interviewerMembers = useMemo(
     () =>
@@ -883,7 +890,7 @@ const InterviewSchedulePage: React.FC = () => {
         }}
         interview={selectedInterview || null}
         currentUserId={currentUserId}
-        clubId={clubId}
+        clubId={effectiveClubId || clubId}
         clubRoles={clubRoles}
         onUpdateStatus={handleUpdateStatus}
         onAssignInterviewer={handleAssignInterviewer}

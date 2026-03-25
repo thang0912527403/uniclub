@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router';
 import Navbar from '../../components/Navbar';
 import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
 import ProgressBar from './components/progressBar';
 import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationByUserAndFormQuery, useGetFormsByCampaignQuery } from '../../cores/api/applicationApi';
-import { useGetRecruitmentCampaignQuery } from '../../cores/api';
+import { useGetRecruitmentCampaignQuery, useGetRecruitmentCampaignsQuery } from '../../cores/api';
 import { getUserId } from '~/utils/auth';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import type { ApplicationAnswerItemDto } from '../../cores/api';
@@ -19,15 +19,23 @@ import type { ApplicationAnswerItemDto } from '../../cores/api';
 const QuestionPage: React.FC = () => {
   const { formId: idParam } = useParams<{ formId?: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const idFromUrl = idParam ? Number(idParam) : NaN;
+  const clubIdFromQuery = Number(searchParams.get('clubId')) || 0;
 
-  // 1. Fetch campaign first to get clubId (treat idFromUrl as campaignId)
-  const { data: campaign } = useGetRecruitmentCampaignQuery(idFromUrl, {
-    skip: !idFromUrl || isNaN(idFromUrl),
+  const { data: allCampaigns } = useGetRecruitmentCampaignsQuery(undefined, {
+    skip: !!clubIdFromQuery || !idFromUrl || isNaN(idFromUrl),
   });
-  // const clubId = campaign?.clubId ?? 0;
-  const clubId = 1;
+  const resolvedClubId =
+    clubIdFromQuery || allCampaigns?.find((c) => c.campaignId === idFromUrl)?.clubId || 0;
+
+  // 1. Coi idFromUrl là campaignId; cần clubId trong path API (query ?clubId= hoặc suy ra từ danh sách)
+  const { data: campaign } = useGetRecruitmentCampaignQuery(
+    { clubId: resolvedClubId, campaignId: idFromUrl },
+    { skip: !idFromUrl || isNaN(idFromUrl) || !resolvedClubId },
+  );
+  const clubId = campaign?.clubId ?? resolvedClubId;
 
   // 2. Fetch forms for the campaign (requires clubId)
   const { data: campaignForms = [] } = useGetFormsByCampaignQuery(
@@ -135,7 +143,7 @@ const QuestionPage: React.FC = () => {
               Bạn cần đăng nhập để nộp đơn ứng tuyển. Vui lòng đăng nhập và thử lại.
             </p>
             <Link
-              to={`/auth/login?redirect=/question/${actualFormId}`}
+              to={`/auth/login?redirect=${encodeURIComponent(`/question/${actualFormId}${clubId ? `?clubId=${clubId}` : ''}`)}`}
               className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all mb-3"
             >
               <i className="fa-solid fa-right-to-bracket mr-2" />
