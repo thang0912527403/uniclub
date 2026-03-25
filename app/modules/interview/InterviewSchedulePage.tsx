@@ -75,7 +75,7 @@ const InterviewSchedulePage: React.FC = () => {
     );
   const { data: reviewedApps = [], isLoading: appsLoading } =
     useGetApplicationsByCampaignQuery(
-      { campaignId: activeCampaignId!, status: "SUCCESS" },
+      { clubId, campaignId: activeCampaignId!, status: "SUCCESS" },
       { skip: !activeCampaignId },
     );
 

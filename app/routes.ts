@@ -21,6 +21,7 @@ export default [
   route("public/news", "routes/news.tsx"),
   route("public/news/:id", "routes/news.$id.tsx"),
   route("campaign/:id", "routes/campaign.$id.tsx"),
+  // Public application form (links use /question/:formId)
   route("question/:formId?", "routes/question.tsx"),
 
   // Error routes

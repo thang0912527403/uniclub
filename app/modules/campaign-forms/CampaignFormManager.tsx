@@ -22,6 +22,7 @@ import type {
 
 interface Props {
   campaignId: number;
+  clubId: number;
   campaignName?: string;
 }
 
@@ -34,8 +35,8 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
 };
 
 // ── Sub-component: Application Answer Viewer (Tab 3 detail panel) ──────────
-const AnswerPanel: React.FC<{ application: ApplicationResponseDto; questions: ApplicationQuestionResponseDto[]; onClose: () => void }> = ({ application, questions, onClose }) => {
-  const { data: answers = [], isLoading } = useGetAnswersByApplicationQuery(application.applicationId);
+const AnswerPanel: React.FC<{ clubId: number; application: ApplicationResponseDto; questions: ApplicationQuestionResponseDto[]; onClose: () => void }> = ({ clubId, application, questions, onClose }) => {
+  const { data: answers = [], isLoading } = useGetAnswersByApplicationQuery({ clubId, applicationId: application.applicationId });
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
@@ -443,8 +444,8 @@ const FormModal: React.FC<{
 };
 
 // ── Tab 1: Forms & Questions ─────────────────────────────────────────────
-const FormsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
-  const { data: forms = [], isLoading: formsLoading } = useGetFormsByCampaignQuery(campaignId);
+const FormsTab: React.FC<{ campaignId: number; clubId: number }> = ({ campaignId, clubId }) => {
+  const { data: forms = [], isLoading: formsLoading } = useGetFormsByCampaignQuery({ clubId, campaignId });
   const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingForm, setEditingForm] = useState<ApplicationFormResponseDto | null>(null);
@@ -459,27 +460,27 @@ const FormsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
   const [deleteQuestion] = useDeleteQuestionMutation();
 
   const selectedForm = forms.find(f => f.formId === selectedFormId) ?? null;
-  const { data: questions = [], isLoading: questionsLoading } = useGetQuestionsByFormQuery(selectedFormId!, { skip: !selectedFormId });
+  const { data: questions = [], isLoading: questionsLoading } = useGetQuestionsByFormQuery({ clubId, formId: selectedFormId! }, { skip: !selectedFormId });
 
   const handleCreateForm = async (dto: any) => {
     try { await createForm(dto).unwrap(); setShowFormModal(false); } catch (e) { console.error(e); }
   };
   const handleUpdateForm = async (id: number, dto: any) => {
-    try { await updateForm({ id, body: dto }).unwrap(); setShowFormModal(false); setEditingForm(null); } catch (e) { console.error(e); }
+    try { await updateForm({ clubId, id, body: dto }).unwrap(); setShowFormModal(false); setEditingForm(null); } catch (e) { console.error(e); }
   };
   const handleDeleteForm = async (id: number) => {
     if (!confirm('Xóa biểu mẫu này? Toàn bộ câu hỏi sẽ bị xóa.')) return;
-    try { await deleteForm(id).unwrap(); if (selectedFormId === id) setSelectedFormId(null); } catch (e) { console.error(e); }
+    try { await deleteForm({ clubId, id }).unwrap(); if (selectedFormId === id) setSelectedFormId(null); } catch (e) { console.error(e); }
   };
   const handleCreateQuestion = async (dto: any) => {
     try { await createQuestion(dto).unwrap(); setShowQuestionModal(false); } catch (e) { console.error(e); }
   };
   const handleUpdateQuestion = async (id: number, dto: ApplicationQuestionResponseDto) => {
-    try { await updateQuestion({ id, question: dto }).unwrap(); setShowQuestionModal(false); setEditingQuestion(null); } catch (e) { console.error(e); }
+    try { await updateQuestion({ clubId, id, question: dto }).unwrap(); setShowQuestionModal(false); setEditingQuestion(null); } catch (e) { console.error(e); }
   };
   const handleDeleteQuestion = async (id: number) => {
     if (!confirm('Xóa câu hỏi này?')) return;
-    try { await deleteQuestion(id).unwrap(); } catch (e) { console.error(e); }
+    try { await deleteQuestion({ clubId, id }).unwrap(); } catch (e) { console.error(e); }
   };
 
   return (
@@ -600,9 +601,9 @@ const FormsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
 };
 
 // ── Inline Answer Row (expands under a table row) ──────────────────────────
-const InlineAnswerRow: React.FC<{ application: ApplicationResponseDto; colSpan: number }> = ({ application, colSpan }) => {
-  const { data: answers = [], isLoading } = useGetAnswersByApplicationQuery(application.applicationId);
-  const { data: questions = [] } = useGetQuestionsByFormQuery(application.formId);
+const InlineAnswerRow: React.FC<{ clubId: number; application: ApplicationResponseDto; colSpan: number }> = ({ clubId, application, colSpan }) => {
+  const { data: answers = [], isLoading } = useGetAnswersByApplicationQuery({ clubId, applicationId: application.applicationId });
+  const { data: questions = [] } = useGetQuestionsByFormQuery({ clubId, formId: application.formId });
 
   return (
     <tr>
@@ -779,15 +780,15 @@ const BulkActionBar: React.FC<{
 // ── Tab 2 & 3: Applications table + Response viewer ───────────────────────
 const APPS_PER_PAGE = 10;
 
-const ApplicationsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
-  const { data: forms = [] } = useGetFormsByCampaignQuery(campaignId);
+const ApplicationsTab: React.FC<{ campaignId: number; clubId: number }> = ({ campaignId, clubId }) => {
+  const { data: forms = [] } = useGetFormsByCampaignQuery({ clubId, campaignId });
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedApp, setSelectedApp] = useState<ApplicationResponseDto | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const { data: applications = [], isLoading } = useGetApplicationsByCampaignQuery({ campaignId, status: statusFilter || undefined });
+  const { data: applications = [], isLoading } = useGetApplicationsByCampaignQuery({ clubId, campaignId, status: statusFilter || undefined });
   const [updateStatus] = useUpdateApplicationStatusMutation();
 
   // ── Derived data ──
@@ -817,7 +818,7 @@ const ApplicationsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
 
   // ── Handlers ──
   const handleStatusChange = async (app: ApplicationResponseDto, newStatus: string) => {
-    try { await updateStatus({ id: app.applicationId, body: { status: newStatus } }).unwrap(); } catch (e) { console.error(e); }
+    try { await updateStatus({ clubId, id: app.applicationId, body: { status: newStatus } }).unwrap(); } catch (e) { console.error(e); }
   };
 
   const toggleExpand = (id: number) => {
@@ -846,7 +847,7 @@ const ApplicationsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
 
   const handleBulkStatus = async (newStatus: string) => {
     const promises = Array.from(selectedIds).map(id =>
-      updateStatus({ id, body: { status: newStatus } }).unwrap().catch(console.error)
+      updateStatus({ clubId, id, body: { status: newStatus } }).unwrap().catch(console.error)
     );
     await Promise.all(promises);
     setSelectedIds(new Set());
@@ -1014,7 +1015,7 @@ const ApplicationsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
                         </td>
                       </tr>
                       {/* Inline expanded answers */}
-                      {isExpanded && <InlineAnswerRow application={app} colSpan={TABLE_COL_COUNT} />}
+                      {isExpanded && <InlineAnswerRow clubId={clubId} application={app} colSpan={TABLE_COL_COUNT} />}
                     </React.Fragment>
                   );
                 })}
@@ -1072,6 +1073,7 @@ const ApplicationsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
       {/* Answer modal (secondary option) */}
       {selectedApp && (
         <AnswerViewerForApp
+          clubId={clubId}
           app={selectedApp}
           forms={forms}
           onClose={() => setSelectedApp(null)}
@@ -1083,16 +1085,17 @@ const ApplicationsTab: React.FC<{ campaignId: number }> = ({ campaignId }) => {
 
 // Wrapper so we can fetch questions per form lazily
 const AnswerViewerForApp: React.FC<{
+  clubId: number;
   app: ApplicationResponseDto;
   forms: ApplicationFormResponseDto[];
   onClose: () => void;
-}> = ({ app, forms, onClose }) => {
-  const { data: questions = [] } = useGetQuestionsByFormQuery(app.formId);
-  return <AnswerPanel application={app} questions={questions} onClose={onClose} />;
+}> = ({ clubId, app, forms, onClose }) => {
+  const { data: questions = [] } = useGetQuestionsByFormQuery({ clubId, formId: app.formId });
+  return <AnswerPanel clubId={clubId} application={app} questions={questions} onClose={onClose} />;
 };
 
 // ── Main Export ─────────────────────────────────────────────────────────────
-const CampaignFormManager: React.FC<Props> = ({ campaignId, campaignName }) => {
+const CampaignFormManager: React.FC<Props> = ({ campaignId, clubId, campaignName }) => {
   const [tab, setTab] = useState<'forms' | 'applications'>('forms');
 
   const tabs = [
@@ -1134,8 +1137,8 @@ const CampaignFormManager: React.FC<Props> = ({ campaignId, campaignName }) => {
 
       {/* Tab content */}
       <div>
-        {tab === 'forms' && <FormsTab campaignId={campaignId} />}
-        {tab === 'applications' && <ApplicationsTab campaignId={campaignId} />}
+        {tab === 'forms' && <FormsTab campaignId={campaignId} clubId={clubId} />}
+        {tab === 'applications' && <ApplicationsTab campaignId={campaignId} clubId={clubId} />}
       </div>
     </div>
   );
