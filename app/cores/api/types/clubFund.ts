@@ -59,6 +59,8 @@ export interface CreateFundRequestResponse {
 }
 
 export type FundHistoryScope = 'all' | 'contributions' | 'mine';
+export type FundHistoryStatusFilter = '' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
+export type FundHistoryScopeFilter = '' | 'mine';
 
 export interface FundHistoryItem {
   transactionId?: number;
@@ -79,6 +81,16 @@ export interface FundHistoryItem {
   senderName?: string;
   createdByName?: string;
   isMemberContribution?: boolean;
+}
+
+export interface FundHistoryResponse {
+  items: FundHistoryItem[];
+  pageNumber: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
 }
 
 export interface CreateFundDto {

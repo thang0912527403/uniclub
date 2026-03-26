@@ -4,7 +4,6 @@ import { Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight } from 'lucide-
 import {
   useGetFundByIdQuery,
   useGetFundCapabilitiesQuery,
-  useGetFundHistoryQuery,
   useApproveFundMutation,
   useContributeToFundMutation,
   useLazyGetContributeTransactionStatusQuery,
@@ -14,9 +13,17 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { useNotification } from '~/components/Notification';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import type { FundHistoryItem, ClubFund, FundHistoryScope } from '~/cores/api';
+import type { FundHistoryItem, ClubFund, FundHistoryScopeFilter, FundHistoryStatusFilter } from '~/cores/api';
 import { fundTokens as t } from '../funds.design-tokens';
 import { savePayosPendingContribute } from '~/utils/payosContributeSession';
+import { useFundHistory } from '~/modules/funds/hooks/useFundHistory';
+import {
+  DEFAULT_FUND_HISTORY_PAGE_SIZE,
+  FILTER_DEBOUNCE_MS,
+  FUND_HISTORY_PAGE_SIZES,
+  FUND_HISTORY_SCOPE_OPTIONS,
+  FUND_HISTORY_STATUS_OPTIONS,
+} from '~/modules/funds/constants/fundHistory';
 
 function resolveMinContributeVnd(): number {
   const raw = import.meta.env.VITE_MIN_FUND_CONTRIBUTE_VND as string | undefined;
@@ -28,8 +35,6 @@ function resolveMinContributeVnd(): number {
 }
 
 const MIN_FUND_TX_AMOUNT = resolveMinContributeVnd();
-const FUND_HISTORY_PAGE_SIZE = 20;
-
 function formatCountdown(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -155,12 +160,25 @@ export default function FundDetailPageByClub() {
   const [contributePollTimedOut, setContributePollTimedOut] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [historyPage, setHistoryPage] = useState(1);
+  const [historyPageSize, setHistoryPageSize] = useState<number>(DEFAULT_FUND_HISTORY_PAGE_SIZE);
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<FundHistoryStatusFilter>('ALL');
+  const [historyScopeFilter, setHistoryScopeFilter] = useState<FundHistoryScopeFilter>('');
+  const [debouncedStatus, setDebouncedStatus] = useState<FundHistoryStatusFilter>('ALL');
+  const [debouncedScope, setDebouncedScope] = useState<FundHistoryScopeFilter>('');
 
   const isInvalidParams = !clubIdParam || !fundIdParam || isNaN(clubId) || isNaN(fundId) || clubId < 1 || fundId < 1;
 
   useEffect(() => {
     setHistoryPage(1);
   }, [clubId, fundId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedStatus(historyStatusFilter);
+      setDebouncedScope(historyScopeFilter);
+    }, FILTER_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [historyStatusFilter, historyScopeFilter]);
 
   const {
     data: caps,
@@ -178,11 +196,6 @@ export default function FundDetailPageByClub() {
   const canContribute = caps?.canContribute ?? false;
   const canApproveOrRejectFundEntity = caps?.canApproveOrRejectFundEntity ?? false;
 
-  // Lịch sử nộp: không gửi status => BE chỉ trả giao dịch APPROVED (tiền đã vào quỹ).
-  // scope=mine: chỉ các lần nộp của user (kết hợp được với status nếu sau này có filter).
-  // Manager/Vice: không gửi scope => toàn bộ nộp thành công trong quỹ.
-  const historyScope: FundHistoryScope = canApproveOrRejectFundEntity ? 'all' : 'mine';
-
   const skipFundQueries =
     isInvalidParams ||
     capsLoading ||
@@ -194,23 +207,29 @@ export default function FundDetailPageByClub() {
     { clubId, fundId },
     { skip: skipFundQueries }
   );
+  useEffect(() => {
+    if (!capsLoading && !canApproveOrRejectFundEntity && historyScopeFilter === '') {
+      setHistoryScopeFilter('mine');
+    }
+  }, [capsLoading, canApproveOrRejectFundEntity, historyScopeFilter]);
+
+  const historyQueryClubId = skipFundQueries ? 0 : clubId;
+  const historyQueryFundId = skipFundQueries ? 0 : fundId;
+
   const {
-    data: historyPaged,
-    isLoading: isLoadingHistory,
+    items: history,
+    paging: historyMeta,
+    loading: isLoadingHistory,
     error: historyError,
     refetch: refetchHistory,
-  } = useGetFundHistoryQuery(
-    {
-      clubId,
-      fundId,
-      page: historyPage,
-      pageSize: FUND_HISTORY_PAGE_SIZE,
-      scope: historyScope,
-    },
-    { skip: skipFundQueries },
-  );
-  const history = historyPaged?.items ?? [];
-  const historyMeta = historyPaged;
+  } = useFundHistory({
+    clubId: historyQueryClubId,
+    fundId: historyQueryFundId,
+    page: historyPage,
+    pageSize: historyPageSize,
+    status: debouncedStatus,
+    scope: debouncedScope,
+  });
   const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
   const [contributeToFund, { isLoading: isContributing }] = useContributeToFundMutation();
   const [fetchPayStatus] = useLazyGetContributeTransactionStatusQuery();
@@ -220,8 +239,7 @@ export default function FundDetailPageByClub() {
   const canShowContributeBtn =
     !!fund && canContribute && fund.canAcceptContributions === true;
   const isUnauthorized =
-    (fundError && 'status' in fundError && fundError.status === 401) ||
-    (historyError && 'status' in historyError && historyError.status === 401);
+    (fundError && 'status' in fundError && fundError.status === 401);
 
   const bgClass = isDark ? 'bg-[#0f1729]' : 'bg-slate-50';
   const textClass = isDark ? 'text-slate-50' : 'text-slate-900';
@@ -404,6 +422,8 @@ export default function FundDetailPageByClub() {
     isPaymentLinkExpired ||
     contributePollTimedOut ||
     !!contributePollError;
+
+  const isHistoryControlDisabled = isLoadingHistory || skipFundQueries;
 
   if (isInvalidParams) {
     return (
@@ -591,26 +611,102 @@ export default function FundDetailPageByClub() {
               <section className={`${t.card.base} overflow-hidden`} aria-labelledby="fund-tabs-heading">
                 <h2 id="fund-tabs-heading" className="sr-only">Lịch sử quỹ</h2>
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 space-y-1">
-                  <h3 className={t.type.sectionTitle}>Lịch sử nộp tiền</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className={t.type.sectionTitle}>Lịch sử nộp tiền</h3>
+                    {isLoadingHistory ? (
+                      <span className={`inline-flex items-center gap-1 text-xs ${t.type.muted}`} aria-live="polite">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />
+                        Đang tải...
+                      </span>
+                    ) : null}
+                  </div>
                   <p className={`text-xs ${t.type.muted}`}>
                     Chỉ hiển thị các khoản đã thanh toán thành công (đã vào quỹ).
                   </p>
                 </div>
                 <div className="p-4" aria-labelledby="fund-tabs-heading">
-                  {isLoadingHistory ? (
-                    <div className={`py-8 text-center ${t.type.muted}`}>Đang tải lịch sử...</div>
-                  ) : isUnauthorized ? (
+                  <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+                    <label className="flex flex-col gap-1 text-sm">
+                      <span className={t.type.muted}>Trạng thái</span>
+                      <select
+                        value={historyStatusFilter}
+                        onChange={(e) => {
+                          setHistoryStatusFilter(e.target.value as FundHistoryStatusFilter);
+                          setHistoryPage(1);
+                        }}
+                        disabled={isHistoryControlDisabled}
+                        className={`${t.input} ${inputClass}`}
+                      >
+                        {FUND_HISTORY_STATUS_OPTIONS.map((opt) => (
+                          <option key={opt.value || 'empty'} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="flex flex-col gap-1 text-sm">
+                      <span className={t.type.muted}>Phạm vi</span>
+                      <select
+                        value={historyScopeFilter}
+                        onChange={(e) => {
+                          setHistoryScopeFilter(e.target.value as FundHistoryScopeFilter);
+                          setHistoryPage(1);
+                        }}
+                        disabled={isHistoryControlDisabled}
+                        className={`${t.input} ${inputClass}`}
+                      >
+                        {FUND_HISTORY_SCOPE_OPTIONS.map((opt) => (
+                          <option key={opt.value || 'all'} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="flex flex-col gap-1 text-sm">
+                      <span className={t.type.muted}>Số dòng mỗi trang</span>
+                      <select
+                        value={historyPageSize}
+                        onChange={(e) => {
+                          setHistoryPageSize(Number(e.target.value));
+                          setHistoryPage(1);
+                        }}
+                        disabled={isHistoryControlDisabled}
+                        className={`${t.input} ${inputClass}`}
+                      >
+                        {FUND_HISTORY_PAGE_SIZES.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {isUnauthorized ? (
                     <div className={`p-4 bg-slate-100 dark:bg-slate-800 rounded-xl ${t.type.body}`}>
                       Phiên đăng nhập hết hạn.{' '}
                       <Link to="/auth/login" className="underline focus:outline-none focus:ring-2 focus:ring-slate-500 rounded">
                         Đăng nhập lại
                       </Link>
                     </div>
+                  ) : isLoadingHistory && history.length === 0 ? (
+                    <div className="space-y-2" aria-busy="true" aria-live="polite">
+                      <div className="h-10 rounded-lg bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                      <div className="h-10 rounded-lg bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                      <div className="h-10 rounded-lg bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                    </div>
                   ) : historyError ? (
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-700 dark:text-red-200 text-sm" role="alert">
-                      {typeof historyError === 'object' && historyError && 'data' in historyError
-                        ? (historyError as { data?: { message?: string } }).data?.message || 'Lỗi tải lịch sử.'
-                        : 'Lỗi tải lịch sử.'}
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-700 dark:text-red-200 text-sm space-y-2" role="alert">
+                      <p>{historyError || 'Không thể tải lịch sử quỹ. Vui lòng thử lại.'}</p>
+                      <button
+                        type="button"
+                        onClick={() => refetchHistory()}
+                        className={`${t.btn.secondary} !min-h-0 !py-1.5 !px-3 text-xs`}
+                      >
+                        Thử lại
+                      </button>
                     </div>
                   ) : (historyMeta?.totalCount ?? 0) === 0 ? (
                     <p className={`${t.type.muted} py-4`}>Chưa có lịch sử.</p>
@@ -653,8 +749,7 @@ export default function FundDetailPageByClub() {
                           </tbody>
                         </table>
                       </div>
-                      {historyMeta &&
-                      (historyMeta.hasPreviousPage || historyMeta.hasNextPage || (historyMeta.totalPages ?? 0) > 1) ? (
+                      {historyMeta && (historyMeta.totalPages ?? 0) > 0 ? (
                         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700 pt-4">
                           <p className={`text-sm ${t.type.muted}`}>
                             {(historyMeta.totalCount ?? 0).toLocaleString('vi-VN')} giao dịch · Trang {historyMeta.pageNumber}
@@ -663,7 +758,7 @@ export default function FundDetailPageByClub() {
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              disabled={!historyMeta.hasPreviousPage}
+                              disabled={isHistoryControlDisabled || !historyMeta.hasPreviousPage}
                               onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
                               className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none`}
                               aria-label="Trang trước"
@@ -673,7 +768,7 @@ export default function FundDetailPageByClub() {
                             </button>
                             <button
                               type="button"
-                              disabled={!historyMeta.hasNextPage}
+                              disabled={isHistoryControlDisabled || !historyMeta.hasNextPage}
                               onClick={() => setHistoryPage((p) => p + 1)}
                               className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none`}
                               aria-label="Trang sau"
