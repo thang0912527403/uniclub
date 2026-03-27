@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { CriteriaScoreItemDto } from '~/cores/api/types';
 import { useGetCampaignCriteriaQuery, useSubmitCriteriaFeedbackMutation } from '~/cores/api/interviewApi';
 
@@ -23,20 +23,11 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
   const { data: criteria, isLoading } = useGetCampaignCriteriaQuery(campaignId);
   const [submitFeedback] = useSubmitCriteriaFeedbackMutation();
 
-  const [scores, setScores] = useState<Record<number, number>>({});
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [overallNotes, setOverallNotes] = useState('');
   const [result, setResult] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (criteria) {
-      const defaultScores: Record<number, number> = {};
-      criteria.forEach((c) => { defaultScores[c.id] = 3; });
-      setScores(defaultScores);
-    }
-  }, [criteria]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +38,7 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
 
     const scoreItems: CriteriaScoreItemDto[] = criteria.map((c) => ({
       criterionId: c.id,
-      score: scores[c.id] ?? 3,
+      score: 0,
       note: notes[c.id]?.trim() || null,
     }));
 
@@ -66,31 +57,6 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
     }
   };
 
-  const renderStars = (criterionId: number) => {
-    const currentScore = scores[criterionId] ?? 3;
-    return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() => setScores((prev) => ({ ...prev, [criterionId]: star }))}
-            className="focus:outline-none transition-transform hover:scale-110"
-          >
-            <i
-              className={`fa-star text-xl ${
-                star <= currentScore ? 'fa-solid text-amber-400' : 'fa-regular text-gray-300 dark:text-gray-600'
-              }`}
-            />
-          </button>
-        ))}
-        <span className="ml-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-          {currentScore}/5
-        </span>
-      </div>
-    );
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -106,7 +72,7 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4 animate-fadeIn">
       {/* Header */}
       <div className="flex items-center gap-2 mb-1">
-        <i className="fa-solid fa-star text-amber-400" />
+        <i className="fa-solid fa-clipboard-list text-blue-500" />
         <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">Đánh giá theo tiêu chí</h3>
       </div>
 
@@ -116,7 +82,7 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
         </div>
       )}
 
-      {/* Criteria cards */}
+      {/* Criteria cards — chỉ nhận xét, không chấm điểm */}
       <div className="space-y-3">
         {criteria?.map((criterion) => (
           <div
@@ -130,11 +96,7 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{criterion.description}</p>
                 )}
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs font-bold">
-                {criterion.weight}%
-              </span>
             </div>
-            {renderStars(criterion.id)}
             <textarea
               value={notes[criterion.id] || ''}
               onChange={(e) => setNotes((prev) => ({ ...prev, [criterion.id]: e.target.value }))}

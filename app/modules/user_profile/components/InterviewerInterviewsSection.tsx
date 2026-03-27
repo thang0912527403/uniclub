@@ -12,6 +12,8 @@ import type {
   InterviewAssignmentResponse,
 } from "~/cores/api";
 import FeedbackForm from "~/modules/interview/components/FeedbackForm";
+import CriteriaFeedbackForm from "~/modules/interview/components/CriteriaFeedbackForm";
+import { useGetEvaluationSummaryQuery } from "~/cores/api/interviewApi";
 
 interface InterviewerInterviewsSectionProps {
   userId: string;
@@ -61,6 +63,97 @@ const UserName: React.FC<{ userId: string }> = ({ userId }) => {
   if (isFetching)
     return <span className="text-gray-400 text-xs animate-pulse">...</span>;
   return <>{user?.fullName || userId.slice(0, 12) + "..."}</>;
+};
+
+// ─── Criteria Score Breakdown (per-interviewer) ─────────────────
+const CriteriaScoreBreakdown: React.FC<{
+  scheduleId: number;
+  interviewerUserId: string;
+}> = ({ scheduleId, interviewerUserId }) => {
+  const { data: summary } = useGetEvaluationSummaryQuery(scheduleId);
+  const [expanded, setExpanded] = useState(false);
+
+  if (!summary?.criteriaSummaries?.length) return null;
+
+  const myScores = summary.criteriaSummaries
+    .map((cs) => {
+      const myScore = cs.individualScores.find(
+        (s) => s.interviewerUserId === interviewerUserId,
+      );
+      return myScore
+        ? {
+            name: cs.criterionName,
+            weight: cs.weight,
+            score: myScore.score,
+            note: myScore.note,
+          }
+        : null;
+    })
+    .filter(Boolean) as {
+    name: string;
+    weight: number;
+    score: number;
+    note?: string | null;
+  }[];
+
+  if (myScores.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 transition-colors"
+      >
+        <i
+          className={`fa-solid fa-chevron-${expanded ? "up" : "down"} text-[9px]`}
+        />
+        <i className="fa-solid fa-star text-amber-400" />
+        Điểm theo tiêu chí ({myScores.length})
+      </button>
+      {expanded && (
+        <div className="mt-2 space-y-1.5 animate-fadeIn">
+          {myScores.map((item, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-green-100"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-700 truncate">
+                    {item.name}
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-medium">
+                    ({item.weight}%)
+                  </span>
+                </div>
+                {item.note && (
+                  <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                    {item.note}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <i
+                    key={star}
+                    className={`fa-star text-[11px] ${
+                      star <= item.score
+                        ? "fa-solid text-amber-400"
+                        : "fa-regular text-gray-300"
+                    }`}
+                  />
+                ))}
+                <span className="text-xs font-bold text-gray-700 w-7 text-right">
+                  {item.score}/5
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const InterviewerInterviewsSection: React.FC<
@@ -539,6 +632,11 @@ const InterviewerInterviewsSection: React.FC<
                             {myAssignment.feedbackNotes}
                           </p>
                         )}
+                        {/* Per-criterion scores breakdown */}
+                        <CriteriaScoreBreakdown
+                          scheduleId={interview.id}
+                          interviewerUserId={userId}
+                        />
                       </div>
                     )}
 
@@ -580,14 +678,15 @@ const InterviewerInterviewsSection: React.FC<
                                   d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                                 />
                               </svg>
-                              Đánh giá ngay
+                              Đánh giá theo tiêu chí
                             </button>
                           )}
                         </div>
                         {feedbackFormId === interview.id && (
-                          <FeedbackForm
+                          <CriteriaFeedbackForm
                             scheduleId={interview.id}
                             assignmentId={myAssignment.id}
+                            campaignId={interview.campaignId}
                             onSuccess={() => {
                               setFeedbackFormId(null);
                               message.success("Đã gửi đánh giá thành công!");

@@ -17,7 +17,6 @@ const resultOptions = [
 
 const FeedbackForm: React.FC<FeedbackFormProps> = ({ scheduleId, assignmentId, onSuccess, onCancel }) => {
   const [result, setResult] = useState('');
-  const [score, setScore] = useState(70);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,7 +33,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ scheduleId, assignmentId, o
         assignmentId,
         dto: {
           result,
-          score,
+          score: 0,
           feedbackNotes: notes.trim() || null,
         },
       }).unwrap();
@@ -69,31 +68,6 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ scheduleId, assignmentId, o
               <span className="text-gray-700 dark:text-gray-300">{opt.label}</span>
             </button>
           ))}
-        </div>
-      </div>
-
-      {/* Score */}
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          Điểm số: <span className="text-orange-500 font-bold">{score}/100</span>
-        </label>
-        <div className="relative">
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={score}
-            onChange={(e) => setScore(Number(e.target.value))}
-            className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
-          />
-          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-            <span>0</span>
-            <span>25</span>
-            <span>50</span>
-            <span>75</span>
-            <span>100</span>
-          </div>
         </div>
       </div>
 

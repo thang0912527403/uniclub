@@ -36,19 +36,6 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({ campa
   if (error) return <div className="text-red-500 text-sm px-4 py-3 rounded-xl bg-red-50 border border-red-200">Không thể tải dữ liệu so sánh</div>;
   if (!comparison || comparison.length === 0) return <div className="text-gray-500 text-sm px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">Chưa có ứng viên nào được phỏng vấn</div>;
 
-  const getRankIcon = (rank: number) => {
-    if (rank === 1) return <i className="fa-solid fa-trophy text-xl text-amber-400" />;
-    if (rank === 2) return <i className="fa-solid fa-medal text-lg text-gray-400" />;
-    if (rank === 3) return <i className="fa-solid fa-medal text-lg text-amber-700" />;
-    return <span className="font-bold text-gray-500">#{rank}</span>;
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 4) return 'text-green-600';
-    if (score >= 3) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
   const getResultBadge = (result: string) => {
     switch (result) {
       case 'Pass': return 'bg-green-100 text-green-700 border-green-200';
@@ -102,22 +89,20 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({ campa
     }
   };
 
-  const renderStars = (score: number) => (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <i key={star} className={`fa-star text-xs ${star <= Math.round(score) ? 'fa-solid text-amber-400' : 'fa-regular text-gray-300'}`} />
-      ))}
-    </div>
-  );
-
   return (
     <div className="space-y-4 animate-fadeIn">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex items-center gap-2">
-          <i className="fa-solid fa-code-compare text-blue-500 text-lg" />
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">So sánh ứng viên</h2>
-        </div>
+      {/* Header — dạng phiếu chấm */}
+      <div className="text-center border-b-2 border-gray-800 dark:border-gray-300 pb-4 mb-2">
+        <h2 className="text-xl font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-wide">
+          Phiếu đánh giá ứng viên
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Chiến dịch #{campaignId}
+        </p>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-3">
         <div className="flex gap-2">
           <button
             onClick={handleSubmitDecisions}
@@ -142,60 +127,107 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({ campa
         <div className="px-4 py-2.5 rounded-xl bg-green-50 border border-green-200 text-green-600 text-sm">Quyết định đã được gửi thành công!</div>
       )}
 
-      {/* Comparison Table */}
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700">
-        <table className="w-full text-sm">
+      {/* Scoring Sheet Table — dạng phiếu chấm điểm */}
+      <div className="overflow-x-auto rounded-2xl border-2 border-gray-300 dark:border-gray-600">
+        <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-800">
-              <th className="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300 text-xs">#</th>
-              <th className="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300 text-xs min-w-[160px]">Ứng viên</th>
-              {criteria?.map((c) => (
-                <th key={c.id} className="px-3 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs min-w-[110px]">
-                  {c.name}
-                  <span className="block text-[10px] text-gray-400 font-medium">({c.weight}%)</span>
+            {/* Header row 1: grouping */}
+            <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
+              <th
+                rowSpan={2}
+                className="px-3 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs border-r border-gray-300 dark:border-gray-600 w-12"
+              >
+                TT
+              </th>
+              <th
+                rowSpan={2}
+                className="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300 text-xs border-r border-gray-300 dark:border-gray-600 min-w-[160px]"
+              >
+                Ứng viên
+              </th>
+              {criteria && criteria.length > 0 && (
+                <th
+                  colSpan={criteria.length}
+                  className="px-3 py-2 text-center font-bold text-gray-700 dark:text-gray-300 text-xs border-r border-gray-300 dark:border-gray-600"
+                >
+                  Tiêu chí đánh giá
                 </th>
-              ))}
-              <th className="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs">Tổng</th>
-              <th className="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs">Đề xuất</th>
-              <th className="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs min-w-[130px]">Quyết định</th>
+              )}
+              <th
+                rowSpan={2}
+                className="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs border-r border-gray-300 dark:border-gray-600 min-w-[100px]"
+              >
+                Kết quả
+              </th>
+              <th
+                rowSpan={2}
+                className="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs min-w-[130px]"
+              >
+                Quyết định
+              </th>
             </tr>
+            {/* Header row 2: individual criteria */}
+            {criteria && criteria.length > 0 && (
+              <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-300 dark:border-gray-600">
+                {criteria.map((c, idx) => (
+                  <th
+                    key={c.id}
+                    className={`px-3 py-2 text-center font-medium text-gray-600 dark:text-gray-400 text-xs ${
+                      idx < criteria.length - 1 ? 'border-r border-gray-200 dark:border-gray-700' : 'border-r border-gray-300 dark:border-gray-600'
+                    }`}
+                  >
+                    {c.name}
+                  </th>
+                ))}
+              </tr>
+            )}
           </thead>
           <tbody>
-            {comparison.map((candidate) => (
+            {comparison.map((candidate, rowIdx) => (
               <tr
                 key={candidate.interviewScheduleId}
-                className={`border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors ${
-                  candidate.rank === 1 ? 'bg-amber-50/30 dark:bg-amber-900/10' : ''
+                className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors ${
+                  rowIdx % 2 === 0 ? '' : 'bg-gray-50/30 dark:bg-gray-800/30'
                 }`}
               >
-                <td className="px-4 py-3">{getRankIcon(candidate.rank)}</td>
-                <td className="px-4 py-3">
+                {/* STT */}
+                <td className="px-3 py-3 text-center font-bold text-gray-500 border-r border-gray-200 dark:border-gray-700">
+                  {rowIdx + 1}
+                </td>
+                {/* Ứng viên */}
+                <td className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
                   <p className="font-semibold text-gray-800 dark:text-gray-200">{candidate.title}</p>
                   <p className="text-[10px] text-gray-400 mt-0.5">ID: {candidate.candidateUserId.slice(0, 8)}…</p>
                 </td>
-                {criteria?.map((c) => {
-                  const score = candidate.criteriaScores[c.id] ?? 0;
+                {/* Tiêu chí — hiện dạng nhận xét gọn (✓ có đánh giá / — chưa) */}
+                {criteria?.map((c, idx) => {
+                  const hasEval = candidate.criteriaScores[c.id] != null && candidate.criteriaScores[c.id] > 0;
                   return (
-                    <td key={c.id} className="px-3 py-3 text-center">
-                      {renderStars(score)}
-                      <p className={`text-xs font-bold mt-0.5 ${getScoreColor(score)}`}>{score.toFixed(1)}</p>
+                    <td
+                      key={c.id}
+                      className={`px-3 py-3 text-center ${
+                        idx < (criteria?.length ?? 0) - 1
+                          ? 'border-r border-gray-200 dark:border-gray-700'
+                          : 'border-r border-gray-200 dark:border-gray-700'
+                      }`}
+                    >
+                      {hasEval ? (
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600">
+                          <i className="fa-solid fa-check text-xs" />
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                   );
                 })}
-                <td className="px-4 py-3 text-center">
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-extrabold ${
-                    candidate.totalScore >= 70 ? 'bg-green-100 text-green-700' :
-                    candidate.totalScore >= 50 ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {candidate.totalScore.toFixed(1)}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-center">
+                {/* Kết quả */}
+                <td className="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getResultBadge(candidate.suggestedResult)}`}>
                     {getResultLabel(candidate.suggestedResult)}
                   </span>
                 </td>
+                {/* Quyết định */}
                 <td className="px-4 py-3 text-center">
                   <select
                     value={decisions[candidate.interviewScheduleId] || ''}

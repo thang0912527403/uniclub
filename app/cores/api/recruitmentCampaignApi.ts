@@ -10,7 +10,7 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
     }),
     
     getRecruitmentCampaignsByClubId: builder.query<RecruitmentCampaign[], number>({
-      query: (clubId) => `/recruitment-campaign/club/${clubId}`,
+      query: (clubId) => `/club/${clubId}/recruitment-campaign`,
       transformResponse: (response: ApiResponse<RecruitmentCampaign[]>) => response.data,
       providesTags: (result, error, clubId) => [{ type: 'RecruitmentCampaign', id: `club-${clubId}` }],
     }),
@@ -23,7 +23,7 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
 
     createRecruitmentCampaign: builder.mutation<RecruitmentCampaign, Omit<RecruitmentCampaign, 'campaignId' | 'createdAt'>>({
       query: (campaign) => ({
-        url: '/recruitment-campaign',
+        url: `/club/${campaign.clubId}/recruitment-campaign`,
         method: 'POST',
         body: campaign,
       }),
@@ -32,16 +32,16 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
 
     updateRecruitmentCampaign: builder.mutation<RecruitmentCampaign, { id: number; data: Partial<RecruitmentCampaign> }>({
       query: ({ id, data }) => ({
-        url: `/recruitment-campaign/${id}`,
+        url: `/club/${data.clubId}/recruitment-campaign/${id}`,
         method: 'PUT',
         body: data,
       }),
       invalidatesTags: ['RecruitmentCampaign'],
     }),
 
-    deleteRecruitmentCampaign: builder.mutation<void, number>({
-      query: (id) => ({
-        url: `/recruitment-campaign/${id}`,
+    deleteRecruitmentCampaign: builder.mutation<void, { id: number; clubId: number }>({
+      query: ({ id, clubId }) => ({
+        url: `/club/${clubId}/recruitment-campaign/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['RecruitmentCampaign'],
