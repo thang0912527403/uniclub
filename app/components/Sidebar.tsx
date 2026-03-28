@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router';
 import { useExpandedMenu } from '~/hooks/useExpandedMenu';
 import { useEffect, useRef } from 'react';
-import { useCurrentUser } from '~/hooks/useCurrentUser';
-import { useClubRole } from '~/hooks/useClubRole';
+import { getClubId } from '~/utils/auth';
 
 interface SubMenuItem {
   label: string;
@@ -19,154 +18,18 @@ interface NavItem {
 interface SidebarProps {
   currentPath?: string;
   isOpen?: boolean;
-  onClose?: () => void;
-  isDark?: boolean;
-  onToggleSidebarTheme?: () => void;
 }
-
-// ─── Admin nav: system-wide management ────────────────────────────────────
-const adminNavItems: NavItem[] = [
-  { label: 'Dashboard', icon: 'fa-th-large', url: '/dashboard' },
-  {
-    label: 'Quản lý Người dùng',
-    icon: 'fa-user-cog',
-    subItems: [
-      { label: 'Tất cả người dùng', url: '/users' },
-    ],
-  },
-  {
-    label: 'Quản lý Câu lạc bộ',
-    icon: 'fa-building',
-    subItems: [
-      { label: 'Tất cả CLB', url: '/clubs' }
-    ],
-  },
-  {
-    label: 'Chiến dịch Tuyển sinh',
-    icon: 'fa-solid fa-flag',
-    subItems: [
-      { label: 'Tất cả chiến dịch', url: '/recruitment-campaigns' }
-    ],
-  },
-  {
-    label: 'Sự kiện',
-    icon: 'fa-calendar',
-    subItems: [
-      { label: 'Tất cả sự kiện', url: '/events' },
-      { label: 'Tạo sự kiện', url: '/events/create' },
-      { label: 'Lịch sự kiện', url: '/events/calendar' },
-      { label: 'Báo cáo sự kiện', url: '/events/reports' },
-    ],
-  },
-  {
-    label: 'Phỏng vấn',
-    icon: 'fa-calendar-check',
-    subItems: [
-      { label: 'Lịch phỏng vấn', url: '/interview/schedule' },
-      { label: 'Phòng phỏng vấn', url: '/interview/room' },
-      { label: 'So sánh ứng viên', url: '/interview/comparison' },
-    ],
-  },
-  {
-    label: 'Quản lý Quỹ',
-    icon: 'fa-wallet',
-    subItems: [
-      { label: 'Tổng quan', url: '/funds' },
-      { label: 'Giao dịch', url: '/funds/transactions' },
-      { label: 'Báo cáo', url: '/funds/reports' },
-      { label: 'Cài đặt', url: '/funds/settings' },
-    ],
-  },
-];
-
-// ─── ClubManager nav: club-level management ────────────────────────────────
-const clubManagerNavItems: NavItem[] = [
-  { label: 'Dashboard', icon: 'fa-th-large', url: '/dashboard' },
-  {
-    label: 'Câu lạc bộ',
-    icon: 'fa-building',
-    subItems: [
-      { label: 'Bài đăng CLB', url: '/club/manage-posts' },
-      { label: 'Bài viết công khai', url: '/club/posts' },
-    ],
-  },
-  {
-    label: 'Tuyển sinh',
-    icon: 'fa-solid fa-flag',
-    subItems: [
-      { label: 'Chiến dịch tuyển sinh', url: '/recruitment-campaigns' },
-      { label: 'Duyệt đơn ứng tuyển', url: '/applications' },
-    ],
-  },
-  {
-    label: 'Phỏng vấn',
-    icon: 'fa-calendar-check',
-    subItems: [
-      { label: 'Lịch phỏng vấn', url: '/interview/schedule' },
-      { label: 'Phòng phỏng vấn', url: '/interview/room' },
-      { label: 'So sánh ứng viên', url: '/interview/comparison' },
-    ],
-  },
-  {
-    label: 'Sự kiện',
-    icon: 'fa-calendar',
-    subItems: [
-      { label: 'Sự kiện CLB', url: '/events' },
-      { label: 'Tạo sự kiện', url: '/events/create' },
-      { label: 'Lịch sự kiện', url: '/events/calendar' },
-    ],
-  },
-  {
-    label: 'Thành viên',
-    icon: 'fa-users',
-    subItems: [
-      { label: 'Tất cả thành viên', url: '/members' },
-      { label: 'Vai trò thành viên', url: '/members/roles' },
-    ],
-  },
-  {
-    label: 'Bộ phận',
-    icon: 'fa-sitemap',
-    subItems: [
-      { label: 'Tất cả bộ phận', url: '/department' },
-    ],
-  },
-  {
-    label: 'Quản lý Quỹ',
-    icon: 'fa-wallet',
-    subItems: [
-      { label: 'Tổng quan', url: '/funds' },
-      { label: 'Giao dịch', url: '/funds/transactions' },
-      { label: 'Báo cáo', url: '/funds/reports' },
-      { label: 'Cài đặt', url: '/funds/settings' },
-    ],
-  },
-];
 
 export function Sidebar({
   currentPath = '/dashboard',
-  isOpen = true,
-  onClose,
+  isOpen = true
 }: SidebarProps) {
   const navigate = useNavigate();
   const { toggleExpand, isExpanded } = useExpandedMenu();
   const sidebarRef = useRef<HTMLElement>(null);
   const isRestoringRef = useRef(false);
 
-  const { isAdmin } = useCurrentUser();
-  const { isClubManager } = useClubRole();
-
-  const navItems = isAdmin ? adminNavItems : clubManagerNavItems;
-  const accentActive = isAdmin
-    ? 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 border-r-4 border-violet-400 text-white font-semibold shadow-lg'
-    : 'bg-gradient-to-r from-sky-500/20 to-blue-500/20 border-r-4 border-sky-400 text-white font-semibold shadow-lg';
-  const accentSubActive = isAdmin
-    ? 'bg-gradient-to-r from-violet-500/30 to-purple-500/30 border-l-4 border-violet-400 text-white font-semibold'
-    : 'bg-gradient-to-r from-sky-500/30 to-blue-500/30 border-l-4 border-sky-400 text-white font-semibold';
-  const logoGradient = isAdmin
-    ? 'bg-gradient-to-br from-violet-500 to-purple-700'
-    : 'bg-gradient-to-br from-sky-500 to-blue-700';
-
+  // Restore scroll position
   useEffect(() => {
     if (sidebarRef.current && typeof window !== 'undefined') {
       const savedScrollPosition = sessionStorage.getItem('sidebarScrollPosition');
@@ -184,6 +47,7 @@ export function Sidebar({
     }
   }, [currentPath, isOpen]);
 
+  // Save scroll position
   useEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar || typeof window === 'undefined') return;
@@ -198,23 +62,78 @@ export function Sidebar({
     return () => sidebar.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const navItems: NavItem[] = [
+    { label: 'Dashboard', icon: 'fa-th-large', url: '/dashboard' },
+    {
+      label: 'Manage Club',
+      icon: 'fa-building',
+      subItems: [
+        { label: 'All Clubs', url: '/clubs' },
+        { label: 'Club Structure', url: `/clubs/${getClubId() || 1}/structure` },
+        { label: 'Club Roles', url: '/club-roles' },
+        { label: 'Your Club Info', url: '/club/info' },
+        { label: 'Manage Club Name', url: '/club/name' },
+        { label: 'Recruitment Campaigns', url: '/club/recruitment-campaigns' },
+        { label: 'Club Members', url: '/club/members' },
+        { label: 'Club Activities', url: '/club/activities' },
+      ]
+    },
+    {
+      label: 'Manage Department',
+      icon: 'fa-sitemap',
+      subItems: [
+        { label: 'All Departments', url: '/department' },
+        { label: 'Create Department', url: '/department/create' },
+        { label: 'Department Roles', url: '/department/roles' },
+        { label: 'Department Settings', url: '/department/settings' },
+      ]
+    },
+    {
+      label: 'Manage Recruitment Campaigns',
+      icon: 'fa-solid fa-flag',
+      subItems: [
+        { label: 'All Recruitment Campaigns', url: '/recruitment-campaigns' },
+        { label: 'Your Club Campaigns', url: '/club/recruitment-campaigns' },
+      ]
+    },
+    {
+      label: 'Manage Members',
+      icon: 'fa-users',
+      subItems: [
+        { label: 'All Members', url: `/clubs/${getClubId() || 1}/members` },
+        { label: 'Add Member', url: '/members/add' },
+        { label: 'Member Roles', url: '/members/roles' },
+        { label: 'Member Activity', url: '/members/activity' },
+      ]
+    },
+    {
+      label: 'Manage Events',
+      icon: 'fa-calendar',
+      subItems: [
+        { label: 'All Events', url: '/events' },
+        { label: 'Create Event', url: '/events/create' },
+        { label: 'Event Calendar', url: '/events/calendar' },
+        { label: 'Event Reports', url: '/events/reports' },
+      ]
+    },
+    {
+      label: 'Manage Funds',
+      icon: 'fa-wallet',
+      subItems: [
+        { label: 'Budget Overview', url: '/funds' },
+        { label: 'Transactions', url: '/funds/transactions' },
+        { label: 'Expense Reports', url: '/funds/reports' },
+        { label: 'Fund Settings', url: '/funds/settings' },
+      ]
+    },
+  ];
+
   return (
-    <>
-      {isOpen && onClose && (
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Đóng menu"
-          onClick={onClose}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden transition-opacity"
-        />
-      )}
-      <aside
-        ref={sidebarRef}
-        className={`w-64 min-w-[256px] max-w-[256px] h-screen fixed left-0 top-0 z-50 p-4 bg-slate-800 transition-all duration-300 overflow-y-auto overflow-x-hidden scrollbar-hide ${isOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-      >
+    <aside
+      ref={sidebarRef}
+      className={`w-64 min-w-[256px] max-w-[256px] h-screen fixed left-0 top-0 p-4 bg-slate-800 transition-all duration-300 overflow-y-auto overflow-x-hidden scrollbar-hide ${isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+    >
       <style>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
@@ -225,9 +144,10 @@ export function Sidebar({
         }
       `}</style>
 
-      <div className="flex items-center gap-2 mb-2 px-2">
-        <div className={`w-8 h-8 ${logoGradient} rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg`}>
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {/* Logo */}
+      <div className="flex items-center gap-2 mb-8 px-2">
+        <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center flex-shrink-0">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
@@ -238,13 +158,7 @@ export function Sidebar({
         </span>
       </div>
 
-      <div className="px-2 mb-6">
-        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${logoGradient} text-white shadow`}>
-          <i className={`fas ${isAdmin ? 'fa-shield-alt' : 'fa-user-tie'} text-[9px]`} />
-          {isAdmin ? 'Quản trị viên' : isClubManager ? 'Quản lý CLB' : 'Thành viên'}
-        </span>
-      </div>
-
+      {/* Navigation */}
       <nav className="space-y-1 overflow-hidden">
         {navItems.map((item) => {
           const hasSubItems = item.subItems && item.subItems.length > 0;
@@ -271,11 +185,9 @@ export function Sidebar({
                 </button>
               ) : (
                 <button
-                  onClick={() => {
-                    if (item.url) navigate(item.url);
-                  }}
+                  onClick={() => item.url && navigate(item.url)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer ${isActive
-                    ? accentActive
+                    ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-r-4 border-blue-500 text-white font-semibold shadow-lg'
                     : 'text-white/70 hover:bg-white/5'
                     }`}
                 >
@@ -293,7 +205,7 @@ export function Sidebar({
                         key={subItem.url}
                         onClick={() => navigate(subItem.url)}
                         className={`w-full flex items-center gap-3 px-2 py-2 rounded-md transition-all text-sm cursor-pointer ${isSubActive
-                          ? accentSubActive
+                          ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 border-l-4 border-blue-400 text-white font-semibold'
                           : 'text-white/80 hover:bg-slate-700 hover:text-white'
                           }`}
                       >
@@ -309,9 +221,5 @@ export function Sidebar({
         })}
       </nav>
     </aside>
-    </>
   );
 }
-
-// Export named nav items for use by AdminDashboard / other layouts
-export { adminNavItems, clubManagerNavItems };
