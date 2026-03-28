@@ -40,6 +40,15 @@ export interface CreateFundRequestDto {
   purpose?: string;
 }
 
+export type FundSidebarMenuId = 'overview' | 'transactions' | 'reports' | 'settings';
+
+export interface FundMenuItemDto {
+  id: FundSidebarMenuId;
+  labelVi: string;
+  labelEn: string;
+  visible: boolean;
+}
+
 export interface ClubFundCapabilities {
   canViewFunds: boolean;
   canContribute: boolean;
@@ -51,6 +60,20 @@ export interface ClubFundCapabilities {
   clubRoleName?: string | null;
   clubRoleLevel?: number | null;
   isActiveClubMember: boolean;
+  /** Từ BE; có thể rỗng khi không có quyền xem quỹ. */
+  menuItems: FundMenuItemDto[];
+}
+
+export interface FundReportSummaryDto {
+  clubId: number;
+  fromUtc?: string | null;
+  toUtc?: string | null;
+  pendingFundCount: number;
+  approvedFundCount: number;
+  rejectedFundCount: number;
+  totalBalanceApprovedFunds: number;
+  totalApprovedIncome: number;
+  totalApprovedExpense: number;
 }
 
 export interface CreateFundRequestResponse {
@@ -69,10 +92,22 @@ export interface FundCategoryResponseDto {
   clubId?: number | null;
 }
 
+export interface GetClubFundTransactionsParams {
+  clubId: number;
+  page?: number;
+  pageSize?: number;
+  fundId?: number;
+  status?: string;
+  scope?: FundHistoryScopeFilter;
+  fromUtc?: string | null;
+  toUtc?: string | null;
+}
+
 export interface FundHistoryItem {
   transactionId?: number;
   id?: number;
   fundId: number;
+  fundName?: string | null;
   amount: number;
   status: string;
   description?: string;

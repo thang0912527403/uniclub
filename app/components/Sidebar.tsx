@@ -120,9 +120,8 @@ export function Sidebar({
       label: 'Manage Funds',
       icon: 'fa-wallet',
       subItems: [
-        { label: 'Budget Overview', url: '/funds' },
-        { label: 'Transactions', url: '/funds/transactions' },
-        { label: 'Expense Reports', url: '/funds/reports' },
+        { label: 'Funds Overview', url: '/funds' },
+        { label: 'Reports & transactions', url: '/funds/reports' },
         { label: 'Fund Settings', url: '/funds/settings' },
       ]
     },

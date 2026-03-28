@@ -17,6 +17,10 @@ import {
   type ClubFundCapabilities,
   type FundCategoryResponseDto,
   type FundHistoryScope,
+  type FundMenuItemDto,
+  type FundReportSummaryDto,
+  type FundSidebarMenuId,
+  type GetClubFundTransactionsParams,
   type PagedResult,
 } from './types';
 
@@ -82,6 +86,66 @@ type ClubFundScoped = { clubId: number };
 type FundScoped = { clubId: number; fundId: number };
 type FundLocationResponse = { fundId: number; clubId: number };
 
+const FUND_SIDEBAR_MENU_IDS: readonly FundSidebarMenuId[] = [
+  'overview',
+  'transactions',
+  'reports',
+  'settings',
+];
+
+function isFundSidebarMenuId(id: string): id is FundSidebarMenuId {
+  return (FUND_SIDEBAR_MENU_IDS as readonly string[]).includes(id);
+}
+
+function normalizeFundMenuItemsFromApi(raw: unknown): FundMenuItemDto[] {
+  if (!Array.isArray(raw)) return [];
+  const out: FundMenuItemDto[] = [];
+  for (const entry of raw) {
+    const e = entry as Record<string, unknown>;
+    const id = String(e.id ?? e.Id ?? '').trim();
+    if (!isFundSidebarMenuId(id)) continue;
+    out.push({
+      id,
+      labelVi: String(e.labelVi ?? e.LabelVi ?? '').trim() || id,
+      labelEn: String(e.labelEn ?? e.LabelEn ?? '').trim() || id,
+      visible: !!(e.visible ?? e.Visible),
+    });
+  }
+  return out;
+}
+
+function numFundReport(v: unknown): number {
+  const x = Number(v);
+  return Number.isFinite(x) ? x : 0;
+}
+
+function normalizeFundReportSummary(raw: unknown): FundReportSummaryDto {
+  if (raw == null || typeof raw !== 'object') {
+    return {
+      clubId: 0,
+      fromUtc: null,
+      toUtc: null,
+      pendingFundCount: 0,
+      approvedFundCount: 0,
+      rejectedFundCount: 0,
+      totalBalanceApprovedFunds: 0,
+      totalApprovedIncome: 0,
+      totalApprovedExpense: 0,
+    };
+  }
+  const d = raw as Record<string, unknown>;
+  return {
+    clubId: numFundReport(d.clubId ?? d.ClubId),
+    fromUtc: (d.fromUtc ?? d.FromUtc ?? null) as string | null,
+    toUtc: (d.toUtc ?? d.ToUtc ?? null) as string | null,
+    pendingFundCount: numFundReport(d.pendingFundCount ?? d.PendingFundCount),
+    approvedFundCount: numFundReport(d.approvedFundCount ?? d.ApprovedFundCount),
+    rejectedFundCount: numFundReport(d.rejectedFundCount ?? d.RejectedFundCount),
+    totalBalanceApprovedFunds: numFundReport(d.totalBalanceApprovedFunds ?? d.TotalBalanceApprovedFunds),
+    totalApprovedIncome: numFundReport(d.totalApprovedIncome ?? d.TotalApprovedIncome),
+    totalApprovedExpense: numFundReport(d.totalApprovedExpense ?? d.TotalApprovedExpense),
+  };
+}
 
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -238,6 +302,7 @@ export const clubApi = baseApi.injectEndpoints({
       query: (clubId) => `/clubs/${clubId}/funds/capabilities`,
       transformResponse: (response: ApiResponse<ClubFundCapabilities>) => {
         const d = response.data;
+        const rawCap = d as unknown as Record<string, unknown> | undefined;
         return {
           canViewFunds: !!d?.canViewFunds,
           canContribute: !!d?.canContribute,
@@ -249,9 +314,27 @@ export const clubApi = baseApi.injectEndpoints({
           clubRoleName: d?.clubRoleName ?? null,
           clubRoleLevel: d?.clubRoleLevel ?? null,
           isActiveClubMember: !!d?.isActiveClubMember,
+          menuItems: normalizeFundMenuItemsFromApi(
+            rawCap ? (rawCap.menuItems ?? rawCap.MenuItems) : undefined,
+          ),
         };
       },
       providesTags: (result, error, clubId) => [{ type: 'ClubFund', id: `capabilities-${clubId}` }],
+    }),
+    getFundReportSummary: builder.query<
+      FundReportSummaryDto,
+      { clubId: number; fromUtc?: string | null; toUtc?: string | null }
+    >({
+      query: ({ clubId, fromUtc, toUtc }) => ({
+        url: `/clubs/${clubId}/funds/report-summary`,
+        params: {
+          ...(fromUtc ? { fromUtc } : {}),
+          ...(toUtc ? { toUtc } : {}),
+        },
+      }),
+      transformResponse: (response: ApiResponse<FundReportSummaryDto>) =>
+        normalizeFundReportSummary(response.data),
+      providesTags: (result, error, { clubId }) => [{ type: 'ClubFund', id: `report-summary-${clubId}` }],
     }),
     getFundCategories: builder.query<FundCategoryResponseDto[], number>({
       query: (clubId) => `/clubs/${clubId}/funds/categories`,
@@ -322,6 +405,30 @@ export const clubApi = baseApi.injectEndpoints({
         normalizePagedResult<FundHistoryItem>(response.data),
       providesTags: (result, error, { fundId }) => [
         { type: 'ClubFund', id: fundId },
+      ],
+    }),
+
+    /** Danh sách giao dịch quỹ theo CLB (một hoặc mọi quỹ). Policy: viewfinance. */
+    getClubFundTransactions: builder.query<
+      PagedResult<FundHistoryItem>,
+      GetClubFundTransactionsParams
+    >({
+      query: ({ clubId, page = 1, pageSize = 20, fundId, status, scope, fromUtc, toUtc }) => {
+        const params: Record<string, string | number> = { page, pageSize };
+        if (fundId != null && fundId > 0) params.fundId = fundId;
+        if (status) params.status = status;
+        if (scope === 'mine') params.scope = scope;
+        if (fromUtc) params.fromUtc = fromUtc;
+        if (toUtc) params.toUtc = toUtc;
+        return {
+          url: `/clubs/${clubId}/funds/transactions`,
+          params,
+        };
+      },
+      transformResponse: (response: ApiResponse<PagedResult<FundHistoryItem> | FundHistoryItem[]>) =>
+        normalizePagedResult<FundHistoryItem>(response.data),
+      providesTags: (result, error, { clubId }) => [
+        { type: 'ClubFund', id: `club-tx-${clubId}` },
       ],
     }),
 
@@ -402,6 +509,8 @@ export const clubApi = baseApi.injectEndpoints({
 export const {
   useGetClubsQuery,
   useGetFundCapabilitiesQuery,
+  useGetFundReportSummaryQuery,
+  useGetClubFundTransactionsQuery,
   useGetFundCategoriesQuery,
   useGetClubByIdQuery,
   useGetClubMembersQuery,
