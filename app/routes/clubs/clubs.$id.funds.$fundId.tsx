@@ -4,6 +4,7 @@ import { Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight } from 'lucide-
 import {
   useGetFundByIdQuery,
   useGetFundCapabilitiesQuery,
+  useGetFundCategoriesQuery,
   useApproveFundMutation,
   useContributeToFundMutation,
   useLazyGetContributeTransactionStatusQuery,
@@ -13,6 +14,8 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { useNotification } from '~/components/Notification';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
+import { isManagerRole } from '~/hooks/useClubRole';
 import type { FundHistoryItem, ClubFund, FundHistoryScopeFilter, FundHistoryStatusFilter } from '~/cores/api';
 import { fundTokens as t } from '../funds.design-tokens';
 import { savePayosPendingContribute } from '~/utils/payosContributeSession';
@@ -66,6 +69,17 @@ function formatFundHistoryDateTime(iso: string | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function fundHistoryCategoryLabel(item: FundHistoryItem): string {
+  const r = item as FundHistoryItem & Record<string, unknown>;
+  const nameRaw = r.categoryName ?? r.CategoryName;
+  const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
+  if (name) return name;
+  const idRaw = r.categoryId ?? r.CategoryId;
+  const id = typeof idRaw === 'number' ? idRaw : Number(idRaw);
+  if (Number.isFinite(id)) return `ID ${id}`;
+  return '—';
 }
 
 function fundHistoryContributionTimeIso(item: FundHistoryItem): string | undefined {
@@ -136,11 +150,13 @@ export default function FundDetailPageByClub() {
 
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+  const { isAdmin } = useCurrentUser();
   const { show: showNotification } = useNotification();
 
   const [showContribute, setShowContribute] = useState(false);
   const [contributeAmount, setContributeAmount] = useState('');
   const [contributeDescription, setContributeDescription] = useState('');
+  const [contributeCategoryId, setContributeCategoryId] = useState<number | ''>('');
   const [contributeResult, setContributeResult] = useState<{
     transactionId: number;
     checkoutUrl?: string;
@@ -161,9 +177,9 @@ export default function FundDetailPageByClub() {
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [historyPage, setHistoryPage] = useState(1);
   const [historyPageSize, setHistoryPageSize] = useState<number>(DEFAULT_FUND_HISTORY_PAGE_SIZE);
-  const [historyStatusFilter, setHistoryStatusFilter] = useState<FundHistoryStatusFilter>('ALL');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<FundHistoryStatusFilter>('');
   const [historyScopeFilter, setHistoryScopeFilter] = useState<FundHistoryScopeFilter>('');
-  const [debouncedStatus, setDebouncedStatus] = useState<FundHistoryStatusFilter>('ALL');
+  const [debouncedStatus, setDebouncedStatus] = useState<FundHistoryStatusFilter>('');
   const [debouncedScope, setDebouncedScope] = useState<FundHistoryScopeFilter>('');
 
   const isInvalidParams = !clubIdParam || !fundIdParam || isNaN(clubId) || isNaN(fundId) || clubId < 1 || fundId < 1;
@@ -195,26 +211,35 @@ export default function FundDetailPageByClub() {
   const canViewFunds = caps?.canViewFunds ?? false;
   const canContribute = caps?.canContribute ?? false;
   const canApproveOrRejectFundEntity = caps?.canApproveOrRejectFundEntity ?? false;
+  const hasViewFinancePolicy = caps?.hasViewFinancePolicy ?? false;
 
-  const skipFundQueries =
-    isInvalidParams ||
-    capsLoading ||
-    capsForbidden ||
-    capsOtherError ||
-    (caps !== undefined && !canViewFunds);
+  /** Chỉ Quản lý CLB (theo vai trò trong CLB này) + Admin hệ thống: toàn bộ phạm vi & lọc trạng thái chi tiết. */
+  const canUseFullFundHistoryFilters = isAdmin || isManagerRole(caps?.clubRoleName);
+
+  const capsBlocked =
+    isInvalidParams || capsLoading || capsForbidden || capsOtherError;
+  const skipFundQuery =
+    capsBlocked || (caps !== undefined && !canViewFunds && !canContribute);
+  const skipHistoryQuery =
+    skipFundQuery || (caps !== undefined && !canViewFunds);
 
   const { data: fund, isLoading: isLoadingFund, error: fundError, refetch: refetchFund } = useGetFundByIdQuery(
     { clubId, fundId },
-    { skip: skipFundQueries }
+    { skip: skipFundQuery }
   );
+
+  const { data: fundCategories = [] } = useGetFundCategoriesQuery(clubId, {
+    skip: capsBlocked || clubId < 1 || !hasViewFinancePolicy,
+  });
   useEffect(() => {
-    if (!capsLoading && !canApproveOrRejectFundEntity && historyScopeFilter === '') {
+    if (capsLoading || isInvalidParams) return;
+    if (!canUseFullFundHistoryFilters && historyScopeFilter === '') {
       setHistoryScopeFilter('mine');
     }
-  }, [capsLoading, canApproveOrRejectFundEntity, historyScopeFilter]);
+  }, [capsLoading, canUseFullFundHistoryFilters, historyScopeFilter, isInvalidParams]);
 
-  const historyQueryClubId = skipFundQueries ? 0 : clubId;
-  const historyQueryFundId = skipFundQueries ? 0 : fundId;
+  const historyQueryClubId = skipHistoryQuery ? 0 : clubId;
+  const historyQueryFundId = skipHistoryQuery ? 0 : fundId;
 
   const {
     items: history,
@@ -227,8 +252,8 @@ export default function FundDetailPageByClub() {
     fundId: historyQueryFundId,
     page: historyPage,
     pageSize: historyPageSize,
-    status: debouncedStatus,
-    scope: debouncedScope,
+    status: canUseFullFundHistoryFilters ? debouncedStatus : '',
+    scope: canUseFullFundHistoryFilters ? debouncedScope : 'mine',
   });
   const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
   const [contributeToFund, { isLoading: isContributing }] = useContributeToFundMutation();
@@ -250,6 +275,7 @@ export default function FundDetailPageByClub() {
   const resetContributeForm = useCallback(() => {
     setContributeAmount('');
     setContributeDescription('');
+    setContributeCategoryId('');
     setContributeResult(null);
     setPayStatus(null);
     setContributePollError(null);
@@ -372,6 +398,7 @@ export default function FundDetailPageByClub() {
         fundId,
         amount,
         description: contributeDescription.trim() || undefined,
+        ...(contributeCategoryId !== '' ? { categoryId: contributeCategoryId } : {}),
       }).unwrap();
 
       savePayosPendingContribute({
@@ -423,7 +450,7 @@ export default function FundDetailPageByClub() {
     contributePollTimedOut ||
     !!contributePollError;
 
-  const isHistoryControlDisabled = isLoadingHistory || skipFundQueries;
+  const isHistoryControlDisabled = isLoadingHistory || skipHistoryQuery;
 
   if (isInvalidParams) {
     return (
@@ -471,9 +498,9 @@ export default function FundDetailPageByClub() {
               <p className="text-red-600 dark:text-red-400">Không tải được quyền quỹ (capabilities).</p>
               <Link to="/funds" className={`mt-2 inline-block ${t.btn.secondary} !min-h-0 !py-2`}>Quay lại danh sách quỹ</Link>
             </section>
-          ) : !canViewFunds ? (
+          ) : !canViewFunds && !canContribute ? (
             <section className={`${t.card.base} p-6`} role="alert">
-              <p className={t.type.body}>Bạn không có quyền xem quỹ của CLB này.</p>
+              <p className={t.type.body}>Bạn không có quyền xem quỹ hoặc nộp tiền vào quỹ của CLB này.</p>
               <Link to="/funds" className={`mt-2 inline-block ${t.btn.secondary} !min-h-0 !py-2`}>Quay lại danh sách quỹ</Link>
             </section>
           ) : isLoadingFund ? (
@@ -590,6 +617,11 @@ export default function FundDetailPageByClub() {
                         Quỹ hiện không nhận nộp tiền (hết hạn hoặc đã đóng nhận nộp).
                       </p>
                     ) : null}
+                    {canContribute && !canViewFunds ? (
+                      <p className={`mt-2 text-sm ${t.type.muted}`}>
+                        Bạn có thể nộp tiền; lịch sử và danh mục nộp chỉ dành cho thành viên có quyền xem tài chính.
+                      </p>
+                    ) : null}
                   </div>
                   {isFundApproved && (
                     <div className="flex flex-wrap items-center gap-2">
@@ -608,6 +640,7 @@ export default function FundDetailPageByClub() {
                 </div>
               </section>
 
+              {canViewFunds ? (
               <section className={`${t.card.base} overflow-hidden`} aria-labelledby="fund-tabs-heading">
                 <h2 id="fund-tabs-heading" className="sr-only">Lịch sử quỹ</h2>
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 space-y-1">
@@ -621,48 +654,61 @@ export default function FundDetailPageByClub() {
                     ) : null}
                   </div>
                   <p className={`text-xs ${t.type.muted}`}>
-                    Chỉ hiển thị các khoản đã thanh toán thành công (đã vào quỹ).
+                    {!canUseFullFundHistoryFilters
+                      ? 'Chỉ hiển thị các lần bạn đã nộp tiền và thanh toán thành công (đã vào quỹ).'
+                      : debouncedStatus === 'ALL'
+                        ? 'Đang hiển thị mọi trạng thái theo bộ lọc.'
+                        : debouncedStatus === 'PENDING' || debouncedStatus === 'REJECTED'
+                          ? 'Theo trạng thái giao dịch đã chọn.'
+                          : 'Mặc định: các giao dịch đã thanh toán (đã vào quỹ), tương đương trạng thái đã duyệt trên server.'}
                   </p>
                 </div>
                 <div className="p-4" aria-labelledby="fund-tabs-heading">
-                  <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className={t.type.muted}>Trạng thái</span>
-                      <select
-                        value={historyStatusFilter}
-                        onChange={(e) => {
-                          setHistoryStatusFilter(e.target.value as FundHistoryStatusFilter);
-                          setHistoryPage(1);
-                        }}
-                        disabled={isHistoryControlDisabled}
-                        className={`${t.input} ${inputClass}`}
-                      >
-                        {FUND_HISTORY_STATUS_OPTIONS.map((opt) => (
-                          <option key={opt.value || 'empty'} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className={t.type.muted}>Phạm vi</span>
-                      <select
-                        value={historyScopeFilter}
-                        onChange={(e) => {
-                          setHistoryScopeFilter(e.target.value as FundHistoryScopeFilter);
-                          setHistoryPage(1);
-                        }}
-                        disabled={isHistoryControlDisabled}
-                        className={`${t.input} ${inputClass}`}
-                      >
-                        {FUND_HISTORY_SCOPE_OPTIONS.map((opt) => (
-                          <option key={opt.value || 'all'} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                  <div
+                    className={`mb-4 grid grid-cols-1 gap-3 ${
+                      canUseFullFundHistoryFilters ? 'md:grid-cols-3' : 'md:grid-cols-1 sm:max-w-xs'
+                    }`}
+                  >
+                    {canUseFullFundHistoryFilters ? (
+                      <>
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className={t.type.muted}>Trạng thái</span>
+                          <select
+                            value={historyStatusFilter}
+                            onChange={(e) => {
+                              setHistoryStatusFilter(e.target.value as FundHistoryStatusFilter);
+                              setHistoryPage(1);
+                            }}
+                            disabled={isHistoryControlDisabled}
+                            className={`${t.input} ${inputClass}`}
+                          >
+                            {FUND_HISTORY_STATUS_OPTIONS.map((opt) => (
+                              <option key={opt.value === '' ? 'default-paid' : opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className={t.type.muted}>Phạm vi</span>
+                          <select
+                            value={historyScopeFilter}
+                            onChange={(e) => {
+                              setHistoryScopeFilter(e.target.value as FundHistoryScopeFilter);
+                              setHistoryPage(1);
+                            }}
+                            disabled={isHistoryControlDisabled}
+                            className={`${t.input} ${inputClass}`}
+                          >
+                            {FUND_HISTORY_SCOPE_OPTIONS.map((opt) => (
+                              <option key={opt.value || 'all'} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </>
+                    ) : null}
 
                     <label className="flex flex-col gap-1 text-sm">
                       <span className={t.type.muted}>Số dòng mỗi trang</span>
@@ -713,10 +759,11 @@ export default function FundDetailPageByClub() {
                   ) : (
                     <>
                       <div className="overflow-x-auto" role="region" aria-label="Bảng lịch sử giao dịch quỹ">
-                        <table className="w-full min-w-[480px]">
+                        <table className="w-full min-w-[640px]">
                           <thead>
                             <tr className="bg-slate-100 dark:bg-slate-800">
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Người gửi</th>
+                              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Danh mục</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Số tiền</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Mô tả</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Thời gian nộp</th>
@@ -725,7 +772,7 @@ export default function FundDetailPageByClub() {
                           <tbody>
                             {history.length === 0 ? (
                               <tr>
-                                <td colSpan={4} className={`px-4 py-6 text-center ${t.type.muted}`}>
+                                <td colSpan={5} className={`px-4 py-6 text-center ${t.type.muted}`}>
                                   Không có giao dịch trên trang này.
                                 </td>
                               </tr>
@@ -736,6 +783,7 @@ export default function FundDetailPageByClub() {
                                   className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-200"
                                 >
                                   <td className={`px-4 py-2 ${t.type.body}`}>{fundHistorySenderLabel(item)}</td>
+                                  <td className={`px-4 py-2 text-sm ${t.type.body}`}>{fundHistoryCategoryLabel(item)}</td>
                                   <td className={`px-4 py-2 ${t.type.body} whitespace-nowrap`}>
                                     {item.amount != null ? `${Number(item.amount).toLocaleString('vi-VN')} ₫` : '—'}
                                   </td>
@@ -783,6 +831,7 @@ export default function FundDetailPageByClub() {
                   )}
                 </div>
               </section>
+              ) : null}
             </>
           )}
         </div>
@@ -906,6 +955,30 @@ export default function FundDetailPageByClub() {
                         Tối thiểu {MIN_FUND_TX_AMOUNT.toLocaleString('vi-VN')} ₫ (phù hợp hạn mức chuyển khoản ngân hàng).
                       </p>
                     </div>
+                    {fundCategories.length > 0 && hasViewFinancePolicy ? (
+                      <div>
+                        <label htmlFor="contribute-category" className={`block ${t.type.label} mb-1.5`}>
+                          Danh mục (tuỳ chọn)
+                        </label>
+                        <select
+                          id="contribute-category"
+                          value={contributeCategoryId === '' ? '' : String(contributeCategoryId)}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setContributeCategoryId(v === '' ? '' : Number(v));
+                          }}
+                          className={`${t.input} ${inputClass}`}
+                        >
+                          <option value="">Không chọn</option>
+                          {fundCategories.map((c) => (
+                            <option key={c.categoryId} value={c.categoryId}>
+                              {c.categoryName}
+                              {c.clubId == null ? ' · Chung' : ' · Theo CLB'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : null}
                     <div>
                       <label htmlFor="contribute-desc" className={`block ${t.type.label} mb-1.5`}>Ghi chú (tuỳ chọn)</label>
                       <input id="contribute-desc" value={contributeDescription} onChange={(e) => setContributeDescription(e.target.value)} className={`${t.input} ${inputClass}`} placeholder="VD: Nộp quỹ tháng 3" />

@@ -62,6 +62,13 @@ export type FundHistoryScope = 'all' | 'contributions' | 'mine';
 export type FundHistoryStatusFilter = '' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
 export type FundHistoryScopeFilter = '' | 'mine';
 
+export interface FundCategoryResponseDto {
+  categoryId: number;
+  categoryName: string;
+  description?: string | null;
+  clubId?: number | null;
+}
+
 export interface FundHistoryItem {
   transactionId?: number;
   id?: number;
@@ -69,6 +76,8 @@ export interface FundHistoryItem {
   amount: number;
   status: string;
   description?: string;
+  categoryId?: number | null;
+  categoryName?: string | null;
   createdAt?: string;
   updatedAt?: string;
   transactionDate?: string;

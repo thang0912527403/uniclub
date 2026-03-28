@@ -71,7 +71,7 @@ export async function fetchFundHistory({
   fundId,
   page,
   pageSize,
-  status = 'ALL',
+  status = '',
   scope = '',
   signal,
 }: FetchFundHistoryParams): Promise<FundHistoryResponse> {
@@ -80,7 +80,7 @@ export async function fetchFundHistory({
     pageSize: String(Math.min(100, Math.max(1, pageSize))),
   });
 
-  if (status && status !== 'ALL') params.set('status', status);
+  if (status) params.set('status', status);
   if (scope) params.set('scope', scope);
 
   const accessToken = Cookies.get('accessToken');

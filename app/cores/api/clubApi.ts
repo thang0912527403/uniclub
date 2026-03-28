@@ -15,6 +15,7 @@ import {
   type FundContributeTransactionStatus,
   type PayosFundContributionReturn,
   type ClubFundCapabilities,
+  type FundCategoryResponseDto,
   type FundHistoryScope,
   type PagedResult,
 } from './types';
@@ -252,6 +253,11 @@ export const clubApi = baseApi.injectEndpoints({
       },
       providesTags: (result, error, clubId) => [{ type: 'ClubFund', id: `capabilities-${clubId}` }],
     }),
+    getFundCategories: builder.query<FundCategoryResponseDto[], number>({
+      query: (clubId) => `/clubs/${clubId}/funds/categories`,
+      transformResponse: (response: ApiResponse<FundCategoryResponseDto[]>) => response.data ?? [],
+      providesTags: (result, error, clubId) => [{ type: 'ClubFund', id: `categories-${clubId}` }],
+    }),
     getFundById: builder.query<ClubFund, FundScoped>({
       query: ({ clubId, fundId }) => `/clubs/${clubId}/funds/${fundId}`,
       transformResponse: (response: ApiResponse<ClubFund>) => response.data,
@@ -306,7 +312,7 @@ export const clubApi = baseApi.injectEndpoints({
       query: ({ clubId, fundId, page = 1, pageSize = 10, status, scope }) => {
         const params: Record<string, string | number> = { page, pageSize };
         if (status) params.status = status;
-        if (scope === 'contributions' || scope === 'mine') params.scope = scope;
+        if (scope === 'mine') params.scope = scope;
         return {
           url: `/clubs/${clubId}/funds/history/${fundId}`,
           params,
@@ -396,6 +402,7 @@ export const clubApi = baseApi.injectEndpoints({
 export const {
   useGetClubsQuery,
   useGetFundCapabilitiesQuery,
+  useGetFundCategoriesQuery,
   useGetClubByIdQuery,
   useGetClubMembersQuery,
   useGetFundByIdQuery,
