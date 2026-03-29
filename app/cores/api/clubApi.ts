@@ -77,32 +77,34 @@ export const clubApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ClubPostResponseDto>) => response.data,
       providesTags: (result, error, id) => [{ type: 'ClubPost', id }],
     }),
-    createClubPost: builder.mutation<
-      CreateClubPostDto,
-      FormData
-    >({
+    getClubPostsByClubId: builder.query<ClubPostResponseDto[], number>({
+      query: (clubId) => `/api/ClubPost/club/${clubId}`,
+      transformResponse: (response: ApiResponse<ClubPostResponseDto[]>) => response.data,
+      providesTags: ['ClubPost'],
+    }),
+    createClubPost: builder.mutation<ClubPostResponseDto, FormData>({
       query: (formData) => ({
         url: '/ClubPost',
         method: 'POST',
         body: formData,
       }),
-      transformResponse: (response: ApiResponse<CreateClubPostDto>) =>
-        response.data,
-      invalidatesTags: [{ type: 'ClubPost' }],
+      transformResponse: (response: ApiResponse<ClubPostResponseDto>) => response.data,
+      invalidatesTags: ['ClubPost'],
     }),
+
     updateClubPost: builder.mutation<ClubPostResponseDto, { id: number; formData: FormData }>({
       query: ({ id, formData }) => ({
         url: `/ClubPost/${id}`,
         method: 'PUT',
         body: formData,
       }),
-      transformResponse: (response: ApiResponse<ClubPostResponseDto>) =>
-        response.data,
+      transformResponse: (response: ApiResponse<ClubPostResponseDto>) => response.data,
       invalidatesTags: (result, error, { id }) => [
         { type: 'ClubPost', id },
         'ClubPost',
       ],
     }),
+
     deleteClubPost: builder.mutation<void, number>({
       query: (id) => ({
         url: `/ClubPost/${id}`,
@@ -132,7 +134,7 @@ export const {
   useToggleClubStatusMutation,
   useGetClubPostsQuery,
   useGetClubPostByIdQuery,
-  // useGetClubPostByClubIdQuery,
+  useGetClubPostsByClubIdQuery,
   useCreateClubPostMutation,
   useUpdateClubPostMutation,
   useDeleteClubPostMutation,

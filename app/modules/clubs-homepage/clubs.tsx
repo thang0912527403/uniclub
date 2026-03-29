@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Navbar from '../../components/Navbar';
 import ClubCard from './components/ClubCard';
-import { useGetClubsQuery } from '~/cores/api';
+import { useGetActiveClubsQuery, useGetClubsQuery } from '~/cores/api';
 import { ChevronLeft, ChevronRight, Search, ChevronDown, X } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
@@ -15,7 +15,7 @@ const NewsPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(6);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { data, isFetching } = useGetClubsQuery({
+  const { data, isFetching } = useGetActiveClubsQuery({
     pageIndex: String(currentPage),
     searchQuery: searchQuery,
     pageSize: String(pageSize),

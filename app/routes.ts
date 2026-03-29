@@ -53,6 +53,7 @@ export default [
     route("club/all-clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
     route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
     route("club/all-requests", "routes/clubs/clubrequests.tsx"),
+    route("club/posts", "routes/clubs/clubpost.tsx"),
 
     // Interview routes
     route("interview/schedule", "routes/interview-schedule.tsx"),

@@ -84,7 +84,7 @@ const NewsDetailPage: React.FC = () => {
                         </div>
                         <h3 className="text-2xl font-bold text-gray-700 mb-3">Không tìm thấy bài viết</h3>
                         <button
-                            onClick={() => navigate('/news')}
+                            onClick={() => navigate('/public/news')}
                             className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-medium transition cursor-pointer"
                         >
                             ← Quay lại danh sách
@@ -117,7 +117,7 @@ const NewsDetailPage: React.FC = () => {
                         {/* Back button + Content (3-col like event detail) */}
                         <div className="max-w-5xl mx-auto px-6 py-10">
                             <button
-                                onClick={() => navigate('/news')}
+                                onClick={() => navigate('/public/news')}
                                 className="flex items-center gap-2 text-orange-500 hover:text-orange-600 font-medium mb-8 transition cursor-pointer"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,7 +160,7 @@ const NewsDetailPage: React.FC = () => {
                                         )}
 
                                         <button
-                                            onClick={() => navigate('/news')}
+                                            onClick={() => navigate('/public/news')}
                                             className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg cursor-pointer"
                                         >
                                             ← Xem thêm tin tức
@@ -179,7 +179,7 @@ const NewsDetailPage: React.FC = () => {
                                         {relatedPosts.map((rp) => (
                                             <div
                                                 key={rp.postId}
-                                                onClick={() => navigate(`/news/${rp.postId}`)}
+                                                onClick={() => navigate(`/public/news/${rp.postId}`)}
                                                 className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer"
                                             >
                                                 {rp.imageUrl ? (

@@ -5,6 +5,7 @@ import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useParams, useNavigate } from 'react-router';
 import { useGetClubPostByIdQuery, useUpdateClubPostMutation } from '~/cores/api/clubApi';
+import { useClubRole } from '~/hooks/useClubRole';
 import { ArrowLeft, FileImage, Save, X, CheckCircle2, AlertCircle } from 'lucide-react';
 
 /*
@@ -44,6 +45,8 @@ export default function EditClubPostModule() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+    const { clubManagerMembership } = useClubRole();
+    const clubId = clubManagerMembership?.clubId ?? 0;
     const [updateClubPost, { isLoading: isSaving }] = useUpdateClubPostMutation();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,7 +85,7 @@ export default function EditClubPostModule() {
         fd.append('status', form.status);
         if (imageFile) fd.append('imageFile', imageFile);
         try {
-            await updateClubPost({ id: Number(id), formData: fd }).unwrap();
+            await updateClubPost({id: Number(id), formData: fd }).unwrap();
             setToast({ msg: 'Cập nhật thành công!', type: 'success' });
             setTimeout(() => navigate('/club/posts'), 1500);
         } catch {
