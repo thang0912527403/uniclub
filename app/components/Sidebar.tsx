@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router';
 import { useExpandedMenu } from '~/hooks/useExpandedMenu';
 import { useEffect, useRef } from 'react';
 import { getClubId } from '~/utils/auth';
+import { useTranslation } from 'react-i18next';
 
 interface SubMenuItem {
   label: string;
@@ -62,68 +63,70 @@ export function Sidebar({
     return () => sidebar.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const { t } = useTranslation('common');
+
   const navItems: NavItem[] = [
-    { label: 'Dashboard', icon: 'fa-th-large', url: '/dashboard' },
+    { label: t('sidebar.dashboard'), icon: 'fa-th-large', url: '/dashboard' },
     {
-      label: 'Manage Club',
+      label: t('sidebar.manageClub.title'),
       icon: 'fa-building',
       subItems: [
-        { label: 'All Clubs', url: '/clubs' },
-        { label: 'Club Structure', url: `/clubs/${getClubId() || 1}/structure` },
-        { label: 'Club Roles', url: '/club-roles' },
-        { label: 'Your Club Info', url: '/club/info' },
-        { label: 'Manage Club Name', url: '/club/name' },
-        { label: 'Recruitment Campaigns', url: '/club/recruitment-campaigns' },
-        { label: 'Club Members', url: '/club/members' },
-        { label: 'Club Activities', url: '/club/activities' },
+        { label: t('sidebar.manageClub.allClubs'), url: '/clubs' },
+        { label: t('sidebar.manageClub.clubStructure'), url: `/clubs/${getClubId() || 1}/structure` },
+        { label: t('sidebar.manageClub.clubRoles'), url: '/club-roles' },
+        { label: t('sidebar.manageClub.yourClubInfo'), url: '/club/info' },
+        { label: t('sidebar.manageClub.manageClubName'), url: '/club/name' },
+        { label: t('sidebar.manageClub.recruitmentCampaigns'), url: '/club/recruitment-campaigns' },
+        { label: t('sidebar.manageClub.clubMembers'), url: '/club/members' },
+        { label: t('sidebar.manageClub.clubActivities'), url: '/club/activities' },
       ]
     },
     {
-      label: 'Manage Department',
+      label: t('sidebar.manageDepartment.title'),
       icon: 'fa-sitemap',
       subItems: [
-        { label: 'All Departments', url: '/department' },
-        { label: 'Create Department', url: '/department/create' },
-        { label: 'Department Roles', url: '/department/roles' },
-        { label: 'Department Settings', url: '/department/settings' },
+        { label: t('sidebar.manageDepartment.allDepartments'), url: '/department' },
+        { label: t('sidebar.manageDepartment.createDepartment'), url: '/department/create' },
+        { label: t('sidebar.manageDepartment.departmentRoles'), url: '/department/roles' },
+        { label: t('sidebar.manageDepartment.departmentSettings'), url: '/department/settings' },
       ]
     },
     {
-      label: 'Manage Recruitment Campaigns',
+      label: t('sidebar.manageRecruitment.title'),
       icon: 'fa-solid fa-flag',
       subItems: [
-        { label: 'All Recruitment Campaigns', url: '/recruitment-campaigns' },
-        { label: 'Your Club Campaigns', url: '/club/recruitment-campaigns' },
+        { label: t('sidebar.manageRecruitment.allCampaigns'), url: '/recruitment-campaigns' },
+        { label: t('sidebar.manageRecruitment.yourClubCampaigns'), url: '/club/recruitment-campaigns' },
       ]
     },
     {
-      label: 'Manage Members',
+      label: t('sidebar.manageMembers.title'),
       icon: 'fa-users',
       subItems: [
-        { label: 'All Members', url: `/clubs/${getClubId() || 1}/members` },
-        { label: 'Add Member', url: '/members/add' },
-        { label: 'Member Roles', url: '/members/roles' },
-        { label: 'Member Activity', url: '/members/activity' },
+        { label: t('sidebar.manageMembers.allMembers'), url: `/clubs/${getClubId() || 1}/members` },
+        { label: t('sidebar.manageMembers.addMember'), url: '/members/add' },
+        { label: t('sidebar.manageMembers.memberRoles'), url: '/members/roles' },
+        { label: t('sidebar.manageMembers.memberActivity'), url: '/members/activity' },
       ]
     },
     {
-      label: 'Manage Events',
+      label: t('sidebar.manageEvents.title'),
       icon: 'fa-calendar',
       subItems: [
-        { label: 'All Events', url: '/events' },
-        { label: 'Create Event', url: '/events/create' },
-        { label: 'Event Calendar', url: '/events/calendar' },
-        { label: 'Event Reports', url: '/events/reports' },
+        { label: t('sidebar.manageEvents.allEvents'), url: '/events' },
+        { label: t('sidebar.manageEvents.createEvent'), url: '/events/create' },
+        { label: t('sidebar.manageEvents.eventCalendar'), url: '/events/calendar' },
+        { label: t('sidebar.manageEvents.eventReports'), url: '/events/reports' },
       ]
     },
     {
-      label: 'Manage Funds',
+      label: t('sidebar.manageFunds.title'),
       icon: 'fa-wallet',
       subItems: [
-        { label: 'Budget Overview', url: '/funds' },
-        { label: 'Transactions', url: '/funds/transactions' },
-        { label: 'Expense Reports', url: '/funds/reports' },
-        { label: 'Fund Settings', url: '/funds/settings' },
+        { label: t('sidebar.manageFunds.budgetOverview'), url: '/funds' },
+        { label: t('sidebar.manageFunds.transactions'), url: '/funds/transactions' },
+        { label: t('sidebar.manageFunds.expenseReports'), url: '/funds/reports' },
+        { label: t('sidebar.manageFunds.fundSettings'), url: '/funds/settings' },
       ]
     },
   ];
