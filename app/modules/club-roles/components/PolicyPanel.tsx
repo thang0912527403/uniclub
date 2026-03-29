@@ -7,6 +7,7 @@ import {
 } from '~/cores/api';
 import type { ClubRole, PolicyGroup } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
+import { getClubId } from '~/utils/auth';
 
 /* ─── Single policy group row (lazy loads policies on expand) ────────────── */
 interface PolicyGroupRowProps {
@@ -193,7 +194,17 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
 
     const handleSave = async () => {
         try {
-            await updatePolicies({ clubId: role.clubId, roleId: role.clubRoleId, policyIds: [...selected] }).unwrap();
+            const currentClubId = role.clubId || getClubId();
+            if (!currentClubId) {
+                showNotification({
+                    type: 'error',
+                    title: 'Lỗi',
+                    message: 'Không thể xác định Câu lạc bộ hiện tại.',
+                    duration: 4000,
+                });
+                return;
+            }
+            await updatePolicies({ clubId: currentClubId, roleId: role.clubRoleId, policyIds: [...selected] }).unwrap();
             showNotification({
                 type: 'success',
                 title: 'Cập nhật quyền thành công!',
