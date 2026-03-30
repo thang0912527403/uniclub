@@ -5,12 +5,14 @@ import { useCurrentUser } from '~/hooks/useCurrentUser';
 
 const Navbar: React.FC = () => {
     const navigate = useNavigate();
-    const { user } = useCurrentUser();
+    const { user, isAuth, isLoading } = useCurrentUser();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
+        setIsMounted(true);
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
         };
@@ -220,6 +222,15 @@ const Navbar: React.FC = () => {
                                         </div>
                                     </>
                                 )}
+                            </div>
+                        ) : !isMounted || (isAuth && (!user || isLoading)) ? (
+                            /* Loading state - show skeleton */
+                            <div className="flex items-center gap-3 px-3 py-2">
+                                <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse"></div>
+                                <div className="text-left hidden md:block">
+                                    <div className="h-3 w-20 bg-gray-200 rounded animate-pulse mb-2"></div>
+                                    <div className="h-2 w-28 bg-gray-200 rounded animate-pulse"></div>
+                                </div>
                             </div>
                         ) : (
                             /* User is not logged in - show login/register buttons */

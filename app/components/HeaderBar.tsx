@@ -113,8 +113,8 @@ export function HeaderBar({
                         </button>
                     )}
                     <div className="min-w-0">
-                        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 truncate">{breadcrumb}</p>
                         <h1 className="text-base md:text-xl font-bold text-gray-900 dark:text-white truncate">{title}</h1>
+                        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 truncate">{breadcrumb}</p>
                     </div>
                 </div>
 
