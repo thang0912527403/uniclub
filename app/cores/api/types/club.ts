@@ -23,6 +23,8 @@ export interface Club {
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
+  totalPages: number;
+  totalCount: number;
   message?: string;
 }
 

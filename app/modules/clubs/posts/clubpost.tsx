@@ -9,6 +9,7 @@ import {
     useCreateClubPostMutation,
     useUpdateClubPostMutation,
     useDeleteClubPostMutation,
+    useGetClubPostsByClubIdQuery,
 } from '~/cores/api/clubApi';
 import { getUserId } from '~/utils/auth';
 import { useClubRole } from '~/hooks/useClubRole';
@@ -234,7 +235,7 @@ export default function ClubPostModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { clubManagerMembership } = useClubRole();
     const clubId = clubManagerMembership?.clubId ?? 0;
-    const { data: clubPosts = [], isLoading } = useGetClubPostByClubIdQuery(clubId);
+    const { data: clubPosts = [], isLoading } = useGetClubPostsByClubIdQuery(clubId, { skip: !clubId });
     const [deleteClubPost] = useDeleteClubPostMutation();
     const [updateClubPost] = useUpdateClubPostMutation();
     const navigate = useNavigate();
@@ -423,7 +424,7 @@ export default function ClubPostModule() {
                                             className="w-9 h-9 flex items-center justify-center rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
                                             <Trash2 size={15} />
                                         </button>
-                                        <button onClick={() => navigate(`/club/posts/${post.postId}`)}
+                                        <button onClick={() => navigate(`/club/${clubId}/posts/${post.postId}`)}
                                             title="Xem bài"
                                             className="w-9 h-9 flex items-center justify-center rounded-xl text-zinc-400 hover:text-orange-500 hover:bg-orange-50 transition-colors cursor-pointer">
                                             <ArrowUpRight size={15} />

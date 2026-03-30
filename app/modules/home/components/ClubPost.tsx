@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock, User, ArrowRight, TrendingUp } from 'lucide-react';
 import { useGetClubPostsQuery } from '~/cores/api';
+import type { ClubPostResponseDto } from '~/cores/api';
 import { useNavigate } from 'react-router';
 
 /*
@@ -101,7 +102,7 @@ const ClubNewsFeed = () => {
     if (isLoading) return <Skeleton />;
     if (isError || posts.length === 0) return null;
 
-    const go = (id: number) => navigate(`/club/posts/${id}`);
+    const go = (post: ClubPostResponseDto) => navigate(`/public/news/${post.postId}`);
 
     /* Layout slots */
     const hero = posts[0];
@@ -180,7 +181,7 @@ const ClubNewsFeed = () => {
                         </h2>
                     </div>
                     <button
-                        onClick={() => navigate('/club/posts')}
+                        onClick={() => navigate('/public/news')}
                         className="group flex items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors duration-200 cursor-pointer"
                     >
                         Xem tất cả
@@ -189,14 +190,14 @@ const ClubNewsFeed = () => {
                 </div>
 
                 {/* ══════════════════════════════════
-                    TOP SECTION: Hero (7 cols) + 2 sub (5 cols)
-                    ══════════════════════════════════ */}
-                <div className="grid grid-cols-12 gap-4 mb-4">
+                Hero (7 cols) + 2 sub (5 cols) - CHỈ 3 BẢN TIN
+                ══════════════════════════════════ */}
+                <div className="grid grid-cols-12 gap-4">
 
                     {/* Hero card – overlaid gradient, big title */}
                     {hero && (
                         <article
-                            onClick={() => go(hero.postId)}
+                            onClick={() => go(hero)}
                             className="col-span-12 lg:col-span-7 relative overflow-hidden rounded-2xl cursor-pointer group shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow duration-300"
                             aria-label={hero.title}
                             style={{ minHeight: '400px' }}
@@ -204,7 +205,7 @@ const ClubNewsFeed = () => {
                             {/* Image */}
                             <div className="absolute inset-0">
                                 <PostImg
-                                    src={hero.imageUrl}
+                                    src={hero.imageUrl ?? undefined}
                                     alt={hero.title}
                                     className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
                                 />
@@ -244,7 +245,7 @@ const ClubNewsFeed = () => {
                         {[sub1, sub2].map((post, i) => post && (
                             <article
                                 key={post.postId}
-                                onClick={() => go(post.postId)}
+                                onClick={() => go(post)}
                                 className="flex-1 relative overflow-hidden rounded-2xl cursor-pointer group shadow-[0_4px_15px_rgba(0,0,0,0.07)] hover:shadow-[0_6px_22px_rgba(0,0,0,0.13)] transition-shadow duration-300"
                                 aria-label={post.title}
                                 style={{ minHeight: '190px' }}
@@ -252,7 +253,7 @@ const ClubNewsFeed = () => {
                                 {/* Image */}
                                 <div className="absolute inset-0">
                                     <PostImg
-                                        src={post.imageUrl}
+                                        src={post.imageUrl ?? undefined}
                                         alt={post.title}
                                         className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out"
                                     />
@@ -275,84 +276,6 @@ const ClubNewsFeed = () => {
                         ))}
                     </div>
                 </div>
-
-                {/* ══════════════════════════════════
-                    BOTTOM SECTION: 3 medium cards + mini sidebar
-                    ══════════════════════════════════ */}
-                {row.length > 0 && (
-                    <div className="grid grid-cols-12 gap-4">
-
-                        {/* 3 medium cards */}
-                        {row.map((post) => (
-                            <article
-                                key={post.postId}
-                                onClick={() => go(post.postId)}
-                                className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white rounded-2xl overflow-hidden cursor-pointer group shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300"
-                                aria-label={post.title}
-                            >
-                                {/* Thumbnail */}
-                                <div className="h-40 overflow-hidden">
-                                    <PostImg
-                                        src={post.imageUrl}
-                                        alt={post.title}
-                                        className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-500 ease-out"
-                                    />
-                                </div>
-                                {/* Body */}
-                                <div className="p-4">
-                                    <ClubBadge name={post.clubName} />
-                                    <h4 className="mt-2 text-sm font-bold text-zinc-900 leading-snug line-clamp-2 group-hover:text-orange-500 transition-colors duration-200">
-                                        {post.title}
-                                    </h4>
-                                    <Meta userName={post.userName} postDate={post.postDate} />
-                                </div>
-                            </article>
-                        ))}
-
-                        {/* Mini list sidebar */}
-                        {mini.length > 0 && (
-                            <div className="col-span-12 lg:col-span-3 bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-                                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-zinc-100">
-                                    <div className="w-1 h-4 bg-orange-500 rounded-full" />
-                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Tin khác</span>
-                                </div>
-                                <div className="space-y-0">
-                                    {mini.map((post, idx) => (
-                                        <div
-                                            key={post.postId}
-                                            onClick={() => go(post.postId)}
-                                            className={`flex gap-3 cursor-pointer group py-3 ${idx < mini.length - 1 ? 'border-b border-zinc-100' : ''}`}
-                                        >
-                                            <div className="w-14 h-11 rounded-lg overflow-hidden shrink-0">
-                                                <PostImg
-                                                    src={post.imageUrl}
-                                                    alt={post.title}
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                                />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[12px] font-semibold text-zinc-800 line-clamp-2 leading-snug group-hover:text-orange-500 transition-colors duration-200">
-                                                    {post.title}
-                                                </p>
-                                                <p className="text-[10px] text-zinc-400 mt-1 flex items-center gap-1">
-                                                    <Clock size={9} />
-                                                    {timeAgo(post.postDate)} trước
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <button
-                                    onClick={() => navigate('/club/posts')}
-                                    className="mt-4 w-full text-center text-xs font-bold text-orange-500 hover:text-orange-600 py-2 border border-orange-200 hover:border-orange-400 rounded-xl transition-all duration-200 cursor-pointer hover:bg-orange-50"
-                                >
-                                    Xem thêm →
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
         </section>
     );

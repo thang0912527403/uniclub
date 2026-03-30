@@ -8,15 +8,16 @@ import { ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 const NewsPage: React.FC = () => {
-  const { data: allPosts = [] } = useGetClubPostsQuery();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Tất cả");
-  const { data: clubs = [] } = useGetClubsQuery();
+  const { data: clubsData } = useGetClubsQuery({ pageIndex: '1', searchQuery: '', pageSize: '100' });
+  const clubs = clubsData?.data ?? [];
   const categories = ["Tất cả", ...clubs.map(c => c.clubName)];
 
-  const filteredPosts = activeTab === "Tất cả" 
-    ? allPosts 
-    : allPosts.filter(p => p.clubName === activeTab);
+  const selectedClub = clubs.find(c => c.clubName === activeTab);
+  const { data: allPosts = [] } = useGetClubPostsQuery();
+
+  const filteredPosts = allPosts;
 
   return (
     <div className="bg-[#FAFAFA] min-h-screen">
