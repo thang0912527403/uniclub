@@ -460,7 +460,7 @@ const FormsTab: React.FC<{ campaignId: number; clubId: number }> = ({ campaignId
   const [deleteQuestion] = useDeleteQuestionMutation();
 
   const selectedForm = forms.find(f => f.formId === selectedFormId) ?? null;
-  const { data: questions = [], isLoading: questionsLoading } = useGetQuestionsByFormQuery({ clubId, formId: selectedFormId! }, { skip: !selectedFormId });
+  const { data: questions = [], isLoading: questionsLoading } = useGetQuestionsByFormQuery({ formId: selectedFormId! }, { skip: !selectedFormId });
 
   const handleCreateForm = async (dto: any) => {
     try { await createForm(dto).unwrap(); setShowFormModal(false); } catch (e) { console.error(e); }
@@ -603,7 +603,7 @@ const FormsTab: React.FC<{ campaignId: number; clubId: number }> = ({ campaignId
 // ── Inline Answer Row (expands under a table row) ──────────────────────────
 const InlineAnswerRow: React.FC<{ clubId: number; application: ApplicationResponseDto; colSpan: number }> = ({ clubId, application, colSpan }) => {
   const { data: answers = [], isLoading } = useGetAnswersByApplicationQuery({ clubId, applicationId: application.applicationId });
-  const { data: questions = [] } = useGetQuestionsByFormQuery({ clubId, formId: application.formId });
+  const { data: questions = [] } = useGetQuestionsByFormQuery({ formId: application.formId });
 
   return (
     <tr>
@@ -1090,7 +1090,7 @@ const AnswerViewerForApp: React.FC<{
   forms: ApplicationFormResponseDto[];
   onClose: () => void;
 }> = ({ clubId, app, forms, onClose }) => {
-  const { data: questions = [] } = useGetQuestionsByFormQuery({ clubId, formId: app.formId });
+  const { data: questions = [] } = useGetQuestionsByFormQuery({ formId: app.formId });
   return <AnswerPanel clubId={clubId} application={app} questions={questions} onClose={onClose} />;
 };
 

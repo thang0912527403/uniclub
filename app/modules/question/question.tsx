@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
+import { ChevronLeft } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
@@ -26,9 +27,8 @@ const QuestionPage: React.FC = () => {
   const { data: campaign } = useGetRecruitmentCampaignQuery(idFromUrl, {
     skip: !idFromUrl || isNaN(idFromUrl),
   });
-  // const clubId = campaign?.clubId ?? 0;
-  const clubId = 1;
-
+  const clubId = campaign?.clubId ?? 0;
+  // const clubId = 1;
   // 2. Fetch forms for the campaign (requires clubId)
   const { data: campaignForms = [] } = useGetFormsByCampaignQuery(
     { clubId, campaignId: idFromUrl },
@@ -46,14 +46,14 @@ const QuestionPage: React.FC = () => {
     data: questions = [],
     isLoading: questionsLoading,
     error: questionsError
-  } = useGetQuestionsByFormQuery({ clubId, formId: actualFormId }, { skip: !actualFormId || isNaN(actualFormId) || !clubId });
+  } = useGetQuestionsByFormQuery({ formId: actualFormId }, { skip: !actualFormId || isNaN(actualFormId) });
 
   const [submitApplication, { isLoading: isSubmitting, error: submitError, isSuccess }] = useSubmitApplicationMutation();
 
   // Check if user already applied to this form
   const { data: existingApp, isLoading: checkingApp } = useGetApplicationByUserAndFormQuery(
-    { clubId, userId: currentUserId, formId: actualFormId },
-    { skip: !currentUserId || !actualFormId || isNaN(actualFormId) || !clubId }
+    { userId: currentUserId, formId: actualFormId },
+    { skip: !currentUserId || !actualFormId || isNaN(actualFormId) }
   );
 
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -86,7 +86,7 @@ const QuestionPage: React.FC = () => {
         answerText: toAnswerText(value).trim(),
       }));
     try {
-      await submitApplication({ clubId, formId: actualFormId, userId: currentUserId, answers: answerList }).unwrap();
+      await submitApplication({ formId: actualFormId, userId: currentUserId, answers: answerList }).unwrap();
     } catch (_) { /* error shown via submitError */ }
   };
 
@@ -246,6 +246,16 @@ const QuestionPage: React.FC = () => {
     <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A]">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-16">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-gray-500 hover:text-orange-600 font-bold mb-8 transition-colors group"
+        >
+          <div className="p-2 rounded-full group-hover:bg-orange-50 transition-colors">
+            <ChevronLeft size={20} />
+          </div>
+          Quay lại
+        </button>
+
         <FormHeader
           title="Thông tin đăng ký"
           highlight="Thành viên"

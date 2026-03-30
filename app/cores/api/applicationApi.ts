@@ -33,9 +33,9 @@ export const applicationApi = baseApi.injectEndpoints({
           : [{ type: 'Application' as const, id: `CAMPAIGN_FORMS_${campaignId}` }],
     }),
 
-    getFormById: builder.query<ApplicationFormResponseDto, { clubId: number; id: number }>({
-      queryFn: async ({ clubId, id }, _api, _extra, baseQuery) => {
-        const result = await baseQuery({ url: `Application/${clubId}/forms/${id}` });
+    getFormById: builder.query<ApplicationFormResponseDto, { id: number }>({
+      queryFn: async ({ id }, _api, _extra, baseQuery) => {
+        const result = await baseQuery({ url: `Application/forms/${id}` });
         if (result.error) return result as { error: typeof result.error };
         const raw = result.data as ApiResponse<ApplicationFormResponseDto> | undefined;
         return { data: raw?.data as ApplicationFormResponseDto };
@@ -64,9 +64,9 @@ export const applicationApi = baseApi.injectEndpoints({
     //  Questions
     // ══════════════════════════════════════════════════
 
-    getQuestionsByForm: builder.query<ApplicationQuestionResponseDto[], { clubId: number; formId: number }>({
-      queryFn: async ({ clubId, formId }, _api, _extra, baseQuery) => {
-        const result = await baseQuery({ url: `Application/${clubId}/forms/${formId}/questions` });
+    getQuestionsByForm: builder.query<ApplicationQuestionResponseDto[], { formId: number }>({
+      queryFn: async ({ formId }, _api, _extra, baseQuery) => {
+        const result = await baseQuery({ url: `Application/forms/${formId}/questions` });
         if (result.error) {
           if (result.error.status === 404) return { data: [] };
           return result as { error: typeof result.error };
@@ -99,8 +99,8 @@ export const applicationApi = baseApi.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [{ type: 'Application' as const, id }],
     }),
     // --- Application Answer: nộp đơn kèm câu trả lời ---
-    submitApplication: builder.mutation<ApplicationResponseDto, { clubId: number } & SubmitApplicationDto>({
-      query: ({ clubId, ...body }) => ({ url: `Application/${clubId}/submit`, method: 'POST', body }),
+    submitApplication: builder.mutation<ApplicationResponseDto, SubmitApplicationDto>({
+      query: (body) => ({ url: `Application/submit`, method: 'POST', body }),
       transformResponse: (response: ApiResponse<ApplicationResponseDto>) => response.data,
       invalidatesTags: ['Application'],
     }),
@@ -139,9 +139,9 @@ export const applicationApi = baseApi.injectEndpoints({
     }),
 
     // --- Đơn theo user ---
-    getApplicationsByUser: builder.query<ApplicationResponseDto[], { clubId: number; userId: string }>({
-      queryFn: async ({ clubId, userId }, _api, _extra, baseQuery) => {
-        const result = await baseQuery({ url: `Application/${clubId}/user/${userId}` });
+    getApplicationsByUser: builder.query<ApplicationResponseDto[], { userId: string }>({
+      queryFn: async ({ userId }, _api, _extra, baseQuery) => {
+        const result = await baseQuery({ url: `Application/user/${userId}` });
         if (result.error) {
           if (result.error.status === 404) return { data: [] };
           return result as { error: typeof result.error };
@@ -154,9 +154,9 @@ export const applicationApi = baseApi.injectEndpoints({
           ? [...result.map((a) => ({ type: 'Application' as const, id: a.applicationId })), { type: 'Application' as const, id: 'USER_APPLICATIONS' }]
           : [{ type: 'Application' as const, id: 'USER_APPLICATIONS' }],
     }),
-    getApplicationByUserAndForm: builder.query<ApplicationResponseDto | null, { clubId: number; userId: string; formId: number }>({
-      queryFn: async ({ clubId, userId, formId }, _api, _extra, baseQuery) => {
-        const result = await baseQuery({ url: `Application/${clubId}/user/${userId}/form/${formId}` });
+    getApplicationByUserAndForm: builder.query<ApplicationResponseDto | null, { userId: string; formId: number }>({
+      queryFn: async ({ userId, formId }, _api, _extra, baseQuery) => {
+        const result = await baseQuery({ url: `Application/user/${userId}/form/${formId}` });
         if (result.error) {
           if (result.error.status === 404) return { data: null };
           return result as { error: typeof result.error };
