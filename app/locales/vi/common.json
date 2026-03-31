@@ -41,6 +41,7 @@
     "manageFunds": {
       "title": "Quản lý Quỹ",
       "budgetOverview": "Tổng quan Ngân sách",
+      "myFunds": "Quỹ của tôi",
       "transactions": "Giao dịch",
       "expenseReports": "Báo cáo Chi tiêu",
       "fundSettings": "Cài đặt Quỹ"

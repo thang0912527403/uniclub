@@ -22,6 +22,7 @@ import {
   useGetFundCapabilitiesQuery,
   useCreateFundMutation,
   useApproveFundMutation,
+  useGetUserAllClubsQuery,
   useGetUserClubInfoQuery,
 } from '~/cores/api';
 import { Sidebar } from '~/components/Sidebar';
@@ -31,7 +32,20 @@ import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useClubRole } from '~/hooks/useClubRole';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import type { ClubFund } from '~/cores/api';
+import type { FundListSort, FundListStatus } from '~/cores/api/types';
 import { fundTokens as t } from './funds.design-tokens';
+import {
+  applyFilterChangeParams,
+  buildCreateFundPayload,
+  buildFundsListQueryArgs,
+  DEFAULT_FUND_PAGE_SIZE,
+  DEFAULT_FUND_SORT,
+  DEFAULT_FUND_STATUS,
+  FUND_DUPLICATE_NAME_MESSAGE,
+  isDuplicateFundNameError,
+  parseFundSort,
+  parseFundStatus,
+} from './funds.utils';
 
 function fundStatusLabel(f: ClubFund): string {
   const s = String(f.status ?? '').toUpperCase();
@@ -69,14 +83,15 @@ function isPendingFund(f: ClubFund): boolean {
   return String(f.status ?? '').toUpperCase() === 'PENDING';
 }
 
-function fundListBalanceVnd(f: ClubFund): number | null {
+function fundListBalanceVnd(f: ClubFund): number {
   if (typeof f.currentBalance === 'number' && Number.isFinite(f.currentBalance)) {
     return f.currentBalance;
   }
   if (typeof f.balance === 'number' && Number.isFinite(f.balance)) {
     return f.balance;
   }
-  return null;
+
+  return 0;
 }
 
 function parseFundListPage(v: string | null): number {
@@ -84,12 +99,23 @@ function parseFundListPage(v: string | null): number {
   return Number.isFinite(n) && n >= 1 ? n : 1;
 }
 
-/** 1–100, mặc định 10 (khớp BE). */
 function parseFundListPageSize(v: string | null): number {
-  const n = parseInt(v ?? '10', 10);
-  if (!Number.isFinite(n) || n < 1 || n > 100) return 10;
+  const n = parseInt(v ?? String(DEFAULT_FUND_PAGE_SIZE), 10);
+  if (!Number.isFinite(n) || n < 1 || n > DEFAULT_FUND_PAGE_SIZE) return DEFAULT_FUND_PAGE_SIZE;
   return n;
 }
+
+const FUND_SEARCH_DEBOUNCE_MS = 400;
+const FUND_STATUS_OPTIONS: Array<{ value: FundListStatus; label: string }> = [
+  { value: 'ALL', label: 'Tất cả trạng thái' },
+  { value: 'PENDING', label: 'Chờ duyệt' },
+  { value: 'APPROVED', label: 'Đã duyệt' },
+  { value: 'REJECTED', label: 'Từ chối' },
+];
+const FUND_SORT_OPTIONS: Array<{ value: FundListSort; label: string }> = [
+  { value: 'NEWEST', label: 'Mới nhất' },
+  { value: 'OLDEST', label: 'Cũ nhất' },
+];
 
 export default function FundsPage() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
@@ -99,6 +125,10 @@ export default function FundsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const fundListPage = parseFundListPage(searchParams.get('page'));
   const fundListPageSize = parseFundListPageSize(searchParams.get('pageSize'));
+  const fundSearch = searchParams.get('search') ?? '';
+  const fundStatus = parseFundStatus(searchParams.get('status'));
+  const fundSort = parseFundSort(searchParams.get('sort'));
+  const [searchInput, setSearchInput] = useState(fundSearch);
 
   const hasToken = !!Cookies.get('accessToken');
   const { data: clubs = [] } = useGetClubsQuery(undefined, { skip: !hasToken || !isAdmin });
@@ -108,13 +138,15 @@ export default function FundsPage() {
     error: userMembershipsError,
     isLoading: isLoadingUserMemberships,
   } = useGetUserClubInfoQuery(userId, { skip: !hasToken || isAdmin || !userId });
+  const { data: userClubs = [] } = useGetUserAllClubsQuery(userId, { skip: !hasToken || isAdmin || !userId });
+  const userClubNameById = new Map(userClubs.map((c) => [c.clubId, c.clubName]));
 
   const activeMemberships = (Array.isArray(userMemberships) ? userMemberships : []).filter(
     (m) => String(m?.status ?? '').toUpperCase() === 'ACTIVE'
   );
   const memberClubOptions = activeMemberships.map((m) => ({
     clubId: m.clubId,
-    label: `CLB #${m.clubId} • ${m.roleName || `RoleId ${m.clubRoleId}`}`,
+    label: m.clubName?.trim() || userClubNameById.get(m.clubId)?.trim() || `CLB #${m.clubId}`,
   }));
 
   const [selectedClubId, setSelectedClubId] = useState<number>(0);
@@ -123,9 +155,9 @@ export default function FundsPage() {
 
   const [showCreateFundForm, setShowCreateFundForm] = useState(false);
   const [newFundName, setNewFundName] = useState('');
-  const [newInitialAmount, setNewInitialAmount] = useState('0');
-  /** yyyy-mm-dd — cuối ngày UTC; để trống = không giới hạn nhận nộp */
+  const [newFundDescription, setNewFundDescription] = useState('');
   const [newFundExpiresDate, setNewFundExpiresDate] = useState('');
+  const [createFundFormError, setCreateFundFormError] = useState<string | null>(null);
 
   const {
     data: caps,
@@ -155,10 +187,14 @@ export default function FundsPage() {
     data: fundsPaged,
     error: fundsError,
     isLoading: isLoadingFunds,
-  } = useGetFundsByClubQuery(
-    { clubId, page: fundListPage, pageSize: fundListPageSize },
-    { skip: skipFundsQuery },
-  );
+  } = useGetFundsByClubQuery(buildFundsListQueryArgs({
+    clubId,
+    page: fundListPage,
+    pageSize: fundListPageSize,
+    search: fundSearch,
+    status: fundStatus,
+    sort: fundSort,
+  }), { skip: skipFundsQuery });
   const availableFunds = fundsPaged?.items ?? [];
   const fundsMeta = fundsPaged;
   const totalFundCount = fundsMeta?.totalCount ?? 0;
@@ -187,13 +223,30 @@ export default function FundsPage() {
     prevClubForPagingRef.current = clubId;
   }, [clubId, setSearchParams]);
 
+  useEffect(() => {
+    setSearchInput(fundSearch);
+  }, [fundSearch]);
+
+  useEffect(() => {
+    const normalized = searchInput.trim();
+    const current = fundSearch.trim();
+    if (normalized === current) return;
+    const timeout = setTimeout(() => {
+      setSearchParams(
+        (prev) => applyFilterChangeParams(prev, { search: normalized, pageSize: fundListPageSize }),
+        { replace: true },
+      );
+    }, FUND_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [searchInput, fundSearch, fundListPageSize, setSearchParams]);
+
   const setFundListPage = (page: number) => {
     const p = Math.max(1, page);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
         next.set('page', String(p));
-        if (fundListPageSize !== 10) next.set('pageSize', String(fundListPageSize));
+        if (fundListPageSize !== DEFAULT_FUND_PAGE_SIZE) next.set('pageSize', String(fundListPageSize));
         else next.delete('pageSize');
         return next;
       },
@@ -214,12 +267,14 @@ export default function FundsPage() {
 
   const [createFund, { isLoading: isCreatingFund }] = useCreateFundMutation();
   const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
+  const hasActiveFundFilters =
+    !!fundSearch.trim() || fundStatus !== DEFAULT_FUND_STATUS || fundSort !== DEFAULT_FUND_SORT;
 
   const bgClass = 'bg-slate-50 dark:bg-[#0F172A]';
   const handleCreateFundSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const initialAmount = Number(newInitialAmount);
-    if (!clubId || !newFundName.trim() || isNaN(initialAmount) || initialAmount < 0) return;
+    if (!clubId || !newFundName.trim()) return;
+    setCreateFundFormError(null);
     let expiresAt: string | undefined;
     if (newFundExpiresDate.trim()) {
       const [y, m, d] = newFundExpiresDate.split('-').map(Number);
@@ -230,14 +285,13 @@ export default function FundsPage() {
     try {
       await createFund({
         clubId,
-        fundName: newFundName.trim(),
-        initialAmount,
-        ...(expiresAt ? { expiresAt } : {}),
+        ...buildCreateFundPayload(newFundName, expiresAt, newFundDescription),
       }).unwrap();
       setShowCreateFundForm(false);
       setNewFundName('');
-      setNewInitialAmount('0');
+      setNewFundDescription('');
       setNewFundExpiresDate('');
+      setCreateFundFormError(null);
       showNotification({
         type: 'success',
         title: 'Đã tạo quỹ',
@@ -246,8 +300,15 @@ export default function FundsPage() {
     } catch (err: unknown) {
       console.error('Create fund failed:', err);
       const status = (err as { status?: number })?.status;
+      const backendMessage = (err as { data?: { message?: string } })?.data?.message;
+      if (isDuplicateFundNameError(backendMessage)) {
+        const duplicateNameFriendly = 'Tên quỹ này đã tồn tại trong CLB (trừ quỹ đã bị từ chối). Vui lòng chọn tên khác.';
+        setCreateFundFormError(duplicateNameFriendly);
+        showNotification({ type: 'error', title: 'Tên quỹ bị trùng', message: duplicateNameFriendly });
+        return;
+      }
       const msg =
-        (err as { data?: { message?: string } })?.data?.message ??
+        backendMessage ??
         (err as Error)?.message ??
         (status === 403 ? 'Bạn không có quyền tạo quỹ trong CLB này.' : 'Không thể tạo quỹ.');
       showNotification({ type: 'error', title: 'Lỗi tạo quỹ', message: `${String(msg)}${status ? ` (HTTP ${status})` : ''}` });
@@ -270,7 +331,6 @@ export default function FundsPage() {
         }`}
       >
         <div className="max-w-6xl mx-auto space-y-6">
-          {/* Modal: Tạo quỹ mới */}
           {showCreateFundForm && (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
@@ -300,7 +360,10 @@ export default function FundsPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setShowCreateFundForm(false)}
+                    onClick={() => {
+                      setShowCreateFundForm(false);
+                      setCreateFundFormError(null);
+                    }}
                     className={t.btn.ghost}
                     aria-label="Đóng"
                   >
@@ -320,29 +383,27 @@ export default function FundsPage() {
                         id="fund-name"
                         type="text"
                         value={newFundName}
-                        onChange={(e) => setNewFundName(e.target.value)}
+                        onChange={(e) => {
+                          setNewFundName(e.target.value);
+                          if (createFundFormError) setCreateFundFormError(null);
+                        }}
                         className={t.input}
                         placeholder="VD: Quỹ hoạt động thường niên"
                         required
                       />
                     </div>
                     <div>
-                      <label htmlFor="fund-initial-amount" className={`block ${t.type.label} mb-1.5`}>
-                        Số dư ban đầu
+                      <label htmlFor="fund-description" className={`block ${t.type.label} mb-1.5`}>
+                        Mô tả (tuỳ chọn)
                       </label>
-                      <div className="relative">
-                        <span className="absolute inset-y-0 left-3 flex items-center text-xs text-slate-400" aria-hidden>VND</span>
-                        <input
-                          id="fund-initial-amount"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={newInitialAmount}
-                          onChange={(e) => setNewInitialAmount(e.target.value)}
-                          className={`${t.input} pl-11`}
-                          required
-                        />
-                      </div>
+                      <textarea
+                        id="fund-description"
+                        value={newFundDescription}
+                        onChange={(e) => setNewFundDescription(e.target.value)}
+                        className={`${t.input} min-h-[92px] resize-y`}
+                        placeholder="Ví dụ: Quỹ hỗ trợ hoạt động thường niên của CLB."
+                        maxLength={500}
+                      />
                     </div>
                     <div>
                       <label htmlFor="fund-expires" className={`block ${t.type.label} mb-1.5`}>
@@ -360,10 +421,18 @@ export default function FundsPage() {
                       </p>
                     </div>
                   </div>
+                  {createFundFormError ? (
+                    <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+                      {createFundFormError}
+                    </p>
+                  ) : null}
                   <div className="flex items-center justify-end gap-3 pt-2">
                     <button
                       type="button"
-                      onClick={() => setShowCreateFundForm(false)}
+                      onClick={() => {
+                        setShowCreateFundForm(false);
+                        setCreateFundFormError(null);
+                      }}
                       className={t.btn.secondary}
                     >
                       Hủy
@@ -384,78 +453,19 @@ export default function FundsPage() {
             </div>
           )}
 
-          {/* Hero: title + CTA above fold */}
           <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className={t.type.pageTitle}>Quản lý quỹ</h1>
               <p className={`mt-1 ${t.type.body}`}>
-                Theo dõi thu chi, duyệt yêu cầu rút quỹ và quản lý ngân sách minh bạch.
+                Theo dõi thu chi và quản lý ngân sách minh bạch.
               </p>
             </div>
-            {clubId > 0 && hasToken && !capsLoading && !capsForbidden && !capsOtherError && canViewFunds
-              ? (() => {
-                  const showMgmtBanner =
-                    canApproveOrRejectFundEntity || canCreateFundCap;
-                  const roleLine =
-                    caps?.clubRoleName != null && String(caps.clubRoleName).trim() !== ''
-                      ? `${caps.clubRoleName}${
-                          caps.clubRoleLevel != null && caps.clubRoleLevel !== undefined
-                            ? ` • Cấp ${caps.clubRoleLevel}`
-                            : ''
-                        }`
-                      : null;
-                  if (showMgmtBanner) {
-                    return (
-                      <div
-                        className={`${t.card.base} ${t.space.card} flex items-center gap-3 border-slate-200 dark:border-slate-600`}
-                        role="status"
-                        aria-label="Phân quyền"
-                      >
-                        <div
-                          className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0"
-                          aria-hidden
-                        >
-                          <Shield className="w-5 h-5" aria-hidden />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm">
-                            Phân quyền theo CLB
-                          </p>
-                          <p className={t.type.muted}>
-                            {isAdmin
-                              ? 'Bạn đang xem với quyền quản trị.'
-                              : roleLine
-                                ? `Vai trò trong CLB: ${roleLine}.`
-                                : 'Bạn có quyền thao tác quản trị quỹ trong phạm vi được cấp.'}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  }
-                  if (roleLine) {
-                    return (
-                      <div
-                        className={`${t.card.base} ${t.space.card} flex items-center gap-3 border-slate-200 dark:border-slate-600`}
-                        role="status"
-                        aria-label="Vai trò CLB"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm">Vai trò trong CLB</p>
-                          <p className={t.type.muted}>{roleLine}</p>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()
-              : null}
           </header>
 
-          {/* Toolbar: club selector + CTA */}
           <div
             className={`${t.card.base} ${t.space.card} flex flex-wrap items-center justify-between gap-4 border-slate-200 dark:border-slate-600`}
           >
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-end gap-3">
               <div className="flex flex-col gap-1 min-w-[240px]">
                 <label htmlFor="club-select" className={t.type.label}>
                   Câu lạc bộ
@@ -464,11 +474,10 @@ export default function FundsPage() {
                   id="club-select"
                   value={clubId}
                   onChange={(e) => setSelectedClubId(Number(e.target.value))}
-                  className={t.input}
+                  className={`${t.input} h-11`}
                   aria-label="Chọn câu lạc bộ"
                   disabled={!hasToken || (isAdmin ? clubs.length === 0 : memberClubOptions.length === 0)}
                 >
-                  <option value={0}>-- Chọn CLB --</option>
                   {isAdmin
                     ? clubs.map((c) => (
                       <option key={c.clubId} value={c.clubId}>
@@ -481,6 +490,86 @@ export default function FundsPage() {
                       </option>
                     ))}
                 </select>
+              </div>
+              <div className="flex flex-col gap-1 min-w-[200px]">
+                <label htmlFor="fund-search" className={t.type.label}>
+                  Tìm kiếm
+                </label>
+                <input
+                  id="fund-search"
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className={`${t.input} h-11`}
+                  placeholder="Nhập..."
+                />
+              </div>
+              <div className="flex flex-col gap-1 min-w-[200px]">
+                <label htmlFor="fund-status-filter" className={t.type.label}>
+                  Trạng thái
+                </label>
+                <select
+                  id="fund-status-filter"
+                  value={fundStatus}
+                  onChange={(e) => {
+                    const nextStatus = parseFundStatus(e.target.value);
+                    setSearchParams(
+                      (prev) => applyFilterChangeParams(prev, { status: nextStatus, pageSize: fundListPageSize }),
+                      { replace: true },
+                    );
+                  }}
+                  className={`${t.input} h-11`}
+                >
+                  {FUND_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1 min-w-[200px]">
+                <label htmlFor="fund-sort" className={t.type.label}>
+                  Sắp xếp
+                </label>
+                <select
+                  id="fund-sort"
+                  value={fundSort}
+                  onChange={(e) => {
+                    const nextSort = parseFundSort(e.target.value);
+                    setSearchParams(
+                      (prev) => applyFilterChangeParams(prev, { sort: nextSort, pageSize: fundListPageSize }),
+                      { replace: true },
+                    );
+                  }}
+                  className={`${t.input} h-11`}
+                >
+                  {FUND_SORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('');
+                    setSearchParams(
+                      (prev) => applyFilterChangeParams(prev, {
+                        search: '',
+                        status: DEFAULT_FUND_STATUS,
+                        sort: DEFAULT_FUND_SORT,
+                        pageSize: fundListPageSize,
+                      }),
+                      { replace: true },
+                    );
+                  }}
+                  className={t.btn.secondary}
+                  disabled={!hasActiveFundFilters}
+                >
+                  Xóa bộ lọc
+                </button>
               </div>
             </div>
             {clubId > 0 && canCreateFundCap && canViewFunds && !capsLoading && !capsForbidden && !isForbiddenFunds && (
@@ -496,7 +585,6 @@ export default function FundsPage() {
             )}
           </div>
 
-          {/* Content: list or empty / auth states */}
           <section
             className={`${t.card.base} overflow-hidden border-slate-200 dark:border-slate-600`}
             aria-labelledby="fund-list-heading"
@@ -604,7 +692,7 @@ export default function FundsPage() {
                 </p>
                 {fundsBadRequest ? (
                   <p className={`text-sm ${t.type.muted}`}>
-                    Tham số phân trang: trang bắt đầu từ 1; pageSize từ 1 đến 100.
+                    Tham số phân trang: trang bắt đầu từ 1; pageSize tối đa {DEFAULT_FUND_PAGE_SIZE}.
                   </p>
                 ) : null}
               </div>
@@ -679,9 +767,12 @@ export default function FundsPage() {
                   ) : null}
                 </div>
 
-                {/* Card grid: each fund = card (dashboard-style) */}
                 {availableFunds.length === 0 ? (
-                  <p className={`p-8 text-center ${t.type.muted}`}>Không có quỹ trên trang này.</p>
+                  <p className={`p-8 text-center ${t.type.muted}`}>
+                    {hasActiveFundFilters
+                      ? 'Không tìm thấy quỹ nào phù hợp bộ lọc hiện tại.'
+                      : 'Không có quỹ trên trang này.'}
+                  </p>
                 ) : (
                 <div
                   className="p-4 md:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
@@ -710,7 +801,7 @@ export default function FundsPage() {
                           {f.fundName || `Quỹ #${f.fundId}`}
                         </h3>
                         <p className={`mt-1 text-lg font-semibold text-slate-700 dark:text-slate-200`}>
-                          {listBalance != null ? `${listBalance.toLocaleString('vi-VN')} ₫` : '—'}
+                          {listBalance.toLocaleString('vi-VN')} ₫
                         </p>
                         {f.expiresAt ? (
                           <p className={`mt-1 text-xs ${t.type.muted}`}>

@@ -41,6 +41,9 @@ export interface CreateFundRequestDto {
 }
 
 export type FundSidebarMenuId = 'overview' | 'transactions' | 'reports' | 'settings';
+export type FundListStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
+export type FundListSort = 'NEWEST' | 'OLDEST' | 'NAME_ASC' | 'NAME_DESC';
+export type FundMineType = 'ALL' | 'CREATED' | 'RESPONSIBLE';
 
 export interface FundMenuItemDto {
   id: FundSidebarMenuId;
@@ -103,6 +106,16 @@ export interface GetClubFundTransactionsParams {
   toUtc?: string | null;
 }
 
+export interface GetMyFundsParams {
+  clubId: number;
+  mineType?: FundMineType;
+  status?: FundListStatus;
+  search?: string;
+  sort?: FundListSort;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface FundHistoryItem {
   transactionId?: number;
   id?: number;
@@ -139,7 +152,7 @@ export interface FundHistoryResponse {
 
 export interface CreateFundDto {
   fundName: string;
-  initialAmount: number;
+  description?: string;
   expiresAt?: string;
 }
 

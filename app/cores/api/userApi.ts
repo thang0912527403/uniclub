@@ -14,6 +14,7 @@ export interface ClubMembership {
   avatar: string | null;
   studentId: string | null;
   clubId: number;
+  clubName?: string;
   clubRoleId: number;
   roleName: string;
   joinDate: string;

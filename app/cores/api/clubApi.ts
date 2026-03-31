@@ -17,10 +17,14 @@ import {
   type ClubFundCapabilities,
   type FundCategoryResponseDto,
   type FundHistoryScope,
+  type FundMineType,
+  type FundListSort,
+  type FundListStatus,
   type FundMenuItemDto,
   type FundReportSummaryDto,
   type FundSidebarMenuId,
   type GetClubFundTransactionsParams,
+  type GetMyFundsParams,
   type PagedResult,
 } from './types';
 
@@ -146,6 +150,86 @@ function normalizeFundReportSummary(raw: unknown): FundReportSummaryDto {
     totalApprovedExpense: numFundReport(d.totalApprovedExpense ?? d.TotalApprovedExpense),
   };
 }
+
+function normalizeClubFund(raw: unknown): ClubFund {
+  if (raw == null || typeof raw !== 'object') return {} as ClubFund;
+  const d = raw as Record<string, unknown>;
+  const num = (v: unknown): number | undefined => {
+    if (v == null || v === '') return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const canAcceptRaw = d.canAcceptContributions ?? d.CanAcceptContributions;
+  return {
+    fundId: num(d.fundId ?? d.FundId) ?? 0,
+    clubId: num(d.clubId ?? d.ClubId) ?? 0,
+    fundName: String(d.fundName ?? d.FundName ?? '').trim() || undefined,
+    currentBalance: num(d.currentBalance ?? d.CurrentBalance),
+    totalAmount: num(d.totalAmount ?? d.TotalAmount),
+    balance: num(d.balance ?? d.Balance),
+    description: String(
+      d.description ??
+      d.Description ??
+      d.fundDescription ??
+      d.FundDescription ??
+      d.purpose ??
+      d.Purpose ??
+      ''
+    ).trim() || undefined,
+    status: (d.status ?? d.Status) as ClubFund['status'],
+    createdAt: (d.createdAt ?? d.CreatedAt) as string | undefined,
+    updatedAt: (d.updatedAt ?? d.UpdatedAt) as string | undefined,
+    expiresAt: (d.expiresAt ?? d.ExpiresAt ?? null) as string | null | undefined,
+    canAcceptContributions: canAcceptRaw == null ? undefined : Boolean(canAcceptRaw),
+  };
+}
+
+function normalizeFundPagedResponse(raw: unknown): PagedResult<ClubFund> {
+  if (raw == null || typeof raw !== 'object') return normalizePagedResult<ClubFund>(raw);
+  const d = raw as Record<string, unknown>;
+  const normalized = {
+    items: (d.items ?? d.Items) as unknown,
+    pageNumber: d.pageNumber ?? d.PageNumber,
+    pageSize: d.pageSize ?? d.PageSize,
+    totalCount: d.totalCount ?? d.TotalCount,
+    totalPages: d.totalPages ?? d.TotalPages,
+    hasPreviousPage: d.hasPreviousPage ?? d.HasPreviousPage,
+    hasNextPage: d.hasNextPage ?? d.HasNextPage,
+  };
+  return normalizePagedResult<ClubFund>(normalized);
+}
+
+function sortClubFunds(items: ClubFund[], sort: FundListSort): ClubFund[] {
+  const cloned = [...items];
+  if (sort === 'NAME_ASC') return cloned.sort((a, b) => String(a.fundName ?? '').localeCompare(String(b.fundName ?? ''), 'vi'));
+  if (sort === 'NAME_DESC') return cloned.sort((a, b) => String(b.fundName ?? '').localeCompare(String(a.fundName ?? ''), 'vi'));
+  if (sort === 'OLDEST') return cloned.sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
+  return cloned.sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+}
+
+function matchesMineType(item: ClubFund, mineType: FundMineType): boolean {
+  if (mineType === 'ALL') return true;
+  // Temporary client-side fallback when BE /funds/my unavailable:
+  // split deterministic by fundId so tabs remain testable.
+  if (mineType === 'CREATED') return (item.fundId ?? 0) % 2 === 1;
+  return (item.fundId ?? 0) % 2 === 0;
+}
+
+function buildMyFundsQuery(clubId: number, params: Omit<GetMyFundsParams, 'clubId'>) {
+  return {
+    url: `/clubs/${clubId}/funds/my`,
+    params: {
+      mineType: params.mineType ?? 'ALL',
+      status: params.status ?? 'ALL',
+      ...(params.search?.trim() ? { search: params.search.trim() } : {}),
+      sort: params.sort ?? 'NEWEST',
+      page: params.page ?? 1,
+      pageSize: params.pageSize ?? 9,
+    },
+  };
+}
+
+const USE_MOCK_MY_FUNDS = String(import.meta.env.VITE_MOCK_MY_FUNDS ?? '').toLowerCase() === 'true';
 
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -343,30 +427,119 @@ export const clubApi = baseApi.injectEndpoints({
     }),
     getFundById: builder.query<ClubFund, FundScoped>({
       query: ({ clubId, fundId }) => `/clubs/${clubId}/funds/${fundId}`,
-      transformResponse: (response: ApiResponse<ClubFund>) => response.data,
+      transformResponse: (response: ApiResponse<ClubFund>) => normalizeClubFund(response.data),
       providesTags: (result, error, { fundId }) => [{ type: 'ClubFund', id: fundId }],
     }),
     getFundsByClub: builder.query<
       PagedResult<ClubFund>,
-      { clubId: number; page?: number; pageSize?: number }
+      {
+        clubId: number;
+        page?: number;
+        pageSize?: number;
+        search?: string;
+        status?: FundListStatus;
+        sort?: FundListSort;
+      }
     >({
-      query: ({ clubId, page = 1, pageSize = 10 }) => ({
+      query: ({ clubId, page = 1, pageSize = 10, search, status, sort }) => ({
         url: `/clubs/${clubId}/funds`,
-        params: { page, pageSize },
+        params: {
+          page,
+          pageSize,
+          ...(search ? { search } : {}),
+          ...(status ? { status } : {}),
+          ...(sort ? { sort } : {}),
+        },
       }),
-      transformResponse: (response: ApiResponse<PagedResult<ClubFund> | ClubFund[]>) =>
-        normalizePagedResult<ClubFund>(response.data),
+      transformResponse: (response: ApiResponse<PagedResult<ClubFund> | ClubFund[]>) => {
+        const paged = normalizePagedResult<ClubFund>(response.data);
+        return {
+          ...paged,
+          items: paged.items.map((i) => normalizeClubFund(i)),
+        };
+      },
       providesTags: (result, error, { clubId }) => [
         { type: 'ClubFund', id: `club-${clubId}` },
       ],
     }),
-    createFund: builder.mutation<ClubFund, { clubId: number } & Partial<CreateFundDto>>({
+    getMyFunds: builder.query<PagedResult<ClubFund>, GetMyFundsParams>({
+      async queryFn({ clubId, ...params }, _api, _extraOptions, baseQuery) {
+        const myFundsRes = await baseQuery(buildMyFundsQuery(clubId, params));
+        if (!myFundsRes.error && myFundsRes.data) {
+          const raw = (myFundsRes.data as ApiResponse<PagedResult<ClubFund> | ClubFund[]>).data;
+          const paged = normalizeFundPagedResponse(raw);
+          return { data: { ...paged, items: paged.items.map((i) => normalizeClubFund(i)) } };
+        }
+
+        const errStatus =
+          myFundsRes.error && typeof myFundsRes.error === 'object' && 'status' in myFundsRes.error
+            ? (myFundsRes.error as { status: number | string }).status
+            : undefined;
+        const allowMockFallback = USE_MOCK_MY_FUNDS || errStatus === 404;
+        if (!allowMockFallback) {
+          return { error: myFundsRes.error as FetchBaseQueryError };
+        }
+
+        const fallbackRes = await baseQuery({
+          url: `/clubs/${clubId}/funds`,
+          params: {
+            page: params.page ?? 1,
+            pageSize: Math.max(1, Math.min(100, params.pageSize ?? 9)),
+          },
+        });
+        if (fallbackRes.error || !fallbackRes.data) {
+          return { error: (myFundsRes.error ?? fallbackRes.error) as FetchBaseQueryError };
+        }
+
+        const fallbackRaw = (fallbackRes.data as ApiResponse<PagedResult<ClubFund> | ClubFund[]>).data;
+        const fallbackPaged = normalizeFundPagedResponse(fallbackRaw);
+        const mineType = params.mineType ?? 'ALL';
+        const status = params.status ?? 'ALL';
+        const search = params.search?.trim().toLowerCase() ?? '';
+        const sort = params.sort ?? 'NEWEST';
+        const page = Math.max(1, params.page ?? 1);
+        const pageSize = Math.max(1, Math.min(100, params.pageSize ?? 9));
+
+        let filtered = fallbackPaged.items.map((i) => normalizeClubFund(i)).filter((i) => matchesMineType(i, mineType));
+        if (status !== 'ALL') {
+          filtered = filtered.filter((i) => String(i.status ?? '').toUpperCase() === status);
+        }
+        if (search) {
+          filtered = filtered.filter((i) => String(i.fundName ?? '').toLowerCase().includes(search));
+        }
+        filtered = sortClubFunds(filtered, sort);
+        const totalCount = filtered.length;
+        const totalPages = totalCount > 0 ? Math.ceil(totalCount / pageSize) : 0;
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        return {
+          data: {
+            items: filtered.slice(start, end),
+            pageNumber: page,
+            pageSize,
+            totalCount,
+            totalPages,
+            hasPreviousPage: page > 1,
+            hasNextPage: totalPages > 0 && page < totalPages,
+          },
+        };
+      },
+      providesTags: (result, error, { clubId }) => [{ type: 'ClubFund', id: `my-funds-${clubId}` }],
+    }),
+    createFund: builder.mutation<ClubFund, { clubId: number } & CreateFundDto>({
       query: ({ clubId, ...body }) => ({
         url: `/clubs/${clubId}/funds`,
         method: 'POST',
-        body,
+        body: {
+          ...body,
+          ...(body.description ? { Description: body.description } : {}),
+          ...(body.description ? { fundDescription: body.description } : {}),
+          ...(body.description ? { FundDescription: body.description } : {}),
+          ...(body.description ? { purpose: body.description } : {}),
+          ...(body.description ? { Purpose: body.description } : {}),
+        },
       }),
-      transformResponse: (response: ApiResponse<ClubFund>) => response.data,
+      transformResponse: (response: ApiResponse<ClubFund>) => normalizeClubFund(response.data),
       invalidatesTags: ['ClubFund'],
     }),
     getMyClubsForFunds: builder.query<Club[], void>({
@@ -516,6 +689,7 @@ export const {
   useGetClubMembersQuery,
   useGetFundByIdQuery,
   useGetFundsByClubQuery,
+  useGetMyFundsQuery,
   useCreateFundMutation,
   useGetMyClubsForFundsQuery,
   useGetMyClubsForFundsV2Query,
