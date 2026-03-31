@@ -19,11 +19,13 @@ interface NavItem {
 interface SidebarProps {
   currentPath?: string;
   isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export function Sidebar({
   currentPath = '/dashboard',
-  isOpen = true
+  isOpen = true,
+  onClose,
 }: SidebarProps) {
   const navigate = useNavigate();
   const { toggleExpand, isExpanded } = useExpandedMenu();
@@ -64,6 +66,11 @@ export function Sidebar({
   }, []);
 
   const { t } = useTranslation('common');
+  const handleNavigate = (url?: string) => {
+    if (!url) return;
+    navigate(url);
+    onClose?.();
+  };
 
   const navItems: NavItem[] = [
     { label: t('sidebar.dashboard'), icon: 'fa-th-large', url: '/dashboard' },
@@ -188,7 +195,7 @@ export function Sidebar({
                 </button>
               ) : (
                 <button
-                  onClick={() => item.url && navigate(item.url)}
+                  onClick={() => handleNavigate(item.url)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer ${isActive
                     ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-r-4 border-blue-500 text-white font-semibold shadow-lg'
                     : 'text-white/70 hover:bg-white/5'
@@ -206,7 +213,7 @@ export function Sidebar({
                     return (
                       <button
                         key={subItem.url}
-                        onClick={() => navigate(subItem.url)}
+                        onClick={() => handleNavigate(subItem.url)}
                         className={`w-full flex items-center gap-3 px-2 py-2 rounded-md transition-all text-sm cursor-pointer ${isSubActive
                           ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 border-l-4 border-blue-400 text-white font-semibold'
                           : 'text-white/80 hover:bg-slate-700 hover:text-white'
