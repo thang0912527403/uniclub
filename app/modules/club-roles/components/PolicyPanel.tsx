@@ -193,7 +193,7 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
 
     const handleSave = async () => {
         try {
-            await updatePolicies({ clubId: role.clubId, roleId: role.clubRoleId, policyIds: [...selected] }).unwrap();
+            await updatePolicies({ clubId: role.clubId ?? 0, roleId: role.clubRoleId, policyIds: [...selected] }).unwrap();
             showNotification({
                 type: 'success',
                 title: 'Cập nhật quyền thành công!',

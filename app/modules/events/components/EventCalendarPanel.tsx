@@ -182,7 +182,6 @@ export function EventCalendarPanel({
             title: `📋 Đăng ký: ${fmtDateTime(state.registration.start)} → ${fmtDateTime(state.registration.end)}`,
             start: state.registration.start,
             end: state.registration.end,
-            allDay: true,
             backgroundColor: COLORS.registration.bg,
             borderColor: COLORS.registration.border,
             textColor: COLORS.registration.text,
