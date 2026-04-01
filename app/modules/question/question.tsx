@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router';
 import Navbar from '../../components/Navbar';
 import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
 import ProgressBar from './components/progressBar';
 import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationByUserAndFormQuery, useGetFormsByCampaignQuery } from '../../cores/api/applicationApi';
+import { useGetRecruitmentCampaignQuery, useGetRecruitmentCampaignsQuery } from '../../cores/api';
 import { getUserId } from '~/utils/auth';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import type { ApplicationAnswerItemDto } from '../../cores/api';
@@ -18,34 +19,49 @@ import type { ApplicationAnswerItemDto } from '../../cores/api';
 const QuestionPage: React.FC = () => {
   const { formId: idParam } = useParams<{ formId?: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const idFromUrl = idParam ? Number(idParam) : NaN;
+  const clubIdFromQuery = Number(searchParams.get('clubId')) || 0;
 
-  // We'll try to treat the ID as both a Form ID and a Campaign ID (to find the form)
-  // 1. Fetch forms for the ID in case it's a campaign ID
-  const { data: campaignForms = [] } = useGetFormsByCampaignQuery(idFromUrl, {
-    skip: !idFromUrl || isNaN(idFromUrl),
+  const { data: allCampaigns } = useGetRecruitmentCampaignsQuery(undefined, {
+    skip: !!clubIdFromQuery || !idFromUrl || isNaN(idFromUrl),
   });
+  const resolvedClubId =
+    clubIdFromQuery || allCampaigns?.find((c) => c.campaignId === idFromUrl)?.clubId || 0;
 
-  // 2. Determine the actual form ID to use:
+  // 1. Coi idFromUrl là campaignId; cần clubId trong path API (query ?clubId= hoặc suy ra từ danh sách)
+  const { data: campaign } = useGetRecruitmentCampaignQuery(
+    { clubId: resolvedClubId, campaignId: idFromUrl },
+    { skip: !idFromUrl || isNaN(idFromUrl) || !resolvedClubId },
+  );
+  const clubId = campaign?.clubId ?? resolvedClubId;
+
+  // 2. Fetch forms for the campaign (requires clubId)
+  const { data: campaignForms = [] } = useGetFormsByCampaignQuery(
+    { clubId, campaignId: idFromUrl },
+    { skip: !idFromUrl || isNaN(idFromUrl) || !clubId },
+  );
+
+  // 3. Determine the actual form ID to use:
   // - If it's a valid campaign with forms, use the first form's ID
   // - Otherwise, assume the ID in the URL is the form ID itself
   const actualFormId = campaignForms.length > 0 ? campaignForms[0].formId : idFromUrl;
 
   const currentUserId = getUserId();
   const { user: currentUser, isLoading: userLoading } = useCurrentUser();
-  const { 
-    data: questions = [], 
-    isLoading: questionsLoading, 
-    error: questionsError 
-  } = useGetQuestionsByFormQuery(actualFormId, { skip: !actualFormId || isNaN(actualFormId) });
+  const {
+    data: questions = [],
+    isLoading: questionsLoading,
+    error: questionsError
+  } = useGetQuestionsByFormQuery({ clubId, formId: actualFormId }, { skip: !actualFormId || isNaN(actualFormId) || !clubId });
 
   const [submitApplication, { isLoading: isSubmitting, error: submitError, isSuccess }] = useSubmitApplicationMutation();
 
   // Check if user already applied to this form
   const { data: existingApp, isLoading: checkingApp } = useGetApplicationByUserAndFormQuery(
-    { userId: currentUserId, formId: actualFormId },
-    { skip: !currentUserId || !actualFormId || isNaN(actualFormId) }
+    { clubId, userId: currentUserId, formId: actualFormId },
+    { skip: !currentUserId || !actualFormId || isNaN(actualFormId) || !clubId }
   );
 
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -78,7 +94,7 @@ const QuestionPage: React.FC = () => {
         answerText: toAnswerText(value).trim(),
       }));
     try {
-      await submitApplication({ formId: actualFormId, userId: currentUserId, answers: answerList }).unwrap();
+      await submitApplication({ clubId, formId: actualFormId, userId: currentUserId, answers: answerList }).unwrap();
     } catch (_) { /* error shown via submitError */ }
   };
 
@@ -127,7 +143,7 @@ const QuestionPage: React.FC = () => {
               Bạn cần đăng nhập để nộp đơn ứng tuyển. Vui lòng đăng nhập và thử lại.
             </p>
             <Link
-              to={`/auth/login?redirect=/question/${actualFormId}`}
+              to={`/auth/login?redirect=${encodeURIComponent(`/question/${actualFormId}${clubId ? `?clubId=${clubId}` : ''}`)}`}
               className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all mb-3"
             >
               <i className="fa-solid fa-right-to-bracket mr-2" />

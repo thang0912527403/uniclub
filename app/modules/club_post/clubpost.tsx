@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import Navbar from '../../components/Navbar';
 import PostCard from './components/PostCard';
 import PostFilter from './components/PostFilter';
-import { useGetClubPostsQuery } from '~/cores/api';
+import { useGetAllClubPostsQuery } from '~/cores/api';
 import { useGetClubsQuery } from '~/cores/api';
 import { ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 const NewsPage: React.FC = () => {
-  const { data: allPosts = [] } = useGetClubPostsQuery();
+  const { data: allPosts = [] } = useGetAllClubPostsQuery();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Tất cả");
   const { data: clubs = [] } = useGetClubsQuery();

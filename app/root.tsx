@@ -10,6 +10,7 @@ import { Provider } from 'react-redux';
 import { store } from './cores/store';
 import { NotificationProvider } from '~/components/Notification';
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import '~/utils/i18n';
 import type { Route } from "./+types/root";
 import "./app.css";
 

@@ -3,7 +3,7 @@ import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useGetClubPostByIdQuery, useUpdateClubPostMutation } from '~/cores/api/clubApi';
 import { ArrowLeft, FileImage, Save, X, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -43,6 +43,8 @@ const inputCls = "w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.
 export default function EditClubPostModule() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const clubIdFromQuery = Number(searchParams.get('clubId')) || 0;
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const [updateClubPost, { isLoading: isSaving }] = useUpdateClubPostMutation();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,7 +84,12 @@ export default function EditClubPostModule() {
         fd.append('status', form.status);
         if (imageFile) fd.append('imageFile', imageFile);
         try {
-            await updateClubPost({ id: Number(id), formData: fd }).unwrap();
+            const cid = post?.clubId ?? clubIdFromQuery;
+            if (!cid) {
+                setToast({ msg: 'Thiếu clubId (thêm ?clubId= vào URL).', type: 'error' });
+                return;
+            }
+            await updateClubPost({ clubId: cid, id: Number(id), formData: fd }).unwrap();
             setToast({ msg: 'Cập nhật thành công!', type: 'success' });
             setTimeout(() => navigate('/club/posts'), 1500);
         } catch {

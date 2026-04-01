@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clock, User, ArrowRight, TrendingUp } from 'lucide-react';
-import { useGetClubPostsQuery } from '~/cores/api';
+import { useGetAllClubPostsQuery } from '~/cores/api';
 import { useNavigate } from 'react-router';
 
 /*
@@ -96,12 +96,13 @@ function Meta({ userName, postDate }: { userName?: string; postDate: string }) {
    ════════════════════════════════════════════ */
 const ClubNewsFeed = () => {
     const navigate = useNavigate();
-    const { data: posts = [], isLoading, isError } = useGetClubPostsQuery();
+    const { data: posts = [], isLoading, isError } = useGetAllClubPostsQuery();
 
     if (isLoading) return <Skeleton />;
     if (isError || posts.length === 0) return null;
 
-    const go = (id: number) => navigate(`/club/posts/${id}`);
+    const go = (postId: number, cid: number) =>
+        navigate(`/club/posts/${postId}?clubId=${cid}`);
 
     /* Layout slots */
     const hero = posts[0];
@@ -196,7 +197,7 @@ const ClubNewsFeed = () => {
                     {/* Hero card – overlaid gradient, big title */}
                     {hero && (
                         <article
-                            onClick={() => go(hero.postId)}
+                            onClick={() => go(hero.postId, hero.clubId)}
                             className="col-span-12 lg:col-span-7 relative overflow-hidden rounded-2xl cursor-pointer group shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow duration-300"
                             aria-label={hero.title}
                             style={{ minHeight: '400px' }}
@@ -244,7 +245,7 @@ const ClubNewsFeed = () => {
                         {[sub1, sub2].map((post, i) => post && (
                             <article
                                 key={post.postId}
-                                onClick={() => go(post.postId)}
+                                onClick={() => go(post.postId, post.clubId)}
                                 className="flex-1 relative overflow-hidden rounded-2xl cursor-pointer group shadow-[0_4px_15px_rgba(0,0,0,0.07)] hover:shadow-[0_6px_22px_rgba(0,0,0,0.13)] transition-shadow duration-300"
                                 aria-label={post.title}
                                 style={{ minHeight: '190px' }}
@@ -286,7 +287,7 @@ const ClubNewsFeed = () => {
                         {row.map((post) => (
                             <article
                                 key={post.postId}
-                                onClick={() => go(post.postId)}
+                                onClick={() => go(post.postId, post.clubId)}
                                 className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white rounded-2xl overflow-hidden cursor-pointer group shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300"
                                 aria-label={post.title}
                             >
@@ -320,7 +321,7 @@ const ClubNewsFeed = () => {
                                     {mini.map((post, idx) => (
                                         <div
                                             key={post.postId}
-                                            onClick={() => go(post.postId)}
+                                            onClick={() => go(post.postId, post.clubId)}
                                             className={`flex gap-3 cursor-pointer group py-3 ${idx < mini.length - 1 ? 'border-b border-zinc-100' : ''}`}
                                         >
                                             <div className="w-14 h-11 rounded-lg overflow-hidden shrink-0">

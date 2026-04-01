@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { getUserId } from '~/utils/auth';
 import { useGetApplicationsByUserQuery } from '~/cores/api/applicationApi';
+import { useClubRole } from '~/hooks/useClubRole';
 import { APPLICATION_STATUS } from '~/cores/api/types/application';
 import { Loading } from '~/components/Loading';
 import { Error } from '~/components/Error';
@@ -27,7 +28,12 @@ export default function MyApplications() {
   const loadingUser = false;
   const userId = currentUserId || TEST_USER_ID;
   const isTestMode = !currentUserId;
-  const { data: applications = [], isLoading, error } = useGetApplicationsByUserQuery(userId);
+  const { clubManagerMembership } = useClubRole();
+  const clubId = clubManagerMembership?.clubId ?? 0;
+  const { data: applications = [], isLoading, error } = useGetApplicationsByUserQuery(
+    { clubId, userId },
+    { skip: !clubId },
+  );
 
   if (loadingUser || isLoading) {
     return <Loading message="Đang tải đơn của bạn..." />;

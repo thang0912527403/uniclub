@@ -142,7 +142,7 @@ export default function ClubRolesModule() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <SettingButton />
-            <Sidebar currentPath="/club-roles" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+            <Sidebar currentPath="/club-roles" isOpen={isSidebarOpen} />
             <HeaderBar
                 title="Phân quyền Vai Trò"
                 breadcrumb="Pages / Club Roles"

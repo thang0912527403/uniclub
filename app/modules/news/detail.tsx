@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
-import { useGetClubPostByIdQuery, useGetClubPostsQuery } from '~/cores/api/clubApi';
+import { useGetClubPostByIdQuery, useGetAllClubPostsQuery } from '~/cores/api/clubApi';
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 function formatDate(dateStr: string) {
@@ -45,8 +45,8 @@ function getStatusStyle(status: string) {
 const NewsDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { data: post, isLoading, error } = useGetClubPostByIdQuery(Number(id));
-    const { data: allPosts = [] } = useGetClubPostsQuery();
+    const { data: post, isLoading, error } = useGetClubPostByIdQuery({ postId: Number(id) });
+    const { data: allPosts = [] } = useGetAllClubPostsQuery();
 
     /* Related posts: same club, exclude current, max 4 */
     const relatedPosts = React.useMemo(() => {
