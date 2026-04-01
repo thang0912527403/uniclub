@@ -675,9 +675,8 @@ function DeleteModal({
             Hủy
           </button>
           <button onClick={onConfirm} disabled={isLoading}
-            className={`cursor-pointer px-5 py-2 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed ${
-              isManager ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'
-            }`}>
+            className={`cursor-pointer px-5 py-2 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed ${isManager ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'
+              }`}>
             {isLoading && <i className="fas fa-spinner fa-spin text-sm"></i>}
             {isManager ? 'Xóa phòng ban & vai trò' : 'Xóa vai trò'}
           </button>
@@ -849,8 +848,27 @@ export default function ClubStructureModule() {
       setModalMode(null);
       setSelectedRole(null);
     } catch (err) {
-      const rtkErr = err as { data?: { message?: string } };
-      showNotification({ type: 'error', title: 'Thao tác thất bại', message: rtkErr?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
+      const rtkErr = err as {
+        status?: number;
+        data?: { message?: string };
+      };
+
+      if (rtkErr?.status === 403) {
+        showNotification({
+          type: 'error',
+          title: 'Không có quyền',
+          message: 'Bạn không có quyền thực hiện thao tác này!',
+          duration: 4000
+        });
+        return;
+      }
+
+      showNotification({
+        type: 'error',
+        title: 'Thao tác thất bại',
+        message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
+        duration: 4000
+      });
     }
   };
 
@@ -885,7 +903,7 @@ export default function ClubStructureModule() {
   return (
     <div className="min-h-screen">
       <SettingButton />
-      <Sidebar currentPath={`/clubs/${id}/structure`} isOpen={isSidebarOpen}/>
+      <Sidebar currentPath={`/clubs/${id}/structure`} isOpen={isSidebarOpen} />
       <HeaderBar
         title="Cấu trúc Câu lạc bộ"
         breadcrumb={`Pages / Clubs / ${id} / Structure`}

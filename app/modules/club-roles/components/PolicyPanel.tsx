@@ -213,12 +213,26 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
             });
             setDirty(false);
         } catch (err) {
-            const rtkErr = err as { data?: { message?: string } };
+            const rtkErr = err as {
+                status?: number;
+                data?: { message?: string };
+            };
+
+            if (rtkErr?.status === 403) {
+                showNotification({
+                    type: 'error',
+                    title: 'Không có quyền',
+                    message: 'Bạn không có quyền thực hiện thao tác này!',
+                    duration: 4000
+                });
+                return;
+            }
+
             showNotification({
                 type: 'error',
-                title: 'Cập nhật quyền thất bại',
+                title: 'Thao tác thất bại',
                 message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
-                duration: 4000,
+                duration: 4000
             });
         }
     };
