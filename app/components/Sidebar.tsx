@@ -79,7 +79,7 @@ export function Sidebar({
       icon: 'fa-building',
       subItems: [
         { label: t('sidebar.manageClub.allClubs'), url: '/clubs' },
-        { label: t('sidebar.manageClub.clubStructure'), url: `/clubs/${getClubId() || 1}/structure` },
+        { label: t('sidebar.manageClub.clubStructure'), url: `/clubs/${getClubId() || 1}/organization` },
         { label: t('sidebar.manageClub.clubRoles'), url: '/club-roles' },
         { label: t('sidebar.manageClub.yourClubInfo'), url: '/club/info' },
         { label: t('sidebar.manageClub.manageClubName'), url: '/club/name' },

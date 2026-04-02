@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import type { ApiResponse, User, CreateUserDto, UpdateUserDto, Club } from "./types";
+import type { ApiResponse, User, CreateUserDto, UpdateUserDto, Club, UserDepartment } from "./types";
 
 export interface GetUsersResult {
   items: User[];
@@ -142,6 +142,13 @@ export const userApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<Club[]>) => response.data,
       providesTags: ['Club'],
     }),
+
+    // Lấy danh sách department mà user tham gia trong club
+    getUserDepartments: builder.query<UserDepartment[], { clubId: number }>({
+      query: ({ clubId }) => `/Users/me/club/${clubId}/all-department`,
+      transformResponse: (response: ApiResponse<UserDepartment[]>) => response.data ?? [],
+      providesTags: ['Department'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -155,5 +162,6 @@ export const {
   useGetUserClubInfoQuery,
   useUploadAvatarMutation,
   useGetUserAllClubsQuery,
-  useGetManagedClubsQuery
+  useGetManagedClubsQuery,
+  useGetUserDepartmentsQuery,
 } = userApi;
