@@ -38,6 +38,11 @@ export const departmentApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ['Department'],
         }),
+        getDepartmentMembers: builder.query<import('./types/department').DepartmentMember[], { clubId: number; departmentId: number }>({
+            query: ({ clubId, departmentId }) => `/club/${clubId}/Department/${departmentId}/all-members`,
+            transformResponse: (response: ApiResponse<import('./types/department').DepartmentMember[]>) => response.data ?? [],
+            providesTags: ['Member'],
+        }),
     }),
 });
 
@@ -47,4 +52,5 @@ export const {
     useCreateDepartmentMutation,
     useUpdateDepartmentMutation,
     useDeleteDepartmentMutation,
+    useGetDepartmentMembersQuery,
 } = departmentApi;

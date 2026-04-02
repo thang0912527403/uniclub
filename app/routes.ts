@@ -44,11 +44,15 @@ export default [
     route("clubs/:id", "routes/clubs/clubs.$id.tsx"),
     route("clubs/create", "routes/clubs/clubs.create.tsx"),
     route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
-    route("clubs/:id/structure", "routes/clubs/clubs.$id.structure.tsx"),
+    route("clubs/:id/organization", "routes/clubs/clubs.$id.structure.tsx"),
     route("clubs/:id/funds/:fundId", "routes/clubs/clubs.$id.funds.$fundId.tsx"),
     route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
     route("club-roles", "routes/club-roles.tsx"),
     route("manage-clubs", "routes/my-clubs.tsx"),
+
+    // Department
+    route("department", "routes/department.tsx"),
+    route("department/:id", "routes/department.detail.tsx"),
 
     // Club content management
     route("club/manage-posts", "routes/clubs/clubpost.tsx"),
