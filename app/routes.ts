@@ -85,7 +85,6 @@ export default [
     route("funds/my", "routes/funds.my.tsx"),
     route("funds/transactions", "routes/funds.transactions.tsx"),
     route("funds/reports", "routes/funds.reports.tsx"),
-    route("funds/settings", "routes/funds.settings.tsx"),
     route("funds/:fundId", "routes/funds.$fundId.tsx"),
 
     // Meeting (WebRTC)

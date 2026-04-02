@@ -133,7 +133,6 @@ export function Sidebar({
         { label: t('sidebar.manageFunds.budgetOverview'), url: '/funds' },
         { label: t('sidebar.manageFunds.myFunds'), url: '/funds/my' },
         { label: t('sidebar.manageFunds.transactions'), url: '/funds/reports?tab=transactions' },
-        { label: t('sidebar.manageFunds.fundSettings'), url: '/funds/settings' },
       ]
     },
   ];
