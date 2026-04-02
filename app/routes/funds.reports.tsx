@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import Cookies from 'js-cookie';
 import { setClubId } from '~/utils/auth';
 import { BarChart3, Loader2, Lock, RefreshCw, ArrowRightLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
+import { useNotification } from '~/components/Notification';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useFundsClubSelection } from '~/hooks/useFundsClubSelection';
@@ -33,6 +34,52 @@ function ymdToUtcEndIso(ymd: string): string | undefined {
   const [y, m, d] = ymd.split('-').map(Number);
   if (!y || !m || !d) return undefined;
   return new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999)).toISOString();
+}
+
+function hasInvalidYmdRange(fromYmd: string, toYmd: string): boolean {
+  if (!fromYmd || !toYmd) return false;
+  return fromYmd > toYmd;
+}
+
+const DATE_RANGE_INVALID_MESSAGE = 'Từ ngày không được lớn hơn đến ngày.';
+
+type ApiErrorShape = {
+  status?: number;
+  data?: {
+    message?: string;
+    errorCode?: string;
+    code?: string;
+    error?: {
+      code?: string;
+      errorCode?: string;
+    };
+  };
+};
+
+function getApiErrorMeta(error: unknown): { status?: number; message?: string; errorCode?: string } {
+  if (!error || typeof error !== 'object') return {};
+  const e = error as ApiErrorShape;
+  const status = typeof e.status === 'number' ? e.status : undefined;
+  const message = e.data?.message;
+  const errorCodeRaw = e.data?.errorCode ?? e.data?.code ?? e.data?.error?.errorCode ?? e.data?.error?.code;
+  const errorCode = typeof errorCodeRaw === 'string' ? errorCodeRaw.trim().toUpperCase() : undefined;
+  return { status, message, errorCode };
+}
+
+function isDateRangeBadRequest(status: number | undefined, message: string | undefined, errorCode?: string): boolean {
+  if (status !== 400) return false;
+  if (errorCode === 'INVALID_DATE_RANGE') return true;
+  const normalized = String(message ?? '').trim().toLowerCase();
+  if (!normalized) return false;
+  return (
+    normalized.includes('từ ngày') ||
+    normalized.includes('đến ngày') ||
+    normalized.includes('fromutc') ||
+    normalized.includes('toutc') ||
+    normalized.includes('from date') ||
+    normalized.includes('to date') ||
+    normalized.includes('date range')
+  );
 }
 
 function formatVnd(n: number): string {
@@ -68,16 +115,6 @@ function txSenderLabel(item: FundHistoryItem): string {
   );
 }
 
-function txCategoryLabel(item: FundHistoryItem): string {
-  const r = item as FundHistoryItem & Record<string, unknown>;
-  const name = r.categoryName ?? r.CategoryName;
-  if (typeof name === 'string' && name.trim()) return name.trim();
-  const id = r.categoryId ?? r.CategoryId;
-  const num = typeof id === 'number' ? id : Number(id);
-  if (Number.isFinite(num)) return `ID ${num}`;
-  return '—';
-}
-
 function txTimeIso(item: FundHistoryItem): string | undefined {
   const r = item as FundHistoryItem & Record<string, unknown>;
   const pick = (...keys: string[]) => {
@@ -102,6 +139,9 @@ type FundsReportTab = 'summary' | 'transactions';
 export default function FundsReportsPage() {
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+  const { show: showNotification } = useNotification();
+  const lastSummaryErrorToastRef = useRef('');
+  const lastTxErrorToastRef = useRef('');
   const [searchParams, setSearchParams] = useSearchParams();
   const hasToken = !!Cookies.get('accessToken');
 
@@ -177,8 +217,11 @@ export default function FundsReportsPage() {
     capsOtherError ||
     (caps !== undefined && !hasViewFinancePolicy);
 
-  const skipReport = activeTab !== 'summary' || skipTxBase;
-  const skipTx = activeTab !== 'transactions' || skipTxBase;
+  const summaryAppliedInvalidDateRange = hasInvalidYmdRange(appliedFrom, appliedTo);
+  const skipReport = activeTab !== 'summary' || skipTxBase || summaryAppliedInvalidDateRange;
+  const txAppliedInvalidDateRange = hasInvalidYmdRange(txAppliedFrom, txAppliedTo);
+  const skipTx = activeTab !== 'transactions' || skipTxBase || txAppliedInvalidDateRange;
+  const summaryFiltersDisabled = !clubId || skipTxBase;
 
   const {
     data: summary,
@@ -192,11 +235,18 @@ export default function FundsReportsPage() {
     { skip: skipReport },
   );
 
-  const summaryErrorStatus =
-    summaryError && typeof summaryError === 'object' && 'status' in summaryError
-      ? (summaryError as { status: number }).status
-      : undefined;
+  const summaryErrorMeta = getApiErrorMeta(summaryError);
+  const summaryErrorStatus = summaryErrorMeta.status;
+  const summaryApiErrorMessage = summaryErrorMeta.message;
   const summaryForbidden = summaryIsError && summaryErrorStatus === 403;
+  const summaryIsDateRange400 = isDateRangeBadRequest(
+    summaryErrorStatus,
+    summaryApiErrorMessage,
+    summaryErrorMeta.errorCode,
+  );
+  const summaryDateRangeErrorMessage = summaryIsDateRange400
+    ? summaryApiErrorMessage || DATE_RANGE_INVALID_MESSAGE
+    : '';
 
   const { txFromUtc, txToUtc } = useMemo(() => {
     if (!txAppliedFrom && !txAppliedTo) {
@@ -209,7 +259,7 @@ export default function FundsReportsPage() {
   }, [txAppliedFrom, txAppliedTo]);
 
   const { data: fundsPaged } = useGetFundsByClubQuery(
-    { clubId, page: 1, pageSize: 200 },
+    { clubId, page: 1, pageSize: 100 },
     { skip: skipTx },
   );
 
@@ -234,11 +284,15 @@ export default function FundsReportsPage() {
     { skip: skipTx },
   );
 
-  const txErrorStatus =
-    txError && typeof txError === 'object' && 'status' in txError
-      ? (txError as { status: number }).status
-      : undefined;
+  const txErrorMeta = getApiErrorMeta(txError);
+  const txErrorStatus = txErrorMeta.status;
   const txNotFound = txIsError && txErrorStatus === 404;
+  const txApiErrorMessage = txErrorMeta.message;
+  const txInvalidDateRange = hasInvalidYmdRange(txDraftFrom, txDraftTo);
+  const txIsDateRange400 = isDateRangeBadRequest(txErrorStatus, txApiErrorMessage, txErrorMeta.errorCode);
+  const txDateRangeErrorMessage = txIsDateRange400
+    ? txApiErrorMessage || DATE_RANGE_INVALID_MESSAGE
+    : '';
 
   const txItems = txPaged?.items ?? [];
   const txMeta = txPaged;
@@ -246,6 +300,34 @@ export default function FundsReportsPage() {
   useEffect(() => {
     setTxPage(1);
   }, [clubId, txPageSize, txStatus, txScope, txFundId]);
+
+  useEffect(() => {
+    if (!(summaryIsError && summaryIsDateRange400 && summaryDateRangeErrorMessage)) {
+      lastSummaryErrorToastRef.current = '';
+      return;
+    }
+    if (lastSummaryErrorToastRef.current === summaryDateRangeErrorMessage) return;
+    lastSummaryErrorToastRef.current = summaryDateRangeErrorMessage;
+    showNotification({
+      type: 'error',
+      title: 'Bộ lọc ngày không hợp lệ',
+      message: summaryDateRangeErrorMessage,
+    });
+  }, [summaryIsError, summaryIsDateRange400, summaryDateRangeErrorMessage, showNotification]);
+
+  useEffect(() => {
+    if (!(txIsError && txIsDateRange400 && txDateRangeErrorMessage)) {
+      lastTxErrorToastRef.current = '';
+      return;
+    }
+    if (lastTxErrorToastRef.current === txDateRangeErrorMessage) return;
+    lastTxErrorToastRef.current = txDateRangeErrorMessage;
+    showNotification({
+      type: 'error',
+      title: 'Bộ lọc ngày không hợp lệ',
+      message: txDateRangeErrorMessage,
+    });
+  }, [txIsError, txIsDateRange400, txDateRangeErrorMessage, showNotification]);
 
   const txFiltersDisabled = !clubId || skipTxBase;
 
@@ -255,6 +337,14 @@ export default function FundsReportsPage() {
     : 'bg-white border-slate-200 text-slate-900';
 
   const applyRange = () => {
+    if (hasInvalidYmdRange(draftFrom, draftTo)) {
+      showNotification({
+        type: 'error',
+        title: 'Bộ lọc ngày không hợp lệ',
+        message: DATE_RANGE_INVALID_MESSAGE,
+      });
+      return;
+    }
     setAppliedFrom(draftFrom.trim());
     setAppliedTo(draftTo.trim());
   };
@@ -267,6 +357,14 @@ export default function FundsReportsPage() {
   };
 
   const applyTxFilters = () => {
+    if (txInvalidDateRange) {
+      showNotification({
+        type: 'error',
+        title: 'Bộ lọc ngày không hợp lệ',
+        message: DATE_RANGE_INVALID_MESSAGE,
+      });
+      return;
+    }
     setTxAppliedFrom(txDraftFrom.trim());
     setTxAppliedTo(txDraftTo.trim());
     setTxPage(1);
@@ -368,7 +466,7 @@ export default function FundsReportsPage() {
                     value={draftFrom}
                     onChange={(e) => setDraftFrom(e.target.value)}
                     className={`${t.input} ${inputClass}`}
-                    disabled={!clubId || skipReport}
+                    disabled={summaryFiltersDisabled}
                   />
                 </div>
                 <div className="flex flex-col gap-1 min-w-[140px]">
@@ -381,7 +479,7 @@ export default function FundsReportsPage() {
                     value={draftTo}
                     onChange={(e) => setDraftTo(e.target.value)}
                     className={`${t.input} ${inputClass}`}
-                    disabled={!clubId || skipReport}
+                    disabled={summaryFiltersDisabled}
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -389,18 +487,18 @@ export default function FundsReportsPage() {
                     type="button"
                     onClick={applyRange}
                     className={t.btn.primary}
-                    disabled={!clubId || skipReport}
+                    disabled={summaryFiltersDisabled}
                   >
                     Áp dụng khoảng thời gian
                   </button>
-                  <button type="button" onClick={clearRange} className={t.btn.secondary} disabled={!clubId || skipReport}>
+                  <button type="button" onClick={clearRange} className={t.btn.secondary} disabled={summaryFiltersDisabled}>
                     Xóa lọc ngày
                   </button>
                   <button
                     type="button"
                     onClick={() => void refetch()}
                     className={`${t.btn.secondary} inline-flex items-center gap-2`}
-                    disabled={skipReport || summaryLoading}
+                    disabled={summaryFiltersDisabled || summaryLoading}
                   >
                     <RefreshCw className={`w-4 h-4 ${summaryFetching ? 'animate-spin' : ''}`} aria-hidden />
                     Làm mới
@@ -593,10 +691,7 @@ export default function FundsReportsPage() {
                 </div>
               ) : txIsError ? (
                 <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-700 dark:text-red-200 text-sm space-y-2" role="alert">
-                  <p>
-                    {(txError as { data?: { message?: string } })?.data?.message ||
-                      'Không tải được danh sách giao dịch. Thử lại sau.'}
-                  </p>
+                  <p>{txDateRangeErrorMessage || txApiErrorMessage || 'Không tải được danh sách giao dịch. Thử lại sau.'}</p>
                   <button type="button" onClick={() => void refetchTx()} className={`${t.btn.secondary} !min-h-0 !py-1.5 !px-3 text-xs`}>
                     Thử lại
                   </button>
@@ -622,9 +717,6 @@ export default function FundsReportsPage() {
                             Người gửi
                           </th>
                           <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
-                            Danh mục
-                          </th>
-                          <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
                             Số tiền
                           </th>
                           <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
@@ -632,9 +724,6 @@ export default function FundsReportsPage() {
                           </th>
                           <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
                             Thời gian
-                          </th>
-                          <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
-                            Trạng thái
                           </th>
                         </tr>
                       </thead>
@@ -648,23 +737,6 @@ export default function FundsReportsPage() {
                         ) : (
                           txItems.map((item) => {
                             const rowKey = item.transactionId ?? item.id ?? `${item.fundId}-${item.createdAt}-${item.updatedAt}`;
-                            const st = String(item.status ?? '').toUpperCase();
-                            const statusLabel =
-                              st === 'APPROVED'
-                                ? 'Đã duyệt'
-                                : st === 'REJECTED'
-                                  ? 'Từ chối'
-                                  : st === 'PENDING'
-                                    ? 'Chờ duyệt'
-                                    : st || '—';
-                            const statusClass =
-                              st === 'APPROVED'
-                                ? 'text-emerald-700 dark:text-emerald-300 font-medium'
-                                : st === 'REJECTED'
-                                  ? 'text-red-700 dark:text-red-300 font-medium'
-                                  : st === 'PENDING'
-                                    ? 'text-amber-700 dark:text-amber-300 font-medium'
-                                    : t.type.muted;
                             return (
                               <tr
                                 key={rowKey}
@@ -679,7 +751,6 @@ export default function FundsReportsPage() {
                                   </Link>
                                 </td>
                                 <td className={`px-4 py-2 ${t.type.body}`}>{txSenderLabel(item)}</td>
-                                <td className={`px-4 py-2 text-sm ${t.type.body}`}>{txCategoryLabel(item)}</td>
                                 <td className={`px-4 py-2 ${t.type.body} whitespace-nowrap`}>
                                   {item.amount != null ? `${Number(item.amount).toLocaleString('vi-VN')} ₫` : '—'}
                                 </td>
@@ -689,7 +760,6 @@ export default function FundsReportsPage() {
                                 <td className={`px-4 py-2 text-sm ${t.type.muted} whitespace-nowrap`}>
                                   {formatTxDateTime(txTimeIso(item))}
                                 </td>
-                                <td className={`px-4 py-2 text-sm ${statusClass}`}>{statusLabel}</td>
                               </tr>
                             );
                           })
@@ -737,7 +807,8 @@ export default function FundsReportsPage() {
           ) : summaryIsError ? (
             <section className={`${t.card.base} p-6 border-red-200 dark:border-red-800/60`} role="alert">
               <p className="text-red-600 dark:text-red-400">
-                {(summaryError as { data?: { message?: string } })?.data?.message ||
+                {summaryDateRangeErrorMessage ||
+                  summaryApiErrorMessage ||
                   'Không tải được báo cáo. Thử lại sau.'}
               </p>
             </section>
