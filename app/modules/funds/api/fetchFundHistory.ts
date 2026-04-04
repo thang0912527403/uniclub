@@ -102,7 +102,6 @@ export async function fetchFundHistory({
       const errData = (await response.json()) as { message?: string };
       if (errData?.message) message = errData.message;
     } catch {
-      // keep fallback message
     }
     throw new Error(message);
   }

@@ -23,6 +23,7 @@ import {
   FUND_HISTORY_SCOPE_OPTIONS,
   FUND_HISTORY_STATUS_OPTIONS,
 } from '~/modules/funds/constants/fundHistory';
+import { FinanceAccessHintBanner, ReportDateFilterNote } from '~/modules/funds/components/FundUxHints';
 
 function ymdToUtcStartIso(ymd: string): string | undefined {
   const [y, m, d] = ymd.split('-').map(Number);
@@ -284,6 +285,12 @@ export default function FundsReportsPage() {
     { skip: skipTx },
   );
 
+  const skipTxnSummaryHint = skipTxBase || activeTab !== 'transactions' || txAppliedInvalidDateRange;
+  const { data: txnSummaryForNote } = useGetFundReportSummaryQuery(
+    { clubId, fromUtc: txFromUtc, toUtc: txToUtc },
+    { skip: skipTxnSummaryHint },
+  );
+
   const txErrorMeta = getApiErrorMeta(txError);
   const txErrorStatus = txErrorMeta.status;
   const txNotFound = txIsError && txErrorStatus === 404;
@@ -423,6 +430,10 @@ export default function FundsReportsPage() {
               )}
             </div>
           </div>
+
+          {clubId > 0 && !capsLoading && hasViewFinancePolicy && caps?.financeAccessHintVi?.trim() ? (
+            <FinanceAccessHintBanner message={caps.financeAccessHintVi} />
+          ) : null}
 
           <div className={`${t.card.base} ${t.space.card} flex flex-wrap items-end gap-4 border-slate-200 dark:border-slate-600`}>
             <div className="flex flex-col gap-1 min-w-[200px]">
@@ -630,6 +641,13 @@ export default function FundsReportsPage() {
                 </div>
               </>
             )}
+            <div className="w-full min-w-0 basis-full">
+              {activeTab === 'summary' ? (
+                <ReportDateFilterNote note={summary?.dateFilterNoteVi} />
+              ) : (
+                <ReportDateFilterNote note={txnSummaryForNote?.dateFilterNoteVi} />
+              )}
+            </div>
           </div>
 
           {!hasToken ? (

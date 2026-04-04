@@ -53,6 +53,37 @@ export function buildFundsListQueryArgs(input: {
   };
 }
 
+export type ParseVndIntegerResult =
+  | { ok: true; amount: number }
+  | { ok: false; message: string };
+
+/**
+ * Chuẩn hóa nhập số tiền VND: chỉ số nguyên; hỗ trợ dấu phân cách hàng nghìn (10.000 hoặc 10,000).
+ */
+export function parseVndIntegerFromInput(raw: string): ParseVndIntegerResult {
+  const trimmed = raw.trim();
+  if (!trimmed) return { ok: false, message: 'Vui lòng nhập số tiền.' };
+  const noSpaces = trimmed.replace(/\s/g, '');
+  let digits: string;
+  if (/^\d+$/.test(noSpaces)) {
+    digits = noSpaces;
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(noSpaces)) {
+    digits = noSpaces.replace(/\./g, '');
+  } else if (/^\d{1,3}(,\d{3})+$/.test(noSpaces)) {
+    digits = noSpaces.replace(/,/g, '');
+  } else {
+    return {
+      ok: false,
+      message:
+        'Chỉ nhập số nguyên (₫). Có thể dùng dấu chấm hoặc phẩy ngăn cách hàng nghìn (ví dụ 50.000). Không dùng số thập phân.',
+    };
+  }
+  if (!digits || !/^\d+$/.test(digits)) return { ok: false, message: 'Số tiền không hợp lệ.' };
+  const amount = Number(digits);
+  if (!Number.isSafeInteger(amount)) return { ok: false, message: 'Số tiền quá lớn hoặc không hợp lệ.' };
+  return { ok: true, amount };
+}
+
 export function applyFilterChangeParams(
   prev: URLSearchParams,
   options: {

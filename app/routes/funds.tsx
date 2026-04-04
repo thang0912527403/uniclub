@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import Cookies from 'js-cookie';
 import {
@@ -29,11 +29,13 @@ import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { useNotification } from '~/components/Notification';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { useClubRole } from '~/hooks/useClubRole';
+import { useClubRole, isManagerRole } from '~/hooks/useClubRole';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
+import { useDialogAccessibility } from '~/hooks/useDialogAccessibility';
 import type { ClubFund } from '~/cores/api';
 import type { FundListSort, FundListStatus } from '~/cores/api/types';
 import { fundTokens as t } from './funds.design-tokens';
+import { FinanceAccessHintBanner, FundCardBalanceHint } from '~/modules/funds/components/FundUxHints';
 import {
   applyFilterChangeParams,
   buildCreateFundPayload,
@@ -158,6 +160,8 @@ export default function FundsPage() {
   const [newFundDescription, setNewFundDescription] = useState('');
   const [newFundExpiresDate, setNewFundExpiresDate] = useState('');
   const [createFundFormError, setCreateFundFormError] = useState<string | null>(null);
+  const [rejectTargetFund, setRejectTargetFund] = useState<ClubFund | null>(null);
+  const [listRejectReason, setListRejectReason] = useState('');
 
   const {
     data: caps,
@@ -174,6 +178,16 @@ export default function FundsPage() {
   const canViewFunds = caps?.canViewFunds ?? false;
   const canCreateFundCap = caps?.canCreateFund ?? false;
   const canApproveOrRejectFundEntity = caps?.canApproveOrRejectFundEntity ?? false;
+  const canFilterFundStatusOnOverview = isAdmin || canApproveOrRejectFundEntity;
+
+  const effectiveFundListStatus: FundListStatus = useMemo(() => {
+    if (canFilterFundStatusOnOverview) return fundStatus;
+    return 'APPROVED';
+  }, [canFilterFundStatusOnOverview, fundStatus]);
+
+  const baselineFundStatusForOverview: FundListStatus = canFilterFundStatusOnOverview
+    ? DEFAULT_FUND_STATUS
+    : 'APPROVED';
 
   const skipFundsQuery =
     !hasToken ||
@@ -192,7 +206,7 @@ export default function FundsPage() {
     page: fundListPage,
     pageSize: fundListPageSize,
     search: fundSearch,
-    status: fundStatus,
+    status: effectiveFundListStatus,
     sort: fundSort,
   }), { skip: skipFundsQuery });
   const availableFunds = fundsPaged?.items ?? [];
@@ -267,8 +281,34 @@ export default function FundsPage() {
 
   const [createFund, { isLoading: isCreatingFund }] = useCreateFundMutation();
   const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
+
+  useEffect(() => {
+    if (!hasToken || clubId < 1 || capsLoading) return;
+    if (!canFilterFundStatusOnOverview && fundStatus !== 'APPROVED') {
+      setSearchParams(
+        (prev) => applyFilterChangeParams(prev, { status: 'APPROVED', pageSize: fundListPageSize }),
+        { replace: true },
+      );
+    }
+  }, [
+    hasToken,
+    clubId,
+    capsLoading,
+    canFilterFundStatusOnOverview,
+    fundStatus,
+    fundListPageSize,
+    setSearchParams,
+  ]);
+
+  const closeListRejectModal = useCallback(() => {
+    setRejectTargetFund(null);
+    setListRejectReason('');
+  }, []);
+
+  const listRejectDialogRef = useDialogAccessibility(rejectTargetFund != null, closeListRejectModal);
+
   const hasActiveFundFilters =
-    !!fundSearch.trim() || fundStatus !== DEFAULT_FUND_STATUS || fundSort !== DEFAULT_FUND_SORT;
+    !!fundSearch.trim() || fundStatus !== baselineFundStatusForOverview || fundSort !== DEFAULT_FUND_SORT;
 
   const bgClass = 'bg-slate-50 dark:bg-[#0F172A]';
   const handleCreateFundSubmit = async (e: React.FormEvent) => {
@@ -292,10 +332,14 @@ export default function FundsPage() {
       setNewFundDescription('');
       setNewFundExpiresDate('');
       setCreateFundFormError(null);
+      const createFundSuccessMessage =
+        isAdmin || isManagerRole(caps?.clubRoleName)
+          ? 'Quỹ đã được tạo.'
+          : 'Quỹ đã được tạo. Quỹ sẽ chờ Quản lý câu lạc bộ duyệt.';
       showNotification({
         type: 'success',
         title: 'Đã tạo quỹ',
-        message: 'Quỹ đã được tạo. Nếu bạn là Vice Manager, quỹ sẽ chờ Manager duyệt.',
+        message: createFundSuccessMessage,
       });
     } catch (err: unknown) {
       console.error('Create fund failed:', err);
@@ -331,6 +375,9 @@ export default function FundsPage() {
         }`}
       >
         <div className="max-w-6xl mx-auto space-y-6">
+          {!capsLoading && caps?.financeAccessHintVi?.trim() ? (
+            <FinanceAccessHintBanner message={caps.financeAccessHintVi} />
+          ) : null}
           {showCreateFundForm && (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
@@ -407,7 +454,7 @@ export default function FundsPage() {
                     </div>
                     <div>
                       <label htmlFor="fund-expires" className={`block ${t.type.label} mb-1.5`}>
-                        Hạn nhận nộp tiền (tuỳ chọn, UTC)
+                        Hạn nhận nộp tiền (tuỳ chọn)  
                       </label>
                       <input
                         id="fund-expires"
@@ -417,7 +464,7 @@ export default function FundsPage() {
                         className={t.input}
                       />
                       <p className={`mt-1 text-xs ${t.type.muted}`}>
-                        Ngày cuối cùng quỹ còn nhận nộp (theo ngày UTC). Để trống nếu không giới hạn.
+                        Ngày cuối cùng quỹ còn nhận nộp. Để trống nếu không giới hạn.
                       </p>
                     </div>
                   </div>
@@ -458,6 +505,11 @@ export default function FundsPage() {
               <h1 className={t.type.pageTitle}>Quản lý quỹ</h1>
               <p className={`mt-1 ${t.type.body}`}>
                 Theo dõi thu chi và quản lý ngân sách minh bạch.
+                {!canFilterFundStatusOnOverview && canViewFunds ? (
+                  <span className="block mt-1 text-slate-600 dark:text-slate-400">
+                    Thành viên chỉ thấy quỹ đã duyệt; quỹ chờ duyệt / của bạn xem tại &quot;Quỹ của tôi&quot;.
+                  </span>
+                ) : null}
               </p>
             </div>
           </header>
@@ -505,27 +557,35 @@ export default function FundsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1 min-w-[200px]">
-                <label htmlFor="fund-status-filter" className={t.type.label}>
-                  Trạng thái
-                </label>
-                <select
-                  id="fund-status-filter"
-                  value={fundStatus}
-                  onChange={(e) => {
-                    const nextStatus = parseFundStatus(e.target.value);
-                    setSearchParams(
-                      (prev) => applyFilterChangeParams(prev, { status: nextStatus, pageSize: fundListPageSize }),
-                      { replace: true },
-                    );
-                  }}
-                  className={`${t.input} h-11`}
-                >
-                  {FUND_STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <span className={t.type.label}>Trạng thái</span>
+                {canFilterFundStatusOnOverview ? (
+                  <select
+                    id="fund-status-filter"
+                    value={fundStatus}
+                    onChange={(e) => {
+                      const nextStatus = parseFundStatus(e.target.value);
+                      setSearchParams(
+                        (prev) => applyFilterChangeParams(prev, { status: nextStatus, pageSize: fundListPageSize }),
+                        { replace: true },
+                      );
+                    }}
+                    className={`${t.input} h-11`}
+                  >
+                    {FUND_STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p
+                    id="fund-status-filter"
+                    className={`${t.input} h-11 flex items-center text-sm ${t.type.muted} cursor-default`}
+                    title="Thành viên chỉ xem quỹ đã duyệt trên trang tổng quan"
+                  >
+                    Đã duyệt
+                  </p>
+                )}
               </div>
               <div className="flex flex-col gap-1 min-w-[200px]">
                 <label htmlFor="fund-sort" className={t.type.label}>
@@ -556,12 +616,13 @@ export default function FundsPage() {
                   onClick={() => {
                     setSearchInput('');
                     setSearchParams(
-                      (prev) => applyFilterChangeParams(prev, {
-                        search: '',
-                        status: DEFAULT_FUND_STATUS,
-                        sort: DEFAULT_FUND_SORT,
-                        pageSize: fundListPageSize,
-                      }),
+                      (prev) =>
+                        applyFilterChangeParams(prev, {
+                          search: '',
+                          status: baselineFundStatusForOverview,
+                          sort: DEFAULT_FUND_SORT,
+                          pageSize: fundListPageSize,
+                        }),
                       { replace: true },
                     );
                   }}
@@ -629,9 +690,6 @@ export default function FundsPage() {
                         )}
                       </p>
                     )}
-                    <p className={`mt-2 text-sm ${t.type.muted}`}>
-                      Nếu bạn chắc chắn đã thuộc CLB (vd ID=7) mà vẫn rỗng, hãy kiểm tra API `/me/clubinfo?userId=...` có trả membership ACTIVE cho CLB đó không.
-                    </p>
                   </>
                 )}
               </div>
@@ -800,16 +858,20 @@ export default function FundsPage() {
                         <h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">
                           {f.fundName || `Quỹ #${f.fundId}`}
                         </h3>
-                        <p className={`mt-1 text-lg font-semibold text-slate-700 dark:text-slate-200`}>
-                          {listBalance.toLocaleString('vi-VN')} ₫
-                        </p>
+                        <FundCardBalanceHint
+                          amountFormatted={listBalance.toLocaleString('vi-VN')}
+                          balanceVnd={listBalance}
+                          fund={f}
+                        />
                         {f.expiresAt ? (
                           <p className={`mt-1 text-xs ${t.type.muted}`}>
-                            Hạn nhận nộp (UTC): {new Date(f.expiresAt).toLocaleDateString('vi-VN')}
+                            Hạn nhận nộp: {new Date(f.expiresAt).toLocaleDateString('vi-VN')}
                           </p>
                         ) : null}
                         {String(f.status ?? '').toUpperCase() === 'APPROVED' && f.canAcceptContributions === false ? (
-                          <p className="mt-1 text-xs text-amber-800 dark:text-amber-200/90">Không còn nhận nộp tiền</p>
+                          <p className="mt-1 text-xs text-amber-800 dark:text-amber-200/90 line-clamp-2">
+                            {f.cannotContributeReasonVi?.trim() || 'Không còn nhận nộp tiền.'}
+                          </p>
                         ) : null}
                         <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
                           Xem chi tiết
@@ -854,28 +916,11 @@ export default function FundsPage() {
                             <button
                               type="button"
                               disabled={isApprovingFund}
-                              onClick={async (e) => {
+                              onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                try {
-                                  await approveFund({
-                                    clubId,
-                                    fundId: f.fundId,
-                                    action: 'REJECT',
-                                  }).unwrap();
-                                  showNotification({
-                                    type: 'success',
-                                    title: 'Đã từ chối quỹ',
-                                    message: `${f.fundName || `Quỹ #${f.fundId}`} đã bị từ chối.`,
-                                  });
-                                } catch (err) {
-                                  console.error(err);
-                                  showNotification({
-                                    type: 'error',
-                                    title: 'Lỗi',
-                                    message: 'Không thể từ chối quỹ.',
-                                  });
-                                }
+                                setListRejectReason('');
+                                setRejectTargetFund(f);
                               }}
                               className={`${t.btn.danger} !min-h-0 !py-1.5 !px-3 text-xs inline-flex items-center gap-1`}
                               aria-label={`Từ chối quỹ ${f.fundName || f.fundId}`}
@@ -935,6 +980,80 @@ export default function FundsPage() {
           </section>
         </div>
       </main>
+
+      {rejectTargetFund ? (
+        <div className="fixed inset-0 bg-black/55 flex items-center justify-center z-[60] p-4" role="presentation">
+          <div
+            ref={listRejectDialogRef}
+            className={`${t.card.base} w-full max-w-md rounded-2xl shadow-xl outline-none`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="funds-list-reject-heading"
+          >
+            <div className="px-6 pt-5 pb-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
+              <h2 id="funds-list-reject-heading" className={t.type.sectionTitle}>
+                Từ chối quỹ
+              </h2>
+              <button type="button" onClick={closeListRejectModal} className={t.btn.ghost} aria-label="Đóng">
+                <X className="w-5 h-5" aria-hidden />
+              </button>
+            </div>
+            <div className="px-6 py-4 text-slate-900 dark:text-slate-50 space-y-4">
+              <textarea
+                id="funds-list-reject-reason"
+                value={listRejectReason}
+                onChange={(e) => setListRejectReason(e.target.value)}
+                rows={4}
+                className={`${t.input} w-full min-h-[100px]`}
+                placeholder="Lý do từ chối"
+                aria-label="Lý do từ chối"
+              />
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button type="button" onClick={closeListRejectModal} className={t.btn.secondary} disabled={isApprovingFund}>
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  disabled={isApprovingFund}
+                  className={t.btn.danger}
+                  onClick={async () => {
+                    const reason = listRejectReason.trim();
+                    if (reason.length < 5) {
+                      showNotification({
+                        type: 'error',
+                        title: 'Thiếu lý do',
+                        message: 'Vui lòng nhập lý do từ chối ít nhất 5 ký tự.',
+                      });
+                      return;
+                    }
+                    try {
+                      await approveFund({
+                        clubId,
+                        fundId: rejectTargetFund.fundId,
+                        action: 'REJECT',
+                        rejectReason: reason,
+                      }).unwrap();
+                      showNotification({
+                        type: 'success',
+                        title: 'Đã từ chối quỹ',
+                        message: `${rejectTargetFund.fundName || `Quỹ #${rejectTargetFund.fundId}`} đã bị từ chối.`,
+                      });
+                      closeListRejectModal();
+                    } catch (err) {
+                      console.error(err);
+                      const msg =
+                        (err as { data?: { message?: string } })?.data?.message || 'Không thể từ chối quỹ.';
+                      showNotification({ type: 'error', title: 'Lỗi', message: msg });
+                    }
+                  }}
+                >
+                  {isApprovingFund ? 'Đang xử lý…' : 'Xác nhận từ chối'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

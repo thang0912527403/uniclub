@@ -25,6 +25,7 @@ import {
   type FundSidebarMenuId,
   type GetClubFundTransactionsParams,
   type GetMyFundsParams,
+  type MyFundsPagedResult,
   type PagedResult,
 } from './types';
 
@@ -123,6 +124,13 @@ function numFundReport(v: unknown): number {
   return Number.isFinite(x) ? x : 0;
 }
 
+function pickOptionalViString(d: Record<string, unknown>, camel: string, pascal: string): string | null {
+  const v = d[camel] ?? d[pascal];
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s || null;
+}
+
 function normalizeFundReportSummary(raw: unknown): FundReportSummaryDto {
   if (raw == null || typeof raw !== 'object') {
     return {
@@ -148,6 +156,7 @@ function normalizeFundReportSummary(raw: unknown): FundReportSummaryDto {
     totalBalanceApprovedFunds: numFundReport(d.totalBalanceApprovedFunds ?? d.TotalBalanceApprovedFunds),
     totalApprovedIncome: numFundReport(d.totalApprovedIncome ?? d.TotalApprovedIncome),
     totalApprovedExpense: numFundReport(d.totalApprovedExpense ?? d.TotalApprovedExpense),
+    dateFilterNoteVi: pickOptionalViString(d, 'dateFilterNoteVi', 'DateFilterNoteVi'),
   };
 }
 
@@ -181,6 +190,13 @@ function normalizeClubFund(raw: unknown): ClubFund {
     updatedAt: (d.updatedAt ?? d.UpdatedAt) as string | undefined,
     expiresAt: (d.expiresAt ?? d.ExpiresAt ?? null) as string | null | undefined,
     canAcceptContributions: canAcceptRaw == null ? undefined : Boolean(canAcceptRaw),
+    balanceContextVi: pickOptionalViString(d, 'balanceContextVi', 'BalanceContextVi'),
+    cannotContributeReasonVi: pickOptionalViString(d, 'cannotContributeReasonVi', 'CannotContributeReasonVi'),
+    rejectionReasonVi:
+      pickOptionalViString(d, 'rejectionReasonVi', 'RejectionReasonVi') ??
+      pickOptionalViString(d, 'rejectionReason', 'RejectionReason') ??
+      pickOptionalViString(d, 'rejectReason', 'RejectReason'),
+    expiresAtUtcNoteVi: pickOptionalViString(d, 'expiresAtUtcNoteVi', 'ExpiresAtUtcNoteVi'),
   };
 }
 
@@ -401,6 +417,9 @@ export const clubApi = baseApi.injectEndpoints({
           menuItems: normalizeFundMenuItemsFromApi(
             rawCap ? (rawCap.menuItems ?? rawCap.MenuItems) : undefined,
           ),
+          financeAccessHintVi: rawCap
+            ? pickOptionalViString(rawCap, 'financeAccessHintVi', 'FinanceAccessHintVi')
+            : null,
         };
       },
       providesTags: (result, error, clubId) => [{ type: 'ClubFund', id: `capabilities-${clubId}` }],
@@ -462,13 +481,19 @@ export const clubApi = baseApi.injectEndpoints({
         { type: 'ClubFund', id: `club-${clubId}` },
       ],
     }),
-    getMyFunds: builder.query<PagedResult<ClubFund>, GetMyFundsParams>({
+    getMyFunds: builder.query<MyFundsPagedResult, GetMyFundsParams>({
       async queryFn({ clubId, ...params }, _api, _extraOptions, baseQuery) {
         const myFundsRes = await baseQuery(buildMyFundsQuery(clubId, params));
         if (!myFundsRes.error && myFundsRes.data) {
           const raw = (myFundsRes.data as ApiResponse<PagedResult<ClubFund> | ClubFund[]>).data;
           const paged = normalizeFundPagedResponse(raw);
-          return { data: { ...paged, items: paged.items.map((i) => normalizeClubFund(i)) } };
+          return {
+            data: {
+              ...paged,
+              items: paged.items.map((i) => normalizeClubFund(i)),
+              usedMyFundsFallback: false,
+            },
+          };
         }
 
         const errStatus =
@@ -521,6 +546,7 @@ export const clubApi = baseApi.injectEndpoints({
             totalPages,
             hasPreviousPage: page > 1,
             hasNextPage: totalPages > 0 && page < totalPages,
+            usedMyFundsFallback: true,
           },
         };
       },
@@ -608,16 +634,20 @@ export const clubApi = baseApi.injectEndpoints({
     approveFund: builder.mutation<ClubFund, ApproveFundDto & ClubFundScoped>({
       query: ({ clubId, ...body }) => {
         const action = (body as ApproveFundDto).action;
+        const reason = (body as ApproveFundDto).rejectReason?.trim();
         return {
           url: `/clubs/${clubId}/funds/approve`,
           method: 'POST',
           body: {
             ...body,
             Action: action,
+            ...(action === 'REJECT' && reason
+              ? { rejectReason: reason, RejectReason: reason, rejectionReason: reason, RejectionReason: reason }
+              : {}),
           },
         };
       },
-      transformResponse: (response: ApiResponse<ClubFund>) => response.data,
+      transformResponse: (response: ApiResponse<ClubFund>) => normalizeClubFund(response.data),
       invalidatesTags: ['ClubFund'],
     }),
 

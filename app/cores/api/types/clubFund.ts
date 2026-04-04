@@ -23,11 +23,20 @@ export interface ClubFund {
   updatedAt?: string;
   expiresAt?: string | null;
   canAcceptContributions?: boolean;
+  balanceContextVi?: string | null;
+  cannotContributeReasonVi?: string | null;
+  rejectionReasonVi?: string | null;
+  expiresAtUtcNoteVi?: string | null;
 }
+
+export type MyFundsPagedResult = PagedResult<ClubFund> & {
+  usedMyFundsFallback?: boolean;
+};
 
 export interface ApproveFundDto {
   fundId: number;
   action: 'APPROVE' | 'REJECT';
+  rejectReason?: string;
 }
 
 export type FundTransactionType = 'INCOME' | 'EXPENSE';
@@ -63,8 +72,8 @@ export interface ClubFundCapabilities {
   clubRoleName?: string | null;
   clubRoleLevel?: number | null;
   isActiveClubMember: boolean;
-  /** Từ BE; có thể rỗng khi không có quyền xem quỹ. */
   menuItems: FundMenuItemDto[];
+  financeAccessHintVi?: string | null;
 }
 
 export interface FundReportSummaryDto {
@@ -77,6 +86,7 @@ export interface FundReportSummaryDto {
   totalBalanceApprovedFunds: number;
   totalApprovedIncome: number;
   totalApprovedExpense: number;
+  dateFilterNoteVi?: string | null;
 }
 
 export interface CreateFundRequestResponse {

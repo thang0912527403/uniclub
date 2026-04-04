@@ -7,15 +7,18 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useFundsClubSelection } from '~/hooks/useFundsClubSelection';
 import { useGetFundCapabilitiesQuery, useGetMyFundsQuery } from '~/cores/api';
-import type { ClubFund, FundListSort, FundListStatus, FundMineType } from '~/cores/api';
+import type { ClubFund, FundListSort, FundListStatus } from '~/cores/api';
 import { fundTokens as t } from './funds.design-tokens';
 import {
+  FinanceAccessHintBanner,
+  FundCardBalanceHint,
+  FundRejectionReasonCallout,
+} from '~/modules/funds/components/FundUxHints';
+import {
   applyFilterChangeParams,
-  DEFAULT_FUND_MINE_TYPE,
   DEFAULT_FUND_PAGE_SIZE,
   DEFAULT_FUND_SORT,
   DEFAULT_FUND_STATUS,
-  parseFundMineType,
   parseFundSort,
   parseFundStatus,
 } from './funds.utils';
@@ -71,12 +74,6 @@ function FundStatusBadge({ fund }: { fund: ClubFund }) {
   );
 }
 
-const MINE_TYPE_TABS: Array<{ value: FundMineType; label: string }> = [
-  { value: 'ALL', label: 'Tất cả liên quan' },
-  { value: 'CREATED', label: 'Tôi đã tạo' },
-  { value: 'RESPONSIBLE', label: 'Tôi đã xử lý' },
-];
-
 const STATUS_OPTIONS: Array<{ value: FundListStatus; label: string }> = [
   { value: 'ALL', label: 'Tất cả trạng thái' },
   { value: 'PENDING', label: 'Chờ duyệt' },
@@ -100,11 +97,22 @@ export default function MyFundsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePage(searchParams.get('page'));
   const pageSize = parsePageSize(searchParams.get('pageSize'));
-  const mineType = parseFundMineType(searchParams.get('mineType'));
   const status = parseFundStatus(searchParams.get('status'));
   const sort = parseFundSort(searchParams.get('sort'));
   const search = searchParams.get('search') ?? '';
   const [searchInput, setSearchInput] = useState(search);
+
+  useEffect(() => {
+    if (!searchParams.has('mineType')) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('mineType');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
 
   const { clubId, setSelectedClubId, memberClubOptions, clubs, isAdmin, hasAnyClub, isLoadingUserMemberships } =
     useFundsClubSelection();
@@ -136,7 +144,7 @@ export default function MyFundsPage() {
   } = useGetMyFundsQuery(
     {
       clubId,
-      mineType,
+      mineType: 'CREATED',
       status,
       search,
       sort,
@@ -174,7 +182,7 @@ export default function MyFundsPage() {
 
   const items = myFundsPaged?.items ?? [];
   const totalCount = myFundsPaged?.totalCount ?? 0;
-  const hasAnyFilter = mineType !== DEFAULT_FUND_MINE_TYPE || status !== DEFAULT_FUND_STATUS || sort !== DEFAULT_FUND_SORT || !!search.trim();
+  const hasAnyFilter = status !== DEFAULT_FUND_STATUS || sort !== DEFAULT_FUND_SORT || !!search.trim();
 
   const pageLabel = useMemo(() => {
     if (!myFundsPaged) return '';
@@ -197,9 +205,22 @@ export default function MyFundsPage() {
         }`}
       >
         <div className="max-w-6xl mx-auto space-y-6">
+          {!capsLoading && caps?.financeAccessHintVi?.trim() ? (
+            <FinanceAccessHintBanner message={caps.financeAccessHintVi} />
+          ) : null}
+          {myFundsPaged?.usedMyFundsFallback ? (
+            <div
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+              role="status"
+            >
+              <strong className="font-semibold">Dữ liệu thay thế.</strong> Không gọi được API &quot;quỹ của tôi&quot; cho CLB này
+              (404 hoặc cấu hình mock). Danh sách đang lấy từ tất cả quỹ CLB và lọc tạm — có thể không khớp hoàn toàn với quỹ
+              thực sự của bạn. Khi backend sẵn sàng, thông báo này sẽ biến mất.
+            </div>
+          ) : null}
           <header className="flex flex-col gap-2">
             <h1 className={t.type.pageTitle}>Quỹ của tôi</h1>
-            <p className={t.type.body}>Xem nhanh các quỹ bạn đã tạo hoặc đã xử lý trong CLB đang chọn.</p>
+            <p className={t.type.body}>Các quỹ do bạn tạo trong CLB đang chọn (không gồm quỹ người khác tạo).</p>
             {USE_MOCK_MY_FUNDS ? (
               <p className={`text-xs ${t.type.muted}`}>Đang chạy mock adapter cho `/funds/my` (VITE_MOCK_MY_FUNDS=true).</p>
             ) : null}
@@ -289,7 +310,6 @@ export default function MyFundsPage() {
                 setSearchParams(
                   (prev) =>
                     applyFilterChangeParams(prev, {
-                      mineType: DEFAULT_FUND_MINE_TYPE,
                       status: DEFAULT_FUND_STATUS,
                       sort: DEFAULT_FUND_SORT,
                       search: '',
@@ -303,34 +323,6 @@ export default function MyFundsPage() {
             >
               Xóa bộ lọc
             </button>
-          </div>
-
-          <div className={`${t.card.base} ${t.space.card} border-slate-200 dark:border-slate-600`}>
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Mine type tabs">
-              {MINE_TYPE_TABS.map((tab) => {
-                const active = mineType === tab.value;
-                return (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() =>
-                      setSearchParams(
-                        (prev) => applyFilterChangeParams(prev, { mineType: tab.value, pageSize }),
-                        { replace: true },
-                      )}
-                    className={`px-4 py-2 rounded-lg text-sm border transition ${
-                      active
-                        ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           <section className={`${t.card.base} overflow-hidden border-slate-200 dark:border-slate-600`}>
@@ -408,11 +400,23 @@ export default function MyFundsPage() {
                           <FundStatusBadge fund={f} />
                         </div>
                         <h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">{f.fundName || `Quỹ #${f.fundId}`}</h3>
-                        <p className="mt-1 text-lg font-semibold text-slate-700 dark:text-slate-200">{fundListBalanceVnd(f).toLocaleString('vi-VN')} ₫</p>
+                        <FundCardBalanceHint
+                          amountFormatted={fundListBalanceVnd(f).toLocaleString('vi-VN')}
+                          balanceVnd={fundListBalanceVnd(f)}
+                          fund={f}
+                        />
                         {f.expiresAt ? (
                           <p className={`mt-1 text-xs ${t.type.muted}`}>
-                            Hạn nhận nộp (UTC): {new Date(f.expiresAt).toLocaleDateString('vi-VN')}
+                            Hạn nhận nộp: {new Date(f.expiresAt).toLocaleDateString('vi-VN')}
                           </p>
+                        ) : null}
+                        {String(f.status ?? '').toUpperCase() === 'APPROVED' && f.canAcceptContributions === false ? (
+                          <p className="mt-1 text-xs text-amber-800 dark:text-amber-200/90 line-clamp-2">
+                            {f.cannotContributeReasonVi?.trim() || 'Không còn nhận nộp tiền.'}
+                          </p>
+                        ) : null}
+                        {String(f.status ?? '').toUpperCase() === 'REJECTED' ? (
+                          <FundRejectionReasonCallout reason={f.rejectionReasonVi} compact />
                         ) : null}
                         <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
                           Xem chi tiết
