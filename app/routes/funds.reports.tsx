@@ -641,13 +641,6 @@ export default function FundsReportsPage() {
                 </div>
               </>
             )}
-            <div className="w-full min-w-0 basis-full">
-              {activeTab === 'summary' ? (
-                <ReportDateFilterNote note={summary?.dateFilterNoteVi} />
-              ) : (
-                <ReportDateFilterNote note={txnSummaryForNote?.dateFilterNoteVi} />
-              )}
-            </div>
           </div>
 
           {!hasToken ? (
@@ -839,14 +832,14 @@ export default function FundsReportsPage() {
               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm">
                 <BarChart3 className="w-4 h-4 shrink-0" aria-hidden />
                 <span>
-                  Khoảng thời gian lọc giao dịch (UTC):{' '}
+                  Khoảng thời gian lọc giao dịch:{' '}
                   {summary.fromUtc && summary.toUtc
                     ? `${new Date(summary.fromUtc).toLocaleString('vi-VN')} — ${new Date(summary.toUtc).toLocaleString('vi-VN')}`
                     : summary.fromUtc
                       ? `Từ ${new Date(summary.fromUtc).toLocaleString('vi-VN')}`
                       : summary.toUtc
                         ? `Đến ${new Date(summary.toUtc).toLocaleString('vi-VN')}`
-                        : 'Toàn thời gian (theo server)'}
+                        : 'Toàn thời gian'}
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

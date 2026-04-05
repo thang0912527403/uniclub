@@ -507,22 +507,14 @@ export default function FundDetailPageByClub() {
         }`}
       >
         <div className="max-w-6xl mx-auto space-y-6">
-          <nav aria-label="Breadcrumb" className="space-y-1">
-            <Link to="/funds" className={`inline-flex items-center gap-2 ${t.type.body} hover:underline focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 rounded`}>
-              <span aria-hidden className="text-base">←</span>
+          <nav aria-label="Điều hướng quỹ">
+            <Link
+              to="/funds"
+              className={`${t.btn.secondary} inline-flex items-center gap-2 shadow-sm hover:shadow-md transition-shadow duration-200`}
+            >
+              <ChevronLeft className="w-4 h-4 shrink-0" strokeWidth={2.25} aria-hidden />
               Quay lại danh sách quỹ
             </Link>
-            {!isInvalidParams ? (
-              <p className={`text-sm ${t.type.muted}`}>
-                Câu lạc bộ:{' '}
-                <Link
-                  to="/funds"
-                  className="font-medium text-slate-700 dark:text-slate-200 hover:underline focus:outline-none focus:ring-2 focus:ring-slate-500 rounded"
-                >
-                  {fundBreadcrumbClubPart}
-                </Link>
-              </p>
-            ) : null}
           </nav>
 
           {!capsLoading && caps?.financeAccessHintVi?.trim() ? (
