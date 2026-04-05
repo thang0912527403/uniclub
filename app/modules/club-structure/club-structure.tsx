@@ -879,8 +879,27 @@ export default function ClubStructureModule() {
       showNotification({ type: 'success', title: 'Xóa vai trò thành công!', message: `Vai trò "${deleteTarget.roleName}" đã được xóa.`, duration: 3000 });
       setDeleteTarget(null);
     } catch (err) {
-      const rtkErr = err as { data?: { message?: string } };
-      showNotification({ type: 'error', title: 'Xóa vai trò thất bại', message: rtkErr?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
+     const rtkErr = err as {
+        status?: number;
+        data?: { message?: string };
+      };
+
+      if (rtkErr?.status === 403) {
+        showNotification({
+          type: 'error',
+          title: 'Không có quyền',
+          message: 'Bạn không có quyền thực hiện thao tác này!',
+          duration: 4000
+        });
+        return;
+      }
+
+      showNotification({
+        type: 'error',
+        title: 'Thao tác thất bại',
+        message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
+        duration: 4000
+      });
     }
   };
 
@@ -890,8 +909,27 @@ export default function ClubStructureModule() {
       showNotification({ type: 'success', title: 'Tạo phòng ban thành công!', message: `Phòng ban "${data.name}" đã được tạo.`, duration: 3000 });
       setDeptModalOpen(false);
     } catch (err) {
-      const rtkErr = err as { data?: { message?: string } };
-      showNotification({ type: 'error', title: 'Tạo phòng ban thất bại', message: rtkErr?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
+       const rtkErr = err as {
+        status?: number;
+        data?: { message?: string };
+      };
+
+      if (rtkErr?.status === 403) {
+        showNotification({
+          type: 'error',
+          title: 'Không có quyền',
+          message: 'Bạn không có quyền thực hiện thao tác này!',
+          duration: 4000
+        });
+        return;
+      }
+
+      showNotification({
+        type: 'error',
+        title: 'Thao tác thất bại',
+        message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
+        duration: 4000
+      });
     }
   };
 

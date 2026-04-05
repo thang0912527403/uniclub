@@ -52,7 +52,7 @@ export default [
 
     // Department
     route("department", "routes/department.tsx"),
-    route("department/:id", "routes/department.detail.tsx"),
+    route("department/:id", "routes/department.member.tsx"),
 
     // Club content management
     route("club/manage-posts", "routes/clubs/clubpost.tsx"),
