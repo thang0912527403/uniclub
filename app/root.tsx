@@ -9,8 +9,9 @@ import {
 import { Provider } from 'react-redux';
 import { store } from './cores/store';
 import { NotificationProvider } from '~/components/Notification';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '~/utils/i18n';
 import '@fortawesome/fontawesome-free/css/all.min.css';
-import '~/utils/i18n';
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -59,11 +60,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Provider store={store}>
-      <NotificationProvider>
-        <Outlet />
-      </NotificationProvider>
-    </Provider>
+    <I18nextProvider i18n={i18n}>
+      <Provider store={store}>
+        <NotificationProvider>
+          <Outlet />
+        </NotificationProvider>
+      </Provider>
+    </I18nextProvider>
   );
 }
 
