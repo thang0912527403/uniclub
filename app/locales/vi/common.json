@@ -21,8 +21,7 @@
     },
     "manageRecruitment": {
       "title": "Quản lý Tuyển sinh",
-      "allCampaigns": "Tất cả Chiến dịch",
-      "yourClubCampaigns": "Chiến dịch của CLB"
+      "allCampaigns": "Tất cả Chiến dịch"
     },
     "manageMembers": {
       "title": "Quản lý Thành viên",
@@ -44,7 +43,12 @@
       "myFunds": "Quỹ của tôi",
       "transactions": "Giao dịch",
       "expenseReports": "Báo cáo Chi tiêu"
+    },
+    "manageInterview": {
+      "title": "Quản lý Phỏng vấn",
+      "allInterviews": "Lịch Phỏng vấn"
     }
+    
   },
   "settings": {
     "title": "Cài đặt",

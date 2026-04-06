@@ -383,6 +383,12 @@ export const clubApi = baseApi.injectEndpoints({
         ],
       },
     ),
+    getClubPosts: builder.query<ClubPostResponseDto[], void>({
+      query: () => `/ClubPost`,
+      transformResponse: (response: ApiResponse<ClubPostResponseDto[]>) =>
+        response.data,
+      providesTags: ["ClubPost"],
+    }),
     getClubPostById: builder.query<ClubPostResponseDto, number>({
       query: (id) => `/ClubPost/${id}`,
       transformResponse: (response: ApiResponse<ClubPostResponseDto>) =>
@@ -832,6 +838,7 @@ export const {
   useUpdateClubMutation,
   useDeleteClubMutation,
   useToggleClubStatusMutation,
+  useGetClubPostsQuery,
   useGetClubPostsByClubIdQuery,
   useGetClubPostByIdQuery,
   useCreateClubPostMutation,

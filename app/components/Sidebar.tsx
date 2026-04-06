@@ -132,10 +132,6 @@ export function Sidebar({
           label: t("sidebar.manageRecruitment.allCampaigns"),
           url: "/recruitment-campaigns",
         },
-        {
-          label: t("sidebar.manageRecruitment.yourClubCampaigns"),
-          url: "/club/recruitment-campaigns",
-        },
       ],
     },
     {
@@ -182,6 +178,16 @@ export function Sidebar({
         {
           label: t("sidebar.manageFunds.transactions"),
           url: "/funds/reports?tab=transactions",
+        },
+      ],
+    },
+    {
+      label: t("sidebar.manageInterview.title"),
+      icon: "fa-solid fa-microphone",
+      subItems: [
+        {
+          label: t("sidebar.manageInterview.allInterviews"),
+          url: "/interview/schedule",
         },
       ],
     },
