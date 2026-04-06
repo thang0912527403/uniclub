@@ -46,7 +46,7 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
   const selectedForm = forms.find((f) => f.formId === selectedFormId) ?? null;
   const { data: questions = [], isLoading: questionsLoading } =
     useGetQuestionsByFormQuery(
-      { clubId, formId: selectedFormId! },
+      { formId: selectedFormId! },
       { skip: !selectedFormId },
     );
 
@@ -64,6 +64,16 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
       await updateForm({ clubId, id, body: dto }).unwrap();
       setShowFormModal(false);
       setEditingForm(null);
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteForm = async (id: number) => {
+    if (!confirm("Xóa biểu mẫu này? Toàn bộ câu hỏi sẽ bị xóa.")) return;
+    try {
+      await deleteForm({ clubId, id }).unwrap();
+      if (selectedFormId === id) setSelectedFormId(null);
     } catch (e) {
       console.error(e);
     }
@@ -104,6 +114,17 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
     <div className="flex gap-6 h-full min-h-[500px]">
       {/* Left: forms list */}
       <div className="w-72 flex-shrink-0 space-y-3">
+        <button
+          onClick={() => {
+            setEditingForm(null);
+            setShowFormModal(true);
+          }}
+          className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-sm font-bold hover:shadow-lg hover:scale-[1.01] transition-all flex items-center justify-center gap-2"
+        >
+          <i className="fa-solid fa-plus" />
+          Tạo biểu mẫu mới
+        </button>
+
         {formsLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
@@ -126,6 +147,7 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
                 form={form}
                 isSelected={selectedFormId === form.formId}
                 onSelect={() => setSelectedFormId(form.formId)}
+                onDelete={() => handleDeleteForm(form.formId)}
                 onEdit={() => {
                   setEditingForm(form);
                   setShowFormModal(true);

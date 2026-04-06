@@ -22,7 +22,6 @@ const AnswerViewerForApp: React.FC<{
   onClose: () => void;
 }> = ({ clubId, app, onClose }) => {
   const { data: questions = [] } = useGetQuestionsByFormQuery({
-    clubId,
     formId: app.formId,
   });
   return (

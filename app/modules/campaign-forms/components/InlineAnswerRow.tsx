@@ -21,7 +21,6 @@ export const InlineAnswerRow: React.FC<InlineAnswerRowProps> = ({
     applicationId: application.applicationId,
   });
   const { data: questions = [] } = useGetQuestionsByFormQuery({
-    clubId,
     formId: application.formId,
   });
 

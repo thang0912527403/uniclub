@@ -7,6 +7,7 @@ interface FormCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
 export const FormCard: React.FC<FormCardProps> = ({
@@ -14,6 +15,7 @@ export const FormCard: React.FC<FormCardProps> = ({
   isSelected,
   onSelect,
   onEdit,
+  onDelete,
 }) => {
   const [copied, setCopied] = useState(false);
   const applyUrl = `${window.location.origin}/question/${form.formId}`;
@@ -60,6 +62,16 @@ export const FormCard: React.FC<FormCardProps> = ({
             title="Sửa"
           >
             <i className="fa-solid fa-pen text-xs" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+            title="Xóa"
+          >
+            <i className="fa-solid fa-trash text-xs" />
           </button>
         </div>
       </div>

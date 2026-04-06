@@ -53,10 +53,7 @@ export default [
     route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
     route("club-roles", "routes/club-roles.tsx"),
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
-    route(
-      "recruitment-campaigns/:campaignId/campaign-forms",
-      "routes/campaign-forms.tsx",
-    ),
+    route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
     route("club/all-clubs", "routes/clubs-homepage/clubs.tsx"),
     route("club/all-clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
     route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
