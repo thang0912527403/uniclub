@@ -27,12 +27,14 @@ import { useClubRole } from '~/hooks/useClubRole';
 import { useEventPermission } from '~/hooks/useEventPermission';
 import { SessionList } from '~/modules/events/components/SessionList';
 import { SessionForm } from '~/modules/events/components/SessionForm';
+import { EventRolesTab } from '~/modules/events/components/EventRolesTab';
+import { EventMembersTab } from '~/modules/events/components/EventMembersTab';
 import { useNotification } from '~/components/Notification';
 import { ConfirmDialog } from '~/components/ConfirmDialog';
 import { QRScanner } from '~/components/QRScanner';
 import { QRCodeSVG } from 'qrcode.react';
 
-type Tab = 'sessions' | 'registration' | 'checkin' | 'pending';
+type Tab = 'sessions' | 'registration' | 'checkin' | 'pending' | 'members' | 'roles';
 
 
 export default function EventDetailPage() {
@@ -410,6 +412,26 @@ export default function EventDetailPage() {
             ),
         }] : []),
         { key: 'checkin', label: 'Điểm danh' },
+        ...(can('manage_collaborator') || isManager ? [
+            {
+                key: 'roles' as Tab,
+                label: (
+                    <span className="flex items-center gap-1.5">
+                        <i className="fas fa-shield-alt" />
+                        Chức vụ
+                    </span>
+                )
+            },
+            {
+                key: 'members' as Tab,
+                label: (
+                    <span className="flex items-center gap-1.5">
+                        <i className="fas fa-users-cog" />
+                        Thành viên
+                    </span>
+                )
+            }
+        ] : []),
     ];
 
     return (
@@ -1096,6 +1118,25 @@ export default function EventDetailPage() {
                                     )}
 
                                 </div>
+                            )}
+
+                            {/* ── CHỨC VỤ SỰ KIỆN ── */}
+                            {activeTab === 'roles' && (can('manage_collaborator') || isManager) && (
+                                <EventRolesTab
+                                    eventId={eventId}
+                                    clubId={event.clubId ?? 0}
+                                    isDark={isDark}
+                                />
+                            )}
+
+                            {/* ── THÀNH VIÊN SỰ KIỆN ── */}
+                            {activeTab === 'members' && (can('manage_collaborator') || isManager) && (
+                                <EventMembersTab
+                                    eventId={eventId}
+                                    clubId={event.clubId ?? 0}
+                                    isDark={isDark}
+                                    eventStatus={event.status}
+                                />
                             )}
 
                         </div>
