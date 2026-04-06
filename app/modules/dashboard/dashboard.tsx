@@ -17,14 +17,14 @@ export default function DashboardModule() {
 
    return (
    <div className="min-h-screen">
-    <Sidebar currentPath="/dashboard" isOpen={isSidebarOpen} />
+    <Sidebar currentPath="/dashboard" isOpen={isSidebarOpen} onClose={toggleSidebar} />
     <HeaderBar
         title="Admin Dashboard"
         breadcrumb="Pages / Dashboard"
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />
-   <AdminDashboard />;
+   <AdminDashboard isSidebarOpen={isSidebarOpen} />;
 
    </div>);
    

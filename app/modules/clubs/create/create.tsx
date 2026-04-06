@@ -100,6 +100,7 @@ export default function CreateClubModule() {
             <Sidebar
                 currentPath="/clubs/create"
                 isOpen={isSidebarOpen}
+                onClose={toggleSidebar}
             />
 
             <HeaderBar
@@ -110,7 +111,7 @@ export default function CreateClubModule() {
             />
 
             {/* Main Content */}
-            <main className={`pt-24 px-6 py-8 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'
+            <main className={`pt-24 px-6 py-8 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'
                 }`}>
                 <div className="w-full">
                     {/* Title */}

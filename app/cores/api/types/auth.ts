@@ -48,7 +48,8 @@ export interface UserInfo {
   studentId?: string;
   major?: string;
   status?: string;
-  role?: string;
+  roles?: string[];
+  clubRoles?: { clubId: number; roleName: string; level: number }[];
 }
 
 export interface LoginResponse {

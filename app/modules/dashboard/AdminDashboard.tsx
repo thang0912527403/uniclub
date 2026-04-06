@@ -161,10 +161,14 @@ const activities = [
   { icon: 'fa-check-circle', color: 'bg-pink-500', title: 'Ứng viên đã được chấp nhận', subtitle: '2 giờ trước' },
 ];
 
-export default function AdminDashboard() {
-  
+interface AdminDashboardProps {
+  isSidebarOpen?: boolean;
+}
+
+export default function AdminDashboard({ isSidebarOpen: isSidebarOpenProp }: AdminDashboardProps = {}) {
   const { user } = useCurrentUser();
-  const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+  const { isOpen: isSidebarOpenFromHook } = useSidebarToggle();
+  const isSidebarOpen = isSidebarOpenProp ?? isSidebarOpenFromHook;
   const stats: StatCardProps[] = [
     { title: 'Tổng Câu lạc bộ', value: 24, change: '+2 tháng này', positive: true, gradient: 'bg-gradient-to-br from-violet-500 to-purple-700', icon: 'fa-layer-group', delay: 0, suffix: '' },
     { title: 'Thành Viên', value: 1284, change: '+18% so với tháng trước', positive: true, gradient: 'bg-gradient-to-br from-sky-500 to-blue-700', icon: 'fa-users', delay: 100, suffix: '' },
@@ -177,7 +181,7 @@ export default function AdminDashboard() {
       <SettingButton />
       
       
-      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
 
         {/* Welcome Banner */}
         <div className="relative rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 p-6 mb-8 overflow-hidden shadow-xl">

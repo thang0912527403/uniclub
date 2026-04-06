@@ -5,13 +5,15 @@ import { isLoggedIn } from '~/utils/auth';
 export default function ProtectedRoute() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [authChecked, setAuthChecked] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [authenticated, setAuthenticated] = useState(() => 
+    typeof window !== 'undefined' ? isLoggedIn() : false
+  );
 
   useEffect(() => {
+    setIsMounted(true);
     const loggedIn = isLoggedIn();
     setAuthenticated(loggedIn);
-    setAuthChecked(true);
 
     if (!loggedIn) {
       const redirectPath = encodeURIComponent(location.pathname + location.search);
@@ -19,7 +21,7 @@ export default function ProtectedRoute() {
     }
   }, [location, navigate]);
 
-  if (!authChecked) {
+  if (!isMounted) {
     return null;
   }
 

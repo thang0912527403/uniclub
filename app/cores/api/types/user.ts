@@ -15,12 +15,6 @@ export interface User {
   createdAt?: string | null;
 }
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
-
 /** Map từ CreateUserDto (backend) */
 export interface CreateUserDto {
   fullName: string;

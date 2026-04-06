@@ -10,6 +10,7 @@ import { useGetApplicationsByClubQuery } from '~/cores/api/applicationApi';
 import { useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api/recruitmentCampaignApi';
 import { useGetInterviewsQuery } from '~/cores/api/interviewApi';
 import { useGetClubByIdQuery } from '~/cores/api/clubApi';
+import { useGetAllEventsQuery } from '~/cores/api';
 
 // ─── Animated Counter ──────────────────────────────────────────────────────
 function AnimCounter({ to }: { to: number }) {
@@ -52,10 +53,10 @@ function StatCard({ title, value, icon, gradient, sub, delay, loading }:
 // ─── Status Badge ──────────────────────────────────────────────────────────
 function Badge({ status }: { status: string }) {
   const m: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-    Pending:   { bg: 'bg-amber-100 dark:bg-amber-900/30',     text: 'text-amber-700 dark:text-amber-400',     dot: 'bg-amber-400',   label: 'Chờ duyệt' },
-    Interview: { bg: 'bg-sky-100 dark:bg-sky-900/30',         text: 'text-sky-700 dark:text-sky-400',         dot: 'bg-sky-500',     label: 'Phỏng vấn' },
-    Accepted:  { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', label: 'Chấp nhận' },
-    Rejected:  { bg: 'bg-red-100 dark:bg-red-900/30',         text: 'text-red-700 dark:text-red-400',         dot: 'bg-red-500',     label: 'Từ chối' },
+    Pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', dot: 'bg-amber-400', label: 'Chờ duyệt' },
+    Interview: { bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-700 dark:text-sky-400', dot: 'bg-sky-500', label: 'Phỏng vấn' },
+    Accepted: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', label: 'Chấp nhận' },
+    Rejected: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', dot: 'bg-red-500', label: 'Từ chối' },
   };
   const c = m[status] ?? m.Pending;
   return (
@@ -112,16 +113,30 @@ export default function ClubManagerDashboard() {
   const { data: allInterviews = [], isLoading: interviewsLoading } =
     useGetInterviewsQuery();
 
+  const { data: allEvents = [], isLoading: eventsLoading } =
+    useGetAllEventsQuery({ pageNumber: 1, pageSize: 100 });
+
   // ── Filter to this club only ───────────────────────────────────────────
   const myCampaignIds = useMemo(() => new Set(myCampaigns.map(c => c.campaignId)), [myCampaigns]);
 
-  // Filter interviews via campaignId belonging to this club
   const myInterviews = useMemo(
     () => allInterviews.filter(iv => myCampaignIds.has(iv.campaignId)),
     [allInterviews, myCampaignIds]
   );
 
-  // Upcoming interviews (future, sorted asc)
+  // Filter events to this club only
+  const myEvents = useMemo(
+    () => allEvents.filter(e => e.clubId === clubId),
+    [allEvents, clubId]
+  );
+  const upcomingEvents = useMemo(
+    () => myEvents
+      .filter(e => e.status !== 'COMPLETED' && e.status !== 'CANCELED')
+      .sort((a, b) => new Date(a.startDate ?? '').getTime() - new Date(b.startDate ?? '').getTime())
+      .slice(0, 5),
+    [myEvents]
+  );
+
   const upcomingInterviews = useMemo(
     () => myInterviews
       .filter(iv => new Date(iv.scheduledAt) > new Date())
@@ -130,7 +145,6 @@ export default function ClubManagerDashboard() {
     [myInterviews]
   );
 
-  // Latest applications (newest first by submissionDate)
   const latestApplications = useMemo(
     () => [...allApplications]
       .sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime())
@@ -138,17 +152,15 @@ export default function ClubManagerDashboard() {
     [allApplications]
   );
 
-  // Pending app count
   const pendingCount = allApplications.filter(a => a.status === 'Pending').length;
-  // Active campaigns
   const activeCampaigns = myCampaigns.filter(c => c.status === 'Active' || c.status === 'Open');
 
-  const dataLoading = appsLoading || campaignsLoading || interviewsLoading;
+  const dataLoading = appsLoading || campaignsLoading || interviewsLoading || eventsLoading;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
       <SettingButton />
-      <Sidebar currentPath="/dashboard" isOpen={isOpen} />
+      <Sidebar currentPath="/dashboard" isOpen={isOpen} onClose={toggle} />
       <HeaderBar
         title={club?.clubName ? club.clubName : 'Quản lý Câu lạc bộ'}
         breadcrumb="Trang chủ / Dashboard"
@@ -156,7 +168,7 @@ export default function ClubManagerDashboard() {
         onToggleSidebar={toggle}
       />
 
-      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isOpen ? 'ml-64' : 'ml-0'}`}>
+      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isOpen ? 'md:ml-64' : 'ml-0'}`}>
 
         {/* Hero */}
         <div className="relative rounded-3xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 p-6 mb-8 overflow-hidden shadow-2xl">
@@ -192,11 +204,12 @@ export default function ClubManagerDashboard() {
         </div>
 
         {/* Stats — scoped to this club */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <StatCard title="Tổng đơn nộp"  value={allApplications.length} icon="fa-file-alt"      gradient="bg-gradient-to-br from-sky-500 to-blue-700"    sub="CLB này"         delay={0}   loading={appsLoading} />
-          <StatCard title="Chờ xét duyệt" value={pendingCount}           icon="fa-hourglass-half" gradient="bg-gradient-to-br from-amber-500 to-orange-600" sub="Cần xử lý"        delay={80}  loading={appsLoading} />
-          <StatCard title="Chiến dịch"    value={activeCampaigns.length} icon="fa-solid fa-flag"  gradient="bg-gradient-to-br from-indigo-500 to-indigo-700" sub="Đang mở"         delay={160} loading={campaignsLoading} />
-          <StatCard title="Phỏng vấn"     value={upcomingInterviews.length} icon="fa-microphone"  gradient="bg-gradient-to-br from-emerald-500 to-teal-700" sub="Sắp diễn ra"     delay={240} loading={interviewsLoading} />
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+          <StatCard title="Tổng đơn nộp" value={allApplications.length} icon="fa-file-alt" gradient="bg-gradient-to-br from-sky-500 to-blue-700" sub="CLB này" delay={0} loading={appsLoading} />
+          <StatCard title="Chờ xét duyệt" value={pendingCount} icon="fa-hourglass-half" gradient="bg-gradient-to-br from-amber-500 to-orange-600" sub="Cần xử lý" delay={80} loading={appsLoading} />
+          <StatCard title="Chiến dịch" value={activeCampaigns.length} icon="fa-solid fa-flag" gradient="bg-gradient-to-br from-indigo-500 to-indigo-700" sub="Đang mở" delay={160} loading={campaignsLoading} />
+          <StatCard title="Phỏng vấn" value={upcomingInterviews.length} icon="fa-microphone" gradient="bg-gradient-to-br from-emerald-500 to-teal-700" sub="Sắp diễn ra" delay={240} loading={interviewsLoading} />
+          <StatCard title="Sự kiện" value={myEvents.length} icon="fa-calendar-alt" gradient="bg-gradient-to-br from-pink-500 to-rose-700" sub="Tổng sự kiện" delay={320} loading={eventsLoading} />
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6 mb-6">
@@ -248,12 +261,12 @@ export default function ClubManagerDashboard() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
             <h3 className="font-bold text-gray-900 dark:text-white mb-5">Truy cập nhanh</h3>
             <div className="grid grid-cols-2 gap-3">
-              <QA icon="fa-file-alt"       label="Duyệt đơn"   to="/applications"          g="bg-gradient-to-br from-amber-500 to-orange-600" />
-              <QA icon="fa-calendar-check" label="Phỏng vấn"   to="/interview/schedule"    g="bg-gradient-to-br from-sky-500 to-blue-700" />
-              <QA icon="fa-solid fa-flag"  label="Chiến dịch"  to="/recruitment-campaigns" g="bg-gradient-to-br from-indigo-500 to-indigo-700" />
-              <QA icon="fa-newspaper"      label="Bài đăng"    to="/club/manage-posts"     g="bg-gradient-to-br from-emerald-500 to-teal-700" />
-              <QA icon="fa-calendar"       label="Sự kiện"     to="/events"                g="bg-gradient-to-br from-pink-500 to-rose-700" />
-              <QA icon="fa-users"          label="Thành viên"  to="/members"               g="bg-gradient-to-br from-violet-500 to-purple-700" />
+              <QA icon="fa-file-alt" label="Duyệt đơn" to="/applications" g="bg-gradient-to-br from-amber-500 to-orange-600" />
+              <QA icon="fa-calendar-check" label="Phỏng vấn" to="/interview/schedule" g="bg-gradient-to-br from-sky-500 to-blue-700" />
+              <QA icon="fa-solid fa-flag" label="Chiến dịch" to="/recruitment-campaigns" g="bg-gradient-to-br from-indigo-500 to-indigo-700" />
+              <QA icon="fa-newspaper" label="Bài đăng" to="/club/manage-posts" g="bg-gradient-to-br from-emerald-500 to-teal-700" />
+              <QA icon="fa-calendar" label="Sự kiện" to="/events" g="bg-gradient-to-br from-pink-500 to-rose-700" />
+              <QA icon="fa-users" label="Thành viên" to="/members" g="bg-gradient-to-br from-violet-500 to-purple-700" />
             </div>
           </div>
         </div>
@@ -346,6 +359,65 @@ export default function ClubManagerDashboard() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* ── My Club Events ──────────────────────────────────────────────── */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mt-6">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-bold text-gray-900 dark:text-white">
+              <i className="fas fa-calendar-alt text-pink-500 mr-2" />Sự kiện của CLB
+            </h3>
+            <Link to="/events" className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-medium">
+              Xem tất cả <i className="fas fa-arrow-right ml-1" />
+            </Link>
+          </div>
+          {eventsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-14 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : upcomingEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+              <i className="fas fa-calendar-xmark text-4xl mb-3 opacity-30" />
+              <p className="text-sm">Chưa có sự kiện nào</p>
+              <Link to="/events/create" className="mt-3 text-xs text-sky-600 font-medium hover:underline">
+                + Tạo sự kiện mới
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {upcomingEvents.map(ev => {
+                const statusMap: Record<string, { bg: string; text: string; label: string }> = {
+                  PLANNED: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-400', label: 'Lên kế hoạch' },
+                  REGISTRATION_OPEN: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400', label: 'Mở đăng ký' },
+                  ONGOING: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400', label: 'Đang diễn ra' },
+                };
+                const st = statusMap[ev.status] ?? { bg: 'bg-gray-100', text: 'text-gray-600', label: ev.status };
+                return (
+                  <Link key={ev.eventId} to={`/events/${ev.eventId}`}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-pink-200 dark:hover:border-pink-700 hover:bg-pink-50/50 dark:hover:bg-pink-900/10 transition-all group cursor-pointer">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow">
+                      <i className="fas fa-calendar text-sm" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                        {ev.eventName}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {ev.startDate ? new Date(ev.startDate).toLocaleDateString('vi-VN') : 'Chưa xác định'}
+                        {ev.location ? ` · ${ev.location}` : ''}
+                      </p>
+                    </div>
+                    <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${st.bg} ${st.text}`}>
+                      {st.label}
+                    </span>
+                    <i className="fas fa-chevron-right text-gray-300 group-hover:text-pink-500 transition-colors" />
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
       </main>

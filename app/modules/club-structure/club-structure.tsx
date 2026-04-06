@@ -675,9 +675,8 @@ function DeleteModal({
             Hủy
           </button>
           <button onClick={onConfirm} disabled={isLoading}
-            className={`cursor-pointer px-5 py-2 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed ${
-              isManager ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'
-            }`}>
+            className={`cursor-pointer px-5 py-2 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed ${isManager ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'
+              }`}>
             {isLoading && <i className="fas fa-spinner fa-spin text-sm"></i>}
             {isManager ? 'Xóa phòng ban & vai trò' : 'Xóa vai trò'}
           </button>
@@ -849,8 +848,27 @@ export default function ClubStructureModule() {
       setModalMode(null);
       setSelectedRole(null);
     } catch (err) {
-      const rtkErr = err as { data?: { message?: string } };
-      showNotification({ type: 'error', title: 'Thao tác thất bại', message: rtkErr?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
+      const rtkErr = err as {
+        status?: number;
+        data?: { message?: string };
+      };
+
+      if (rtkErr?.status === 403) {
+        showNotification({
+          type: 'error',
+          title: 'Không có quyền',
+          message: 'Bạn không có quyền thực hiện thao tác này!',
+          duration: 4000
+        });
+        return;
+      }
+
+      showNotification({
+        type: 'error',
+        title: 'Thao tác thất bại',
+        message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
+        duration: 4000
+      });
     }
   };
 
@@ -861,8 +879,27 @@ export default function ClubStructureModule() {
       showNotification({ type: 'success', title: 'Xóa vai trò thành công!', message: `Vai trò "${deleteTarget.roleName}" đã được xóa.`, duration: 3000 });
       setDeleteTarget(null);
     } catch (err) {
-      const rtkErr = err as { data?: { message?: string } };
-      showNotification({ type: 'error', title: 'Xóa vai trò thất bại', message: rtkErr?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
+     const rtkErr = err as {
+        status?: number;
+        data?: { message?: string };
+      };
+
+      if (rtkErr?.status === 403) {
+        showNotification({
+          type: 'error',
+          title: 'Không có quyền',
+          message: 'Bạn không có quyền thực hiện thao tác này!',
+          duration: 4000
+        });
+        return;
+      }
+
+      showNotification({
+        type: 'error',
+        title: 'Thao tác thất bại',
+        message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
+        duration: 4000
+      });
     }
   };
 
@@ -872,8 +909,27 @@ export default function ClubStructureModule() {
       showNotification({ type: 'success', title: 'Tạo phòng ban thành công!', message: `Phòng ban "${data.name}" đã được tạo.`, duration: 3000 });
       setDeptModalOpen(false);
     } catch (err) {
-      const rtkErr = err as { data?: { message?: string } };
-      showNotification({ type: 'error', title: 'Tạo phòng ban thất bại', message: rtkErr?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
+       const rtkErr = err as {
+        status?: number;
+        data?: { message?: string };
+      };
+
+      if (rtkErr?.status === 403) {
+        showNotification({
+          type: 'error',
+          title: 'Không có quyền',
+          message: 'Bạn không có quyền thực hiện thao tác này!',
+          duration: 4000
+        });
+        return;
+      }
+
+      showNotification({
+        type: 'error',
+        title: 'Thao tác thất bại',
+        message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
+        duration: 4000
+      });
     }
   };
 
@@ -893,7 +949,7 @@ export default function ClubStructureModule() {
         onToggleSidebar={toggleSidebar}
       />
 
-      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
         {/* Top bar: Back + Add + View Toggle */}
         <div className="flex items-center justify-between mb-8">
           <button onClick={() => navigate(`/clubs/${id}`)}

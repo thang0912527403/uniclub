@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 interface SessionFormProps {
     eventId: number;
+    clubId: number;
     onSubmit: (data: any) => void;
     onCancel: () => void;
     isLoading?: boolean;
@@ -10,6 +11,7 @@ interface SessionFormProps {
 
 export function SessionForm({
     eventId,
+    clubId,
     onSubmit,
     onCancel,
     isLoading = false,
@@ -43,24 +45,24 @@ export function SessionForm({
         const newErrors: Record<string, string> = {};
 
         if (!formData.sessionName.trim()) {
-            newErrors.sessionName = 'Session name is required';
+            newErrors.sessionName = 'Tên phiên không được để trống';
         } else if (formData.sessionName.length > 100) {
-            newErrors.sessionName = 'Session name cannot exceed 100 characters';
+            newErrors.sessionName = 'Tên phiên không được vượt quá 100 ký tự';
         }
 
         if (!formData.startTime) {
-            newErrors.startTime = 'Start time is required';
+            newErrors.startTime = 'Vui lòng chọn thời gian bắt đầu';
         }
 
         if (!formData.endTime) {
-            newErrors.endTime = 'End time is required';
+            newErrors.endTime = 'Vui lòng chọn thời gian kết thúc';
         }
 
         if (formData.startTime && formData.endTime) {
             const start = new Date(formData.startTime);
             const end = new Date(formData.endTime);
             if (end <= start) {
-                newErrors.endTime = 'End time must be after start time';
+                newErrors.endTime = 'Thời gian kết thúc phải sau thời gian bắt đầu';
             }
         }
 
@@ -77,6 +79,7 @@ export function SessionForm({
 
         const submitData = {
             eventId,
+            clubId,
             sessionName: formData.sessionName,
             startTime: new Date(formData.startTime).toISOString(),
             endTime: new Date(formData.endTime).toISOString(),
@@ -89,9 +92,10 @@ export function SessionForm({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Tên phiên */}
             <div>
                 <label className={`block text-sm font-medium mb-2 ${labelClass}`}>
-                    Session Name <span className="text-red-500">*</span>
+                    Tên phiên <span className="text-red-500">*</span>
                 </label>
                 <input
                     type="text"
@@ -100,17 +104,18 @@ export function SessionForm({
                     onChange={handleChange}
                     className={`w-full px-4 py-2 rounded-lg border outline-none ${inputClass} ${errors.sessionName ? 'border-red-500' : ''
                         }`}
-                    placeholder="Enter session name"
+                    placeholder="VD: Phiên khai mạc, Workshop kỹ năng..."
                 />
                 {errors.sessionName && (
                     <p className="text-red-500 text-sm mt-1">{errors.sessionName}</p>
                 )}
             </div>
 
+            {/* Thời gian */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className={`block text-sm font-medium mb-2 ${labelClass}`}>
-                        Start Time <span className="text-red-500">*</span>
+                        Thời gian bắt đầu <span className="text-red-500">*</span>
                     </label>
                     <input
                         type="datetime-local"
@@ -127,7 +132,7 @@ export function SessionForm({
 
                 <div>
                     <label className={`block text-sm font-medium mb-2 ${labelClass}`}>
-                        End Time <span className="text-red-500">*</span>
+                        Thời gian kết thúc <span className="text-red-500">*</span>
                     </label>
                     <input
                         type="datetime-local"
@@ -143,9 +148,10 @@ export function SessionForm({
                 </div>
             </div>
 
+            {/* Địa điểm phiên */}
             <div>
                 <label className={`block text-sm font-medium mb-2 ${labelClass}`}>
-                    Location
+                    Địa điểm <span className={`text-xs font-normal ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>(tùy chọn)</span>
                 </label>
                 <input
                     type="text"
@@ -153,13 +159,14 @@ export function SessionForm({
                     value={formData.location}
                     onChange={handleChange}
                     className={`w-full px-4 py-2 rounded-lg border outline-none ${inputClass}`}
-                    placeholder="Enter session location"
+                    placeholder="Địa điểm của phiên này (nếu khác địa điểm chính)"
                 />
             </div>
 
+            {/* Mô tả phiên */}
             <div>
                 <label className={`block text-sm font-medium mb-2 ${labelClass}`}>
-                    Description
+                    Mô tả <span className={`text-xs font-normal ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>(tùy chọn)</span>
                 </label>
                 <textarea
                     name="description"
@@ -167,10 +174,11 @@ export function SessionForm({
                     onChange={handleChange}
                     rows={3}
                     className={`w-full px-4 py-2 rounded-lg border outline-none ${inputClass}`}
-                    placeholder="Enter session description"
+                    placeholder="Nội dung chi tiết của phiên này..."
                 />
             </div>
 
+            {/* Nút hành động */}
             <div className="flex gap-4 justify-end">
                 <button
                     type="button"
@@ -181,15 +189,15 @@ export function SessionForm({
                             : 'border-gray-300 text-gray-700 hover:bg-gray-100'
                         } transition-colors disabled:opacity-50`}
                 >
-                    Cancel
+                    Hủy
                 </button>
                 <button
                     type="submit"
                     disabled={isLoading}
                     className="px-6 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
-                    {isLoading && <i className="fas fa-spinner fa-spin"></i>}
-                    Add Session
+                    {isLoading && <i className="fas fa-spinner fa-spin" />}
+                    Thêm phiên
                 </button>
             </div>
         </form>
