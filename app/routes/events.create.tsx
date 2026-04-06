@@ -22,6 +22,7 @@ import { SessionQuickModal } from '~/modules/events/components/SessionQuickModal
 import type { CalendarState } from '~/modules/events/components/EventCalendarPanel';
 import type { SessionQuickModalData } from '~/modules/events/components/SessionQuickModal';
 import { useClubRole } from '~/hooks/useClubRole';
+import { useClubPolicy } from '~/hooks/useClubPolicy';
 import { getClubId } from '~/utils/auth';
 
 // ────────────────────────── Form State Types ──────────────────────────
@@ -158,8 +159,10 @@ export default function CreateEventPage() {
     const { isDark, toggleTheme } = useTheme();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { clubManagerMembership } = useClubRole();
+    const { canCreateEvent, isLoading: isPolicyLoading } = useClubPolicy();
     const clubId = getClubId();
 
+    // ── All hooks must be called unconditionally before any early return ──
     const [createEvent, { isLoading: isCreating }] = useCreateEventMutation();
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'info' | 'time'>('info');
@@ -324,6 +327,25 @@ export default function CreateEventPage() {
         ? 'bg-[#1a1d2e] border-gray-600 text-white'
         : 'bg-white border-gray-300 text-gray-900';
     const border = isDark ? 'border-gray-700' : 'border-gray-200';
+
+    // Guard: chặn truy cập nếu không có quyền tạo sự kiện
+    // (Đặt sau tất cả hooks để tuân thủ Rules of Hooks)
+    if (!isPolicyLoading && !canCreateEvent) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+                <div className="text-center">
+                    <i className="fas fa-lock text-5xl text-gray-400 mb-4" />
+                    <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-2">Không có quyền truy cập</h2>
+                    <p className="text-gray-500 mb-5">Bạn không có quyền tạo sự kiện.</p>
+                    <button onClick={() => navigate('/events')}
+                        className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                        Quay lại danh sách
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen">
