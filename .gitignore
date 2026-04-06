@@ -2,6 +2,7 @@
 .env
 .cursor/
 .agent/
+.claude/
 /node_modules/
 
 # React Router

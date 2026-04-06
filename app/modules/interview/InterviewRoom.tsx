@@ -16,7 +16,7 @@ import { getUserId } from '~/utils/auth';
 
 /**
  * InterviewRoom wraps the existing MeetingRoom (WebRTC) module
- * and adds a ScoringPanel sidebar for interviewers to score candidates.
+ * and adds a ScoringPanel sidebar for interviewers to evaluate candidates.
  * Includes:
  *  - Room validation: block entry if room is Closed/Completed/Cancelled/not found.
  *  - ScoringPanel: shown only to assigned interviewers.
@@ -49,7 +49,6 @@ const InterviewRoomContent: React.FC<{
     assignmentId: number;
     feedbackNotes: string;
     result: string;
-    score: number;
   }) => {
     try {
       await submitFeedback({
@@ -58,7 +57,6 @@ const InterviewRoomContent: React.FC<{
         dto: {
           feedbackNotes: data.feedbackNotes,
           result: data.result,
-          score: data.score,
         },
       }).unwrap();
     } catch (err) {
@@ -99,6 +97,7 @@ const InterviewRoomContent: React.FC<{
               scheduleId={relatedInterview!.id}
               assignment={currentAssignment!}
               allAssignments={relatedInterview!.assignments}
+              campaignId={relatedInterview!.campaignId}
               onSubmitFeedback={handleSubmitFeedback}
               isSubmitting={isSubmitting}
             />

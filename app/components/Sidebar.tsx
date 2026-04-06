@@ -79,6 +79,8 @@ export function Sidebar({
         { label: t('sidebar.manageClub.recruitmentCampaigns'), url: '/club/recruitment-campaigns' },
         { label: t('sidebar.manageClub.clubMembers'), url: '/club/members' },
         { label: t('sidebar.manageClub.clubActivities'), url: '/club/activities' },
+        { label: t('sidebar.manageClub.clubPosts') || 'Club Posts', url: '/club/posts' },
+        { label: t('sidebar.manageClub.clubRequests') || 'Club Requests', url: '/club/all-requests' },
       ]
     },
     {

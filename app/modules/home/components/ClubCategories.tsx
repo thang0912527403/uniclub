@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
-import { useGetClubsQuery } from '~/cores/api';
+import { useGetActiveClubsQuery } from '~/cores/api';
 import { Users, ArrowRight } from 'lucide-react';
 
 const ClubCategories: React.FC = () => {
-    const { data: clubs = [] } = useGetClubsQuery();
+    const { data, isFetching } = useGetActiveClubsQuery({ pageIndex: "1", searchQuery: "", pageSize: "3" });
+    const clubs = data?.data ?? [];
     const navigate = useNavigate();
 
     return (
@@ -21,7 +22,7 @@ const ClubCategories: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {clubs.slice(0, 6).map((club) => (
+                    {clubs.slice(0, 3).map((club) => (
                         <div
                             key={club.clubId}
                             onClick={() => navigate(`/club/all-clubs/${club.clubId}`)}
@@ -35,14 +36,14 @@ const ClubCategories: React.FC = () => {
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                                
+
                                 {/* Logo Overlay */}
                                 <div className="absolute bottom-4 left-4 flex items-center gap-3">
                                     <div className="w-12 h-12 p-1 bg-white rounded-xl shadow-lg">
-                                        <img 
-                                            src={club.logoUrl || 'https://yt3.googleusercontent.com/YaAFWY03ER0DfF77HAyMqNlRxmJiSEDq_I7ZF0MlcgRcVzOhIhZfB8QlwNhAuVXZesi2I2zy=s900-c-k-c0x00ffffff-no-rj'} 
-                                            alt="logo" 
-                                            className="w-full h-full object-contain rounded-lg" 
+                                        <img
+                                            src={club.logoUrl || 'https://yt3.googleusercontent.com/YaAFWY03ER0DfF77HAyMqNlRxmJiSEDq_I7ZF0MlcgRcVzOhIhZfB8QlwNhAuVXZesi2I2zy=s900-c-k-c0x00ffffff-no-rj'}
+                                            alt="logo"
+                                            className="w-full h-full object-contain rounded-lg"
                                         />
                                     </div>
                                     <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">
@@ -69,7 +70,7 @@ const ClubCategories: React.FC = () => {
                                         <Users size={16} className="text-orange-500" />
                                         <span>{club.memberCount} Thành viên</span>
                                     </div>
-                                    
+
                                     <div className="text-orange-500 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                                         <ArrowRight size={20} />
                                     </div>

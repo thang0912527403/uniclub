@@ -244,18 +244,8 @@ const InterviewTable: React.FC<InterviewTableProps> = ({
               Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
             ) : (
               interviews.map((iv) => {
-                const cleanDescription = iv.description?.replace(/\n*<!--PROPOSED_SLOTS:.*?-->/, '').trim();
-                // Parse proposed slots metadata
-                let slotCount = 0;
-                if (iv.description) {
-                  const match = iv.description.match(/<!--PROPOSED_SLOTS:(.*?)-->/);
-                  if (match) {
-                    try {
-                      const parsed = JSON.parse(match[1]);
-                      slotCount = parsed?.proposedTimeSlots?.length || 0;
-                    } catch {}
-                  }
-                }
+                const cleanDescription = iv.description?.trim() || '';
+                const slotCount = iv.proposedTimeSlots?.length || 0;
                 return (
                 <tr
                   key={iv.id}

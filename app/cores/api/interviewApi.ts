@@ -20,6 +20,7 @@ import type {
   CreateEvaluationCriterionDto,
   UpdateEvaluationCriterionDto,
   AssignCriteriaDto,
+  CriteriaScoreResponse,
   SubmitCriteriaFeedbackDto,
   EvaluationSummaryResponse,
   CandidateComparisonItem,
@@ -27,6 +28,11 @@ import type {
   CampaignDecisionResponse,
   PublishResultDto,
   PublishStatusResponse,
+  AiAnalysisResponse,
+  AiSearchRequest,
+  AiSearchResponse,
+  ConfirmTimeSlotDto,
+  ProposedTimeSlotResponse,
 } from './types';
 
 export const interviewApi = baseApi.injectEndpoints({
@@ -96,6 +102,26 @@ export const interviewApi = baseApi.injectEndpoints({
         method: 'DELETE',
       }),
       invalidatesTags: [{ type: 'Interview', id: 'LIST' }],
+    }),
+
+    // ═══════════════════════════════════════════════════════════
+    //  Proposed Time Slots
+    // ═══════════════════════════════════════════════════════════
+
+    getTimeSlots: builder.query<ProposedTimeSlotResponse[], number>({
+      query: (scheduleId) => `/interviews/${scheduleId}/time-slots`,
+      transformResponse: (response: ApiResponse<ProposedTimeSlotResponse[]>) => response.data,
+      providesTags: (result, error, scheduleId) => [{ type: 'Interview', id: scheduleId }],
+    }),
+
+    confirmTimeSlot: builder.mutation<InterviewScheduleResponse, { scheduleId: number; dto: ConfirmTimeSlotDto }>({
+      query: ({ scheduleId, dto }) => ({
+        url: `/interviews/${scheduleId}/confirm-time-slot`,
+        method: 'POST',
+        body: dto,
+      }),
+      transformResponse: (response: ApiResponse<InterviewScheduleResponse>) => response.data,
+      invalidatesTags: (result, error, { scheduleId }) => [{ type: 'Interview', id: scheduleId }, { type: 'Interview', id: 'LIST' }],
     }),
 
     // ═══════════════════════════════════════════════════════════
@@ -249,7 +275,19 @@ export const interviewApi = baseApi.injectEndpoints({
         method: 'PUT',
         body: dto,
       }),
-      invalidatesTags: (result, error, { scheduleId }) => [{ type: 'Interview', id: scheduleId }],
+      invalidatesTags: (result, error, { scheduleId, assignmentId }) => [
+        { type: 'Interview', id: scheduleId },
+        { type: 'Interview', id: `SCORES_${scheduleId}_${assignmentId}` },
+      ],
+    }),
+
+    getCriteriaScores: builder.query<CriteriaScoreResponse[], { scheduleId: number; assignmentId: number }>({
+      query: ({ scheduleId, assignmentId }) => `/interviews/${scheduleId}/assignments/${assignmentId}/criteria-scores`,
+      transformResponse: (response: ApiResponse<CriteriaScoreResponse[]>) => response.data,
+      providesTags: (result, error, { scheduleId, assignmentId }) => [
+        { type: 'Interview', id: `SCORES_${scheduleId}_${assignmentId}` },
+        { type: 'Interview', id: scheduleId },
+      ],
     }),
 
     // ═══════════════════════════════════════════════════════════
@@ -304,6 +342,25 @@ export const interviewApi = baseApi.injectEndpoints({
       query: (campaignId) => `/interviews/campaign/${campaignId}/publish-status`,
       transformResponse: (response: ApiResponse<PublishStatusResponse>) => response.data,
     }),
+
+    // ═══════════════════════════════════════════════════════════
+    //  AI Analysis & Search
+    // ═══════════════════════════════════════════════════════════
+
+    getAiAnalysis: builder.query<AiAnalysisResponse, number>({
+      query: (campaignId) => `/interviews/campaign/${campaignId}/ai-analysis`,
+      transformResponse: (response: ApiResponse<AiAnalysisResponse>) => response.data,
+      providesTags: (result, error, campaignId) => [{ type: 'Interview' as const, id: `AI_ANALYSIS_${campaignId}` }],
+    }),
+
+    aiSearch: builder.mutation<AiSearchResponse, { campaignId: number; dto: AiSearchRequest }>({
+      query: ({ campaignId, dto }) => ({
+        url: `/interviews/campaign/${campaignId}/ai-search`,
+        method: 'POST',
+        body: dto,
+      }),
+      transformResponse: (response: ApiResponse<AiSearchResponse>) => response.data,
+    }),
   }),
   overrideExisting: false,
 });
@@ -315,6 +372,8 @@ export const {
   useUpdateInterviewMutation,
   useUpdateInterviewStatusMutation,
   useDeleteInterviewMutation,
+  useGetTimeSlotsQuery,
+  useConfirmTimeSlotMutation,
   useAssignInterviewersMutation,
   useGetAssignmentsQuery,
   useRemoveAssignmentMutation,
@@ -334,11 +393,15 @@ export const {
   useUpdateCriterionMutation,
   useDeleteCriterionMutation,
   useAssignCriteriaMutation,
+  useGetCriteriaScoresQuery,
   useSubmitCriteriaFeedbackMutation,
   useGetEvaluationSummaryQuery,
   useGetCampaignComparisonQuery,
   useSubmitDecisionsMutation,
   usePublishResultsMutation,
   useGetPublishStatusQuery,
+  // AI
+  useGetAiAnalysisQuery,
+  useAiSearchMutation,
 } = interviewApi;
 

@@ -30,30 +30,36 @@ export interface UpdateEvaluationCriterionDto {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CRITERIA ASSIGNMENT & SCORING
+//  CRITERIA ASSIGNMENT & NOTES
 // ═══════════════════════════════════════════════════════════════
 
 export interface AssignCriteriaDto {
   criteriaIds: number[];
 }
 
-export interface CriteriaScoreItemDto {
+export interface CriteriaScoreResponse {
+  id: number;
+  interviewAssignmentId?: number;
+  evaluationCriterionId: number;
+  note?: string | null;
+  createdAt: string;
+}
+
+export interface CriteriaNoteItemDto {
   criterionId: number;
-  score: number; // 1–5
   note?: string | null;
 }
 
 export interface SubmitCriteriaFeedbackDto {
-  scores: CriteriaScoreItemDto[];
+  notes: CriteriaNoteItemDto[];
   feedbackNotes?: string | null;
   result: string; // Pass | Fail | OnHold | NoShow
 }
 
-export interface CriteriaScoreResult {
+export interface CriteriaNoteResult {
   criterionId: number;
   criterionName: string;
   weight: number;
-  score: number;
   note?: string | null;
   interviewerUserId: string;
   interviewerRole: string;
@@ -63,8 +69,7 @@ export interface CriteriaSummaryItem {
   criterionId: number;
   criterionName: string;
   weight: number;
-  averageScore: number;
-  individualScores: CriteriaScoreResult[];
+  individualNotes: CriteriaNoteResult[];
 }
 
 export interface EvaluationSummaryResponse {
@@ -73,7 +78,6 @@ export interface EvaluationSummaryResponse {
   candidateUserId: string;
   campaignId: number;
   criteriaSummaries: CriteriaSummaryItem[];
-  totalScore: number;
   suggestedResult: string;
   feedbacks: import('./interview').InterviewAssignmentResponse[];
 }
@@ -86,8 +90,6 @@ export interface CandidateComparisonItem {
   interviewScheduleId: number;
   candidateUserId: string;
   title: string;
-  criteriaScores: Record<number, number>; // criterionId → avgScore
-  totalScore: number;
   rank: number;
   suggestedResult: string;
 }
@@ -136,4 +138,50 @@ export interface PublishStatusResponse {
   scheduledPublishAt?: string | null;
   publishedAt?: string | null;
   decisions: CampaignDecisionResponse[];
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AI ANALYSIS & SEARCH
+// ═══════════════════════════════════════════════════════════════
+
+export interface AiCriteriaAnalysis {
+  criterionId: number;
+  criterionName: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  summary: string;
+}
+
+export interface AiCandidateAnalysis {
+  interviewScheduleId: number;
+  candidateUserId: string;
+  candidateName: string;
+  fitLabel: string;
+  suggestedResult: string;
+  summary: string;
+  criteriaAnalysis: AiCriteriaAnalysis[];
+  strengths: string[];
+  weaknesses: string[];
+}
+
+export interface AiAnalysisResponse {
+  campaignId: number;
+  analyzedAt: string;
+  candidates: AiCandidateAnalysis[];
+}
+
+export interface AiSearchRequest {
+  query: string;
+}
+
+export interface AiSearchCandidate {
+  interviewScheduleId: number;
+  candidateUserId: string;
+  candidateName: string;
+  matchScore: number;
+  reason: string;
+}
+
+export interface AiSearchResponse {
+  query: string;
+  results: AiSearchCandidate[];
 }

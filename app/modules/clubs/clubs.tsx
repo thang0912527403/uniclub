@@ -72,7 +72,8 @@ export default function ClubsModule() {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
-  const { data: clubs, isLoading, error } = useGetClubsQuery();
+  const { data: clubsData, isLoading, error } = useGetClubsQuery({ pageIndex: '1', searchQuery: '', pageSize: '100' });
+  const clubs = clubsData?.data ?? [];
   const [toggleStatus, { isLoading: isToggling }] = useToggleClubStatusMutation();
 
   const [confirmClub, setConfirmClub] = useState<Club | null>(null);
@@ -139,7 +140,7 @@ export default function ClubsModule() {
         )}
 
         {/* Stats Overview */}
-        {!isLoading && clubs && (
+        {!isLoading && clubsData && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">

@@ -1,4 +1,9 @@
-import { type RouteConfig, index, route, layout } from "@react-router/dev/routes";
+import {
+  type RouteConfig,
+  index,
+  route,
+  layout,
+} from "@react-router/dev/routes";
 
 export default [
   // ─── Public routes (không cần đăng nhập) ──────────────────
@@ -67,6 +72,7 @@ export default [
     route("club/all-clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
     route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
     route("club/all-requests", "routes/clubs/clubrequests.tsx"),
+    route("club/posts", "routes/clubs/clubpost.tsx"),
 
     // Interview routes
     route("interview/schedule", "routes/interview-schedule.tsx"),

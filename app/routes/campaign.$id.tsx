@@ -1,40 +1,21 @@
-import { useMemo } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router';
-import {
-  useGetRecruitmentCampaignQuery,
-  useGetRecruitmentCampaignsQuery,
-  useGetFormsByCampaignQuery,
-} from '~/cores/api';
+import { useParams, Link } from 'react-router';
+import { useGetRecruitmentCampaignQuery, useGetFormsByCampaignQuery } from '~/cores/api';
 import Navbar from '../components/Navbar';
 import Footer from '~/modules/home/components/Footer';
 
 export default function CampaignDetailPage() {
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
   const campaignId = Number(id) || 0;
-  const clubIdFromQuery = Number(searchParams.get('clubId')) || 0;
 
-  const { data: allCampaigns, isLoading: loadingCampaignList } = useGetRecruitmentCampaignsQuery(undefined, {
-    skip: !!clubIdFromQuery || !campaignId,
+  const { data: campaign, isLoading, error } = useGetRecruitmentCampaignQuery(campaignId, {
+    skip: !campaignId,
   });
 
-  const resolvedClubId = useMemo(() => {
-    if (clubIdFromQuery) return clubIdFromQuery;
-    return allCampaigns?.find((c) => c.campaignId === campaignId)?.clubId ?? 0;
-  }, [clubIdFromQuery, allCampaigns, campaignId]);
-
-  const { data: campaign, isLoading: loadingCampaign, error } = useGetRecruitmentCampaignQuery(
-    { clubId: resolvedClubId, campaignId },
-    { skip: !campaignId || !resolvedClubId },
-  );
-
-  const clubId = campaign?.clubId ?? resolvedClubId;
+  const clubId = campaign?.clubId ?? 0;
   const { data: forms = [] } = useGetFormsByCampaignQuery(
     { clubId, campaignId },
     { skip: !campaignId || !clubId },
   );
-
-  const isLoading = (!!clubIdFromQuery ? false : loadingCampaignList) || loadingCampaign;
 
   if (isLoading) {
     return (
@@ -113,7 +94,7 @@ export default function CampaignDetailPage() {
                 </div>
                 {isActive && (
                   <Link
-                    to={`/question/${campaignId}?clubId=${clubId}`}
+                    to={`/application-form/${campaignId}`}
                     className="flex-shrink-0 inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                   >
                     <i className="fas fa-paper-plane" /> Ứng tuyển ngay
@@ -174,7 +155,7 @@ export default function CampaignDetailPage() {
                   Bấm nút bên dưới để chuyển đến trang trả lời câu hỏi ứng tuyển.
                 </p>
                 <Link
-                  to={`/question/${firstFormId}?clubId=${clubId}`}
+                  to={`/application-form/${firstFormId}`}
                   className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg hover:shadow-xl"
                 >
                   <i className="fas fa-file-alt" /> Ứng tuyển
