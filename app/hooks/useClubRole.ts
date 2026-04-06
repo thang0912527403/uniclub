@@ -1,7 +1,7 @@
 import { useGetUserClubInfoQuery } from '~/cores/api/userApi';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 
-const CLUB_MANAGER_ROLES = ['Club Manager', 'ClubManager'];
+const CLUB_MANAGER_ROLES = ['Club Manager', 'ClubManager', 'Chủ nhiệm'];
 
 export function useClubRole() {
   const { isAdmin, userId } = useCurrentUser();

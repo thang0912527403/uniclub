@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
+import { ChevronLeft } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import FormHeader from './components/formHeader';
 import QuestionCard from './components/questionCard';
 import ProgressBar from './components/progressBar';
-import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationByUserAndFormQuery, useGetFormsByCampaignQuery } from '../../cores/api/applicationApi';
+import { useGetQuestionsByFormQuery, useSubmitApplicationMutation, useGetApplicationsByUserQuery, useGetFormsByCampaignQuery } from '../../cores/api/applicationApi';
 import { useGetRecruitmentCampaignQuery } from '../../cores/api';
-import { getUserId } from '~/utils/auth';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
+import { getAccessToken } from '~/utils/auth';
 import type { ApplicationAnswerItemDto } from '../../cores/api';
 
 /**
@@ -26,9 +27,7 @@ const QuestionPage: React.FC = () => {
   const { data: campaign } = useGetRecruitmentCampaignQuery(idFromUrl, {
     skip: !idFromUrl || isNaN(idFromUrl),
   });
-  // const clubId = campaign?.clubId ?? 0;
-  const clubId = 1;
-
+  const clubId = campaign?.clubId ?? 0;
   // 2. Fetch forms for the campaign (requires clubId)
   const { data: campaignForms = [] } = useGetFormsByCampaignQuery(
     { clubId, campaignId: idFromUrl },
@@ -40,25 +39,32 @@ const QuestionPage: React.FC = () => {
   // - Otherwise, assume the ID in the URL is the form ID itself
   const actualFormId = campaignForms.length > 0 ? campaignForms[0].formId : idFromUrl;
 
-  const currentUserId = getUserId();
-  const { user: currentUser, isLoading: userLoading } = useCurrentUser();
+  // Use userId from useCurrentUser (safe for SSR - starts as '' and updates via useEffect)
+  const { user: currentUser, isLoading: userLoading, userId: currentUserId } = useCurrentUser();
   const {
     data: questions = [],
     isLoading: questionsLoading,
     error: questionsError
-  } = useGetQuestionsByFormQuery({ clubId, formId: actualFormId }, { skip: !actualFormId || isNaN(actualFormId) || !clubId });
+  } = useGetQuestionsByFormQuery({ formId: actualFormId }, { skip: !actualFormId || isNaN(actualFormId) });
 
   const [submitApplication, { isLoading: isSubmitting, error: submitError, isSuccess }] = useSubmitApplicationMutation();
 
-  // Check if user already applied to this form
-  const { data: existingApp, isLoading: checkingApp } = useGetApplicationByUserAndFormQuery(
-    { clubId, userId: currentUserId, formId: actualFormId },
-    { skip: !currentUserId || !actualFormId || isNaN(actualFormId) || !clubId }
+  // Check if user already applied to this form (avoid 404 by fetching all user apps and filtering)
+  const { data: userApps = [], isLoading: checkingApp } = useGetApplicationsByUserQuery(
+    { userId: currentUserId },
+    { skip: !currentUserId }
   );
+  const existingApp = userApps.find(a => a.formId === actualFormId) ?? null;
 
   const [answers, setAnswers] = useState<Record<number, any>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<number, string>>({});
+  const [showConfirm, setShowConfirm] = useState(false);
+  const inputRefs = useRef<Record<number, HTMLElement | null>>({});
 
   const handleInputChange = (id: number, value: any) => {
+    if (fieldErrors[id]) {
+      setFieldErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
+    }
     setAnswers(prev => {
       const isEmpty = value === '' || value === null || value === undefined || (Array.isArray(value) && value.length === 0);
       if (isEmpty) {
@@ -76,9 +82,47 @@ const QuestionPage: React.FC = () => {
     return String(value);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUserId) return;
+
+    // Validate required fields
+    const errors: Record<number, string> = {};
+    for (const q of questions) {
+      if (!q.isRequired) continue;
+      const val = answers[q.questionId];
+      const label = q.questionText.split('|')[0];
+      const empty =
+        val === undefined || val === null ||
+        (typeof val === 'string' && val.trim() === '') ||
+        (Array.isArray(val) && val.length === 0);
+      if (empty) {
+        const verb = q.questionType === 'radio' || q.questionType === 'checkbox' ? 'chọn' : 'nhập';
+        errors[q.questionId] = `Vui lòng ${verb} ${label}`;
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const firstErrorQ = questions.find(q => errors[q.questionId]);
+      if (firstErrorQ) {
+        const el = inputRefs.current[firstErrorQ.questionId];
+        el?.focus();
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!currentUserId || !getAccessToken()) {
+      setShowConfirm(false);
+      navigate(`/auth/login?redirect=/question/${idFromUrl}`);
+      return;
+    }
+    setShowConfirm(false);
     const answerList: ApplicationAnswerItemDto[] = Object.entries(answers)
       .filter(([, v]) => toAnswerText(v).trim() !== '')
       .map(([questionId, value]) => ({
@@ -86,7 +130,7 @@ const QuestionPage: React.FC = () => {
         answerText: toAnswerText(value).trim(),
       }));
     try {
-      await submitApplication({ clubId, formId: actualFormId, userId: currentUserId, answers: answerList }).unwrap();
+      await submitApplication({ formId: actualFormId, userId: currentUserId, answers: answerList }).unwrap();
     } catch (_) { /* error shown via submitError */ }
   };
 
@@ -135,7 +179,7 @@ const QuestionPage: React.FC = () => {
               Bạn cần đăng nhập để nộp đơn ứng tuyển. Vui lòng đăng nhập và thử lại.
             </p>
             <Link
-              to={`/auth/login?redirect=/question/${actualFormId}`}
+              to={`/auth/login?redirect=/application-form/${actualFormId}`}
               className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all mb-3"
             >
               <i className="fa-solid fa-right-to-bracket mr-2" />
@@ -174,7 +218,30 @@ const QuestionPage: React.FC = () => {
     );
   }
 
-  // ── Already applied ─────────────────────────────────────────────────────
+  // ── Success state ────────────────────────────────────────────────────────
+  // Must be checked BEFORE existingApp because RTK Query refetches after submit,
+  // which would cause existingApp to be truthy and override the success screen.
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB]">
+        <Navbar />
+        <main className="max-w-md mx-auto px-4 py-20 text-center">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-10">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+              <i className="fa-solid fa-paper-plane text-green-500 text-4xl" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Nộp đơn thành công!</h2>
+            <p className="text-gray-500 text-sm mb-6">Cảm ơn bạn đã ứng tuyển. Chúng tôi sẽ liên hệ sớm.</p>
+            <Link to="/my-applications" className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all">
+              <i className="fa-solid fa-list mr-2" />
+              Xem đơn của tôi
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (existingApp) {
     return (
       <div className="min-h-screen bg-[#FDFCFB]">
@@ -203,7 +270,6 @@ const QuestionPage: React.FC = () => {
     );
   }
 
-  // ── No questions ─────────────────────────────────────────────────────────
   if (!questions.length) {
     return (
       <div className="min-h-screen bg-[#FDFCFB]">
@@ -219,33 +285,21 @@ const QuestionPage: React.FC = () => {
     );
   }
 
-  // ── Success state ────────────────────────────────────────────────────────
-  if (isSuccess) {
-    return (
-      <div className="min-h-screen bg-[#FDFCFB]">
-        <Navbar />
-        <main className="max-w-md mx-auto px-4 py-20 text-center">
-          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-10">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-              <i className="fa-solid fa-paper-plane text-green-500 text-4xl" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Nộp đơn thành công!</h2>
-            <p className="text-gray-500 text-sm mb-6">Cảm ơn bạn đã ứng tuyển. Chúng tôi sẽ liên hệ sớm.</p>
-            <Link to="/my-applications" className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all">
-              <i className="fa-solid fa-list mr-2" />
-              Xem đơn của tôi
-            </Link>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   // ── Main form ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A]">
       <Navbar />
-      <main className="max-w-3xl mx-auto px-4 py-16">
+      <main className="max-w-3xl mx-auto px-4 pt-28 pb-16 relative z-10">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-gray-500 hover:text-orange-600 font-bold mb-8 transition-colors group"
+        >
+          <div className="p-2 rounded-full group-hover:bg-orange-50 transition-colors">
+            <ChevronLeft size={20} />
+          </div>
+          Quay lại
+        </button>
+
         <FormHeader
           title="Thông tin đăng ký"
           highlight="Thành viên"
@@ -269,6 +323,8 @@ const QuestionPage: React.FC = () => {
               }}
               value={answers[q.questionId] || (q.questionType === 'checkbox' ? [] : '')}
               onChange={(val) => handleInputChange(q.questionId, val)}
+              error={fieldErrors[q.questionId]}
+              inputRef={(el: HTMLElement | null) => { inputRefs.current[q.questionId] = el; }}
             />
           ))}
 
@@ -296,6 +352,35 @@ const QuestionPage: React.FC = () => {
           </div>
         </form>
       </main>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
+              <i className="fa-solid fa-paper-plane text-orange-500 text-2xl" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Xác nhận nộp đơn</h3>
+            <p className="text-gray-500 text-sm mb-6">
+              Bạn có chắc muốn nộp đơn ứng tuyển? Sau khi gửi, bạn sẽ không thể chỉnh sửa.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 py-3 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl font-medium transition-all"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                disabled={isSubmitting}
+                className="flex-1 py-3 bg-[#FF6B00] hover:bg-[#E56000] disabled:opacity-70 text-white rounded-xl font-bold transition-all"
+              >
+                {isSubmitting ? <i className="fa-solid fa-spinner fa-spin" /> : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
