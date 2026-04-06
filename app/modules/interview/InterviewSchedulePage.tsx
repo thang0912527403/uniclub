@@ -16,12 +16,10 @@ import {
   useRemoveAssignmentMutation,
   useGetInterviewByIdQuery,
   useCloseRoomMutation,
-  useGetClubMembersQuery,
 } from "~/cores/api";
 import type {
   InterviewScheduleResponse,
   ApplicationResponseDto,
-  ClubMember,
 } from "~/cores/api";
 import { getUserId } from "~/utils/auth";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
@@ -34,6 +32,7 @@ import InterviewTable from "./components/InterviewTable";
 import InterviewDetailDrawer from "./components/InterviewDetailDrawer";
 import BulkActionBar from "./components/BulkActionBar";
 import CreateInterviewModal from "./components/CreateInterviewModal";
+import BulkAssignInterviewerModal from "./components/BulkAssignInterviewerModal";
 import Cookies from "js-cookie";
 const InterviewSchedulePage: React.FC = () => {
   const navigate = useNavigate();
@@ -112,6 +111,12 @@ const InterviewSchedulePage: React.FC = () => {
     useState<ApplicationResponseDto | null>(null);
   const [bulkApplications, setBulkApplications] = useState<
     ApplicationResponseDto[]
+  >([]);
+
+  // ─── Bulk assign interviewer modal ─────────────────────────────
+  const [bulkAssignModalOpen, setBulkAssignModalOpen] = useState(false);
+  const [bulkAssignInterviews, setBulkAssignInterviews] = useState<
+    InterviewScheduleResponse[]
   >([]);
 
   // ─── Filter applications not yet interviewed ────────────────
@@ -531,8 +536,6 @@ const InterviewSchedulePage: React.FC = () => {
   };
 
   const bulkCancelReasonRef = useRef("");
-  const bulkAssignUserIdRef = useRef("");
-  const bulkAssignRoleRef = useRef("Interviewer");
 
   const handleBulkCancel = () => {
     bulkCancelReasonRef.current = "";
@@ -579,107 +582,11 @@ const InterviewSchedulePage: React.FC = () => {
     });
   };
 
-  // Fetch club members for bulk assign
-  const { data: bulkClubMembers = [] } = useGetClubMembersQuery(clubId, {
-    skip: !clubId,
-  });
-  const interviewerMembers = useMemo(
-    () =>
-      bulkClubMembers.filter(
-        (m) =>
-          m.status === "ACTIVE" &&
-          m.roleName?.toLowerCase().includes("interviewer"),
-      ),
-    [bulkClubMembers],
-  );
-  const otherMembers = useMemo(
-    () =>
-      bulkClubMembers.filter(
-        (m) =>
-          m.status === "ACTIVE" &&
-          !m.roleName?.toLowerCase().includes("interviewer"),
-      ),
-    [bulkClubMembers],
-  );
-
   const handleBulkAssignInterviewers = () => {
-    bulkAssignUserIdRef.current = "";
-    bulkAssignRoleRef.current = "Interviewer";
-    Modal.confirm({
-      title: "Phân interviewer hàng loạt",
-      width: 480,
-      content: (
-        <div className="space-y-3 pt-1">
-          <p className="text-sm text-gray-600">
-            Phân người phỏng vấn cho <strong>{selectedIds.size}</strong> lịch
-            đang chọn.
-          </p>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">
-              Chọn người phỏng vấn
-            </label>
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                bulkAssignUserIdRef.current = e.target.value;
-              }}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-orange-400 outline-none"
-            >
-              <option value="" disabled>
-                -- Chọn thành viên --
-              </option>
-              {interviewerMembers.length > 0 && (
-                <optgroup label="⭐ Interviewer">
-                  {interviewerMembers.map((m) => (
-                    <option key={m.clubMemberId} value={m.userId}>
-                      {m.fullName} {m.studentId ? `(${m.studentId})` : ""} —{" "}
-                      {m.roleName}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {otherMembers.length > 0 && (
-                <optgroup label="Thành viên khác">
-                  {otherMembers.map((m) => (
-                    <option key={m.clubMemberId} value={m.userId}>
-                      {m.fullName} {m.studentId ? `(${m.studentId})` : ""}{" "}
-                      {m.roleName ? `— ${m.roleName}` : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
-        </div>
-      ),
-      okText: "Phân công",
-      okButtonProps: {
-        style: { background: "#a855f7", borderColor: "#a855f7" },
-      },
-      cancelText: "Huỷ",
-      async onOk() {
-        const uid = bulkAssignUserIdRef.current.trim();
-        if (!uid) {
-          message.warning("Vui lòng chọn người phỏng vấn");
-          throw new Error("cancel");
-        }
-        let ok = 0;
-        for (const id of selectedIds) {
-          try {
-            await assignInterviewers({
-              scheduleId: id,
-              dto: {
-                interviewers: [{ interviewerUserId: uid, role: "Interviewer" }],
-              },
-            }).unwrap();
-            ok++;
-          } catch {}
-        }
-        if (ok > 0) message.success(`Đã phân công interviewer cho ${ok} lịch`);
-        else message.error("Phân công thất bại");
-        setSelectedIds(new Set());
-      },
-    });
+    const ivs = allInterviews.filter((iv) => selectedIds.has(iv.id));
+    if (ivs.length === 0) return;
+    setBulkAssignInterviews(ivs);
+    setBulkAssignModalOpen(true);
   };
 
   const handleBulkStartInterview = async () => {
@@ -905,6 +812,19 @@ const InterviewSchedulePage: React.FC = () => {
         campaignId={activeCampaignId || 0}
         currentUserId={currentUserId}
         onSubmit={handleCreateInterview}
+      />
+
+      {/* Bulk Assign Interviewer Modal */}
+      <BulkAssignInterviewerModal
+        isOpen={bulkAssignModalOpen}
+        onClose={() => {
+          setBulkAssignModalOpen(false);
+          setBulkAssignInterviews([]);
+          setSelectedIds(new Set());
+        }}
+        interviews={bulkAssignInterviews}
+        clubId={clubId}
+        campaignId={activeCampaignId || 0}
       />
 
       {/* Custom styles */}

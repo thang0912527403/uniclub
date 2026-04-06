@@ -5,9 +5,10 @@ import {
   useGetInterviewsQuery,
   useUpdateInterviewMutation,
   useUpdateInterviewStatusMutation,
+  useConfirmTimeSlotMutation,
 } from '~/cores/api';
 import type { InterviewScheduleResponse } from '~/cores/api';
-import type { ProposedSlots } from '~/modules/interview/components/CreateInterviewModal';
+
 
 interface InterviewStatusTrackerProps {
   userId: string;
@@ -65,39 +66,20 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [updateInterviewApi] = useUpdateInterviewMutation();
   const [updateStatusApi] = useUpdateInterviewStatusMutation();
+  const [confirmTimeSlotApi] = useConfirmTimeSlotMutation();
   const [pickingSlotId, setPickingSlotId] = useState<number | null>(null);
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
-  // Optimistic local selection: interviewId -> selectedSlotIdx (-1 = none picked yet)
   const [localSelectedSlot, setLocalSelectedSlot] = useState<Record<number, number>>({});
+  
 
-  // Parse proposed slots from description
-  const parseProposedSlots = (desc?: string | null): ProposedSlots | null => {
-    if (!desc) return null;
-    const match = desc.match(/<!--PROPOSED_SLOTS:(.*?)-->/);
-    if (!match) return null;
-    try { return JSON.parse(match[1]) as ProposedSlots; } catch { return null; }
-  };
 
-  // Pick a slot (updates scheduledAt only, with optimistic local update)
-  const handlePickSlot = async (interviewId: number, slotIdx: number, slot: { date: string; time: string }) => {
-    // Immediately update UI (optimistic)
+  // Pick a slot locally
+  const handlePickSlot = (interviewId: number, slotIdx: number) => {
     setLocalSelectedSlot(prev => ({ ...prev, [interviewId]: slotIdx }));
-    setPickingSlotId(interviewId);
-    const scheduledAt = new Date(`${slot.date}T${slot.time}`).toISOString();
-    try {
-      await updateInterviewApi({ id: interviewId, dto: { scheduledAt } }).unwrap();
-      message.success('Đã chọn khung giờ!');
-    } catch {
-      // Revert on failure
-      setLocalSelectedSlot(prev => { const n = { ...prev }; delete n[interviewId]; return n; });
-      message.error('Cập nhật lịch thất bại');
-    } finally {
-      setPickingSlotId(null);
-    }
   };
 
   // Confirm schedule (one-time action => locks slot picker)
-  const handleConfirmSchedule = async (interviewId: number, slotLabel: string) => {
+  const handleConfirmSchedule = async (interviewId: number, slotLabel: string, timeSlotId?: number) => {
     Modal.confirm({
       title: 'Xác nhận lịch phỏng vấn',
       content: (
@@ -115,7 +97,13 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
       async onOk() {
         setConfirmingId(interviewId);
         try {
-          await updateStatusApi({ id: interviewId, dto: { status: 'Confirmed' } }).unwrap();
+          if (timeSlotId) {
+            // New way: Confirm time slot via API
+            await confirmTimeSlotApi({ scheduleId: interviewId, dto: { timeSlotId } }).unwrap();
+          } else {
+            // Legacy fallback: Just update status to Confirmed
+            await updateStatusApi({ id: interviewId, dto: { status: 'Confirmed' } }).unwrap();
+          }
           message.success('Đã xác nhận lịch phỏng vấn thành công!');
         } catch {
           message.error('Xác nhận thất bại, vui lòng thử lại.');
@@ -259,28 +247,42 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
             const isConfirmed = interview.status === 'Confirmed';
             const isUpcoming = ['Scheduled', 'Confirmed', 'Rescheduled'].includes(interview.status);
             const hasRoom = !!interview.meetingRoom;
-            const cleanDescription = interview.description?.replace(/\n*<!--PROPOSED_SLOTS:.*?-->/, '').trim();
-            const proposedSlots = parseProposedSlots(interview.description);
-            const hasMultipleSlots = proposedSlots && proposedSlots.proposedTimeSlots.length > 1;
+            const cleanDescription = interview.description?.trim() || '';
+            
+            // Unified slots list from DB
+            const unifiedSlots = (interview.proposedTimeSlots && interview.proposedTimeSlots.length > 0)
+              ? interview.proposedTimeSlots.map(s => {
+                  const d = new Date(s.proposedAt);
+                  const dateStr = d.toISOString().split('T')[0];
+                  const timeStr = d.toTimeString().slice(0, 5); 
+                  return { id: s.id, date: dateStr, time: timeStr, isSelected: s.isSelected };
+                })
+              : [];
 
-            // Determine selected slot index using local state first, fall back to scheduledAt comparison
+            const hasMultipleSlots = unifiedSlots.length > 1;
+
+            // Determine selected slot index using local state first
+            // If already confirmed in DB, it might be reflected in unifiedSlots
+            const dbSelectedIndex = unifiedSlots.findIndex(s => s.isSelected);
             const localIdx = localSelectedSlot[interview.id];
+            
             const selectedSlotIndex = hasMultipleSlots
               ? (localIdx !== undefined
                   ? localIdx
-                  : proposedSlots!.proposedTimeSlots.findIndex(slot => {
-                      // Normalize both to minute precision to avoid ms/tz mismatch
-                      const slotMs = new Date(`${slot.date}T${slot.time}`).getTime();
-                      const schedMs = new Date(interview.scheduledAt).getTime();
-                      return Math.abs(slotMs - schedMs) < 60000; // within 1 min
-                    }))
+                  : dbSelectedIndex >= 0 
+                      ? dbSelectedIndex 
+                      : unifiedSlots.findIndex(slot => {
+                          const slotMs = new Date(`${slot.date}T${slot.time}`).getTime();
+                          const schedMs = new Date(interview.scheduledAt).getTime();
+                          return Math.abs(slotMs - schedMs) < 60000;
+                        }))
               : -1;
             const hasPickedSlot = selectedSlotIndex >= 0;
 
             // Confirmed slot label for modal
             const confirmedSlotLabel = hasPickedSlot
               ? (() => {
-                  const slot = proposedSlots!.proposedTimeSlots[selectedSlotIndex];
+                  const slot = unifiedSlots[selectedSlotIndex];
                   return new Date(`${slot.date}T${slot.time}`).toLocaleDateString('vi-VN', {
                     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
                     hour: '2-digit', minute: '2-digit',
@@ -290,6 +292,8 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
                   weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
                   hour: '2-digit', minute: '2-digit',
                 });
+            
+            const selectedSlotId = hasPickedSlot ? unifiedSlots[selectedSlotIndex]?.id : undefined;
 
             return (
               <div
@@ -356,28 +360,26 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
                           </div>
                           <div>
                             <p className="text-sm font-bold text-gray-800">Chọn khung giờ phỏng vấn</p>
-                            <p className="text-[11px] text-gray-500">Chọn thời gian phù hợp rồi xác nhận ({proposedSlots!.proposedTimeSlots.length} lựa chọn)</p>
+                            <p className="text-[11px] text-gray-500">Chọn thời gian phù hợp rồi xác nhận ({unifiedSlots.length} lựa chọn)</p>
                           </div>
                         </div>
                         <div className="space-y-2">
-                          {proposedSlots!.proposedTimeSlots.map((slot, idx) => {
+                          {unifiedSlots.map((slot, idx) => {
                             const slotDate = new Date(`${slot.date}T${slot.time}`);
                             const isSelected = idx === selectedSlotIndex;
-                            const isPicking = pickingSlotId === interview.id;
                             return (
                               <button
                                 key={idx}
                                 onClick={() => {
-                                  if (idx !== selectedSlotIndex && pickingSlotId !== interview.id) {
-                                    handlePickSlot(interview.id, idx, slot);
+                                  if (idx !== selectedSlotIndex) {
+                                    handlePickSlot(interview.id, idx);
                                   }
                                 }}
-                                disabled={pickingSlotId === interview.id}
                                 className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all text-left ${
                                   isSelected
                                     ? 'border-[#f26522] bg-white shadow-sm shadow-orange-100'
                                     : 'border-gray-200 bg-white hover:border-orange-300 hover:shadow-sm cursor-pointer'
-                                } ${isPicking ? 'opacity-60 cursor-wait' : ''}`}
+                                }`}
                               >
                                 <div className="flex items-center gap-3">
                                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${
@@ -411,7 +413,7 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
                         {/* Confirm button — only shown after a slot is picked */}
                         {hasPickedSlot && (
                           <button
-                            onClick={() => handleConfirmSchedule(interview.id, confirmedSlotLabel)}
+                            onClick={() => handleConfirmSchedule(interview.id, confirmedSlotLabel, selectedSlotId)}
                             disabled={confirmingId === interview.id}
                             className="mt-3 w-full py-3 bg-gradient-to-r from-[#f26522] to-orange-500 text-white font-bold rounded-xl text-sm hover:shadow-lg hover:scale-[1.01] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
                           >
@@ -423,8 +425,8 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
                     )}
 
                     {/* Single-slot info when only 1 proposed — show as read-only for Scheduled */}
-                    {isScheduled && !hasMultipleSlots && proposedSlots && proposedSlots.proposedTimeSlots.length === 1 && (() => {
-                      const slot = proposedSlots.proposedTimeSlots[0];
+                    {isScheduled && !hasMultipleSlots && unifiedSlots.length === 1 && (() => {
+                      const slot = unifiedSlots[0];
                       const slotDate = new Date(`${slot.date}T${slot.time}`);
                       return (
                         <div className="space-y-3">
@@ -435,7 +437,7 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
                             </p>
                           </div>
                           <button
-                            onClick={() => handleConfirmSchedule(interview.id, slotDate.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}
+                            onClick={() => handleConfirmSchedule(interview.id, slotDate.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }), slot.id)}
                             disabled={confirmingId === interview.id}
                             className="w-full py-3 bg-gradient-to-r from-[#f26522] to-orange-500 text-white font-bold rounded-xl text-sm hover:shadow-lg hover:scale-[1.01] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
                           >
@@ -447,7 +449,7 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
                     })()}
 
                     {/* Locked view after confirmed */}
-                    {!isScheduled && proposedSlots && (
+                    {!isScheduled && unifiedSlots.length >= 1 && (
                       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-2">
                           <LockIcon className="w-4 h-4 text-emerald-600" />
@@ -492,11 +494,6 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
                             <div key={a.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
                               <span className="text-xs text-gray-600">{a.role}</span>
                               <div className="flex items-center gap-2">
-                                {a.score != null && (
-                                  <span className={`text-xs font-bold ${
-                                    a.score >= 70 ? 'text-green-600' : a.score >= 50 ? 'text-yellow-600' : 'text-red-600'
-                                  }`}>{a.score}/100</span>
-                                )}
                                 {a.result && (
                                   <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                                     a.result === 'Pass' ? 'bg-green-100 text-green-700' :

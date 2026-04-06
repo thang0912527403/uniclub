@@ -1,19 +1,334 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import {
   useGetCampaignComparisonQuery,
   useGetCampaignCriteriaQuery,
   useSubmitDecisionsMutation,
+  useGetAiAnalysisQuery,
+  useAiSearchMutation,
 } from '~/cores/api/interviewApi';
+import { useGetUserByIdQuery } from '~/cores/api';
+import { useGetRecruitmentCampaignQuery } from '~/cores/api/recruitmentCampaignApi';
 import { getUserId } from '~/utils/auth';
 import PublishResultModal from './PublishResultModal';
+import type {
+  CandidateComparisonItem,
+  AiCandidateAnalysis,
+  AiCriteriaAnalysis,
+  AiSearchCandidate,
+} from '~/cores/api/types';
 
 interface CandidateComparisonPageProps {
   campaignId: number;
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  Helper UI functions
+// ═══════════════════════════════════════════════════════════════
+
+type SentimentResult = 'positive' | 'negative' | 'neutral';
+
+function getFitLabel(label: string): { text: string; color: string; bg: string } {
+  const l = label?.toUpperCase() || '';
+  if (l.includes('STRONG')) return { text: 'STRONG FIT', color: 'text-green-700', bg: 'bg-green-100' };
+  if (l.includes('MEDIUM')) return { text: 'MEDIUM FIT', color: 'text-yellow-700', bg: 'bg-yellow-100' };
+  if (l.includes('WEAK')) return { text: 'WEAK FIT', color: 'text-red-700', bg: 'bg-red-100' };
+  return { text: label || 'NO DATA', color: 'text-gray-500', bg: 'bg-gray-100' };
+}
+
+function getSuggestedResultLabel(result: string): { text: string; color: string; bg: string } {
+  const r = result?.toLowerCase() || '';
+  if (r === 'đạt' || r === 'accept' || r === 'pass') return { text: 'Đạt', color: 'text-green-700', bg: 'bg-green-100 border-green-200' };
+  if (r === 'loại' || r === 'reject' || r === 'fail') return { text: 'Loại', color: 'text-red-700', bg: 'bg-red-100 border-red-200' };
+  if (r === 'đang chờ' || r === 'waitlist' || r === 'onhold') return { text: 'Đang chờ', color: 'text-yellow-700', bg: 'bg-yellow-100 border-yellow-200' };
+  return { text: result || 'Chưa rõ', color: 'text-gray-500', bg: 'bg-gray-100 border-gray-200' };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Reusable Components
+// ═══════════════════════════════════════════════════════════════
+
+const UserName: React.FC<{ userId: string; fallback?: string }> = ({ userId, fallback }) => {
+  const { data: user, isFetching } = useGetUserByIdQuery(userId, { skip: !userId });
+  if (isFetching) return <span className="text-gray-400 text-xs animate-pulse">...</span>;
+  return <>{user?.fullName || fallback || userId.slice(0, 8) + '…'}</>;
+};
+
+const SentimentIcon: React.FC<{ sentiment: SentimentResult }> = ({ sentiment }) => {
+  if (sentiment === 'positive') {
+    return (
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-600 transition-transform hover:scale-110">
+        <i className="fa-solid fa-check text-xs" />
+      </span>
+    );
+  }
+  if (sentiment === 'negative') {
+    return (
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-100 text-red-500 transition-transform hover:scale-110">
+        <i className="fa-solid fa-xmark text-xs" />
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-gray-400 transition-transform hover:scale-110">
+      <span className="text-xs">—</span>
+    </span>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  AI Search Result Badge
+// ═══════════════════════════════════════════════════════════════
+const AiSearchBadge: React.FC<{ match: AiSearchCandidate }> = ({ match }) => (
+  <div className="flex items-center gap-2 px-2.5 py-1 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-700">
+    <i className="fa-solid fa-bullseye text-violet-500 text-[10px]" />
+    <span className="text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+      Match: {match.matchScore}%
+    </span>
+    <span className="text-[10px] text-violet-500 dark:text-violet-400 truncate max-w-[200px]">
+      {match.reason}
+    </span>
+  </div>
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  Candidate Row (with expandable AI summary from backend)
+// ═══════════════════════════════════════════════════════════════
+
+const CandidateRow: React.FC<{
+  candidate: CandidateComparisonItem;
+  rowIdx: number;
+  criteria: { id: number; name: string; weight: number }[];
+  decision: string;
+  onDecision: (scheduleId: number, decision: string) => void;
+  aiData?: AiCandidateAnalysis;
+  aiLoading?: boolean;
+  searchMatch?: AiSearchCandidate;
+}> = ({ candidate, rowIdx, criteria, decision, onDecision, aiData, aiLoading, searchMatch }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Build per-criteria sentiment map from AI backend data
+  const aiCriteriaMap = useMemo(() => {
+    if (!aiData?.criteriaAnalysis) return {};
+    const map: Record<number, AiCriteriaAnalysis> = {};
+    for (const ca of aiData.criteriaAnalysis) {
+      map[ca.criterionId] = ca;
+    }
+    return map;
+  }, [aiData]);
+
+
+  const fit = getFitLabel(aiData?.fitLabel || '');
+  const suggestedResult = getSuggestedResultLabel(aiData?.suggestedResult || '');
+
+  return (
+    <>
+      <tr
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={`border-b border-gray-200 dark:border-gray-700 cursor-pointer transition-colors ${
+          searchMatch ? 'ring-2 ring-violet-300 dark:ring-violet-600 ring-inset' : ''
+        } ${
+          isExpanded ? 'bg-blue-50/50 dark:bg-blue-900/10' : rowIdx % 2 === 0 ? 'hover:bg-gray-50/80 dark:hover:bg-gray-700/30' : 'bg-gray-50/30 dark:bg-gray-800/30 hover:bg-gray-100/80 dark:hover:bg-gray-700/40'
+        }`}
+      >
+        {/* Avatar + Name */}
+        <td className="px-4 py-3.5 border-r border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
+              {candidate.title.charAt(0).toUpperCase()}
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                <UserName userId={candidate.candidateUserId} fallback={candidate.title} />
+              </p>
+              {searchMatch && <AiSearchBadge match={searchMatch} />}
+            </div>
+          </div>
+        </td>
+
+        {/* Criteria sentiment icons from AI */}
+        {criteria.map((c) => {
+          const ca = aiCriteriaMap[c.id];
+          return (
+            <td key={c.id} className="px-3 py-3.5 text-center border-r border-gray-200 dark:border-gray-700">
+              {aiLoading ? (
+                <span className="inline-block w-7 h-7 rounded-full bg-gray-100 animate-pulse" />
+              ) : (
+                <SentimentIcon sentiment={ca?.sentiment || 'neutral'} />
+              )}
+            </td>
+          );
+        })}
+
+        {/* AI Fit */}
+        <td className="px-4 py-3.5 text-center border-r border-gray-200 dark:border-gray-700">
+          {aiLoading ? (
+            <div className="h-6 w-16 mx-auto bg-gray-100 rounded-lg animate-pulse" />
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              {fit.text ? (
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${fit.bg} ${fit.color}`}>
+                  {fit.text}
+                </span>
+              ) : (
+                <span className="text-gray-400">—</span>
+              )}
+            </div>
+          )}
+        </td>
+
+        {/* AI Suggested Result */}
+        <td className="px-4 py-3.5 text-center border-r border-gray-200 dark:border-gray-700">
+          {aiLoading ? (
+            <div className="h-6 w-16 mx-auto bg-gray-100 rounded-lg animate-pulse" />
+          ) : (
+            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${suggestedResult.bg} ${suggestedResult.color}`}>
+              {suggestedResult.text}
+            </span>
+          )}
+        </td>
+
+        {/* Decision buttons */}
+        <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-center gap-1.5">
+            {[
+              { value: 'Accept', label: 'DUYỆT', style: 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100', active: 'bg-blue-500 text-white border-blue-500' },
+              { value: 'Reject', label: 'LOẠI', style: 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100', active: 'bg-red-500 text-white border-red-500' },
+              { value: 'Waitlist', label: 'CHỜ', style: 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100', active: 'bg-gray-500 text-white border-gray-500' },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onDecision(candidate.interviewScheduleId, opt.value)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                  decision === opt.value ? opt.active : opt.style
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </td>
+
+        {/* Expand icon */}
+        <td className="px-2 py-3.5 text-center w-10">
+          <i className={`fa-solid fa-chevron-down text-gray-400 text-xs transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+        </td>
+      </tr>
+
+      {/* Expanded AI Summary Row - powered by backend AI */}
+      {isExpanded && (
+        <tr className="bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800 dark:to-gray-800/50">
+          <td colSpan={criteria.length + 5} className="px-6 py-5">
+            <div className="space-y-4 animate-fadeIn">
+              {aiLoading ? (
+                <div className="flex items-center gap-3 text-gray-400">
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-sm">Đang phân tích bằng AI...</span>
+                </div>
+              ) : !aiData ? (
+                <p className="text-sm text-gray-400 italic">Chưa có dữ liệu phân tích AI cho ứng viên này.</p>
+              ) : (
+                <>
+                  {/* AI Summary */}
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                        <i className="fa-solid fa-wand-magic-sparkles text-white text-xs" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <i className="fa-solid fa-robot text-blue-500 text-xs" />
+                        AI Summary
+                        <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 text-[10px] font-semibold">BACKEND AI</span>
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
+                        {aiData.summary || 'Chưa đủ dữ liệu để phân tích.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Strengths & Weaknesses */}
+                  {(aiData.strengths?.length > 0 || aiData.weaknesses?.length > 0) && (
+                    <div className="ml-11 grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {aiData.strengths?.length > 0 && (
+                        <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 border border-green-200 dark:border-green-800">
+                          <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase mb-1.5 flex items-center gap-1.5">
+                            <i className="fa-solid fa-thumbs-up text-[10px]" />
+                            Điểm mạnh
+                          </p>
+                          <ul className="space-y-1">
+                            {aiData.strengths.map((s, i) => (
+                              <li key={i} className="text-xs text-green-700 dark:text-green-300 flex items-start gap-1.5">
+                                <i className="fa-solid fa-check text-[9px] mt-0.5 flex-shrink-0" />
+                                <span>{s}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {aiData.weaknesses?.length > 0 && (
+                        <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 border border-red-200 dark:border-red-800">
+                          <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase mb-1.5 flex items-center gap-1.5">
+                            <i className="fa-solid fa-triangle-exclamation text-[10px]" />
+                            Cần cải thiện
+                          </p>
+                          <ul className="space-y-1">
+                            {aiData.weaknesses.map((w, i) => (
+                              <li key={i} className="text-xs text-red-700 dark:text-red-300 flex items-start gap-1.5">
+                                <i className="fa-solid fa-minus text-[9px] mt-0.5 flex-shrink-0" />
+                                <span>{w}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Per-criteria AI analysis */}
+                  {aiData.criteriaAnalysis?.length > 0 && (
+                    <div className="ml-11">
+                      <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Phân tích AI theo tiêu chí</p>
+                      <div className="grid gap-2">
+                        {aiData.criteriaAnalysis.map((ca) => (
+                          <div key={ca.criterionId} className="bg-white dark:bg-gray-700/50 rounded-xl p-3 border border-gray-200 dark:border-gray-600">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <SentimentIcon sentiment={ca.sentiment} />
+                              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{ca.criterionName}</span>
+                            </div>
+                            <p className="ml-9 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                              {ca.summary || <span className="italic text-gray-400">Chưa có nhận xét</span>}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  Main Page
+// ═══════════════════════════════════════════════════════════════
+
 const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({ campaignId }) => {
+  const navigate = useNavigate();
   const { data: comparison, isLoading, error } = useGetCampaignComparisonQuery(campaignId);
   const { data: criteria } = useGetCampaignCriteriaQuery(campaignId);
+  const { data: campaign } = useGetRecruitmentCampaignQuery(campaignId);
+  const { data: aiAnalysis, isLoading: aiLoading, isFetching: aiFetching } = useGetAiAnalysisQuery(campaignId);
+  const [aiSearch, { isLoading: aiSearchLoading }] = useAiSearchMutation();
   const [submitDecisions] = useSubmitDecisionsMutation();
 
   const [decisions, setDecisions] = useState<Record<number, string>>({});
@@ -21,38 +336,95 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({ campa
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<AiSearchCandidate[] | null>(null);
+  const [isAiSearchMode, setIsAiSearchMode] = useState(false);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <svg className="w-8 h-8 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-      </div>
+  // Pagination
+  const PAGE_SIZE = 8;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Build AI data map by interviewScheduleId
+  const aiDataMap = useMemo(() => {
+    if (!aiAnalysis?.candidates) return {};
+    const map: Record<number, AiCandidateAnalysis> = {};
+    for (const c of aiAnalysis.candidates) {
+      map[c.interviewScheduleId] = c;
+    }
+    return map;
+  }, [aiAnalysis]);
+
+  // Build search result map
+  const searchResultMap = useMemo(() => {
+    if (!searchResults) return {};
+    const map: Record<number, AiSearchCandidate> = {};
+    for (const r of searchResults) {
+      map[r.interviewScheduleId] = r;
+    }
+    return map;
+  }, [searchResults]);
+
+  // Filtered + paginated (when AI search active, only show matched candidates)
+  const filteredCandidates = useMemo(() => {
+    if (!comparison) return [];
+
+    // When AI search results are active, filter & sort by match
+    if (isAiSearchMode && searchResults) {
+      const matchedIds = new Set(searchResults.map(r => r.interviewScheduleId));
+      return comparison
+        .filter(c => matchedIds.has(c.interviewScheduleId))
+        .sort((a, b) => {
+          const scoreA = searchResultMap[a.interviewScheduleId]?.matchScore ?? 0;
+          const scoreB = searchResultMap[b.interviewScheduleId]?.matchScore ?? 0;
+          return scoreB - scoreA;
+        });
+    }
+
+    // Normal text filter
+    if (!searchQuery.trim()) return comparison;
+    const q = searchQuery.toLowerCase();
+    return comparison.filter(c =>
+      c.title.toLowerCase().includes(q) || c.candidateUserId.toLowerCase().includes(q)
     );
-  }
+  }, [comparison, searchQuery, isAiSearchMode, searchResults, searchResultMap]);
 
-  if (error) return <div className="text-red-500 text-sm px-4 py-3 rounded-xl bg-red-50 border border-red-200">Không thể tải dữ liệu so sánh</div>;
-  if (!comparison || comparison.length === 0) return <div className="text-gray-500 text-sm px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">Chưa có ứng viên nào được phỏng vấn</div>;
+  const totalPages = Math.ceil(filteredCandidates.length / PAGE_SIZE);
+  const paginatedCandidates = filteredCandidates.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const getResultBadge = (result: string) => {
-    switch (result) {
-      case 'Pass': return 'bg-green-100 text-green-700 border-green-200';
-      case 'OnHold': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'Fail': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+  const handleDecision = useCallback((scheduleId: number, decision: string) => {
+    setDecisions(prev => {
+      if (prev[scheduleId] === decision) {
+        const next = { ...prev };
+        delete next[scheduleId];
+        return next;
+      }
+      return { ...prev, [scheduleId]: decision };
+    });
+  }, []);
+
+  // AI Search handler
+  const handleAiSearch = useCallback(async () => {
+    if (!searchQuery.trim()) {
+      setIsAiSearchMode(false);
+      setSearchResults(null);
+      return;
     }
-  };
-
-  const getResultLabel = (result: string) => {
-    switch (result) {
-      case 'Pass': return 'Đạt';
-      case 'OnHold': return 'Chờ xét';
-      case 'Fail': return 'Không đạt';
-      default: return result;
+    try {
+      const result = await aiSearch({ campaignId, dto: { query: searchQuery } }).unwrap();
+      setSearchResults(result.results);
+      setIsAiSearchMode(true);
+      setCurrentPage(1);
+    } catch (err) {
+      console.error('AI Search failed:', err);
     }
-  };
+  }, [searchQuery, campaignId, aiSearch]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    setSearchResults(null);
+    setIsAiSearchMode(false);
+    setCurrentPage(1);
+  }, []);
 
   const handleSubmitDecisions = async () => {
     setSubmitError(null);
@@ -89,36 +461,162 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({ campa
     }
   };
 
-  return (
-    <div className="space-y-4 animate-fadeIn">
-      {/* Header — dạng phiếu chấm */}
-      <div className="text-center border-b-2 border-gray-800 dark:border-gray-300 pb-4 mb-2">
-        <h2 className="text-xl font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-wide">
-          Phiếu đánh giá ứng viên
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Chiến dịch #{campaignId}
-        </p>
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <svg className="w-8 h-8 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
       </div>
+    );
+  }
 
-      {/* Action buttons */}
-      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-3">
-        <div className="flex gap-2">
+  if (error) return <div className="text-red-500 text-sm px-4 py-3 rounded-xl bg-red-50 border border-red-200">Không thể tải dữ liệu so sánh</div>;
+  if (!comparison || comparison.length === 0) return <div className="text-gray-500 text-sm px-4 py-3 rounded-xl bg-gray-50 border border-gray-200">Chưa có ứng viên nào được phỏng vấn</div>;
+
+  const criteriaList = criteria || [];
+
+  return (
+    <div className="space-y-5 animate-fadeIn">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 transition-all"
+            title="Quay lại"
+          >
+            <i className="fa-solid fa-arrow-left text-sm" />
+          </button>
+          <h2 className="text-xl font-extrabold text-gray-800 dark:text-gray-200">
+            Đánh giá ứng viên
+          </h2>
+          <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-semibold text-gray-600 dark:text-gray-400">
+            {campaign?.campaignName || `Chiến dịch #${campaignId}`}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
           <button
             onClick={handleSubmitDecisions}
             disabled={submitting || Object.keys(decisions).length === 0}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Đang gửi...' : 'Gửi quyết định'}
           </button>
           <button
             onClick={() => setPublishOpen(true)}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-semibold hover:shadow-lg hover:scale-[1.02] transition-all flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold hover:shadow-lg hover:scale-[1.02] transition-all flex items-center gap-1.5"
           >
-            <i className="fa-solid fa-bullhorn text-xs" /> Công bố
+            <i className="fa-solid fa-bullhorn text-xs" />
+            Công bố kết quả
+          </button>
+          <button
+            onClick={() => navigate('/interview/schedule')}
+            className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 transition-all"
+            title="Lịch phỏng vấn"
+          >
+            <i className="fa-solid fa-calendar-days text-sm" />
           </button>
         </div>
       </div>
+
+      {/* Description + AI Search */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="max-w-xl">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">So sánh ứng viên</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+            Phân tích chuyên sâu dựa trên trí tuệ nhân tạo (AI) để so sánh năng lực, kỹ năng giao tiếp và mức độ phù hợp văn hóa của các ứng viên tiềm năng nhất.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* AI Search Input */}
+          <div className="relative">
+            <i className={`fa-solid ${isAiSearchMode ? 'fa-wand-magic-sparkles text-violet-500' : 'fa-search text-gray-400'} absolute left-3 top-1/2 -translate-y-1/2 text-xs`} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (!e.target.value.trim()) {
+                  setIsAiSearchMode(false);
+                  setSearchResults(null);
+                }
+                setCurrentPage(1);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAiSearch();
+              }}
+              placeholder="Tìm kiếm bằng AI..."
+              className={`pl-9 pr-10 py-2 rounded-xl border text-sm outline-none transition-all w-64 ${
+                isAiSearchMode
+                  ? 'border-violet-400 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-200 focus:ring-2 focus:ring-violet-200'
+                  : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
+              }`}
+            />
+            {searchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center hover:bg-gray-300 transition-colors"
+              >
+                <i className="fa-solid fa-xmark text-[9px] text-gray-600 dark:text-gray-300" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={handleAiSearch}
+            disabled={aiSearchLoading || !searchQuery.trim()}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white text-sm font-semibold hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {aiSearchLoading ? (
+              <>
+                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Đang tìm...
+              </>
+            ) : (
+              <>
+                <i className="fa-solid fa-wand-magic-sparkles text-xs" />
+                AI Search
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* AI Search Status Banner */}
+      {isAiSearchMode && searchResults && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 border border-violet-200 dark:border-violet-700">
+          <div className="flex items-center gap-2">
+            <i className="fa-solid fa-wand-magic-sparkles text-violet-500 text-sm" />
+            <span className="text-sm text-violet-700 dark:text-violet-300 font-medium">
+              AI tìm thấy <strong>{searchResults.length}</strong> ứng viên phù hợp với: "<em>{searchQuery}</em>"
+            </span>
+          </div>
+          <button
+            onClick={handleClearSearch}
+            className="text-xs text-violet-500 hover:text-violet-700 font-semibold flex items-center gap-1 transition-colors"
+          >
+            <i className="fa-solid fa-xmark text-[10px]" />
+            Xóa bộ lọc
+          </button>
+        </div>
+      )}
+
+      {/* AI Analysis Loading Banner */}
+      {(aiLoading || aiFetching) && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
+          <svg className="w-4 h-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+            Đang tải phân tích AI cho toàn bộ ứng viên...
+          </span>
+        </div>
+      )}
 
       {submitError && (
         <div className="px-4 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{submitError}</div>
@@ -127,125 +625,121 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({ campa
         <div className="px-4 py-2.5 rounded-xl bg-green-50 border border-green-200 text-green-600 text-sm">Quyết định đã được gửi thành công!</div>
       )}
 
-      {/* Scoring Sheet Table — dạng phiếu chấm điểm */}
-      <div className="overflow-x-auto rounded-2xl border-2 border-gray-300 dark:border-gray-600">
+      {/* Comparison Table */}
+      <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-800">
         <table className="w-full text-sm border-collapse">
           <thead>
-            {/* Header row 1: grouping */}
-            <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
-              <th
-                rowSpan={2}
-                className="px-3 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs border-r border-gray-300 dark:border-gray-600 w-12"
-              >
-                TT
-              </th>
-              <th
-                rowSpan={2}
-                className="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300 text-xs border-r border-gray-300 dark:border-gray-600 min-w-[160px]"
-              >
+            <tr className="bg-gray-50 dark:bg-gray-800 border-b-2 border-gray-200 dark:border-gray-600">
+              <th className="px-4 py-3 text-left font-bold text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider min-w-[180px]">
                 Ứng viên
               </th>
-              {criteria && criteria.length > 0 && (
-                <th
-                  colSpan={criteria.length}
-                  className="px-3 py-2 text-center font-bold text-gray-700 dark:text-gray-300 text-xs border-r border-gray-300 dark:border-gray-600"
-                >
-                  Tiêu chí đánh giá
+              {criteriaList.map((c) => (
+                <th key={c.id} className="px-3 py-3 text-center font-bold text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider border-l border-gray-200 dark:border-gray-600 min-w-[80px]">
+                  {c.name}
                 </th>
-              )}
-              <th
-                rowSpan={2}
-                className="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs border-r border-gray-300 dark:border-gray-600 min-w-[100px]"
-              >
+              ))}
+              <th className="px-4 py-3 text-center font-bold text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider border-l border-gray-200 dark:border-gray-600 min-w-[120px]">
+                Đánh giá AI
+              </th>
+              <th className="px-4 py-3 text-center font-bold text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider border-l border-gray-200 dark:border-gray-600 min-w-[100px]">
                 Kết quả
               </th>
-              <th
-                rowSpan={2}
-                className="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300 text-xs min-w-[130px]"
-              >
+              <th className="px-4 py-3 text-center font-bold text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider border-l border-gray-200 dark:border-gray-600 min-w-[200px]">
                 Quyết định
               </th>
+              <th className="w-10" />
             </tr>
-            {/* Header row 2: individual criteria */}
-            {criteria && criteria.length > 0 && (
-              <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-300 dark:border-gray-600">
-                {criteria.map((c, idx) => (
-                  <th
-                    key={c.id}
-                    className={`px-3 py-2 text-center font-medium text-gray-600 dark:text-gray-400 text-xs ${
-                      idx < criteria.length - 1 ? 'border-r border-gray-200 dark:border-gray-700' : 'border-r border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    {c.name}
-                  </th>
-                ))}
-              </tr>
-            )}
           </thead>
           <tbody>
-            {comparison.map((candidate, rowIdx) => (
-              <tr
+            {paginatedCandidates.map((candidate, rowIdx) => (
+              <CandidateRow
                 key={candidate.interviewScheduleId}
-                className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors ${
-                  rowIdx % 2 === 0 ? '' : 'bg-gray-50/30 dark:bg-gray-800/30'
-                }`}
-              >
-                {/* STT */}
-                <td className="px-3 py-3 text-center font-bold text-gray-500 border-r border-gray-200 dark:border-gray-700">
-                  {rowIdx + 1}
-                </td>
-                {/* Ứng viên */}
-                <td className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                  <p className="font-semibold text-gray-800 dark:text-gray-200">{candidate.title}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">ID: {candidate.candidateUserId.slice(0, 8)}…</p>
-                </td>
-                {/* Tiêu chí — hiện dạng nhận xét gọn (✓ có đánh giá / — chưa) */}
-                {criteria?.map((c, idx) => {
-                  const hasEval = candidate.criteriaScores[c.id] != null && candidate.criteriaScores[c.id] > 0;
-                  return (
-                    <td
-                      key={c.id}
-                      className={`px-3 py-3 text-center ${
-                        idx < (criteria?.length ?? 0) - 1
-                          ? 'border-r border-gray-200 dark:border-gray-700'
-                          : 'border-r border-gray-200 dark:border-gray-700'
-                      }`}
-                    >
-                      {hasEval ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600">
-                          <i className="fa-solid fa-check text-xs" />
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                  );
-                })}
-                {/* Kết quả */}
-                <td className="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getResultBadge(candidate.suggestedResult)}`}>
-                    {getResultLabel(candidate.suggestedResult)}
-                  </span>
-                </td>
-                {/* Quyết định */}
-                <td className="px-4 py-3 text-center">
-                  <select
-                    value={decisions[candidate.interviewScheduleId] || ''}
-                    onChange={(e) =>
-                      setDecisions((prev) => ({ ...prev, [candidate.interviewScheduleId]: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none"
-                  >
-                    <option value="">Chọn...</option>
-                    <option value="Accept">✅ Nhận</option>
-                    <option value="Reject">❌ Từ chối</option>
-                    <option value="Waitlist">⏳ Chờ</option>
-                  </select>
-                </td>
-              </tr>
+                candidate={candidate}
+                rowIdx={rowIdx}
+                criteria={criteriaList}
+                decision={decisions[candidate.interviewScheduleId] || ''}
+                onDecision={handleDecision}
+                aiData={aiDataMap[candidate.interviewScheduleId]}
+                aiLoading={aiLoading || aiFetching}
+                searchMatch={searchResultMap[candidate.interviewScheduleId]}
+              />
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination + Stats */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">
+          Hiển thị {paginatedCandidates.length} trên {filteredCandidates.length} ứng viên trong chiến dịch này
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-30"
+            >
+              <i className="fa-solid fa-chevron-left text-xs" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium transition-all ${
+                  page === currentPage
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-30"
+            >
+              <i className="fa-solid fa-chevron-right text-xs" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* AI Insights Footer */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+        {/* AI Trends */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-800 rounded-2xl p-5 border border-blue-100 dark:border-gray-700">
+          <div className="flex items-center gap-2 mb-2">
+            <i className="fa-solid fa-chart-line text-blue-500" />
+            <h4 className="font-bold text-gray-800 dark:text-gray-200 text-sm">Xu hướng tài năng</h4>
+            <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-[10px] font-semibold">
+              {campaign?.campaignName || `CAMPAIGN #${campaignId}`}
+            </span>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+            {aiAnalysis?.candidates && aiAnalysis.candidates.length > 0
+              ? `Đã phân tích ${aiAnalysis.candidates.length} ứng viên bằng AI. AI đưa ra nhận xét và đề xuất cho từng ứng viên.`
+              : comparison.length > 0
+              ? `Có ${comparison.length} ứng viên. Đang chờ phân tích AI...`
+              : 'Chưa có dữ liệu để phân tích.'}
+          </p>
+          {aiAnalysis?.analyzedAt && (
+            <p className="text-[10px] text-gray-400 mt-1.5">
+              Phân tích lần cuối: {new Date(aiAnalysis.analyzedAt).toLocaleString('vi-VN')}
+            </p>
+          )}
+        </div>
+
+        {/* AI Decision Support */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700">
+          <h4 className="font-bold text-gray-800 dark:text-gray-200 text-sm mb-1">
+            Cần hỗ trợ đưa ra quyết định?
+          </h4>
+          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+            Hệ thống AI phân tích toàn bộ nhận xét của interviewer, tự động đánh giá theo tiêu chí và đưa ra gợi ý tuyển dụng. Sử dụng <strong>AI Search</strong> để tìm ứng viên phù hợp với yêu cầu cụ thể.
+          </p>
+        </div>
       </div>
 
       <PublishResultModal

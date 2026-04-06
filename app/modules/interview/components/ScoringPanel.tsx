@@ -1,59 +1,113 @@
 import React, { useState } from 'react';
 import type { InterviewAssignmentResponse } from '~/cores/api';
+import type { CriteriaNoteItemDto, EvaluationCriterionResponse } from '~/cores/api/types';
+import { useGetCampaignCriteriaQuery, useSubmitCriteriaFeedbackMutation, useCreateCriterionMutation } from '~/cores/api/interviewApi';
 
 interface ScoringPanelProps {
   scheduleId: number;
   assignment: InterviewAssignmentResponse | null;
   allAssignments: InterviewAssignmentResponse[];
+  campaignId: number;
   onSubmitFeedback: (data: {
     scheduleId: number;
     assignmentId: number;
     feedbackNotes: string;
     result: string;
-    score: number;
   }) => void;
   isSubmitting?: boolean;
 }
-
-const resultOptions = [
-  { value: 'Pass', label: 'Đạt', iconClass: 'fa-solid fa-circle-check', color: 'border-green-400 bg-green-50 text-green-700 hover:bg-green-100', activeRing: 'ring-green-300' },
-  { value: 'Fail', label: 'Không đạt', iconClass: 'fa-solid fa-circle-xmark', color: 'border-red-400 bg-red-50 text-red-700 hover:bg-red-100', activeRing: 'ring-red-300' },
-  { value: 'OnHold', label: 'Chờ xem xét', iconClass: 'fa-solid fa-clock', color: 'border-yellow-400 bg-yellow-50 text-yellow-700 hover:bg-yellow-100', activeRing: 'ring-yellow-300' },
-  { value: 'NoShow', label: 'Không đến', iconClass: 'fa-solid fa-ban', color: 'border-gray-400 bg-gray-50 text-gray-700 hover:bg-gray-100', activeRing: 'ring-gray-300' },
-];
-
-const getResultBadge = (r: string) => {
-  switch (r) {
-    case 'Pass': return 'bg-green-100 text-green-700';
-    case 'Fail': return 'bg-red-100 text-red-700';
-    case 'OnHold': return 'bg-yellow-100 text-yellow-700';
-    default: return 'bg-gray-100 text-gray-700';
-  }
-};
 
 const ScoringPanel: React.FC<ScoringPanelProps> = ({
   scheduleId,
   assignment,
   allAssignments,
+  campaignId,
   onSubmitFeedback,
-  isSubmitting = false,
+  isSubmitting: isSubmittingLegacy = false,
 }) => {
-  const [result, setResult] = useState('Pass');
   const [feedbackNotes, setFeedbackNotes] = useState('');
-  const [activeTab, setActiveTab] = useState<'score' | 'others'>('score');
+  const [criteriaNotes, setCriteriaNotes] = useState<Record<number, string>>({});
+  const [activeTab, setActiveTab] = useState<'evaluate' | 'others'>('evaluate');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Add-criteria form state
+  const [isAddingCriteria, setIsAddingCriteria] = useState(false);
+  const [newCriteriaName, setNewCriteriaName] = useState('');
+  const [newCriteriaDesc, setNewCriteriaDesc] = useState('');
+  const [addError, setAddError] = useState<string | null>(null);
+
+  // Fetch campaign criteria
+  const { data: criteria, isLoading: isCriteriaLoading } = useGetCampaignCriteriaQuery(campaignId, {
+    skip: !campaignId,
+  });
+  const [submitCriteriaFeedback, { isLoading: isSubmittingCriteria }] = useSubmitCriteriaFeedbackMutation();
+  const [createCriterion, { isLoading: isCreatingCriterion }] = useCreateCriterionMutation();
+
+  const hasCriteria = criteria && criteria.length > 0;
   const hasSubmitted = !!assignment?.feedbackSubmittedAt;
   const otherFeedbacks = allAssignments.filter(a => a.feedbackSubmittedAt && a.id !== assignment?.id);
+  const isSubmitting = isSubmittingLegacy || isSubmittingCriteria;
 
-  const handleSubmit = () => {
+  // ── Add new criterion ──────────────────────────────────────────
+  const handleAddCriteria = async () => {
+    if (!newCriteriaName.trim()) return;
+    setAddError(null);
+
+    try {
+      await createCriterion({
+        campaignId,
+        dto: {
+          name: newCriteriaName.trim(),
+          description: newCriteriaDesc.trim() || null,
+          weight: 0,
+          displayOrder: (criteria?.length || 0) + 1,
+        },
+      }).unwrap();
+      setNewCriteriaName('');
+      setNewCriteriaDesc('');
+      setIsAddingCriteria(false);
+    } catch (err) {
+      console.error('Failed to add criterion:', err);
+      setAddError('Thêm tiêu chí thất bại.');
+    }
+  };
+
+  // ── Submit feedback ────────────────────────────────────────────
+  const handleSubmit = async () => {
     if (!assignment) return;
-    onSubmitFeedback({
-      scheduleId,
-      assignmentId: assignment.id,
-      feedbackNotes,
-      result,
-      score: 0,
-    });
+    setSubmitError(null);
+
+    if (hasCriteria) {
+      const noteItems: CriteriaNoteItemDto[] = criteria.map((c) => ({
+        criterionId: c.id,
+        note: criteriaNotes[c.id]?.trim() || null,
+      }));
+
+      try {
+        await submitCriteriaFeedback({
+          scheduleId,
+          assignmentId: assignment.id,
+          dto: {
+            notes: noteItems,
+            feedbackNotes: feedbackNotes.trim() || null,
+            result: 'OnHold', // admin sẽ quyết định — interviewer chỉ ghi nhận xét
+          },
+        }).unwrap();
+        setSubmitSuccess(true);
+      } catch (err) {
+        console.error('Failed to submit criteria feedback:', err);
+        setSubmitError('Gửi đánh giá thất bại. Vui lòng thử lại.');
+      }
+    } else {
+      onSubmitFeedback({
+        scheduleId,
+        assignmentId: assignment.id,
+        feedbackNotes,
+        result: 'OnHold',
+      });
+      setSubmitSuccess(true);
+    }
   };
 
   return (
@@ -65,16 +119,16 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
         </div>
         <div>
           <h3 className="text-white font-bold text-base leading-tight">Đánh giá phỏng vấn</h3>
-          <p className="text-orange-100 text-xs mt-0.5">Nhận xét & đánh dấu trạng thái ứng viên</p>
+          <p className="text-orange-100 text-xs mt-0.5">Nhận xét theo tiêu chí cho admin so sánh</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-100 dark:border-gray-700">
         <button
-          onClick={() => setActiveTab('score')}
+          onClick={() => setActiveTab('evaluate')}
           className={`flex-1 py-3 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-            activeTab === 'score'
+            activeTab === 'evaluate'
               ? 'border-b-2 border-orange-500 text-orange-600'
               : 'text-gray-500 hover:text-gray-700'
           }`}
@@ -96,16 +150,16 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">
-        {activeTab === 'score' && (
-          <div className="space-y-6">
-            {hasSubmitted ? (
+        {activeTab === 'evaluate' && (
+          <div className="space-y-5">
+            {(hasSubmitted || submitSuccess) ? (
               <div className="text-center py-6">
                 <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-green-100 flex items-center justify-center">
                   <i className="fa-solid fa-check text-green-500 text-2xl" />
                 </div>
                 <h4 className="text-lg font-bold text-gray-800 dark:text-white">Đã gửi đánh giá</h4>
                 <p className="text-sm text-gray-500 mt-1">
-                  Kết quả: <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getResultBadge(assignment?.result || '')}`}>{assignment?.result}</span>
+                  Admin sẽ ghi nhận và so sánh đánh giá của bạn.
                 </p>
                 {assignment?.feedbackNotes && (
                   <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3 mt-3 text-left">
@@ -115,41 +169,141 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
               </div>
             ) : (
               <>
-                {/* Result */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <i className="fa-solid fa-clipboard-check text-blue-400 text-xs" />
-                    Kết quả
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {resultOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setResult(opt.value)}
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                          result === opt.value
-                            ? `${opt.color} ring-2 ring-offset-1 ${opt.activeRing} scale-[1.02]`
-                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                        }`}
-                      >
-                        <i className={`${opt.iconClass} text-xs`} />
-                        {opt.label}
-                      </button>
-                    ))}
+                {/* Error message */}
+                {submitError && (
+                  <div className="px-4 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm flex items-center gap-2">
+                    <i className="fa-solid fa-circle-exclamation text-xs" />
+                    {submitError}
                   </div>
+                )}
+
+                {/* Criteria loading */}
+                {isCriteriaLoading && (
+                  <div className="flex items-center justify-center py-4">
+                    <svg className="w-5 h-5 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span className="ml-2 text-sm text-gray-500">Đang tải tiêu chí...</span>
+                  </div>
+                )}
+
+                {/* Criteria Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <i className="fa-solid fa-clipboard-list text-blue-400 text-xs" />
+                      Tiêu chí đánh giá
+                      {hasCriteria && (
+                        <span className="text-[10px] text-gray-400 font-normal">({criteria.length})</span>
+                      )}
+                    </label>
+                    {!isAddingCriteria && (
+                      <button
+                        onClick={() => setIsAddingCriteria(true)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-all hover:scale-[1.02]"
+                      >
+                        <i className="fa-solid fa-plus text-[10px]" />
+                        Thêm tiêu chí
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Add criteria form */}
+                  {isAddingCriteria && (
+                    <div className="mb-3 p-3.5 rounded-xl border-2 border-dashed border-orange-300 bg-orange-50/50 space-y-2 animate-fadeIn">
+                      <input
+                        type="text"
+                        value={newCriteriaName}
+                        onChange={(e) => setNewCriteriaName(e.target.value)}
+                        placeholder="Tên tiêu chí mới..."
+                        className="w-full px-3 py-2 rounded-lg border border-orange-200 bg-white text-sm text-gray-700 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all"
+                        autoFocus
+                      />
+                      <input
+                        type="text"
+                        value={newCriteriaDesc}
+                        onChange={(e) => setNewCriteriaDesc(e.target.value)}
+                        placeholder="Mô tả (tùy chọn)..."
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all"
+                      />
+                      {addError && (
+                        <p className="text-xs text-red-500">{addError}</p>
+                      )}
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => { setIsAddingCriteria(false); setNewCriteriaName(''); setNewCriteriaDesc(''); setAddError(null); }}
+                          className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          onClick={handleAddCriteria}
+                          disabled={!newCriteriaName.trim() || isCreatingCriterion}
+                          className="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                        >
+                          {isCreatingCriterion ? (
+                            <i className="fa-solid fa-spinner fa-spin text-[10px]" />
+                          ) : (
+                            <i className="fa-solid fa-check text-[10px]" />
+                          )}
+                          Thêm
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Criteria cards */}
+                  {hasCriteria ? (
+                    <div className="space-y-3">
+                      {criteria.map((criterion) => (
+                        <div
+                          key={criterion.id}
+                          className="p-3.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/30 space-y-2 transition-all hover:border-orange-200 hover:bg-orange-50/30"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{criterion.name}</p>
+                              {criterion.description && (
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{criterion.description}</p>
+                              )}
+                            </div>
+                            {criterion.weight > 0 && (
+                              <span className="text-[10px] text-orange-500 font-semibold bg-orange-50 px-2 py-0.5 rounded-full flex-shrink-0 border border-orange-200">
+                                {criterion.weight}%
+                              </span>
+                            )}
+                          </div>
+                          <textarea
+                            value={criteriaNotes[criterion.id] || ''}
+                            onChange={(e) => setCriteriaNotes(prev => ({ ...prev, [criterion.id]: e.target.value }))}
+                            placeholder={`Nhận xét về ${criterion.name.toLowerCase()}...`}
+                            rows={2}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all resize-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : !isCriteriaLoading ? (
+                    <div className="text-center py-6 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
+                      <i className="fa-solid fa-list-check text-2xl mb-2 block" />
+                      <p className="text-sm">Chưa có tiêu chí nào.</p>
+                      <p className="text-xs mt-0.5">Hãy thêm tiêu chí để bắt đầu đánh giá.</p>
+                    </div>
+                  ) : null}
                 </div>
 
-                {/* Feedback */}
+                {/* Overall notes */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                     <i className="fa-solid fa-comment-dots text-purple-400 text-xs" />
-                    Nhận xét
+                    Nhận xét tổng hợp
                   </label>
                   <textarea
                     value={feedbackNotes}
                     onChange={(e) => setFeedbackNotes(e.target.value)}
-                    placeholder="Nhận xét chi tiết về ứng viên..."
-                    rows={4}
+                    placeholder="Nhận xét chung về ứng viên..."
+                    rows={3}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all resize-none"
                   />
                 </div>
@@ -157,7 +311,7 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                 {/* Submit */}
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !assignment}
+                  disabled={isSubmitting || !assignment || (!hasCriteria && !feedbackNotes.trim())}
                   className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl hover:shadow-lg hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
@@ -199,11 +353,6 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                         </p>
                       </div>
                     </div>
-                    {a.result && (
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${getResultBadge(a.result)}`}>
-                        {a.result}
-                      </span>
-                    )}
                   </div>
                   {a.feedbackNotes && (
                     <p className="text-xs text-gray-600 dark:text-gray-400">{a.feedbackNotes}</p>

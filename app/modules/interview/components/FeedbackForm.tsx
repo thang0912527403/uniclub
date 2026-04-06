@@ -33,7 +33,6 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ scheduleId, assignmentId, o
         assignmentId,
         dto: {
           result,
-          score: 0,
           feedbackNotes: notes.trim() || null,
         },
       }).unwrap();

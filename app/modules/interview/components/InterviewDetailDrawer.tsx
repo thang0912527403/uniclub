@@ -6,12 +6,27 @@ import {
   useConfirmAssignmentMutation,
   useGetClubMembersQuery,
 } from "~/cores/api";
+import { useGetCriteriaScoresQuery } from "~/cores/api/interviewApi";
 import FeedbackForm from "./FeedbackForm";
 import CriteriaFeedbackForm from "./CriteriaFeedbackForm";
 import EvaluationSummary from "./EvaluationSummary";
-import type { ProposedSlots } from "./CreateInterviewModal";
+import CriteriaAssignment from "./CriteriaAssignment";
+
 import type { ClubRole } from "~/cores/api/types";
 import type { ClubMember } from "~/cores/api/types";
+
+/** Small badge showing assigned criteria count from CriteriaScore API */
+const CriteriaBadge: React.FC<{ scheduleId: number; assignmentId: number }> = ({ scheduleId, assignmentId }) => {
+  const { data: scores } = useGetCriteriaScoresQuery({ scheduleId, assignmentId });
+  const count = scores?.length || 0;
+  if (count === 0) return null;
+  return (
+    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
+      <i className="fa-solid fa-clipboard-list text-[8px]" />
+      {count} tiêu chí
+    </span>
+  );
+};
 
 interface InterviewDetailDrawerProps {
   isOpen: boolean;
@@ -153,6 +168,9 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
   const [feedbackForAssignment, setFeedbackForAssignment] = useState<
     number | null
   >(null);
+  const [criteriaForAssignment, setCriteriaForAssignment] = useState<
+    number | null
+  >(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -220,25 +238,24 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
     { skip: !interview?.createdByUserId },
   );
 
-  // ─── Parse proposed time slots from description ───────────────
-  const proposedSlots = useMemo(() => {
-    if (!interview?.description) return null;
-    const match = interview.description.match(/<!--PROPOSED_SLOTS:(.*?)-->/);
-    if (!match) return null;
-    try {
-      return JSON.parse(match[1]) as ProposedSlots;
-    } catch {
-      return null;
+  // ─── Resolve proposed time slots ───────────────
+  const unifiedSlots = useMemo(() => {
+    if (!interview) return [];
+    if (interview.proposedTimeSlots && interview.proposedTimeSlots.length > 0) {
+        return interview.proposedTimeSlots.map(s => {
+          const d = new Date(s.proposedAt);
+          return {
+            id: s.id,
+            date: d.toISOString().split('T')[0],
+            time: d.toTimeString().slice(0, 5),
+            isSelected: s.isSelected
+          };
+        });
     }
-  }, [interview?.description]);
+    return [];
+  }, [interview]);
 
-  // Clean description (strip the JSON metadata)
-  const cleanDescription = useMemo(() => {
-    if (!interview?.description) return "";
-    return interview.description
-      .replace(/\n*<!--PROPOSED_SLOTS:.*?-->/, "")
-      .trim();
-  }, [interview?.description]);
+  const cleanDescription = interview?.description?.trim() || "";
 
   if (!interview) return null;
 
@@ -454,20 +471,19 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                 )}
 
                 {/* Proposed Time Slots — READ-ONLY for admin/interviewer */}
-                {proposedSlots &&
-                  proposedSlots.proposedTimeSlots.length > 0 &&
+                {unifiedSlots.length > 0 &&
                   interview.status === "Scheduled" && (
                     <div>
                       <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                         <i className="fa-regular fa-calendar text-orange-500" />
                         Khung giờ đề xuất (
-                        {proposedSlots.proposedTimeSlots.length})
+                        {unifiedSlots.length})
                       </h4>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
                         Candidate sẽ chọn một trong các khung giờ dưới đây.
                       </p>
                       <div className="space-y-2">
-                        {proposedSlots.proposedTimeSlots.map((slot, idx) => {
+                        {unifiedSlots.map((slot, idx) => {
                           const slotDate = new Date(
                             `${slot.date}T${slot.time}`,
                           );
@@ -893,87 +909,134 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                 ) : (
                   <div className="space-y-2">
                     {interview.assignments.map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex items-center justify-between bg-white dark:bg-gray-700/50 rounded-xl p-4 border border-gray-100 dark:border-gray-600 hover:border-orange-200 dark:hover:border-orange-800 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-                              a.hasConfirmed
-                                ? "bg-gradient-to-br from-emerald-400 to-emerald-600"
-                                : "bg-gradient-to-br from-blue-400 to-blue-600"
-                            }`}
-                          >
-                            {a.interviewerUserId.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                              <UserDisplay userId={a.interviewerUserId} />
-                            </p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                <i
-                                  className={`${roleOptions.find((r) => r.value === a.role)?.icon} ${roleOptions.find((r) => r.value === a.role)?.color}`}
-                                />
-                                {a.role}
-                              </span>
-                              {a.hasConfirmed ? (
-                                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                                  <i className="fa-solid fa-check-circle" /> Đã
-                                  xác nhận
+                      <div key={a.id} className="space-y-0">
+                        <div
+                          className="flex items-center justify-between bg-white dark:bg-gray-700/50 rounded-xl p-4 border border-gray-100 dark:border-gray-600 hover:border-orange-200 dark:hover:border-orange-800 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                                a.hasConfirmed
+                                  ? "bg-gradient-to-br from-emerald-400 to-emerald-600"
+                                  : "bg-gradient-to-br from-blue-400 to-blue-600"
+                              }`}
+                            >
+                              {a.interviewerUserId.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                <UserDisplay userId={a.interviewerUserId} />
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                  <i
+                                    className={`${roleOptions.find((r) => r.value === a.role)?.icon} ${roleOptions.find((r) => r.value === a.role)?.color}`}
+                                  />
+                                  {a.role}
                                 </span>
-                              ) : (
-                                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                                  <i className="fa-solid fa-clock" /> Chờ xác
-                                  nhận
-                                </span>
-                              )}
+                                {a.hasConfirmed ? (
+                                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                    <i className="fa-solid fa-check-circle" /> Đã
+                                    xác nhận
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                    <i className="fa-solid fa-clock" /> Chờ xác
+                                    nhận
+                                  </span>
+                                )}
+                                <CriteriaBadge scheduleId={interview.id} assignmentId={a.id} />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {/* If this is the current user and hasn't confirmed, show confirm button */}
-                          {a.interviewerUserId === currentUserId &&
-                            !a.hasConfirmed &&
-                            !isReadOnly && (
+                          <div className="flex items-center gap-1">
+                            {/* Criteria assignment button */}
+                            {!isReadOnly && (
                               <button
                                 onClick={() =>
-                                  confirmAssignment({
-                                    scheduleId: interview.id,
-                                    assignmentId: a.id,
-                                  })
+                                  setCriteriaForAssignment(
+                                    criteriaForAssignment === a.id
+                                      ? null
+                                      : a.id,
+                                  )
                                 }
-                                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-all mr-1"
-                                title="Xác nhận lịch"
+                                className={`p-2 rounded-lg transition-all ${
+                                  criteriaForAssignment === a.id
+                                    ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                                    : "text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                }`}
+                                title="Phân tiêu chí"
                               >
-                                Xác nhận
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                                  />
+                                </svg>
                               </button>
                             )}
-                          {!isReadOnly && (
-                            <button
-                              onClick={() =>
-                                onRemoveAssignment?.(interview.id, a.id)
-                              }
-                              className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                              title="Xóa"
-                            >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                            {/* Confirm button for current user */}
+                            {a.interviewerUserId === currentUserId &&
+                              !a.hasConfirmed &&
+                              !isReadOnly && (
+                                <button
+                                  onClick={() =>
+                                    confirmAssignment({
+                                      scheduleId: interview.id,
+                                      assignmentId: a.id,
+                                    })
+                                  }
+                                  className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-all mr-1"
+                                  title="Xác nhận lịch"
+                                >
+                                  Xác nhận
+                                </button>
+                              )}
+                            {!isReadOnly && (
+                              <button
+                                onClick={() =>
+                                  onRemoveAssignment?.(interview.id, a.id)
+                                }
+                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                title="Xóa"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          )}
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
+
+                        {/* Expandable CriteriaAssignment */}
+                        {criteriaForAssignment === a.id && (
+                          <div className="ml-4 mt-1 p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800 animate-fadeIn">
+                            <CriteriaAssignment
+                              scheduleId={interview.id}
+                              assignmentId={a.id}
+                              campaignId={interview.campaignId}
+                              readOnly={isReadOnly}
+                              onSuccess={() => {}}
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
 

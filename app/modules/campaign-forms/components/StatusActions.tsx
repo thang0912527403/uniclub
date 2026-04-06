@@ -1,0 +1,170 @@
+import React, { useState } from "react";
+import { statusConfig } from "./constants";
+
+// ── Status Badge ──
+export const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const sConf = statusConfig[status] ?? {
+    label: status,
+    cls: "bg-gray-100 text-gray-700",
+  };
+  const dotColor = sConf.cls.includes("amber")
+    ? "bg-amber-500"
+    : sConf.cls.includes("blue")
+      ? "bg-blue-500"
+      : sConf.cls.includes("red")
+        ? "bg-red-500"
+        : sConf.cls.includes("green")
+          ? "bg-green-500"
+          : "bg-gray-500";
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase ${sConf.cls}`}
+    >
+      <span className={`inline-block w-1.5 h-1.5 rounded-full ${dotColor}`} />
+      {sConf.label}
+    </span>
+  );
+};
+
+// ── Application Status Actions ──
+export const ApplicationStatusActions: React.FC<{
+  currentStatus: string;
+  onChangeStatus: (newStatus: string) => void;
+}> = ({ currentStatus, onChangeStatus }) => {
+  if (currentStatus === "PENDING") {
+    return (
+      <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onChangeStatus("SUCCESS");
+          }}
+          className="px-2.5 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 text-xs font-semibold rounded-lg transition-colors border border-green-200 dark:border-green-800"
+          title="Chuyển sang Vào phỏng vấn"
+        >
+          <i className="fa-solid fa-check mr-1.5" />
+          Vào phỏng vấn
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onChangeStatus("REJECTED");
+          }}
+          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 text-xs font-semibold rounded-lg transition-colors border border-red-200 dark:border-red-800"
+          title="Từ chối"
+        >
+          <i className="fa-solid fa-xmark mr-1.5" />
+          Từ chối
+        </button>
+      </div>
+    );
+  }
+
+  if (currentStatus === "SUCCESS") {
+    return (
+      <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onChangeStatus("APPROVED");
+          }}
+          className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 text-xs font-semibold rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
+          title="Đánh giá là Đã duyệt"
+        >
+          <i className="fa-solid fa-medal mr-1.5" />
+          Duyệt qua
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onChangeStatus("REJECTED");
+          }}
+          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 text-xs font-semibold rounded-lg transition-colors border border-red-200 dark:border-red-800"
+          title="Từ chối"
+        >
+          <i className="fa-solid fa-xmark mr-1.5" />
+          Từ chối
+        </button>
+      </div>
+    );
+  }
+
+  // APPROVED or REJECTED
+  return (
+    <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onChangeStatus("PENDING");
+        }}
+        className="px-2 py-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs font-medium flex items-center gap-1"
+        title="Hoàn tác về Chờ duyệt"
+      >
+        <i className="fa-solid fa-rotate-left mr-1" />
+        Hoàn tác
+      </button>
+    </div>
+  );
+};
+
+// ── Bulk Action Bar ──
+export const BulkActionBar: React.FC<{
+  count: number;
+  onClear: () => void;
+  onBulkStatus: (status: string) => void;
+}> = ({ count, onClear, onBulkStatus }) => {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <div className="bg-indigo-600 text-white rounded-xl px-4 py-3 flex items-center justify-between shadow-lg animate-in slide-in-from-bottom">
+      <div className="flex items-center gap-3">
+        <span className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold">
+          {count}
+        </span>
+        <span className="text-sm font-medium">đơn đã chọn</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="relative">
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+          >
+            <i className="fa-solid fa-pen text-[10px]" />
+            Đổi trạng thái
+            <i
+              className={`fa-solid fa-chevron-down text-[8px] transition-transform ${showMenu ? "rotate-180" : ""}`}
+            />
+          </button>
+          {showMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowMenu(false)}
+              />
+              <div className="absolute z-50 bottom-full right-0 mb-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1.5 min-w-[150px] overflow-hidden">
+                {Object.entries(statusConfig).map(([k, v]) => (
+                  <button
+                    key={k}
+                    onClick={() => {
+                      onBulkStatus(k);
+                      setShowMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <button
+          onClick={onClear}
+          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium transition-colors"
+        >
+          Bỏ chọn
+        </button>
+      </div>
+    </div>
+  );
+};

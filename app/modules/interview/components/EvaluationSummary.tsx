@@ -88,9 +88,9 @@ const EvaluationSummary: React.FC<EvaluationSummaryProps> = ({ scheduleId }) => 
             </div>
 
             {/* Individual notes from each interviewer */}
-            {cs.individualScores.length > 0 && (
+            {cs.individualNotes.length > 0 && (
               <div className="mt-2 space-y-1.5">
-                {cs.individualScores.map((s, idx) => (
+                {cs.individualNotes.map((s, idx) => (
                   <div key={idx} className="flex items-start gap-3 text-xs px-3 py-2 rounded-lg bg-white dark:bg-gray-700/50">
                     <span className={`px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${getRoleBadge(s.interviewerRole)}`}>
                       {s.interviewerRole}
