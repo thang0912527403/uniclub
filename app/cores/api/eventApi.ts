@@ -148,6 +148,12 @@ export const eventApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
         }),
+
+        /** Get current user's role & policies for a specific event */
+        getMyEventRole: builder.query<{ role: string | null; policies: string[] }, { clubId: number; eventId: number }>({
+            query: ({ clubId, eventId }) => `/club/${clubId}/events/${eventId}/my-role`,
+            providesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+        }),
     }),
 });
 
@@ -165,4 +171,5 @@ export const {
     useStartEventMutation,
     useCheckInEventMutation,
     useCompleteEventMutation,
+    useGetMyEventRoleQuery,
 } = eventApi;
