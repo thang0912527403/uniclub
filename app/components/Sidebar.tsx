@@ -132,6 +132,14 @@ export function Sidebar({
         { label: 'Fund Settings', url: '/funds/settings' },
       ]
     },
+    {
+      label: 'Manage Interview',
+      icon: 'fa-microphone',
+      subItems: [
+        { label: 'Interview Schedule', url: '/interview/schedule' },
+        { label: 'Candidate Comparison', url: '/interview/comparison' },
+      ]
+    },
   ];
 
   return (

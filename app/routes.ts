@@ -58,6 +58,7 @@ export default [
     // Interview routes
     route("interview/schedule", "routes/interview-schedule.tsx"),
     route("interview/room/:roomCode?", "routes/interview-room.tsx"),
+    route("interview/comparison", "routes/interview-comparison.tsx"),
 
     // Event management
     route("events", "routes/events.tsx"),

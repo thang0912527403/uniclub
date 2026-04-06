@@ -23,10 +23,9 @@ import type {
   ApplicationResponseDto,
   ClubMember,
 } from "~/cores/api";
-import { getUserId } from '~/utils/auth';
-import { useCurrentUser } from '~/hooks/useCurrentUser';
-import { useClubRole } from '~/hooks/useClubRole';
-import { useGetClubRolesByClubIdQuery } from '~/cores/api/clubRoleApi';
+import { getUserId } from "~/utils/auth";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
+import { useGetClubRolesByClubIdQuery } from "~/cores/api/clubRoleApi";
 
 import StatusPipelineTabs from "./components/StatusPipelineTabs";
 import type { PipelineTab } from "./components/StatusPipelineTabs";
@@ -35,16 +34,17 @@ import InterviewTable from "./components/InterviewTable";
 import InterviewDetailDrawer from "./components/InterviewDetailDrawer";
 import BulkActionBar from "./components/BulkActionBar";
 import CreateInterviewModal from "./components/CreateInterviewModal";
-
+import Cookies from "js-cookie";
 const InterviewSchedulePage: React.FC = () => {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
   // ─── Campaign selector ──────────────────────────────────────
   const { isAdmin } = useCurrentUser();
-  const { clubManagerMembership } = useClubRole();
-  const clubId = clubManagerMembership?.clubId ?? 0;
-  const { data: clubRoles = [] } = useGetClubRolesByClubIdQuery(clubId, { skip: !clubId });
+  const clubId = Number(Cookies.get("clubId"));
+  const { data: clubRoles = [] } = useGetClubRolesByClubIdQuery(clubId, {
+    skip: !clubId,
+  });
 
   const { data: adminCampaigns, isLoading: adminLoading } =
     useGetRecruitmentCampaignsQuery(undefined, {

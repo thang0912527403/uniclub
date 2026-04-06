@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { useSubmitFeedbackMutation } from '~/cores/api';
+import type { CriteriaScoreItemDto } from '~/cores/api/types';
+import { useGetCampaignCriteriaQuery, useSubmitCriteriaFeedbackMutation } from '~/cores/api/interviewApi';
 
-interface FeedbackFormProps {
+interface CriteriaFeedbackFormProps {
   scheduleId: number;
   assignmentId: number;
+  campaignId: number;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -15,42 +17,104 @@ const resultOptions = [
   { value: 'NoShow', label: 'Vắng mặt (NoShow)', color: 'text-gray-500', icon: 'fa-solid fa-ban' },
 ];
 
-const FeedbackForm: React.FC<FeedbackFormProps> = ({ scheduleId, assignmentId, onSuccess, onCancel }) => {
-  const [result, setResult] = useState('');
-  const [notes, setNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
+  scheduleId, assignmentId, campaignId, onSuccess, onCancel,
+}) => {
+  const { data: criteria, isLoading } = useGetCampaignCriteriaQuery(campaignId);
+  const [submitFeedback] = useSubmitCriteriaFeedbackMutation();
 
-  const [submitFeedback] = useSubmitFeedbackMutation();
+  const [notes, setNotes] = useState<Record<number, string>>({});
+  const [overallNotes, setOverallNotes] = useState('');
+  const [result, setResult] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!result) return;
+    if (!result || !criteria) return;
 
     setIsSubmitting(true);
+    setError(null);
+
+    const scoreItems: CriteriaScoreItemDto[] = criteria.map((c) => ({
+      criterionId: c.id,
+      score: 0,
+      note: notes[c.id]?.trim() || null,
+    }));
+
     try {
       await submitFeedback({
         scheduleId,
         assignmentId,
-        dto: {
-          result,
-          score: 0,
-          feedbackNotes: notes.trim() || null,
-        },
+        dto: { scores: scoreItems, feedbackNotes: overallNotes.trim() || null, result },
       }).unwrap();
       onSuccess?.();
-    } catch (err) {
-      console.error('Failed to submit feedback:', err);
+    } catch (err: unknown) {
+      setError('Gửi đánh giá thất bại');
+      console.error('Failed to submit criteria feedback:', err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <svg className="w-6 h-6 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 animate-fadeIn">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-1">
+        <i className="fa-solid fa-clipboard-list text-blue-500" />
+        <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">Đánh giá theo tiêu chí</h3>
+      </div>
+
+      {error && (
+        <div className="px-4 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Criteria cards — chỉ nhận xét, không chấm điểm */}
+      <div className="space-y-3">
+        {criteria?.map((criterion) => (
+          <div
+            key={criterion.id}
+            className="p-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/30 space-y-2"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-gray-200">{criterion.name}</p>
+                {criterion.description && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{criterion.description}</p>
+                )}
+              </div>
+            </div>
+            <textarea
+              value={notes[criterion.id] || ''}
+              onChange={(e) => setNotes((prev) => ({ ...prev, [criterion.id]: e.target.value }))}
+              placeholder={`Nhận xét về ${criterion.name.toLowerCase()}...`}
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none transition-all resize-none"
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Separator */}
+      <hr className="border-gray-200 dark:border-gray-600" />
+
       {/* Result */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          Kết quả <span className="text-red-500">*</span>
+          Kết quả đánh giá <span className="text-red-500">*</span>
         </label>
         <div className="grid grid-cols-2 gap-2">
           {resultOptions.map((opt) => (
@@ -71,15 +135,15 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ scheduleId, assignmentId, o
         </div>
       </div>
 
-      {/* Notes */}
+      {/* Overall notes */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          Nhận xét
+          Nhận xét tổng hợp
         </label>
         <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Nhận xét về ứng viên..."
+          value={overallNotes}
+          onChange={(e) => setOverallNotes(e.target.value)}
+          placeholder="Nhận xét chung về ứng viên..."
           rows={3}
           className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none transition-all resize-none"
         />
@@ -118,4 +182,4 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ scheduleId, assignmentId, o
   );
 };
 
-export default FeedbackForm;
+export default CriteriaFeedbackForm;

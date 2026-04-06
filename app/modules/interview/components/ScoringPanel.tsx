@@ -22,6 +22,15 @@ const resultOptions = [
   { value: 'NoShow', label: 'Không đến', iconClass: 'fa-solid fa-ban', color: 'border-gray-400 bg-gray-50 text-gray-700 hover:bg-gray-100', activeRing: 'ring-gray-300' },
 ];
 
+const getResultBadge = (r: string) => {
+  switch (r) {
+    case 'Pass': return 'bg-green-100 text-green-700';
+    case 'Fail': return 'bg-red-100 text-red-700';
+    case 'OnHold': return 'bg-yellow-100 text-yellow-700';
+    default: return 'bg-gray-100 text-gray-700';
+  }
+};
+
 const ScoringPanel: React.FC<ScoringPanelProps> = ({
   scheduleId,
   assignment,
@@ -29,34 +38,12 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
   onSubmitFeedback,
   isSubmitting = false,
 }) => {
-  const [score, setScore] = useState(70);
   const [result, setResult] = useState('Pass');
   const [feedbackNotes, setFeedbackNotes] = useState('');
   const [activeTab, setActiveTab] = useState<'score' | 'others'>('score');
 
   const hasSubmitted = !!assignment?.feedbackSubmittedAt;
   const otherFeedbacks = allAssignments.filter(a => a.feedbackSubmittedAt && a.id !== assignment?.id);
-
-  const getScoreColor = (s: number) => {
-    if (s >= 80) return 'text-green-500';
-    if (s >= 60) return 'text-yellow-500';
-    if (s >= 40) return 'text-orange-500';
-    return 'text-red-500';
-  };
-
-  const getScoreGradient = (s: number) => {
-    if (s >= 80) return 'from-green-400 to-emerald-500';
-    if (s >= 60) return 'from-yellow-400 to-amber-500';
-    if (s >= 40) return 'from-orange-400 to-orange-500';
-    return 'from-red-400 to-red-500';
-  };
-
-  const getScoreBg = (s: number) => {
-    if (s >= 80) return 'bg-green-500/10';
-    if (s >= 60) return 'bg-yellow-500/10';
-    if (s >= 40) return 'bg-orange-500/10';
-    return 'bg-red-500/10';
-  };
 
   const handleSubmit = () => {
     if (!assignment) return;
@@ -65,7 +52,7 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
       assignmentId: assignment.id,
       feedbackNotes,
       result,
-      score,
+      score: 0,
     });
   };
 
@@ -74,11 +61,11 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-4 flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-          <i className="fa-solid fa-trophy text-white text-sm" />
+          <i className="fa-solid fa-clipboard-check text-white text-sm" />
         </div>
         <div>
-          <h3 className="text-white font-bold text-base leading-tight">Chấm điểm phỏng vấn</h3>
-          <p className="text-orange-100 text-xs mt-0.5">Đánh giá ứng viên sau buổi phỏng vấn</p>
+          <h3 className="text-white font-bold text-base leading-tight">Đánh giá phỏng vấn</h3>
+          <p className="text-orange-100 text-xs mt-0.5">Nhận xét & đánh dấu trạng thái ứng viên</p>
         </div>
       </div>
 
@@ -93,7 +80,7 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
           }`}
         >
           <i className="fa-solid fa-pen-to-square text-xs" />
-          Chấm điểm
+          Đánh giá
         </button>
         <button
           onClick={() => setActiveTab('others')}
@@ -118,7 +105,7 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                 </div>
                 <h4 className="text-lg font-bold text-gray-800 dark:text-white">Đã gửi đánh giá</h4>
                 <p className="text-sm text-gray-500 mt-1">
-                  Điểm: {assignment?.score}/100 • Kết quả: {assignment?.result}
+                  Kết quả: <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getResultBadge(assignment?.result || '')}`}>{assignment?.result}</span>
                 </p>
                 {assignment?.feedbackNotes && (
                   <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3 mt-3 text-left">
@@ -128,43 +115,6 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
               </div>
             ) : (
               <>
-                {/* Score Display */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                      <i className="fa-solid fa-star text-amber-400 text-xs" />
-                      Điểm số
-                    </label>
-                    <div className={`px-3 py-1 rounded-lg ${getScoreBg(score)}`}>
-                      <span className={`text-3xl font-black ${getScoreColor(score)} tabular-nums`}>{score}</span>
-                      <span className="text-gray-400 text-sm ml-0.5">/100</span>
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full bg-gradient-to-r ${getScoreGradient(score)} rounded-full transition-all duration-200`}
-                        style={{ width: `${score}%` }}
-                      />
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={score}
-                      onChange={(e) => setScore(Number(e.target.value))}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-                    <span>0</span>
-                    <span>25</span>
-                    <span>50</span>
-                    <span>75</span>
-                    <span>100</span>
-                  </div>
-                </div>
-
                 {/* Result */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
@@ -249,14 +199,11 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {a.score != null && (
-                        <span className={`text-sm font-bold ${getScoreColor(a.score)}`}>{a.score}/100</span>
-                      )}
-                      {a.result && (
-                        <i className={`${resultOptions.find(o => o.value === a.result)?.iconClass} text-sm`} />
-                      )}
-                    </div>
+                    {a.result && (
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${getResultBadge(a.result)}`}>
+                        {a.result}
+                      </span>
+                    )}
                   </div>
                   {a.feedbackNotes && (
                     <p className="text-xs text-gray-600 dark:text-gray-400">{a.feedbackNotes}</p>

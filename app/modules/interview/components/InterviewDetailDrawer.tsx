@@ -7,6 +7,8 @@ import {
   useGetClubMembersQuery,
 } from "~/cores/api";
 import FeedbackForm from "./FeedbackForm";
+import CriteriaFeedbackForm from "./CriteriaFeedbackForm";
+import EvaluationSummary from "./EvaluationSummary";
 import type { ProposedSlots } from "./CreateInterviewModal";
 import type { ClubRole } from "~/cores/api/types";
 import type { ClubMember } from "~/cores/api/types";
@@ -142,7 +144,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
   onNavigateToRoom,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "info" | "assignments" | "feedback"
+    "info" | "assignments" | "feedback" | "evaluation"
   >("info");
   const [newUserId, setNewUserId] = useState("");
   const [newRole, setNewRole] = useState(
@@ -374,6 +376,11 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                   feedbackTotal > 0
                     ? `${feedbackDone}/${feedbackTotal}`
                     : undefined,
+              },
+              {
+                key: "evaluation" as const,
+                label: "Tổng hợp",
+                icon: "fa-solid fa-chart-bar",
               },
             ].map((tab) => (
               <button
@@ -1052,38 +1059,21 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                           </div>
                         </div>
 
-                        {/* Results */}
-                        {a.feedbackSubmittedAt && (
-                          <div className="flex items-center gap-2">
-                            {a.score != null && (
-                              <div
-                                className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                  a.score >= 70
-                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                    : a.score >= 50
-                                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                }`}
-                              >
-                                {a.score}/100
-                              </div>
-                            )}
-                            {a.result && (
-                              <span
-                                className={`px-2 py-0.5 text-[11px] font-semibold rounded-full ${
-                                  a.result === "Pass"
-                                    ? "bg-green-100 text-green-700"
-                                    : a.result === "Fail"
-                                      ? "bg-red-100 text-red-700"
-                                      : a.result === "OnHold"
-                                        ? "bg-yellow-100 text-yellow-700"
-                                        : "bg-gray-100 text-gray-700"
-                                }`}
-                              >
-                                {a.result}
-                              </span>
-                            )}
-                          </div>
+                        {/* Results — chỉ hiện trạng thái, không hiện điểm */}
+                        {a.feedbackSubmittedAt && a.result && (
+                          <span
+                            className={`px-2.5 py-1 text-[11px] font-semibold rounded-full ${
+                              a.result === "Pass"
+                                ? "bg-green-100 text-green-700"
+                                : a.result === "Fail"
+                                  ? "bg-red-100 text-red-700"
+                                  : a.result === "OnHold"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {a.result}
+                          </span>
                         )}
                       </div>
 
@@ -1094,15 +1084,16 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                         </p>
                       )}
 
-                      {/* Show feedback form for current user if not yet submitted */}
+                      {/* Show criteria feedback form for current user if not yet submitted */}
                       {!a.feedbackSubmittedAt &&
                         a.interviewerUserId === currentUserId &&
                         interview.status === "Completed" && (
                           <>
                             {feedbackForAssignment === a.id ? (
-                              <FeedbackForm
+                              <CriteriaFeedbackForm
                                 scheduleId={interview.id}
                                 assignmentId={a.id}
+                                campaignId={interview.campaignId}
                                 onSuccess={() => setFeedbackForAssignment(null)}
                                 onCancel={() => setFeedbackForAssignment(null)}
                               />
@@ -1112,13 +1103,40 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                                 className="flex items-center gap-2 px-4 py-2 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-xl text-sm font-medium hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors w-full justify-center border border-orange-200 dark:border-orange-800"
                               >
                                 <i className="fa-solid fa-pen-to-square" />
-                                Đánh giá ngay
+                                Đánh giá theo tiêu chí
                               </button>
                             )}
                           </>
                         )}
                     </div>
                   ))
+                )}
+              </div>
+            )}
+
+            {/* ──── EVALUATION TAB ──── */}
+            {activeTab === "evaluation" && (
+              <div className="space-y-4">
+                {interview.status === "Completed" ? (
+                  <>
+                    <EvaluationSummary scheduleId={interview.id} />
+
+                    {/* Link to comparison page */}
+                    <a
+                      href={`/interview/comparison?campaignId=${interview.campaignId}`}
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:scale-[1.01] transition-all"
+                    >
+                      <i className="fa-solid fa-code-compare" />
+                      So sánh tất cả ứng viên trong campaign
+                    </a>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <i className="fa-solid fa-chart-bar text-3xl mb-3 block" />
+                    <p className="text-sm">
+                      Phỏng vấn cần hoàn thành trước khi xem tổng hợp đánh giá.
+                    </p>
+                  </div>
                 )}
               </div>
             )}
