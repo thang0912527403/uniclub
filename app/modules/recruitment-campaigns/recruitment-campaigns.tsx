@@ -6,7 +6,14 @@ import { SettingButton } from '~/components/SettingButton';
 import { Loading } from '~/components/Loading';
 import { Error } from '~/components/Error';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { useGetRecruitmentCampaignsQuery, useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api';
+import { useNotification } from '~/components/Notification';
+import {
+  useGetRecruitmentCampaignsQuery,
+  useGetRecruitmentCampaignsByClubIdQuery,
+  useCreateRecruitmentCampaignMutation,
+  useUpdateRecruitmentCampaignMutation,
+  useDeleteRecruitmentCampaignMutation,
+} from '~/cores/api';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { useClubRole } from '~/hooks/useClubRole';
 import type { RecruitmentCampaign } from '~/cores/api/types';
@@ -17,9 +24,8 @@ import type { RecruitmentCampaign } from '~/cores/api/types';
 const ITEMS_PER_PAGE = 6;
 const STATUS_TABS = [
   { key: 'all', label: 'Tất cả', icon: 'fa-layer-group' },
-  { key: 'active', label: 'Đang hoạt động', icon: 'fa-circle-check' },
-  { key: 'upcoming', label: 'Sắp diễn ra', icon: 'fa-clock' },
-  { key: 'completed', label: 'Đã hoàn thành', icon: 'fa-flag-checkered' },
+  { key: 'open', label: 'Đang mở', icon: 'fa-circle-check' },
+  { key: 'close', label: 'Đã đóng', icon: 'fa-circle-xmark' },
 ] as const;
 
 type StatusTabKey = (typeof STATUS_TABS)[number]['key'];
@@ -29,12 +35,10 @@ type StatusTabKey = (typeof STATUS_TABS)[number]['key'];
 // ──────────────────────────────────────────────
 function getStatusConfig(status: string) {
   switch (status) {
-    case 'active':
-      return { label: 'Đang hoạt động', bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' };
-    case 'upcoming':
-      return { label: 'Sắp diễn ra', bg: 'bg-violet-500/15', text: 'text-violet-600 dark:text-violet-400', dot: 'bg-violet-500' };
-    case 'completed':
-      return { label: 'Đã hoàn thành', bg: 'bg-slate-500/15', text: 'text-slate-600 dark:text-slate-400', dot: 'bg-slate-500' };
+    case 'open':
+      return { label: 'Đang mở', bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' };
+    case 'close':
+      return { label: 'Đã đóng', bg: 'bg-slate-500/15', text: 'text-slate-600 dark:text-slate-400', dot: 'bg-slate-500' };
     default:
       return { label: status, bg: 'bg-gray-500/15', text: 'text-gray-600 dark:text-gray-400', dot: 'bg-gray-500' };
   }
@@ -77,10 +81,13 @@ function StatCard({ icon, label, value, gradient }: { icon: string; label: strin
 }
 
 /* ── Campaign Card (Grid view) ── */
-function CampaignCard({ campaign, onNavigate, onManageForm }: {
+function CampaignCard({ campaign, onNavigate, onManageForm, onEdit, onDelete, onToggle }: {
   campaign: RecruitmentCampaign;
   onNavigate: (id: number) => void;
   onManageForm: (id: number, e: React.MouseEvent) => void;
+  onEdit?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
+  onDelete?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
+  onToggle?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
 }) {
   return (
     <div
@@ -108,6 +115,29 @@ function CampaignCard({ campaign, onNavigate, onManageForm }: {
         <div className="absolute top-3 left-3">
           <StatusBadge status={campaign.status} />
         </div>
+        {/* Edit / Delete overlay (managers only) */}
+        {(onEdit || onDelete) && (
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200" onClick={(e) => e.stopPropagation()}>
+            {onEdit && (
+              <button
+                onClick={(e) => onEdit(campaign, e)}
+                title="Chỉnh sửa"
+                className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg bg-white/90 dark:bg-gray-800/90 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 shadow-sm transition-colors"
+              >
+                <i className="fas fa-pen text-[11px]" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={(e) => onDelete(campaign, e)}
+                title="Xóa"
+                className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg bg-white/90 dark:bg-gray-800/90 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/20 shadow-sm transition-colors"
+              >
+                <i className="fas fa-trash text-[11px]" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -125,13 +155,29 @@ function CampaignCard({ campaign, onNavigate, onManageForm }: {
             <i className="far fa-calendar-alt" />
             <span>{formatDateVN(campaign.startDate)} – {formatDateVN(campaign.endDate)}</span>
           </div>
-          <button
-            onClick={(e) => onManageForm(campaign.campaignId, e)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg transition-colors"
-          >
-            <i className="fa-solid fa-file-lines text-[10px]" />
-            Form
-          </button>
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            {onToggle && (
+              <button
+                onClick={(e) => onToggle(campaign, e)}
+                title={campaign.status === 'open' ? 'Đóng chiến dịch' : 'Mở chiến dịch'}
+                className="cursor-pointer flex items-center gap-1.5 group/toggle"
+              >
+                <span className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${campaign.status === 'open' ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${campaign.status === 'open' ? 'translate-x-4' : 'translate-x-0'}`} />
+                </span>
+                <span className={`text-xs font-medium ${campaign.status === 'open' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                  {campaign.status === 'open' ? 'Mở' : 'Đóng'}
+                </span>
+              </button>
+            )}
+            <button
+              onClick={(e) => onManageForm(campaign.campaignId, e)}
+              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg transition-colors"
+            >
+              <i className="fa-solid fa-file-lines text-[10px]" />
+              Form
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -139,10 +185,13 @@ function CampaignCard({ campaign, onNavigate, onManageForm }: {
 }
 
 /* ── Campaign Table Row (Table view) ── */
-function CampaignTableRow({ campaign, onNavigate, onManageForm }: {
+function CampaignTableRow({ campaign, onNavigate, onManageForm, onEdit, onDelete, onToggle }: {
   campaign: RecruitmentCampaign;
   onNavigate: (id: number) => void;
   onManageForm: (id: number, e: React.MouseEvent) => void;
+  onEdit?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
+  onDelete?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
+  onToggle?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
 }) {
   return (
     <tr
@@ -191,18 +240,50 @@ function CampaignTableRow({ campaign, onNavigate, onManageForm }: {
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={(e) => onManageForm(campaign.campaignId, e)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg transition-colors"
+            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg transition-colors"
           >
             <i className="fa-solid fa-file-lines text-[10px]" />
             Form
           </button>
           <button
             onClick={() => onNavigate(campaign.campaignId)}
-            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-semibold rounded-lg transition-colors"
+            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-semibold rounded-lg transition-colors"
           >
             Chi tiết
             <i className="fas fa-arrow-right text-[10px]" />
           </button>
+          {onToggle && (
+            <button
+              onClick={(e) => onToggle(campaign, e)}
+              title={campaign.status === 'open' ? 'Đóng chiến dịch' : 'Mở chiến dịch'}
+              className="cursor-pointer flex items-center gap-1.5"
+            >
+              <span className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${campaign.status === 'open' ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${campaign.status === 'open' ? 'translate-x-4' : 'translate-x-0'}`} />
+              </span>
+              <span className={`text-xs font-medium ${campaign.status === 'open' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                {campaign.status === 'open' ? 'Mở' : 'Đóng'}
+              </span>
+            </button>
+          )}
+          {onEdit && (
+            <button
+              onClick={(e) => onEdit(campaign, e)}
+              title="Chỉnh sửa"
+              className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+            >
+              <i className="fas fa-pen text-[11px]" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => onDelete(campaign, e)}
+              title="Xóa"
+              className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+            >
+              <i className="fas fa-trash text-[11px]" />
+            </button>
+          )}
         </div>
       </td>
     </tr>
@@ -268,6 +349,316 @@ function Pagination({ currentPage, totalPages, onPageChange }: {
 }
 
 // ──────────────────────────────────────────────
+// CRUD Modals
+// ──────────────────────────────────────────────
+
+type CampaignFormData = {
+  campaignName: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  imageUrl: string;
+  linkCampaign: string;
+  content: string;
+};
+
+const EMPTY_FORM: CampaignFormData = {
+  campaignName: '',
+  description: '',
+  startDate: '',
+  endDate: '',
+  status: 'open',
+  imageUrl: '',
+  linkCampaign: '',
+  content: '',
+};
+
+function toISODate(dateStr: string) {
+  // Convert yyyy-MM-dd to ISO string for API
+  if (!dateStr) return '';
+  return new Date(dateStr).toISOString();
+}
+
+function toInputDate(isoStr: string) {
+  if (!isoStr) return '';
+  return isoStr.slice(0, 10);
+}
+
+/* ── Campaign Form Modal (Create / Edit) ── */
+function CampaignFormModal({
+  initial,
+  onClose,
+  onSave,
+  isSaving,
+}: {
+  initial?: RecruitmentCampaign | null;
+  onClose: () => void;
+  onSave: (data: CampaignFormData) => Promise<void>;
+  isSaving: boolean;
+}) {
+  const isEdit = !!initial;
+  const [form, setForm] = useState<CampaignFormData>(() =>
+    initial
+      ? {
+          campaignName: initial.campaignName,
+          description: initial.description ?? '',
+          startDate: toInputDate(initial.startDate),
+          endDate: toInputDate(initial.endDate),
+          status: initial.status,
+          imageUrl: initial.imageUrl ?? '',
+          linkCampaign: initial.linkCampaign ?? '',
+          content: initial.content ?? '',
+        }
+      : EMPTY_FORM
+  );
+  const [errors, setErrors] = useState<Partial<Record<keyof CampaignFormData, string>>>({});
+
+  const LIMITS = { campaignName: 100, description: 300, content: 5000 } as const;
+  const URL_REGEX = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)$/;
+
+  const set = (field: keyof CampaignFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm(prev => ({ ...prev, [field]: e.target.value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const validate = () => {
+    const errs: Partial<Record<keyof CampaignFormData, string>> = {};
+
+    // campaignName
+    if (!form.campaignName.trim()) {
+      errs.campaignName = 'Vui lòng nhập tên chiến dịch';
+    } else if (form.campaignName.trim().length > LIMITS.campaignName) {
+      errs.campaignName = `Tối đa ${LIMITS.campaignName} ký tự`;
+    }
+
+    // description
+    if (form.description.length > LIMITS.description) {
+      errs.description = `Tối đa ${LIMITS.description} ký tự`;
+    }
+
+    // content
+    if (form.content.length > LIMITS.content) {
+      errs.content = `Tối đa ${LIMITS.content} ký tự`;
+    }
+
+    // startDate
+    if (!form.startDate) {
+      errs.startDate = 'Vui lòng chọn ngày bắt đầu';
+    } else {
+      const startChanged = !isEdit || form.startDate !== toInputDate(initial!.startDate);
+      if (startChanged && form.startDate < today) {
+        errs.startDate = 'Ngày bắt đầu phải từ hôm nay trở đi';
+      }
+    }
+
+    // endDate
+    if (!form.endDate) {
+      errs.endDate = 'Vui lòng chọn ngày kết thúc';
+    } else if (form.startDate && form.endDate < form.startDate) {
+      errs.endDate = 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu';
+    }
+
+    // imageUrl
+    if (form.imageUrl && !URL_REGEX.test(form.imageUrl)) {
+      errs.imageUrl = 'URL không hợp lệ (phải bắt đầu bằng http:// hoặc https://)';
+    }
+
+    // linkCampaign
+    if (form.linkCampaign && !URL_REGEX.test(form.linkCampaign)) {
+      errs.linkCampaign = 'URL không hợp lệ (phải bắt đầu bằng http:// hoặc https://)';
+    }
+
+    return errs;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    await onSave(form);
+  };
+
+  const inputCls = (field: keyof CampaignFormData) =>
+    `w-full rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border ${
+      errors[field] ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'
+    } focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/50 transition-all`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-700/50">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+              <i className={`fas ${isEdit ? 'fa-pen' : 'fa-plus'} text-indigo-600 dark:text-indigo-400 text-sm`} />
+            </div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              {isEdit ? 'Chỉnh sửa chiến dịch' : 'Tạo chiến dịch mới'}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <i className="fas fa-times text-sm" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="px-6 py-5 space-y-4">
+            {/* Campaign Name */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
+                Tên chiến dịch <span className="text-red-500 normal-case">*</span>
+              </label>
+              <input type="text" value={form.campaignName} onChange={set('campaignName')}
+                placeholder="VD: Tuyển thành viên HK1 2025..." className={inputCls('campaignName')} />
+              {errors.campaignName && <p className="text-red-500 text-xs mt-1">{errors.campaignName}</p>}
+            </div>
+
+            {/* Dates row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
+                  Ngày bắt đầu <span className="text-red-500 normal-case">*</span>
+                </label>
+                <input type="date" value={form.startDate} onChange={set('startDate')} className={inputCls('startDate')} />
+                {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
+                  Ngày kết thúc <span className="text-red-500 normal-case">*</span>
+                </label>
+                <input type="date" value={form.endDate} onChange={set('endDate')} className={inputCls('endDate')} />
+                {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
+              </div>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
+                Trạng thái
+              </label>
+              <select value={form.status} onChange={set('status')} className={inputCls('status')}>
+                <option value="open">Mở</option>
+                <option value="close">Đóng</option>
+              </select>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
+                Mô tả ngắn
+              </label>
+              <textarea value={form.description} onChange={set('description')} rows={2}
+                placeholder="Mô tả ngắn gọn về chiến dịch..."
+                className={`${inputCls('description')} resize-none`} />
+            </div>
+
+            {/* Image URL + Link row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
+                  URL ảnh bìa
+                </label>
+                <input type="url" value={form.imageUrl} onChange={set('imageUrl')}
+                  placeholder="https://..." className={inputCls('imageUrl')} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
+                  Link chiến dịch
+                </label>
+                <input type="url" value={form.linkCampaign} onChange={set('linkCampaign')}
+                  placeholder="https://..." className={inputCls('linkCampaign')} />
+              </div>
+            </div>
+
+            {/* Content */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">
+                Nội dung chi tiết
+              </label>
+              <textarea value={form.content} onChange={set('content')} rows={5}
+                placeholder="Nội dung chi tiết của chiến dịch tuyển dụng..."
+                className={`${inputCls('content')} resize-none`} />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/50 rounded-b-2xl">
+            <button type="button" onClick={onClose} disabled={isSaving}
+              className="cursor-pointer px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50">
+              Hủy
+            </button>
+            <button type="submit" disabled={isSaving}
+              className="cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm shadow-indigo-500/30">
+              {isSaving && <i className="fas fa-spinner fa-spin text-xs" />}
+              {isEdit ? 'Lưu thay đổi' : 'Tạo chiến dịch'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── Delete Confirm Modal ── */
+function DeleteConfirmModal({
+  campaign,
+  onClose,
+  onConfirm,
+  isDeleting,
+}: {
+  campaign: RecruitmentCampaign;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+  isDeleting: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center flex-shrink-0">
+              <i className="fas fa-triangle-exclamation text-red-500 dark:text-red-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Xóa chiến dịch?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Bạn có chắc muốn xóa chiến dịch{' '}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">"{campaign.campaignName}"</span>?
+                Hành động này không thể hoàn tác.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 pb-5">
+          <button onClick={onClose} disabled={isDeleting}
+            className="cursor-pointer px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50">
+            Hủy
+          </button>
+          <button onClick={onConfirm} disabled={isDeleting}
+            className="cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm shadow-red-500/30">
+            {isDeleting && <i className="fas fa-spinner fa-spin text-xs" />}
+            Xóa chiến dịch
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
 // Main Component
 // ──────────────────────────────────────────────
 export default function RecruitmentCampaignsModule() {
@@ -276,10 +667,15 @@ export default function RecruitmentCampaignsModule() {
   const { isAdmin } = useCurrentUser();
   const { clubManagerMembership } = useClubRole();
   const clubId = clubManagerMembership?.clubId ?? 0;
+  const canManage = !isAdmin && clubId !== 0;
+  const { show: notify } = useNotification();
 
   // ── API ──
   const { data: adminCampaigns, isLoading: adminLoading, error: adminError } = useGetRecruitmentCampaignsQuery(undefined, { skip: !isAdmin });
   const { data: clubCampaigns, isLoading: clubLoading, error: clubError } = useGetRecruitmentCampaignsByClubIdQuery(clubId, { skip: isAdmin || clubId === 0 });
+  const [createCampaign, { isLoading: isCreating }] = useCreateRecruitmentCampaignMutation();
+  const [updateCampaign, { isLoading: isUpdating }] = useUpdateRecruitmentCampaignMutation();
+  const [deleteCampaign, { isLoading: isDeleting }] = useDeleteRecruitmentCampaignMutation();
 
   const campaigns = isAdmin ? adminCampaigns : clubCampaigns;
   const isLoading = isAdmin ? adminLoading : clubLoading;
@@ -290,15 +686,17 @@ export default function RecruitmentCampaignsModule() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
+  const [editTarget, setEditTarget] = useState<RecruitmentCampaign | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RecruitmentCampaign | null>(null);
 
   // ── Derived data ──
   const statusCounts = useMemo(() => {
-    if (!campaigns) return { all: 0, active: 0, upcoming: 0, completed: 0 };
+    if (!campaigns) return { all: 0, open: 0, close: 0 };
     return {
       all: campaigns.length,
-      active: campaigns.filter(c => c.status === 'active').length,
-      upcoming: campaigns.filter(c => c.status === 'upcoming').length,
-      completed: campaigns.filter(c => c.status === 'completed').length,
+      open: campaigns.filter(c => c.status === 'open').length,
+      close: campaigns.filter(c => c.status === 'close').length,
     };
   }, [campaigns]);
 
@@ -344,6 +742,90 @@ export default function RecruitmentCampaignsModule() {
     navigate(`/campaign-forms/${id}`);
   }, [navigate]);
 
+  const handleOpenCreate = useCallback(() => {
+    setEditTarget(null);
+    setModalMode('create');
+  }, []);
+
+  const handleOpenEdit = useCallback((campaign: RecruitmentCampaign, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditTarget(campaign);
+    setModalMode('edit');
+  }, []);
+
+  const handleOpenDelete = useCallback((campaign: RecruitmentCampaign, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteTarget(campaign);
+  }, []);
+
+  const handleSave = useCallback(async (data: CampaignFormData) => {
+    try {
+      if (modalMode === 'create') {
+        await createCampaign({
+          clubId,
+          campaignName: data.campaignName,
+          description: data.description,
+          startDate: toISODate(data.startDate),
+          endDate: toISODate(data.endDate),
+          status: data.status,
+          imageUrl: data.imageUrl,
+          linkCampaign: data.linkCampaign,
+          content: data.content,
+        }).unwrap();
+        notify({ type: 'success', title: 'Tạo chiến dịch thành công!', message: `Chiến dịch "${data.campaignName}" đã được tạo.`, duration: 3000 });
+      } else if (modalMode === 'edit' && editTarget) {
+        await updateCampaign({
+          id: editTarget.campaignId,
+          data: {
+            campaignName: data.campaignName,
+            description: data.description,
+            startDate: toISODate(data.startDate),
+            endDate: toISODate(data.endDate),
+            status: data.status,
+            imageUrl: data.imageUrl,
+            linkCampaign: data.linkCampaign,
+            content: data.content,
+          },
+        }).unwrap();
+        notify({ type: 'success', title: 'Cập nhật thành công!', message: `Chiến dịch "${data.campaignName}" đã được cập nhật.`, duration: 3000 });
+      }
+      setModalMode(null);
+      setEditTarget(null);
+    } catch (err) {
+      const rtkErr = err as { data?: { message?: string } };
+      notify({ type: 'error', title: 'Thao tác thất bại', message: rtkErr?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
+    }
+  }, [modalMode, editTarget, clubId, createCampaign, updateCampaign, notify]);
+
+  const handleToggleStatus = useCallback(async (campaign: RecruitmentCampaign, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextStatus = campaign.status === 'open' ? 'close' : 'open';
+    try {
+      await updateCampaign({ id: campaign.campaignId, data: { status: nextStatus } }).unwrap();
+      notify({
+        type: 'success',
+        title: nextStatus === 'open' ? 'Đã mở chiến dịch' : 'Đã đóng chiến dịch',
+        message: `"${campaign.campaignName}" chuyển sang ${nextStatus === 'open' ? 'Đang mở' : 'Đã đóng'}.`,
+        duration: 3000,
+      });
+    } catch (err) {
+      const rtkErr = err as { data?: { message?: string } };
+      notify({ type: 'error', title: 'Thao tác thất bại', message: rtkErr?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
+    }
+  }, [updateCampaign, notify]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteCampaign(deleteTarget.campaignId).unwrap();
+      notify({ type: 'success', title: 'Đã xóa chiến dịch', message: `"${deleteTarget.campaignName}" đã bị xóa.`, duration: 3000 });
+      setDeleteTarget(null);
+    } catch (err) {
+      const rtkErr = err as { data?: { message?: string } };
+      notify({ type: 'error', title: 'Xóa thất bại', message: rtkErr?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
+    }
+  }, [deleteTarget, deleteCampaign, notify]);
+
   return (
     <div className="min-h-screen">
       <SettingButton />
@@ -366,11 +848,10 @@ export default function RecruitmentCampaignsModule() {
         {!isLoading && campaigns && (
           <>
             {/* ────── Stats Cards ────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <StatCard icon="fa-bullhorn" label="Tổng chiến dịch" value={statusCounts.all} gradient="bg-gradient-to-br from-indigo-500 to-indigo-600" />
-              <StatCard icon="fa-circle-check" label="Đang hoạt động" value={statusCounts.active} gradient="bg-gradient-to-br from-emerald-500 to-emerald-600" />
-              <StatCard icon="fa-clock" label="Sắp diễn ra" value={statusCounts.upcoming} gradient="bg-gradient-to-br from-violet-500 to-violet-600" />
-              <StatCard icon="fa-flag-checkered" label="Đã hoàn thành" value={statusCounts.completed} gradient="bg-gradient-to-br from-slate-500 to-slate-600" />
+              <StatCard icon="fa-circle-check" label="Đang mở" value={statusCounts.open} gradient="bg-gradient-to-br from-emerald-500 to-emerald-600" />
+              <StatCard icon="fa-circle-xmark" label="Đã đóng" value={statusCounts.close} gradient="bg-gradient-to-br from-slate-500 to-slate-600" />
             </div>
 
             {/* ────── Action Bar ────── */}
@@ -455,6 +936,17 @@ export default function RecruitmentCampaignsModule() {
                 <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap hidden sm:block">
                   {filteredCampaigns.length} kết quả
                 </span>
+
+                {/* Create button — managers only */}
+                {canManage && (
+                  <button
+                    onClick={handleOpenCreate}
+                    className="cursor-pointer flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-500/30 whitespace-nowrap"
+                  >
+                    <i className="fas fa-plus text-xs" />
+                    Tạo chiến dịch
+                  </button>
+                )}
               </div>
             </div>
 
@@ -467,6 +959,9 @@ export default function RecruitmentCampaignsModule() {
                     campaign={campaign}
                     onNavigate={handleNavigate}
                     onManageForm={handleManageForm}
+                    onEdit={canManage ? handleOpenEdit : undefined}
+                    onDelete={canManage ? handleOpenDelete : undefined}
+                    onToggle={canManage ? handleToggleStatus : undefined}
                   />
                 ))}
               </div>
@@ -493,6 +988,9 @@ export default function RecruitmentCampaignsModule() {
                           campaign={campaign}
                           onNavigate={handleNavigate}
                           onManageForm={handleManageForm}
+                          onEdit={canManage ? handleOpenEdit : undefined}
+                          onDelete={canManage ? handleOpenDelete : undefined}
+                          onToggle={canManage ? handleToggleStatus : undefined}
                         />
                       ))}
                     </tbody>
@@ -533,6 +1031,26 @@ export default function RecruitmentCampaignsModule() {
           </>
         )}
       </main>
+
+      {/* ── Create / Edit Modal ── */}
+      {modalMode !== null && (
+        <CampaignFormModal
+          initial={modalMode === 'edit' ? editTarget : null}
+          onClose={() => { setModalMode(null); setEditTarget(null); }}
+          onSave={handleSave}
+          isSaving={isCreating || isUpdating}
+        />
+      )}
+
+      {/* ── Delete Confirm Modal ── */}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          campaign={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleConfirmDelete}
+          isDeleting={isDeleting}
+        />
+      )}
     </div>
   );
 }
