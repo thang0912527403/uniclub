@@ -822,7 +822,6 @@ export default function FundDetailPageByClub() {
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Người gửi</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Số tiền</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Trạng thái</th>
-                              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Danh mục</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Mô tả</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Thời gian nộp</th>
                             </tr>
@@ -830,7 +829,7 @@ export default function FundDetailPageByClub() {
                           <tbody>
                             {history.length === 0 ? (
                               <tr>
-                                <td colSpan={6} className={`px-4 py-6 text-center ${t.type.muted}`}>
+                                <td colSpan={5} className={`px-4 py-6 text-center ${t.type.muted}`}>
                                   Không có giao dịch trên trang này.
                                 </td>
                               </tr>
@@ -845,7 +844,6 @@ export default function FundDetailPageByClub() {
                                     {item.amount != null ? `${Number(item.amount).toLocaleString('vi-VN')} ₫` : '—'}
                                   </td>
                                   <td className={`px-4 py-2 text-sm ${t.type.body} whitespace-nowrap`}>{fundHistoryStatusLabelVi(item)}</td>
-                                  <td className={`px-4 py-2 text-sm ${t.type.muted}`}>{fundHistoryCategoryLabel(item)}</td>
                                   <td className={`px-4 py-2 ${t.type.body}`}>{item.description?.trim() ? item.description : '—'}</td>
                                   <td className={`px-4 py-2 text-sm ${t.type.muted} whitespace-nowrap`}>
                                     {formatFundHistoryDateTime(fundHistoryContributionTimeIso(item))}
