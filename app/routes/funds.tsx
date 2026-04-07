@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import Cookies from 'js-cookie';
+import { skipToken } from '@reduxjs/toolkit/query';
 import {
   Wallet,
   Plus,
@@ -36,6 +37,7 @@ import type { ClubFund } from '~/cores/api';
 import type { FundListSort, FundListStatus } from '~/cores/api/types';
 import { fundTokens as t } from './funds.design-tokens';
 import { FinanceAccessHintBanner, FundCardBalanceHint } from '~/modules/funds/components/FundUxHints';
+import { getClubId, setClubId } from '~/utils/auth';
 import {
   applyFilterChangeParams,
   buildCreateFundPayload,
@@ -133,7 +135,10 @@ export default function FundsPage() {
   const [searchInput, setSearchInput] = useState(fundSearch);
 
   const hasToken = !!Cookies.get('accessToken');
-  const { data: clubs = [] } = useGetClubsQuery(undefined, { skip: !hasToken || !isAdmin });
+  const { data: clubsResult } = useGetClubsQuery(
+    hasToken && isAdmin ? { pageIndex: '1', searchQuery: '', pageSize: '200' } : skipToken,
+  );
+  const clubs = clubsResult?.data ?? [];
 
   const {
     data: userMemberships = [],
@@ -151,6 +156,7 @@ export default function FundsPage() {
     label: m.clubName?.trim() || userClubNameById.get(m.clubId)?.trim() || `CLB #${m.clubId}`,
   }));
 
+  const cookieClubId = getClubId();
   const [selectedClubId, setSelectedClubId] = useState<number>(0);
   const clubId = selectedClubId;
   const hasAnyClub = isAdmin ? clubs.length > 0 : memberClubOptions.length > 0;
@@ -270,14 +276,23 @@ export default function FundsPage() {
 
   useEffect(() => {
     if (!hasToken) return;
-    if (!isAdmin) {
-      if (selectedClubId === 0 && memberClubOptions.length > 0) setSelectedClubId(memberClubOptions[0].clubId);
+    if (selectedClubId !== 0) return;
+
+    const optionIds = new Set(
+      (isAdmin ? clubs : memberClubOptions).map((c) => c.clubId),
+    );
+    if (cookieClubId > 0 && optionIds.has(cookieClubId)) {
+      setSelectedClubId(cookieClubId);
       return;
     }
-  }, [hasToken, isAdmin, memberClubOptions, selectedClubId]);
-  useEffect(() => {
-    if (isAdmin && clubs.length > 0 && selectedClubId === 0) setSelectedClubId(clubs[0].clubId);
-  }, [isAdmin, clubs, selectedClubId]);
+
+    if (!isAdmin) {
+      if (memberClubOptions.length > 0) setSelectedClubId(memberClubOptions[0].clubId);
+      return;
+    }
+
+    if (clubs.length > 0) setSelectedClubId(clubs[0].clubId);
+  }, [hasToken, selectedClubId, isAdmin, cookieClubId, clubs, memberClubOptions]);
 
   const [createFund, { isLoading: isCreatingFund }] = useCreateFundMutation();
   const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
@@ -504,7 +519,7 @@ export default function FundsPage() {
             <div>
               <h1 className={t.type.pageTitle}>Quản lý quỹ</h1>
               <p className={`mt-1 ${t.type.body}`}>
-                Theo dõi thu chi và quản lý ngân sách minh bạch.
+                Theo dõi thu chi và quản lý ngân sách minh bạch
                 {!canFilterFundStatusOnOverview && canViewFunds ? (
                   <span className="block mt-1 text-slate-600 dark:text-slate-400">
                     Thành viên chỉ thấy quỹ đã duyệt; quỹ chờ duyệt / của bạn xem tại &quot;Quỹ của tôi&quot;.
@@ -525,7 +540,11 @@ export default function FundsPage() {
                 <select
                   id="club-select"
                   value={clubId}
-                  onChange={(e) => setSelectedClubId(Number(e.target.value))}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setSelectedClubId(v);
+                    if (v > 0) setClubId(v);
+                  }}
                   className={`${t.input} h-11`}
                   aria-label="Chọn câu lạc bộ"
                   disabled={!hasToken || (isAdmin ? clubs.length === 0 : memberClubOptions.length === 0)}

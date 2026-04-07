@@ -9,6 +9,7 @@ import {
   useApproveFundMutation,
   useContributeToFundMutation,
   useLazyGetContributeTransactionStatusQuery,
+  useGetPayosGuideQuery,
 } from '~/cores/api';
 import { useDialogAccessibility } from '~/hooks/useDialogAccessibility';
 import { parseVndIntegerFromInput } from '../funds.utils';
@@ -22,6 +23,7 @@ import { isManagerRole } from '~/hooks/useClubRole';
 import type { FundHistoryItem, ClubFund, FundHistoryScopeFilter, FundHistoryStatusFilter } from '~/cores/api';
 import { fundTokens as t } from '../funds.design-tokens';
 import { savePayosPendingContribute } from '~/utils/payosContributeSession';
+import { setClubId } from '~/utils/auth';
 import { useFundHistory } from '~/modules/funds/hooks/useFundHistory';
 import {
   DEFAULT_FUND_HISTORY_PAGE_SIZE,
@@ -31,16 +33,7 @@ import {
   FUND_HISTORY_STATUS_OPTIONS,
 } from '~/modules/funds/constants/fundHistory';
 
-function resolveMinContributeVnd(): number {
-  const raw = import.meta.env.VITE_MIN_FUND_CONTRIBUTE_VND as string | undefined;
-  if (raw != null && raw !== '') {
-    const n = Number(raw);
-    if (Number.isFinite(n) && n >= 1000) return Math.floor(n);
-  }
-  return 10_000;
-}
-
-const MIN_FUND_TX_AMOUNT = resolveMinContributeVnd();
+const MIN_FUND_TX_AMOUNT = 10_000;
 function formatCountdown(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -162,6 +155,10 @@ export default function FundDetailPageByClub() {
   const clubId = parseInt(clubIdParam ?? '0', 10);
   const fundId = parseInt(fundIdParam ?? '0', 10);
 
+  useEffect(() => {
+    if (clubId > 0) setClubId(clubId);
+  }, [clubId]);
+
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isAdmin } = useCurrentUser();
@@ -273,6 +270,7 @@ export default function FundDetailPageByClub() {
   const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
   const [contributeToFund, { isLoading: isContributing }] = useContributeToFundMutation();
   const [fetchPayStatus] = useLazyGetContributeTransactionStatusQuery();
+  const { data: payosGuide } = useGetPayosGuideQuery(clubId, { skip: isInvalidParams || clubId < 1 });
 
   const isFundApproved = fund && String(fund.status ?? '').toUpperCase() === 'APPROVED';
   const isFundPending = fund && String(fund.status ?? '').toUpperCase() === 'PENDING';
@@ -408,6 +406,15 @@ export default function FundDetailPageByClub() {
   const handleContributeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clubId || !fundId) return;
+    if (payosGuide && (!payosGuide.payos?.isConfigured || !payosGuide.payos?.isEnabled)) {
+      showNotification({
+        type: 'error',
+        title: 'PayOS chưa sẵn sàng',
+        message:
+          'CLB chưa kết nối PayOS. Vui lòng xem mục Kết nối PayOS hoặc dùng hướng dẫn chuyển khoản thủ công (nếu có).',
+      });
+      return;
+    }
     const parsed = parseVndIntegerFromInput(contributeAmount);
     if (!parsed.ok) {
       showNotification({ type: 'error', title: 'Số tiền không hợp lệ', message: parsed.message });

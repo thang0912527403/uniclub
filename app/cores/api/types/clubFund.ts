@@ -200,3 +200,26 @@ export interface PayosFundContributionReturn {
   isPaid: boolean;
   message?: string;
 }
+
+export interface ClubPayosGuide {
+  payos: {
+    isConfigured: boolean;
+    isEnabled: boolean;
+    noteVi?: string;
+  };
+  stepsVi: string[];
+}
+
+export interface ClubPayosSettings {
+  clientId?: string | null;
+  apiKeyMasked?: string | null;
+  checksumKeyMasked?: string | null;
+  isEnabled: boolean;
+}
+
+export interface UpdateClubPayosSettingsDto {
+  clientId: string;
+  apiKey: string;
+  checksumKey: string;
+  isEnabled: boolean;
+}

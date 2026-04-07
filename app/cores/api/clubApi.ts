@@ -14,6 +14,9 @@ import {
   type ContributeToFundResponse,
   type FundContributeTransactionStatus,
   type PayosFundContributionReturn,
+  type ClubPayosGuide,
+  type ClubPayosSettings,
+  type UpdateClubPayosSettingsDto,
   type ClubFundCapabilities,
   type FundCategoryResponseDto,
   type FundHistoryScope,
@@ -797,6 +800,54 @@ export const clubApi = baseApi.injectEndpoints({
         };
       },
     }),
+
+    // ─── PayOS onboarding per-club ───────────────────────────────────────
+    /** Guide: all club members can view. */
+    getPayosGuide: builder.query<ClubPayosGuide, number>({
+      query: (clubId) => `/clubs/${clubId}/funds/payos-guide`,
+      transformResponse: (response: ApiResponse<ClubPayosGuide>) => response.data,
+      providesTags: (result, error, clubId) => [
+        { type: "ClubFund", id: `payos-guide-${clubId}` },
+      ],
+    }),
+    /** Settings: manager/level1 + editfinance. Backend returns masked keys only. */
+    getPayosSettings: builder.query<ClubPayosSettings, number>({
+      query: (clubId) => `/clubs/${clubId}/funds/payos-settings`,
+      transformResponse: (response: ApiResponse<ClubPayosSettings>) => {
+        const d = response.data as unknown as Record<string, unknown> | null | undefined;
+        return {
+          clientId: (d?.clientId as string | undefined) ?? (d?.ClientId as string | undefined) ?? null,
+          apiKeyMasked:
+            (d?.apiKeyMasked as string | undefined) ??
+            (d?.ApiKeyMasked as string | undefined) ??
+            null,
+          checksumKeyMasked:
+            (d?.checksumKeyMasked as string | undefined) ??
+            (d?.ChecksumKeyMasked as string | undefined) ??
+            null,
+          isEnabled: !!(d?.isEnabled ?? d?.IsEnabled),
+        };
+      },
+      providesTags: (result, error, clubId) => [
+        { type: "ClubFund", id: `payos-settings-${clubId}` },
+      ],
+    }),
+    updatePayosSettings: builder.mutation<
+      ClubPayosSettings,
+      { clubId: number } & UpdateClubPayosSettingsDto
+    >({
+      query: ({ clubId, ...body }) => ({
+        url: `/clubs/${clubId}/funds/payos-settings`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<ClubPayosSettings>) =>
+        response.data,
+      invalidatesTags: (result, error, { clubId }) => [
+        { type: "ClubFund", id: `payos-guide-${clubId}` },
+        { type: "ClubFund", id: `payos-settings-${clubId}` },
+      ],
+    }),
     // ─── Member Roles ───────────────────────────────────────────────────
     updateMemberRole: builder.mutation<
       void,
@@ -829,9 +880,17 @@ export const {
   useGetClubByIdQuery,
   useGetClubMembersQuery,
   useGetFundByIdQuery,
+  useGetFundLocationQuery,
   useGetFundsByClubQuery,
   useGetMyFundsQuery,
   useCreateFundMutation,
+  useApproveFundMutation,
+  useContributeToFundMutation,
+  useLazyGetContributeTransactionStatusQuery,
+  useLazyGetPayosFundContributionReturnQuery,
+  useGetPayosGuideQuery,
+  useGetPayosSettingsQuery,
+  useUpdatePayosSettingsMutation,
   useGetMyClubsForFundsQuery,
   useGetMyClubsForFundsV2Query,
   useCreateClubMutation,
