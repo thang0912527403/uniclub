@@ -157,7 +157,7 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
     setCurrentPage(1);
   };
 
-  const statuses = ["", "PENDING", "APPROVED", "REJECTED", "SUCCESS"];
+  const statuses = ["", "PENDING", "REJECTED", "SUCCESS"];
   const allSelected =
     pagedApps.length > 0 && selectedIds.size === pagedApps.length;
   const TABLE_COL_COUNT = 6;
