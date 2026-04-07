@@ -17,6 +17,7 @@ import {
     useDeleteSessionMutation,
     useOpenRegistrationMutation,
 } from '~/cores/api';
+import { useEventPermission } from '~/hooks/useEventPermission';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
@@ -155,6 +156,9 @@ export default function EditEventPage() {
     const [openRegistration] = useOpenRegistrationMutation();
     const [error, setError] = useState<string | null>(null);
     const [initialized, setInitialized] = useState(false);
+
+    // Per-event permission gate
+    const { can, isLoading: isLoadingPerm } = useEventPermission(event?.clubId, Number(id));
     /** IDs của sessions hiện có (id > 0) đã bị xóa khỏi UI — cần gọi DELETE */
     const [deletedSessionIds, setDeletedSessionIds] = useState<number[]>([]);
 
@@ -513,6 +517,12 @@ export default function EditEventPage() {
                 </main>
             </div>
         );
+    }
+
+    // Redirect if user doesn't have editevent permission
+    if (!isLoadingPerm && !can('editevent')) {
+        navigate(`/events/${id}`);
+        return null;
     }
 
     return (

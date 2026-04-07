@@ -844,11 +844,5 @@ export const {
   useCreateClubPostMutation,
   useUpdateClubPostMutation,
   useDeleteClubPostMutation,
-  useGetFundHistoryQuery,
-  useApproveFundMutation,
   useUpdateMemberRoleMutation,
-  useGetFundLocationQuery,
-  useContributeToFundMutation,
-  useLazyGetContributeTransactionStatusQuery,
-  useLazyGetPayosFundContributionReturnQuery,
 } = clubApi;
