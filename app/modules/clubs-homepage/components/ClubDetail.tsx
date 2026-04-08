@@ -181,7 +181,7 @@ const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
 
             {/* Button Xem thêm tin tức */}
             <button
-              onClick={() => navigate('/club/all-clubs')}
+              onClick={() => navigate('/public/clubs')}
               className="w-full mt-8 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg cursor-pointer"
             >
               ← Xem thêm câu lạc bộ

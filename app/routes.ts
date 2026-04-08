@@ -58,6 +58,7 @@ export default [
     route("application-form/:formId?", "routes/question.tsx"),
     // Department
     route("department", "routes/department.tsx"),
+    route("department/create", "routes/department.create.tsx"),
     route("department/:id", "routes/department.member.tsx"),
 
     // Club content management
@@ -68,8 +69,8 @@ export default [
     // Recruitment & Applications
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
     route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
-    route("club/all-clubs", "routes/clubs-homepage/clubs.tsx"),
-    route("club/all-clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
+    route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
+    route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
     route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
     route("club/all-requests", "routes/clubs/clubrequests.tsx"),
 

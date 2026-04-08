@@ -1,11 +1,11 @@
-import { useNavigate, Link } from 'react-router';
-import { useGetManagedClubsQuery, useGetUserAllClubsQuery } from '~/cores/api/userApi';
+import Cookies from 'js-cookie';
+import { useNavigate, Link, Navigate } from 'react-router';
+import { useGetManagedClubsQuery, useGetUserAllClubsQuery, useGetUserRoleQuery } from '~/cores/api/userApi';
 import { getUserId, setClubId } from '~/utils/auth';
 import { SettingButton } from '~/components/SettingButton';
 import type { Club } from '~/cores/api/types';
-import { useHasUserPolicyQuery } from '~/cores/api';
-import { useCheckPendingRequestQuery } from '~/cores/api/clubRequestApi';
-import { useGetClubRequestsByUserIdQuery } from '~/cores/api/clubRequestApi';
+import { useCheckPendingRequestQuery, useGetClubRequestsByUserIdQuery } from '~/cores/api/clubRequestApi';
+import { useRefreshTokenMutation } from '~/cores/api';
 
 /* ─── ClubCard (Bento Card) ───────────────────────────────────────────────── */
 function ClubCard({ club }: { club: Club }) {
@@ -26,21 +26,19 @@ function ClubCard({ club }: { club: Club }) {
       {/* ── Badges (top-right) ── */}
       <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5 z-10">
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide shadow-sm ${
-            isActive
-              ? 'bg-emerald-500 text-white'
-              : 'bg-amber-500 text-white'
-          }`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide shadow-sm ${isActive
+            ? 'bg-emerald-500 text-white'
+            : 'bg-amber-500 text-white'
+            }`}
         >
           <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-200' : 'bg-amber-200'}`} />
           {isActive ? 'Hoạt động' : 'Đang chờ'}
         </span>
         <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-            club.isPublic
-              ? 'bg-zinc-100 text-zinc-600'
-              : 'bg-orange-50 text-orange-600'
-          }`}
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${club.isPublic
+            ? 'bg-zinc-100 text-zinc-600'
+            : 'bg-orange-50 text-orange-600'
+            }`}
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {club.isPublic ? (
@@ -124,11 +122,8 @@ function ClubCardSkeleton() {
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function MyClubsModule() {
   const userId = getUserId();
+  const navigate = useNavigate();
   const { data: clubs, isLoading, error } = useGetUserAllClubsQuery(userId, {
-    skip: !userId,
-  });
-
-  const { data: canCreateRequest } = useHasUserPolicyQuery({ userId, policyTitle: 'CreateClubRequest' }, {
     skip: !userId,
   });
 
@@ -137,12 +132,32 @@ export default function MyClubsModule() {
   });
 
   const { data: managedClubs } = useGetManagedClubsQuery(getUserId());
+  const { data: userRoles } = useGetUserRoleQuery(userId);
+  const isClubManager = userRoles?.includes('Club Manager') ?? false;
 
   const { data: userRequests, isLoading: requestLoading } =
     useGetClubRequestsByUserIdQuery(userId, {
       skip: !userId,
     });
 
+  const [refreshToken] = useRefreshTokenMutation();
+
+  const handleSubmit = async () => {
+    const storedRefreshToken = Cookies.get('refreshToken');
+    if (!storedRefreshToken) return;
+    try {
+      const result = await refreshToken({ refreshToken: storedRefreshToken }).unwrap();
+      if (result.data) {
+        Cookies.set('accessToken', result.data.accessToken);
+        console.log('Token refreshed successfully:', result.data.accessToken);
+        if (result.data.refreshToken) {
+          Cookies.set('refreshToken', result.data.refreshToken);
+        }
+      }
+    } catch {
+
+    }
+  };
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col">
       {/* ── Breadcrumb Nav ── */}
@@ -230,7 +245,7 @@ export default function MyClubsModule() {
           )}
 
           {/* ── CTA: Create Club Request ── */}
-          {!canCreateRequest && !hasPendingRequest && managedClubs?.length === 0 && (
+          {!hasPendingRequest && managedClubs?.length === 0 && !isClubManager && (
             <div className="mt-12 flex flex-col items-center">
               {/* Floating plus icon */}
               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 mb-4">
@@ -272,6 +287,9 @@ export default function MyClubsModule() {
                       <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Lý do</th>
                       <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Trạng thái</th>
                       <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Ngày tạo</th>
+                      {(managedClubs?.length === 0) && (
+                        <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Action</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
@@ -290,28 +308,51 @@ export default function MyClubsModule() {
                           {req.reason}
                         </td>
                         <td className="px-5 py-4">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-semibold ${
-                              req.status === 'Pending'
+                          {(() => {
+                            const status = req.status?.toLowerCase();
+
+                            const style =
+                              status === 'pending'
                                 ? 'bg-amber-100 text-amber-700'
-                                : req.status === 'Approved'
+                                : status === 'approved'
                                   ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-red-100 text-red-700'
-                            }`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              req.status === 'Pending'
+                                  : 'bg-red-100 text-red-700';
+
+                            const dot =
+                              status === 'pending'
                                 ? 'bg-amber-500'
-                                : req.status === 'Approved'
+                                : status === 'approved'
                                   ? 'bg-emerald-500'
-                                  : 'bg-red-500'
-                            }`} />
-                            {req.status === 'Pending' ? 'Đang chờ' : req.status === 'Approved' ? 'Đã duyệt' : 'Từ chối'}
-                          </span>
+                                  : 'bg-red-500';
+
+                            const label =
+                              status === 'pending'
+                                ? 'Đang chờ'
+                                : status === 'approved'
+                                  ? 'Đã duyệt'
+                                  : 'Từ chối';
+
+                            return (
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-semibold ${style}`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                                {label}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-5 py-4 text-zinc-500">
                           {new Date(req.createdAt).toLocaleDateString('vi-VN')}
                         </td>
+                        {(req.status.toLowerCase() === 'approved') && (managedClubs?.length === 0) && (
+                          <td className="px-5 py-4">
+                            <button className="px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-bold hover:bg-blue-600 transition-all"
+                              onClick={() => { handleSubmit() }}>
+                              Tạo câu lạc bộ
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

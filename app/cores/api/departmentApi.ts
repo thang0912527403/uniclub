@@ -1,5 +1,6 @@
 import { baseApi } from "./baseApi";
 import { type Department, type DepartmentCreateRequest, type ApiResponse } from "./types";
+import type { DepartmentMember } from "./types/department";
 
 export const departmentApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
@@ -11,7 +12,7 @@ export const departmentApi = baseApi.injectEndpoints({
         getDepartmentById: builder.query<Department, { clubId: number; id: number }>({
             query: ({ clubId, id }) => `/club/${clubId}/Department/${id}`,
             transformResponse: (response: ApiResponse<Department>) => response.data,
-            providesTags: (result, error, { id }) => [{ type: 'Department', id }],
+            providesTags: (_result, _error, { id }) => [{ type: 'Department', id }],
         }),
         createDepartment: builder.mutation<Department, { clubId: number; department: DepartmentCreateRequest | Partial<DepartmentCreateRequest> }>({
             query: ({ clubId, department }) => ({
@@ -29,7 +30,7 @@ export const departmentApi = baseApi.injectEndpoints({
                 body: department,
             }),
             transformResponse: (response: ApiResponse<Department>) => response.data,
-            invalidatesTags: (result, error, { id }) => [{ type: 'Department', id }],
+            invalidatesTags: (_result, _error, { id }) => [{ type: 'Department', id }, 'Department'],
         }),
         deleteDepartment: builder.mutation<void, { clubId: number; id: number }>({
             query: ({ clubId, id }) => ({
@@ -38,19 +39,25 @@ export const departmentApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ['Department'],
         }),
-        getDepartmentMembers: builder.query<import('./types/department').DepartmentMember[], { clubId: number; departmentId: number }>({
+        getDepartmentMembers: builder.query<DepartmentMember[], { clubId: number; departmentId: number }>({
             query: ({ clubId, departmentId }) => `/club/${clubId}/Department/${departmentId}/all-members`,
-            transformResponse: (response: ApiResponse<import('./types/department').DepartmentMember[]>) => response.data ?? [],
+            transformResponse: (response: ApiResponse<DepartmentMember[]>) => response.data ?? [],
             providesTags: ['Member'],
         }),
-        addMemberToDepartment: builder.mutation<void, { clubId: number; departmentId: number; memberId: string }>({
+        // Lấy club members chưa thuộc department (dùng cho modal thêm thành viên)
+        getNonMembers: builder.query<DepartmentMember[], { clubId: number; departmentId: number }>({
+            query: ({ clubId, departmentId }) => `/club/${clubId}/Department/${departmentId}/non-members`,
+            transformResponse: (response: ApiResponse<DepartmentMember[]>) => response.data ?? [],
+            providesTags: ['Member'],
+        }),
+        addMemberToDepartment: builder.mutation<void, { clubId: number; departmentId: number; memberId: number }>({
             query: ({ clubId, departmentId, memberId }) => ({
                 url: `/club/${clubId}/Department/${departmentId}/members/${memberId}/add`,
                 method: 'POST',
             }),
             invalidatesTags: ['Member'],
         }),
-        removeMemberFromDepartment: builder.mutation<void, { clubId: number; departmentId: number; memberId: string }>({
+        removeMemberFromDepartment: builder.mutation<void, { clubId: number; departmentId: number; memberId: number }>({
             query: ({ clubId, departmentId, memberId }) => ({
                 url: `/club/${clubId}/Department/${departmentId}/members/${memberId}/remove`,
                 method: 'DELETE',
@@ -58,6 +65,7 @@ export const departmentApi = baseApi.injectEndpoints({
             invalidatesTags: ['Member'],
         }),
     }),
+    overrideExisting: false,
 });
 
 export const {
@@ -67,6 +75,7 @@ export const {
     useUpdateDepartmentMutation,
     useDeleteDepartmentMutation,
     useGetDepartmentMembersQuery,
+    useGetNonMembersQuery,
     useAddMemberToDepartmentMutation,
     useRemoveMemberFromDepartmentMutation,
 } = departmentApi;

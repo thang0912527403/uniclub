@@ -29,7 +29,7 @@ const Navbar: React.FC = () => {
 
   const navLinks = [
     { name: "Trang chủ", href: "/home" },
-    { name: "Câu lạc bộ", href: "/club/all-clubs" },
+    { name: "Câu lạc bộ", href: "/public/clubs" },
     { name: "Sự kiện", href: "/public/events" },
     { name: "Tin tức", href: "/public/news" },
     { name: "Về chúng tôi", href: "#about" },
