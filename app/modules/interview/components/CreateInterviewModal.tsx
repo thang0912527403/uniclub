@@ -129,9 +129,10 @@ const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
       `${firstSlot.date}T${firstSlot.time}`,
     ).toISOString();
 
-    const proposedTimeSlots = validSlots.length > 1
-      ? validSlots.map((s) => ({ date: s.date, time: s.time }))
-      : undefined;
+    const proposedTimeSlots =
+      validSlots.length > 1
+        ? validSlots.map((s) => ({ date: s.date, time: s.time }))
+        : undefined;
 
     try {
       // Create ONE interview per application (not per slot)
@@ -193,7 +194,7 @@ const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-white">
-                {isBulkMode ? "Tạo lịch PV hàng loạt" : "Tạo lịch phỏng vấn"}
+                {isBulkMode ? "Tạo lịch PV" : "Tạo lịch phỏng vấn"}
               </h2>
               <p className="text-orange-100 text-sm mt-0.5">
                 {isBulkMode

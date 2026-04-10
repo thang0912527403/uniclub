@@ -37,7 +37,6 @@ export default [
     route("dashboard", "routes/dashboard.tsx"),
     route("profile", "routes/user_profile.tsx"),
     route("auth/change-password", "routes/auth/change-password.tsx"),
-    route("my-applications", "routes/my-applications.tsx"),
 
     // User management
     route("users", "routes/users.tsx"),
@@ -56,14 +55,12 @@ export default [
     route("club-roles", "routes/club-roles.tsx"),
     route("manage-clubs", "routes/my-clubs.tsx"),
     route("application-form/:formId?", "routes/question.tsx"),
+
+    route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
+    route("club/post", "routes/clubs/clubpost.tsx"),
     // Department
     route("department", "routes/department.tsx"),
     route("department/:id", "routes/department.member.tsx"),
-
-    // Club content management
-    route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
-    route("club/posts", "routes/clubposts/clubpost.tsx"),
-    route("club/posts/:id", "routes/clubposts/clubpost.$id.tsx"),
 
     // Recruitment & Applications
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
@@ -77,6 +74,9 @@ export default [
     route("interview/schedule", "routes/interview-schedule.tsx"),
     route("interview/room/:roomCode?", "routes/interview-room.tsx"),
     route("interview/comparison", "routes/interview-comparison.tsx"),
+
+    // General Meeting Room (WebRTC)
+    route("meeting-room/:roomCode?", "routes/meeting-room.tsx"),
 
     // Events
     route("events", "routes/events.tsx"),
@@ -92,8 +92,5 @@ export default [
     route("funds/transactions", "routes/funds.transactions.tsx"),
     route("funds/reports", "routes/funds.reports.tsx"),
     route("funds/:fundId", "routes/funds.$fundId.tsx"),
-
-    // Meeting (WebRTC)
-    route("meeting/:roomId?", "routes/meeting.tsx"),
   ]),
 ] satisfies RouteConfig;

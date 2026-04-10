@@ -31,6 +31,10 @@
       "memberRoles": "Member Roles",
       "memberActivity": "Member Activity"
     },
+    "managePosts": {
+      "title": "Manage Posts",
+      "allPosts": "All Posts"
+    },
     "manageEvents": {
       "title": "Manage Events",
       "allEvents": "All Events",

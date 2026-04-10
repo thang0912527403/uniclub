@@ -59,12 +59,12 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
-            Tạo lịch PV hàng loạt
+            Tạo lịch PV
           </button>
         )}
 
         {/* ─── SCHEDULED tab ───────────────────────────────────── */}
-        {activeTab === "Scheduled" && onBulkAssignInterviewers && (
+        {activeTab === "Confirmed" && onBulkAssignInterviewers && (
           <button
             onClick={onBulkAssignInterviewers}
             className="flex items-center gap-1.5 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-all hover:shadow-md whitespace-nowrap"
@@ -134,7 +134,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
               />
             </svg>
-            Hoàn thành hàng loạt
+            Hoàn thành
           </button>
         )}
 

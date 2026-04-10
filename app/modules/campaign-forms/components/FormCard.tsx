@@ -18,7 +18,7 @@ export const FormCard: React.FC<FormCardProps> = ({
   onDelete,
 }) => {
   const [copied, setCopied] = useState(false);
-  const applyUrl = `${window.location.origin}/question/${form.formId}`;
+  const applyUrl = `${window.location.origin}/application-form/${form.formId}`;
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -82,7 +82,7 @@ export const FormCard: React.FC<FormCardProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <Link
-          to={`/question/${form.formId}`}
+          to={`/application-form/${form.formId}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-all"

@@ -30,6 +30,10 @@
       "memberRoles": "Vai trò Thành viên",
       "memberActivity": "Hoạt động Thành viên"
     },
+    "managePosts": {
+      "title": "Quản lý Bài viết",
+      "allPosts": "Tất cả Bài viết"
+    },
     "manageEvents": {
       "title": "Quản lý Sự kiện",
       "allEvents": "Tất cả Sự kiện",

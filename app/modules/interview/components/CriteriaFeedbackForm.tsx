@@ -49,7 +49,6 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
         dto: {
           name: newCriteriaName.trim(),
           description: newCriteriaDesc.trim() || null,
-          weight: 0,
           displayOrder: (criteria?.length || 0) + 1,
         },
       }).unwrap();
@@ -215,11 +214,7 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
                     </p>
                   )}
                 </div>
-                {criterion.weight > 0 && (
-                  <span className="text-[10px] text-orange-500 font-semibold bg-orange-50 px-2 py-0.5 rounded-full flex-shrink-0 border border-orange-200">
-                    {criterion.weight}%
-                  </span>
-                )}
+
               </div>
               <textarea
                 value={notes[criterion.id] || ""}

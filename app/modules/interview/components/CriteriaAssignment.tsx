@@ -180,11 +180,7 @@ const CriteriaAssignment: React.FC<CriteriaAssignmentProps> = ({
                   {c.description && <p className="text-xs text-gray-500 dark:text-gray-400">{c.description}</p>}
                 </div>
               </div>
-              {c.weight > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold flex-shrink-0">
-                  {c.weight}%
-                </span>
-              )}
+
             </button>
           );
         })}

@@ -114,6 +114,16 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
     <div className="flex gap-6 h-full min-h-[500px]">
       {/* Left: forms list */}
       <div className="w-72 flex-shrink-0 space-y-3">
+        <button
+          onClick={() => {
+            setEditingForm(null);
+            setShowFormModal(true);
+          }}
+          className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-sm font-bold hover:shadow-lg hover:scale-[1.01] transition-all flex items-center justify-center gap-2"
+        >
+          <i className="fa-solid fa-plus" />
+          Tạo biểu mẫu mới
+        </button>
         {formsLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (

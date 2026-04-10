@@ -154,6 +154,13 @@ export function Sidebar({
       ],
     },
     {
+      label: t("sidebar.managePosts.title"),
+      icon: "fa-newspaper",
+      subItems: [
+        { label: t("sidebar.managePosts.allPosts"), url: "/club/post" },
+      ],
+    },
+    {
       label: t("sidebar.manageEvents.title"),
       icon: "fa-calendar",
       subItems: [

@@ -13,7 +13,7 @@ interface FormModalProps {
   }) => void;
   onUpdate: (
     id: number,
-    f: { formName: string; formTitle: string; description: string },
+    f: ApplicationFormResponseDto,
   ) => void;
   isSaving: boolean;
 }
@@ -34,6 +34,7 @@ export const FormModal: React.FC<FormModalProps> = ({
     if (!name.trim()) return;
     if (editing) {
       onUpdate(editing.formId, {
+        ...editing,
         formName: name,
         formTitle: title,
         description: desc,

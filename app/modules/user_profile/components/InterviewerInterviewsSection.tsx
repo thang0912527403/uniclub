@@ -14,11 +14,20 @@ import type {
 import FeedbackForm from "~/modules/interview/components/FeedbackForm";
 import CriteriaFeedbackForm from "~/modules/interview/components/CriteriaFeedbackForm";
 import CriteriaAssignment from "~/modules/interview/components/CriteriaAssignment";
-import { useGetEvaluationSummaryQuery, useGetCriteriaScoresQuery } from "~/cores/api/interviewApi";
+import {
+  useGetEvaluationSummaryQuery,
+  useGetCriteriaScoresQuery,
+} from "~/cores/api/interviewApi";
 
 /** Small badge showing assigned criteria count from CriteriaScore API */
-const CriteriaBadge: React.FC<{ scheduleId: number; assignmentId: number }> = ({ scheduleId, assignmentId }) => {
-  const { data: scores } = useGetCriteriaScoresQuery({ scheduleId, assignmentId });
+const CriteriaBadge: React.FC<{ scheduleId: number; assignmentId: number }> = ({
+  scheduleId,
+  assignmentId,
+}) => {
+  const { data: scores } = useGetCriteriaScoresQuery({
+    scheduleId,
+    assignmentId,
+  });
   const count = scores?.length || 0;
   if (count === 0) return null;
   return (
@@ -96,14 +105,12 @@ const CriteriaNoteBreakdown: React.FC<{
       return myNote
         ? {
             name: cs.criterionName,
-            weight: cs.weight,
             note: myNote.note,
           }
         : null;
     })
     .filter(Boolean) as {
     name: string;
-    weight: number;
     note?: string | null;
   }[];
 
@@ -133,14 +140,9 @@ const CriteriaNoteBreakdown: React.FC<{
                 <span className="text-xs font-medium text-gray-700">
                   {item.name}
                 </span>
-                <span className="text-[10px] text-gray-400 font-medium">
-                  ({item.weight}%)
-                </span>
               </div>
               {item.note ? (
-                <p className="text-xs text-gray-600 mt-0.5">
-                  {item.note}
-                </p>
+                <p className="text-xs text-gray-600 mt-0.5">{item.note}</p>
               ) : (
                 <p className="text-[10px] text-gray-400 italic mt-0.5">
                   Không có nhận xét
@@ -316,7 +318,7 @@ const InterviewerInterviewsSection: React.FC<
           );
           const canConfirm = !myAssignment.hasConfirmed && !isReadOnly;
           const hasRoom = !!interview.meetingRoom;
-          const cleanDescription = interview.description?.trim() || '';
+          const cleanDescription = interview.description?.trim() || "";
 
           return (
             <div
@@ -459,13 +461,6 @@ const InterviewerInterviewsSection: React.FC<
                   className="mt-4 pt-3 border-t border-gray-100 space-y-3 animate-fadeIn"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* Description */}
-                  {cleanDescription && (
-                    <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-                      {cleanDescription}
-                    </p>
-                  )}
-
                   {/* Candidate info */}
                   <div className="bg-violet-50 rounded-xl p-3 border border-violet-100">
                     <p className="text-[11px] font-semibold text-violet-500 uppercase mb-1">
@@ -479,17 +474,6 @@ const InterviewerInterviewsSection: React.FC<
                   {/* My role & confirm button */}
                   <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[11px] font-semibold text-gray-500 uppercase mb-0.5">
-                          Vai trò của bạn
-                        </p>
-                        <p className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                            {myAssignment.role.charAt(0).toUpperCase()}
-                          </span>
-                          {myAssignment.role}
-                        </p>
-                      </div>
                       {canConfirm && (
                         <button
                           onClick={() =>
@@ -590,14 +574,18 @@ const InterviewerInterviewsSection: React.FC<
                     )}
 
                   {/* Criteria self-management for interviewer */}
-                  {["Confirmed", "InProgress", "Completed"].includes(interview.status) &&
+                  {["Confirmed", "InProgress", "Completed"].includes(
+                    interview.status,
+                  ) &&
                     !myAssignment.feedbackSubmittedAt && (
                       <div>
                         <button
                           type="button"
                           onClick={() =>
                             setCriteriaManageId(
-                              criteriaManageId === interview.id ? null : interview.id
+                              criteriaManageId === interview.id
+                                ? null
+                                : interview.id,
                             )
                           }
                           className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-left ${
@@ -607,25 +595,39 @@ const InterviewerInterviewsSection: React.FC<
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <i className={`fa-solid fa-clipboard-list text-sm ${
-                              criteriaManageId === interview.id ? "text-blue-500" : "text-gray-400"
-                            }`} />
+                            <i
+                              className={`fa-solid fa-clipboard-list text-sm ${
+                                criteriaManageId === interview.id
+                                  ? "text-blue-500"
+                                  : "text-gray-400"
+                              }`}
+                            />
                             <div>
                               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Quản lý tiêu chí đánh giá
                               </p>
-                              <CriteriaBadge scheduleId={interview.id} assignmentId={myAssignment.id} />
+                              <CriteriaBadge
+                                scheduleId={interview.id}
+                                assignmentId={myAssignment.id}
+                              />
                             </div>
                           </div>
                           <svg
                             className={`w-4 h-4 text-gray-400 transition-transform ${
-                              criteriaManageId === interview.id ? "rotate-180" : ""
+                              criteriaManageId === interview.id
+                                ? "rotate-180"
+                                : ""
                             }`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                           >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
                           </svg>
                         </button>
                         {criteriaManageId === interview.id && (
@@ -649,21 +651,6 @@ const InterviewerInterviewsSection: React.FC<
                         <p className="text-xs font-semibold text-green-600 mb-1">
                           Đã đánh giá
                         </p>
-                        <div className="flex items-center gap-3">
-                          {myAssignment.result && (
-                            <span
-                              className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                                myAssignment.result === "Pass"
-                                  ? "bg-green-100 text-green-700"
-                                  : myAssignment.result === "Fail"
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-yellow-100 text-yellow-700"
-                              }`}
-                            >
-                              {myAssignment.result}
-                            </span>
-                          )}
-                        </div>
                         {myAssignment.feedbackNotes && (
                           <p className="text-sm text-gray-600 mt-2">
                             {myAssignment.feedbackNotes}

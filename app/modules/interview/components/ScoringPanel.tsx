@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
-import type { InterviewAssignmentResponse } from '~/cores/api';
-import type { CriteriaNoteItemDto, EvaluationCriterionResponse } from '~/cores/api/types';
-import { useGetCampaignCriteriaQuery, useSubmitCriteriaFeedbackMutation, useCreateCriterionMutation } from '~/cores/api/interviewApi';
+import React, { useState } from "react";
+import type { InterviewAssignmentResponse } from "~/cores/api";
+import type {
+  CriteriaNoteItemDto,
+  EvaluationCriterionResponse,
+} from "~/cores/api/types";
+import {
+  useGetCampaignCriteriaQuery,
+  useSubmitCriteriaFeedbackMutation,
+  useCreateCriterionMutation,
+} from "~/cores/api/interviewApi";
 
 interface ScoringPanelProps {
   scheduleId: number;
@@ -25,28 +32,35 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
   onSubmitFeedback,
   isSubmitting: isSubmittingLegacy = false,
 }) => {
-  const [feedbackNotes, setFeedbackNotes] = useState('');
-  const [criteriaNotes, setCriteriaNotes] = useState<Record<number, string>>({});
-  const [activeTab, setActiveTab] = useState<'evaluate' | 'others'>('evaluate');
+  const [feedbackNotes, setFeedbackNotes] = useState("");
+  const [criteriaNotes, setCriteriaNotes] = useState<Record<number, string>>(
+    {},
+  );
+  const [activeTab, setActiveTab] = useState<"evaluate" | "others">("evaluate");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   // Add-criteria form state
   const [isAddingCriteria, setIsAddingCriteria] = useState(false);
-  const [newCriteriaName, setNewCriteriaName] = useState('');
-  const [newCriteriaDesc, setNewCriteriaDesc] = useState('');
+  const [newCriteriaName, setNewCriteriaName] = useState("");
+  const [newCriteriaDesc, setNewCriteriaDesc] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
 
   // Fetch campaign criteria
-  const { data: criteria, isLoading: isCriteriaLoading } = useGetCampaignCriteriaQuery(campaignId, {
-    skip: !campaignId,
-  });
-  const [submitCriteriaFeedback, { isLoading: isSubmittingCriteria }] = useSubmitCriteriaFeedbackMutation();
-  const [createCriterion, { isLoading: isCreatingCriterion }] = useCreateCriterionMutation();
+  const { data: criteria, isLoading: isCriteriaLoading } =
+    useGetCampaignCriteriaQuery(campaignId, {
+      skip: !campaignId,
+    });
+  const [submitCriteriaFeedback, { isLoading: isSubmittingCriteria }] =
+    useSubmitCriteriaFeedbackMutation();
+  const [createCriterion, { isLoading: isCreatingCriterion }] =
+    useCreateCriterionMutation();
 
   const hasCriteria = criteria && criteria.length > 0;
   const hasSubmitted = !!assignment?.feedbackSubmittedAt;
-  const otherFeedbacks = allAssignments.filter(a => a.feedbackSubmittedAt && a.id !== assignment?.id);
+  const otherFeedbacks = allAssignments.filter(
+    (a) => a.feedbackSubmittedAt && a.id !== assignment?.id,
+  );
   const isSubmitting = isSubmittingLegacy || isSubmittingCriteria;
 
   // ── Add new criterion ──────────────────────────────────────────
@@ -60,16 +74,15 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
         dto: {
           name: newCriteriaName.trim(),
           description: newCriteriaDesc.trim() || null,
-          weight: 0,
           displayOrder: (criteria?.length || 0) + 1,
         },
       }).unwrap();
-      setNewCriteriaName('');
-      setNewCriteriaDesc('');
+      setNewCriteriaName("");
+      setNewCriteriaDesc("");
       setIsAddingCriteria(false);
     } catch (err) {
-      console.error('Failed to add criterion:', err);
-      setAddError('Thêm tiêu chí thất bại.');
+      console.error("Failed to add criterion:", err);
+      setAddError("Thêm tiêu chí thất bại.");
     }
   };
 
@@ -91,20 +104,20 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
           dto: {
             notes: noteItems,
             feedbackNotes: feedbackNotes.trim() || null,
-            result: 'OnHold', // admin sẽ quyết định — interviewer chỉ ghi nhận xét
+            result: "OnHold",
           },
         }).unwrap();
         setSubmitSuccess(true);
       } catch (err) {
-        console.error('Failed to submit criteria feedback:', err);
-        setSubmitError('Gửi đánh giá thất bại. Vui lòng thử lại.');
+        console.error("Failed to submit criteria feedback:", err);
+        setSubmitError("Gửi đánh giá thất bại. Vui lòng thử lại.");
       }
     } else {
       onSubmitFeedback({
         scheduleId,
         assignmentId: assignment.id,
         feedbackNotes,
-        result: 'OnHold',
+        result: "OnHold",
       });
       setSubmitSuccess(true);
     }
@@ -118,30 +131,34 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
           <i className="fa-solid fa-clipboard-check text-white text-sm" />
         </div>
         <div>
-          <h3 className="text-white font-bold text-base leading-tight">Đánh giá phỏng vấn</h3>
-          <p className="text-orange-100 text-xs mt-0.5">Nhận xét theo tiêu chí cho admin so sánh</p>
+          <h3 className="text-white font-bold text-base leading-tight">
+            Đánh giá phỏng vấn
+          </h3>
+          <p className="text-orange-100 text-xs mt-0.5">
+            Nhận xét theo tiêu chí
+          </p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-100 dark:border-gray-700">
         <button
-          onClick={() => setActiveTab('evaluate')}
+          onClick={() => setActiveTab("evaluate")}
           className={`flex-1 py-3 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-            activeTab === 'evaluate'
-              ? 'border-b-2 border-orange-500 text-orange-600'
-              : 'text-gray-500 hover:text-gray-700'
+            activeTab === "evaluate"
+              ? "border-b-2 border-orange-500 text-orange-600"
+              : "text-gray-500 hover:text-gray-700"
           }`}
         >
           <i className="fa-solid fa-pen-to-square text-xs" />
           Đánh giá
         </button>
         <button
-          onClick={() => setActiveTab('others')}
+          onClick={() => setActiveTab("others")}
           className={`flex-1 py-3 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-            activeTab === 'others'
-              ? 'border-b-2 border-orange-500 text-orange-600'
-              : 'text-gray-500 hover:text-gray-700'
+            activeTab === "others"
+              ? "border-b-2 border-orange-500 text-orange-600"
+              : "text-gray-500 hover:text-gray-700"
           }`}
         >
           <i className="fa-solid fa-users text-xs" />
@@ -150,16 +167,18 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">
-        {activeTab === 'evaluate' && (
+        {activeTab === "evaluate" && (
           <div className="space-y-5">
-            {(hasSubmitted || submitSuccess) ? (
+            {hasSubmitted || submitSuccess ? (
               <div className="text-center py-6">
                 <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-green-100 flex items-center justify-center">
                   <i className="fa-solid fa-check text-green-500 text-2xl" />
                 </div>
-                <h4 className="text-lg font-bold text-gray-800 dark:text-white">Đã gửi đánh giá</h4>
+                <h4 className="text-lg font-bold text-gray-800 dark:text-white">
+                  Đã gửi đánh giá
+                </h4>
                 <p className="text-sm text-gray-500 mt-1">
-                  Admin sẽ ghi nhận và so sánh đánh giá của bạn.
+                  Club Manager sẽ ghi nhận và so sánh đánh giá của bạn.
                 </p>
                 {assignment?.feedbackNotes && (
                   <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3 mt-3 text-left">
@@ -180,11 +199,28 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                 {/* Criteria loading */}
                 {isCriteriaLoading && (
                   <div className="flex items-center justify-center py-4">
-                    <svg className="w-5 h-5 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    <svg
+                      className="w-5 h-5 animate-spin text-orange-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
                     </svg>
-                    <span className="ml-2 text-sm text-gray-500">Đang tải tiêu chí...</span>
+                    <span className="ml-2 text-sm text-gray-500">
+                      Đang tải tiêu chí...
+                    </span>
                   </div>
                 )}
 
@@ -195,7 +231,9 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                       <i className="fa-solid fa-clipboard-list text-blue-400 text-xs" />
                       Tiêu chí đánh giá
                       {hasCriteria && (
-                        <span className="text-[10px] text-gray-400 font-normal">({criteria.length})</span>
+                        <span className="text-[10px] text-gray-400 font-normal">
+                          ({criteria.length})
+                        </span>
                       )}
                     </label>
                     {!isAddingCriteria && (
@@ -232,14 +270,21 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                       )}
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => { setIsAddingCriteria(false); setNewCriteriaName(''); setNewCriteriaDesc(''); setAddError(null); }}
+                          onClick={() => {
+                            setIsAddingCriteria(false);
+                            setNewCriteriaName("");
+                            setNewCriteriaDesc("");
+                            setAddError(null);
+                          }}
                           className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
                         >
                           Hủy
                         </button>
                         <button
                           onClick={handleAddCriteria}
-                          disabled={!newCriteriaName.trim() || isCreatingCriterion}
+                          disabled={
+                            !newCriteriaName.trim() || isCreatingCriterion
+                          }
                           className="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                         >
                           {isCreatingCriterion ? (
@@ -263,20 +308,24 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{criterion.name}</p>
+                              <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                                {criterion.name}
+                              </p>
                               {criterion.description && (
-                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{criterion.description}</p>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {criterion.description}
+                                </p>
                               )}
                             </div>
-                            {criterion.weight > 0 && (
-                              <span className="text-[10px] text-orange-500 font-semibold bg-orange-50 px-2 py-0.5 rounded-full flex-shrink-0 border border-orange-200">
-                                {criterion.weight}%
-                              </span>
-                            )}
                           </div>
                           <textarea
-                            value={criteriaNotes[criterion.id] || ''}
-                            onChange={(e) => setCriteriaNotes(prev => ({ ...prev, [criterion.id]: e.target.value }))}
+                            value={criteriaNotes[criterion.id] || ""}
+                            onChange={(e) =>
+                              setCriteriaNotes((prev) => ({
+                                ...prev,
+                                [criterion.id]: e.target.value,
+                              }))
+                            }
                             placeholder={`Nhận xét về ${criterion.name.toLowerCase()}...`}
                             rows={2}
                             className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all resize-none"
@@ -288,7 +337,9 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                     <div className="text-center py-6 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
                       <i className="fa-solid fa-list-check text-2xl mb-2 block" />
                       <p className="text-sm">Chưa có tiêu chí nào.</p>
-                      <p className="text-xs mt-0.5">Hãy thêm tiêu chí để bắt đầu đánh giá.</p>
+                      <p className="text-xs mt-0.5">
+                        Hãy thêm tiêu chí để bắt đầu đánh giá.
+                      </p>
                     </div>
                   ) : null}
                 </div>
@@ -296,8 +347,7 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                 {/* Overall notes */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <i className="fa-solid fa-comment-dots text-purple-400 text-xs" />
-                    Nhận xét tổng hợp
+                    Nhận xét chung
                   </label>
                   <textarea
                     value={feedbackNotes}
@@ -311,7 +361,11 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                 {/* Submit */}
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !assignment || (!hasCriteria && !feedbackNotes.trim())}
+                  disabled={
+                    isSubmitting ||
+                    !assignment ||
+                    (!hasCriteria && !feedbackNotes.trim())
+                  }
                   className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl hover:shadow-lg hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
@@ -331,7 +385,7 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
           </div>
         )}
 
-        {activeTab === 'others' && (
+        {activeTab === "others" && (
           <div className="space-y-3">
             {otherFeedbacks.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
@@ -340,22 +394,33 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
               </div>
             ) : (
               otherFeedbacks.map((a) => (
-                <div key={a.id} className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-100 dark:border-gray-600">
+                <div
+                  key={a.id}
+                  className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-100 dark:border-gray-600"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">
                         <i className="fa-solid fa-user text-xs" />
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{a.role}</p>
+                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                          {a.role}
+                        </p>
                         <p className="text-[10px] text-gray-400">
-                          {a.feedbackSubmittedAt ? new Date(a.feedbackSubmittedAt).toLocaleString('vi-VN') : ''}
+                          {a.feedbackSubmittedAt
+                            ? new Date(a.feedbackSubmittedAt).toLocaleString(
+                                "vi-VN",
+                              )
+                            : ""}
                         </p>
                       </div>
                     </div>
                   </div>
                   {a.feedbackNotes && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400">{a.feedbackNotes}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {a.feedbackNotes}
+                    </p>
                   )}
                 </div>
               ))
