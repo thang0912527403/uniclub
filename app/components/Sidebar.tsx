@@ -151,6 +151,10 @@ export function Sidebar({
           label: t("sidebar.manageMembers.memberActivity"),
           url: "/members/activity",
         },
+        {
+          label: "Lịch sử tham gia",
+          url: "/members/history",
+        },
       ],
     },
     {
@@ -195,6 +199,10 @@ export function Sidebar({
         {
           label: t("sidebar.manageInterview.allInterviews"),
           url: "/interview/schedule",
+        },
+        {
+          label: "So sánh & Công bố",
+          url: "/interview/comparison",
         },
       ],
     },

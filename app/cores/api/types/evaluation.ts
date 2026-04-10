@@ -108,6 +108,7 @@ export interface PublishResultDto {
   mode: 'Now' | 'Schedule';
   scheduledAt?: string | null;
   notificationChannels?: string | null;
+  decisionIds?: number[] | null;
 }
 
 export interface CampaignDecisionResponse {

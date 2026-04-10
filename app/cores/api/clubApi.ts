@@ -816,6 +816,20 @@ export const clubApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<FundLocationResponse>) =>
         response.data,
     }),
+    addClubMember: builder.mutation<
+      ClubMember,
+      { clubId: number; userId: string; clubRoleId?: number | null }
+    >({
+      query: ({ clubId, userId, clubRoleId }) => ({
+        url: `/clubs/${clubId}/members`,
+        method: "POST",
+        body: { userId, clubRoleId: clubRoleId ?? null },
+      }),
+      transformResponse: (response: ApiResponse<ClubMember>) => response.data,
+      invalidatesTags: (result, error, { clubId }) => [
+        { type: "Club", id: `members-${clubId}` },
+      ],
+    }),
   }),
 });
 
@@ -845,4 +859,5 @@ export const {
   useUpdateClubPostMutation,
   useDeleteClubPostMutation,
   useUpdateMemberRoleMutation,
+  useAddClubMemberMutation,
 } = clubApi;

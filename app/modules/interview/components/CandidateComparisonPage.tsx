@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  useEffect,
+} from "react";
 import { useNavigate } from "react-router";
 import {
   useGetCampaignComparisonQuery,
@@ -7,6 +13,8 @@ import {
   useGetAiAnalysisQuery,
   useAiSearchMutation,
   useGetEvaluationSummaryQuery,
+  useGetPublishStatusQuery,
+  useGenerateAiAnalysisMutation,
 } from "~/cores/api/interviewApi";
 import { useGetUserByIdQuery } from "~/cores/api";
 import { useGetRecruitmentCampaignQuery } from "~/cores/api/recruitmentCampaignApi";
@@ -127,6 +135,7 @@ const CandidateRow: React.FC<{
   aiData?: AiCandidateAnalysis;
   aiLoading?: boolean;
   searchMatch?: AiSearchCandidate;
+  isLocked?: boolean;
 }> = ({
   candidate,
   rowIdx,
@@ -136,9 +145,13 @@ const CandidateRow: React.FC<{
   aiData,
   aiLoading,
   searchMatch,
+  isLocked,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [notesPopover, setNotesPopover] = useState<{ criterionId: number; criterionName: string } | null>(null);
+  const [notesPopover, setNotesPopover] = useState<{
+    criterionId: number;
+    criterionName: string;
+  } | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Fetch evaluation summary (contains interviewer notes from DB)
@@ -149,7 +162,10 @@ const CandidateRow: React.FC<{
   // Close popover on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node)
+      ) {
         setNotesPopover(null);
       }
     };
@@ -232,7 +248,11 @@ const CandidateRow: React.FC<{
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setNotesPopover(isOpen ? null : { criterionId: c.id, criterionName: c.name });
+                    setNotesPopover(
+                      isOpen
+                        ? null
+                        : { criterionId: c.id, criterionName: c.name },
+                    );
                   }}
                   className="relative cursor-pointer"
                   title={`Xem nhận xét: ${c.name}`}
@@ -257,7 +277,10 @@ const CandidateRow: React.FC<{
                       {notesPopover.criterionName}
                     </p>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setNotesPopover(null); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNotesPopover(null);
+                      }}
                       className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     >
                       <i className="fa-solid fa-xmark text-[9px] text-gray-400" />
@@ -265,7 +288,9 @@ const CandidateRow: React.FC<{
                   </div>
 
                   {notes.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">Chưa có nhận xét nào.</p>
+                    <p className="text-xs text-gray-400 italic">
+                      Chưa có nhận xét nào.
+                    </p>
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {notes.map((note, idx) => (
@@ -276,7 +301,9 @@ const CandidateRow: React.FC<{
                           <div className="flex items-center gap-1.5 mb-1">
                             <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
                               <span className="text-[7px] text-white font-bold">
-                                {note.interviewerRole?.charAt(0)?.toUpperCase() || "I"}
+                                {note.interviewerRole
+                                  ?.charAt(0)
+                                  ?.toUpperCase() || "I"}
                               </span>
                             </div>
                             <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400">
@@ -287,7 +314,11 @@ const CandidateRow: React.FC<{
                             </span>
                           </div>
                           <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed pl-5">
-                            {note.note || <span className="italic text-gray-400">Không có ghi chú</span>}
+                            {note.note || (
+                              <span className="italic text-gray-400">
+                                Không có ghi chú
+                              </span>
+                            )}
                           </p>
                         </div>
                       ))}
@@ -343,11 +374,13 @@ const CandidateRow: React.FC<{
               <button
                 key={opt.value}
                 onClick={() =>
+                  !isLocked &&
                   onDecision(candidate.interviewScheduleId, opt.value)
                 }
+                disabled={isLocked}
                 className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
                   decision === opt.value ? opt.active : opt.style
-                }`}
+                } ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 {opt.label}
               </button>
@@ -481,14 +514,20 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
   } = useGetCampaignComparisonQuery(campaignId);
   const { data: criteria } = useGetCampaignCriteriaQuery(campaignId);
   const { data: campaign } = useGetRecruitmentCampaignQuery(campaignId);
+  const { data: publishStatus } = useGetPublishStatusQuery(campaignId);
   const {
     data: aiAnalysis,
     isLoading: aiLoading,
     isFetching: aiFetching,
   } = useGetAiAnalysisQuery(campaignId);
+  const [generateAiAnalysis, { isLoading: isGeneratingAi }] =
+    useGenerateAiAnalysisMutation();
   const [aiSearch, { isLoading: aiSearchLoading }] = useAiSearchMutation();
   const [submitDecisions] = useSubmitDecisionsMutation();
 
+  const [activeTab, setActiveTab] = useState<"pending" | "published">(
+    "pending",
+  );
   const [decisions, setDecisions] = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -554,8 +593,32 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
     );
   }, [comparison, searchQuery, isAiSearchMode, searchResults, searchResultMap]);
 
-  const totalPages = Math.ceil(filteredCandidates.length / PAGE_SIZE);
-  const paginatedCandidates = filteredCandidates.slice(
+  // Handle decisions coming from backend
+  const publishedDecisionMap = useMemo(() => {
+    if (!publishStatus?.decisions) return {};
+    const map: Record<number, any> = {};
+    for (const d of publishStatus.decisions) {
+      map[d.interviewScheduleId] = d;
+    }
+    return map;
+  }, [publishStatus]);
+
+  // Tab filtering
+  const tabFilteredCandidates = useMemo(() => {
+    return filteredCandidates.filter((c) => {
+      const dbDecision = publishedDecisionMap[c.interviewScheduleId];
+      if (activeTab === "pending") {
+        // Chưa có quyết định trên DB, hoặc có trên DB nhưng là Draft
+        return !dbDecision || dbDecision.publishStatus === "Draft";
+      } else {
+        // Đã gửi quyết định hoặc Published
+        return dbDecision && dbDecision.publishStatus !== "Draft";
+      }
+    });
+  }, [filteredCandidates, activeTab, publishedDecisionMap]);
+
+  const totalPages = Math.ceil(tabFilteredCandidates.length / PAGE_SIZE);
+  const paginatedCandidates = tabFilteredCandidates.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
@@ -735,6 +798,37 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => generateAiAnalysis(campaignId)}
+            disabled={isGeneratingAi}
+            className="px-4 py-2 rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-800 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGeneratingAi ? (
+              <svg
+                className="w-3.5 h-3.5 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+            ) : (
+              <i className="fa-solid fa-bolt text-xs" />
+            )}
+            {"Phân tích AI"}
+          </button>
+
           {/* AI Search Input */}
           <div className="relative">
             <i
@@ -893,19 +987,31 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
             </tr>
           </thead>
           <tbody>
-            {paginatedCandidates.map((candidate, rowIdx) => (
-              <CandidateRow
-                key={candidate.interviewScheduleId}
-                candidate={candidate}
-                rowIdx={rowIdx}
-                criteria={criteriaList}
-                decision={decisions[candidate.interviewScheduleId] || ""}
-                onDecision={handleDecision}
-                aiData={aiDataMap[candidate.interviewScheduleId]}
-                aiLoading={aiLoading || aiFetching}
-                searchMatch={searchResultMap[candidate.interviewScheduleId]}
-              />
-            ))}
+            {paginatedCandidates.map((candidate, rowIdx) => {
+              const dbDecision =
+                publishedDecisionMap[candidate.interviewScheduleId];
+              const isLocked =
+                dbDecision && dbDecision.publishStatus !== "Draft";
+              const currentDecision =
+                decisions[candidate.interviewScheduleId] ||
+                dbDecision?.decision ||
+                "";
+
+              return (
+                <CandidateRow
+                  key={candidate.interviewScheduleId}
+                  candidate={candidate}
+                  rowIdx={rowIdx}
+                  criteria={criteriaList}
+                  decision={currentDecision}
+                  onDecision={handleDecision}
+                  aiData={aiDataMap[candidate.interviewScheduleId]}
+                  aiLoading={aiLoading || aiFetching}
+                  searchMatch={searchResultMap[candidate.interviewScheduleId]}
+                  isLocked={isLocked}
+                />
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -995,6 +1101,7 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
         open={publishOpen}
         onClose={() => setPublishOpen(false)}
         campaignId={campaignId}
+        clubId={campaign?.clubId}
         onSuccess={() => setPublishOpen(false)}
       />
     </div>

@@ -40,6 +40,7 @@ export default [
 
     // User management
     route("users", "routes/users.tsx"),
+    route("members/history", "routes/members-history.tsx"),
 
     // Club management
     route("clubs", "routes/clubs/clubs.tsx"),
