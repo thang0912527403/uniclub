@@ -80,7 +80,7 @@ export default function CreateClubModule() {
             });
 
             Cookies.set('clubId', clubId.toString(), { expires: 365, path: '/' });
-            setTimeout(() => navigate('/clubs'), 1500);
+            setTimeout(() => navigate('/manage-clubs'), 1500);
             
 
         } catch (err) {

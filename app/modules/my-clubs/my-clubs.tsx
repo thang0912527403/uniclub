@@ -5,7 +5,6 @@ import { getUserId, setClubId } from '~/utils/auth';
 import { SettingButton } from '~/components/SettingButton';
 import type { Club } from '~/cores/api/types';
 import { useCheckPendingRequestQuery, useGetClubRequestsByUserIdQuery } from '~/cores/api/clubRequestApi';
-import { useRefreshTokenMutation } from '~/cores/api';
 
 /* ─── ClubCard (Bento Card) ───────────────────────────────────────────────── */
 function ClubCard({ club }: { club: Club }) {
@@ -140,23 +139,8 @@ export default function MyClubsModule() {
       skip: !userId,
     });
 
-  const [refreshToken] = useRefreshTokenMutation();
-
   const handleSubmit = async () => {
-    const storedRefreshToken = Cookies.get('refreshToken');
-    if (!storedRefreshToken) return;
-    try {
-      const result = await refreshToken({ refreshToken: storedRefreshToken }).unwrap();
-      if (result.data) {
-        Cookies.set('accessToken', result.data.accessToken);
-        console.log('Token refreshed successfully:', result.data.accessToken);
-        if (result.data.refreshToken) {
-          Cookies.set('refreshToken', result.data.refreshToken);
-        }
-      }
-    } catch {
-
-    }
+    navigate('/clubs/create');
   };
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col">

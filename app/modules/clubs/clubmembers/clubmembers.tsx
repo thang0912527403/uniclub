@@ -85,7 +85,7 @@ function RoleCell({ member, clubId }: { member: ClubMember; clubId: number }) {
                 className="text-xs px-2 py-1.5 bg-white dark:bg-gray-900 border border-blue-400 dark:border-blue-600 rounded-lg text-gray-900 dark:text-white focus:outline-none"
                 autoFocus
             >
-                <option value="">— Không có vai trò —</option>
+                <option value="0">— Không có vai trò —</option>
                 {roles?.map((r) => <option key={r.clubRoleId} value={r.clubRoleId}>{r.roleName}</option>)}
             </select>
             <button onClick={handleSave} disabled={isLoading} className="cursor-pointer w-7 h-7 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center disabled:opacity-50 transition-colors" title="Lưu">
