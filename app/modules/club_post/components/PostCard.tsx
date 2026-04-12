@@ -12,7 +12,7 @@ const PostCard: React.FC<{ post: ClubPostResponseDto }> = ({ post }) => {
   const navigate = useNavigate();
 
   const handleCardClick = () => {
-    navigate(`/club/posts/${post.postId}?clubId=${post.clubId}`);
+    navigate(`/club/posts/${post.postId}`);
   };
 
   return (

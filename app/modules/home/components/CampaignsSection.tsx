@@ -49,7 +49,7 @@ function DeadlinePill({ endDate }: { endDate: string }) {
 function CampaignCard({ campaign }: { campaign: RecruitmentCampaign }) {
     return (
         <Link
-            to={`/campaign/${campaign.campaignId}?clubId=${campaign.clubId}`}
+            to={`/campaign/${campaign.campaignId}`}
             className="group relative flex-shrink-0 w-[280px] sm:w-[300px] h-[360px] rounded-2xl overflow-hidden cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.22)] hover:-translate-y-1.5 transition-all duration-300"
             aria-label={campaign.campaignName}
         >

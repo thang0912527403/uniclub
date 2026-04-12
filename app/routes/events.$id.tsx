@@ -24,14 +24,17 @@ import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { useClubRole } from '~/hooks/useClubRole';
+import { useEventPermission } from '~/hooks/useEventPermission';
 import { SessionList } from '~/modules/events/components/SessionList';
 import { SessionForm } from '~/modules/events/components/SessionForm';
+import { EventRolesTab } from '~/modules/events/components/EventRolesTab';
+import { EventMembersTab } from '~/modules/events/components/EventMembersTab';
 import { useNotification } from '~/components/Notification';
 import { ConfirmDialog } from '~/components/ConfirmDialog';
 import { QRScanner } from '~/components/QRScanner';
 import { QRCodeSVG } from 'qrcode.react';
 
-type Tab = 'sessions' | 'registration' | 'checkin' | 'pending';
+type Tab = 'sessions' | 'registration' | 'checkin' | 'pending' | 'members' | 'roles';
 
 
 export default function EventDetailPage() {
@@ -88,6 +91,9 @@ export default function EventDetailPage() {
     const isManager = isGlobalAdmin || memberships.some(
         role => role.clubId === event?.clubId && ['Club Manager', 'ClubManager', 'Manager', 'Admin'].includes(role.roleName || '')
     );
+
+    // Per-event permission gating (replaces isManager for granular control)
+    const { can, isCollaborator } = useEventPermission(event?.clubId, eventId);
 
     const { data: attendees, isLoading: isLoadingAttendees, refetch: refetchAttendees } =
         useGetEventAttendeesQuery(
@@ -392,7 +398,7 @@ export default function EventDetailPage() {
     const tabs: { key: Tab; label: React.ReactNode }[] = [
         { key: 'sessions', label: 'Lịch trình' },
         { key: 'registration', label: 'Đăng ký' },
-        ...(isManager && event.requiresApproval ? [{
+        ...(can('approveattendance') && event.requiresApproval ? [{
             key: 'pending' as Tab,
             label: (
                 <span className="flex items-center gap-1.5">
@@ -406,6 +412,26 @@ export default function EventDetailPage() {
             ),
         }] : []),
         { key: 'checkin', label: 'Điểm danh' },
+        ...(can('manage_collaborator') || isManager ? [
+            {
+                key: 'roles' as Tab,
+                label: (
+                    <span className="flex items-center gap-1.5">
+                        <i className="fas fa-shield-alt" />
+                        Chức vụ
+                    </span>
+                )
+            },
+            {
+                key: 'members' as Tab,
+                label: (
+                    <span className="flex items-center gap-1.5">
+                        <i className="fas fa-users-cog" />
+                        Thành viên
+                    </span>
+                )
+            }
+        ] : []),
     ];
 
     return (
@@ -448,25 +474,27 @@ export default function EventDetailPage() {
                                     </span>
                                 </div>
                                 <div className="flex gap-2 flex-wrap">
-                                    {isManager && (
+                                    {(can('editevent') || can('openregistration') || can('startevent') || can('completeevent')) && (
                                         <>
+                                            {can('editevent') && (
                                             <button onClick={() => navigate(`/events/${event.eventId}/edit`)}
                                                 className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
                                                 Chỉnh sửa
                                             </button>
-                                            {event.status === 'PLANNED' && (
+                                            )}
+                                            {can('openregistration') && event.status === 'PLANNED' && (
                                                 <button onClick={() => { setShowRegForm(true); setActiveTab('registration'); }}
                                                     className="px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
                                                     Mở đăng ký
                                                 </button>
                                             )}
-                                            {event.status === 'REGISTRATION_OPEN' && (
+                                            {can('startevent') && event.status === 'REGISTRATION_OPEN' && (
                                                 <button onClick={handleStartEvent} disabled={isStarting}
                                                     className="px-3 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 transition-colors">
                                                     {isStarting ? 'Đang bật...' : 'Bắt đầu sự kiện'}
                                                 </button>
                                             )}
-                                            {event.status === 'ONGOING' && (
+                                            {can('completeevent') && event.status === 'ONGOING' && (
                                                 <button onClick={handleCompleteEvent} disabled={isCompleting}
                                                     className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors">
                                                     {isCompleting ? 'Đang chốt...' : 'Kết thúc sự kiện'}
@@ -518,14 +546,14 @@ export default function EventDetailPage() {
                                         <h2 className={`font-semibold ${text}`}>
                                             Sessions ({event.sessions?.length ?? 0})
                                         </h2>
-                                        {isManager && (
+                                        {can('managesession') && (
                                             <button onClick={() => setShowSessionForm(v => !v)}
                                                 className="px-3 py-1.5 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors">
                                                 {showSessionForm ? 'Hủy' : 'Thêm session'}
                                             </button>
                                         )}
                                     </div>
-                                    {showSessionForm && isManager && (
+                                    {showSessionForm && can('managesession') && (
                                         <div className={`mb-4 p-4 border ${border} rounded-lg`}>
                                             <SessionForm eventId={event.eventId}
                                         clubId={event.clubId ?? 0}
@@ -544,7 +572,7 @@ export default function EventDetailPage() {
                                 <div className="space-y-6">
 
                                     {/* Registration management */}
-                                    {isManager && (
+                                    {can('viewattendance') && (
                                         <div className={`p-4 rounded-lg border ${border}`}>
                                             <div className="flex items-center justify-between mb-3">
                                                 <h3 className={`font-semibold ${text}`}>Quản lý đăng ký</h3>
@@ -704,7 +732,7 @@ export default function EventDetailPage() {
                                         )}
 
                                         {/* Self-register / self-cancel section for non-managers */}
-                                        {currentUser && !isManager && (
+                                        {currentUser && !can('approveattendance') && (
                                             <div className={`mb-4 p-3 rounded-lg border ${border} flex flex-wrap items-center justify-between gap-3`}>
                                                 {(() => {
                                                     const myRow = attendees?.find(a => a.userId === currentUser?.userId);
@@ -766,7 +794,7 @@ export default function EventDetailPage() {
                                                 <table className="w-full text-sm">
                                                     <thead className={`${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
                                                         <tr>
-                                                            {['Họ tên', 'MSSV', 'Ngày đăng ký', 'Trạng thái', 'Check-in', 'Điểm', ...(isManager ? ['Hành động'] : [])].map(h => (
+                                                            {['Họ tên', 'MSSV', 'Ngày đăng ký', 'Trạng thái', 'Check-in', 'Điểm', ...(can('approveattendance') ? ['Hành động'] : [])].map(h => (
                                                                 <th key={h} className={`px-3 py-2 text-left text-xs font-semibold ${sub}`}>{h}</th>
                                                             ))}
                                                         </tr>
@@ -788,7 +816,7 @@ export default function EventDetailPage() {
                                                                 <td className={`px-3 py-2.5 font-semibold ${a.score != null ? 'text-blue-500' : sub}`}>
                                                                     {a.score != null ? `${a.score}/100` : '—'}
                                                                 </td>
-                                                                {isManager && (
+                                                                {can('approveattendance') && (
                                                                     <td className="px-3 py-2.5">
                                                                         <div className="flex items-center gap-1.5">
                                                                             {a.attendanceStatus === 'PENDING' && (
@@ -843,7 +871,7 @@ export default function EventDetailPage() {
                             )}
 
                             {/* ── PENDING APPROVALS ── */}
-                            {activeTab === 'pending' && isManager && (
+                            {activeTab === 'pending' && can('approveattendance') && (
                                 <div className="space-y-4">
                                     {/* Header + bulk action */}
                                     <div className="flex items-center justify-between flex-wrap gap-3">
@@ -963,7 +991,7 @@ export default function EventDetailPage() {
                             {activeTab === 'checkin' && (
                                 <div className="space-y-5">
                                     {/* generate code */}
-                                    {isManager && (
+                                    {can('checkin') && (
                                         <div className={`p-4 rounded-lg border ${border}`}>
                                             <h3 className={`font-semibold mb-1 ${text}`}>Tạo mã điểm danh</h3>
                                             <p className={`text-xs mb-3 ${sub}`}>Mã có hiệu lực 15 phút. Chia sẻ cho thành viên để điểm danh.</p>
@@ -1030,7 +1058,7 @@ export default function EventDetailPage() {
                                     )}
 
                                     {/* Organizer: Điểm danh bằng QR (camera hoặc dán token) */}
-                                    {isManager && (
+                                    {can('checkin') && (
                                         <div className={`p-4 rounded-lg border ${border}`}>
                                             <h3 className={`font-semibold mb-2 ${text}`}>Điểm danh bằng QR</h3>
                                             <p className={`text-xs mb-3 ${sub}`}>
@@ -1090,6 +1118,25 @@ export default function EventDetailPage() {
                                     )}
 
                                 </div>
+                            )}
+
+                            {/* ── CHỨC VỤ SỰ KIỆN ── */}
+                            {activeTab === 'roles' && (can('manage_collaborator') || isManager) && (
+                                <EventRolesTab
+                                    eventId={eventId}
+                                    clubId={event.clubId ?? 0}
+                                    isDark={isDark}
+                                />
+                            )}
+
+                            {/* ── THÀNH VIÊN SỰ KIỆN ── */}
+                            {activeTab === 'members' && (can('manage_collaborator') || isManager) && (
+                                <EventMembersTab
+                                    eventId={eventId}
+                                    clubId={event.clubId ?? 0}
+                                    isDark={isDark}
+                                    eventStatus={event.status}
+                                />
                             )}
 
                         </div>

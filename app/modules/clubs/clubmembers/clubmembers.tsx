@@ -10,111 +10,67 @@ import {
     useGetClubByIdQuery,
     useGetClubMembersQuery,
     useUpdateMemberRoleMutation,
+    useRemoveMemberMutation,
+    useGetMemberJoinedDepartmentsQuery,
+    useGetMemberNotJoinedDepartmentsQuery,
     type ClubMember,
 } from '~/cores/api';
 import { useGetClubStructureRolesQuery } from '~/cores/api/clubRoleApi';
+import { useAddMemberToDepartmentMutation, useRemoveMemberFromDepartmentMutation } from '~/cores/api/departmentApi';
 
-
-/* ─── Avatar placeholder ─────────────────────────────────────────────────── */
-function MemberAvatar({ member }: { member: ClubMember }) {
+/* ─── Avatar ──────────────────────────────────────────────────────────────── */
+function MemberAvatar({ member, size = 'md' }: { member: ClubMember | { clubMemberId: number; fullName: string; avatar: string | null }; size?: 'sm' | 'md' }) {
+    const sz = size === 'sm' ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm';
     if (member.avatar) {
-        return (
-            <img
-                src={member.avatar}
-                alt={member.fullName}
-                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-            />
-        );
+        return <img src={member.avatar} alt={member.fullName} className={`${sz} rounded-full object-cover flex-shrink-0`} />;
     }
-    const initials = member.fullName
-        .split(' ')
-        .map((w) => w[0])
-        .slice(-2)
-        .join('')
-        .toUpperCase();
-    const colors = [
-        'bg-blue-500', 'bg-purple-500', 'bg-green-500',
-        'bg-rose-500', 'bg-amber-500', 'bg-cyan-500',
-    ];
+    const initials = member.fullName.split(' ').map((w) => w[0]).slice(-2).join('').toUpperCase();
+    const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-rose-500', 'bg-amber-500', 'bg-cyan-500'];
     const color = colors[member.clubMemberId % colors.length];
     return (
-        <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>
+        <div className={`${sz} ${color} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}>
             {initials}
         </div>
     );
 }
 
-/* ─── Status badge ───────────────────────────────────────────────────────── */
+/* ─── Status Badge ────────────────────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
     const active = status?.toUpperCase() === 'ACTIVE';
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${active
-            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-            : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-            }`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${active ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-green-500' : 'bg-gray-400'}`} />
             {active ? 'Hoạt động' : status}
         </span>
     );
 }
 
-/* ─── Inline role editor ─────────────────────────────────────────────────── */
-interface RoleCellProps {
-    member: ClubMember;
-    clubId: number;
-}
-
-function RoleCell({ member, clubId }: RoleCellProps) {
+/* ─── Inline Role Editor ──────────────────────────────────────────────────── */
+function RoleCell({ member, clubId }: { member: ClubMember; clubId: number }) {
     const { show } = useNotification();
-    const { data: roles } = useGetClubStructureRolesQuery(clubId, {
-        skip: !clubId,
-    });
+    const { data: roles } = useGetClubStructureRolesQuery(clubId, { skip: !clubId });
     const [updateRole, { isLoading }] = useUpdateMemberRoleMutation();
-
     const [editing, setEditing] = useState(false);
     const [selected, setSelected] = useState<number | null>(member.clubRoleId);
 
     const handleSave = async () => {
         try {
             await updateRole({ clubId, memberId: member.clubMemberId, clubRoleId: selected }).unwrap();
-            show({
-                type: 'success',
-                title: 'Cập nhật vai trò thành công!',
-                message: `${member.fullName} đã được cập nhật vai trò.`,
-                duration: 3000,
-            });
+            show({ type: 'success', title: 'Cập nhật thành công!', message: `Đã cập nhật vai trò cho ${member.fullName}.`, duration: 3000 });
             setEditing(false);
-        } catch (err) {
-            const rtkErr = err as { data?: { message?: string } };
-            show({
-                type: 'error',
-                title: 'Cập nhật thất bại',
-                message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
-                duration: 4000,
-            });
+        } catch (err: any) {
+            show({ type: 'error', title: 'Thất bại', message: err?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
         }
-    };
-
-    const handleCancel = () => {
-        setSelected(member.clubRoleId);
-        setEditing(false);
     };
 
     if (!editing) {
         return (
             <div className="flex items-center gap-2">
-                {member.roleName ? (
-                    <span className="inline-flex justify-center w-32 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-medium truncate">
-                        {member.roleName}
-                    </span>
-                ) : (
-                    <span className="inline-flex justify-center w-32 italic text-gray-300 dark:text-gray-600 text-xs">Chưa có vai trò</span>
-                )}
-                <button
-                    onClick={() => setEditing(true)}
-                    className="cursor-pointer transition-opacity w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                    title="Đổi vai trò"
-                >
+                {member.roleName
+                    ? <span className="inline-flex justify-center px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-medium">{member.roleName}</span>
+                    : <span className="italic text-gray-300 dark:text-gray-600 text-xs">Chưa có vai trò</span>
+                }
+                <button onClick={() => setEditing(true)} className="cursor-pointer w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all" title="Đổi vai trò">
                     <i className="fas fa-pen text-[10px]" />
                 </button>
             </div>
@@ -129,54 +85,286 @@ function RoleCell({ member, clubId }: RoleCellProps) {
                 className="text-xs px-2 py-1.5 bg-white dark:bg-gray-900 border border-blue-400 dark:border-blue-600 rounded-lg text-gray-900 dark:text-white focus:outline-none"
                 autoFocus
             >
-                <option value="">— Không có vai trò —</option>
-                {roles?.map((r) => (
-                    <option key={r.clubRoleId} value={r.clubRoleId}>{r.roleName}</option>
-                ))}
+                <option value="0">— Không có vai trò —</option>
+                {roles?.map((r) => <option key={r.clubRoleId} value={r.clubRoleId}>{r.roleName}</option>)}
             </select>
-            <button
-                onClick={handleSave}
-                disabled={isLoading}
-                className="cursor-pointer w-7 h-7 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center disabled:opacity-50 transition-colors"
-                title="Lưu"
-            >
-                {isLoading
-                    ? <i className="fas fa-spinner fa-spin text-[10px]" />
-                    : <i className="fas fa-check text-[10px]" />
-                }
+            <button onClick={handleSave} disabled={isLoading} className="cursor-pointer w-7 h-7 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center disabled:opacity-50 transition-colors" title="Lưu">
+                {isLoading ? <i className="fas fa-spinner fa-spin text-[10px]" /> : <i className="fas fa-check text-[10px]" />}
             </button>
-            <button
-                onClick={handleCancel}
-                disabled={isLoading}
-                className="cursor-pointer w-7 h-7 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center transition-colors"
-                title="Hủy"
-            >
+            <button onClick={() => { setSelected(member.clubRoleId); setEditing(false); }} disabled={isLoading} className="cursor-pointer w-7 h-7 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center transition-colors" title="Hủy">
                 <i className="fas fa-times text-[10px]" />
             </button>
         </div>
     );
 }
 
-/* ─── Main module ────────────────────────────────────────────────────────── */
+/* ─── Add to Department Modal ─────────────────────────────────────────────── */
+function AddToDepartmentModal({ member, clubId, onClose }: { member: ClubMember; clubId: number; onClose: () => void }) {
+    const { show } = useNotification();
+    const { data: departments, isLoading } = useGetMemberNotJoinedDepartmentsQuery({ clubId, memberId: member.clubMemberId });
+    const [addMember, { isLoading: isAdding }] = useAddMemberToDepartmentMutation();
+    const [selected, setSelected] = useState<number | null>(null);
+
+    const handleAdd = async () => {
+        if (!selected) return;
+        try {
+            await addMember({ clubId, departmentId: selected, memberId: member.clubMemberId }).unwrap();
+            show({ type: 'success', title: 'Thành công!', message: `Đã thêm ${member.fullName} vào phòng ban.`, duration: 3000 });
+            onClose();
+        } catch (err: any) {
+            show({ type: 'error', title: 'Thất bại', message: err?.data?.message ?? 'Không thể thêm vào phòng ban.', duration: 4000 });
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                    <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white">Thêm vào phòng ban</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{member.fullName}</p>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                        <i className="fas fa-times" />
+                    </button>
+                </div>
+
+                <div className="px-6 py-4 max-h-72 overflow-y-auto">
+                    {isLoading ? (
+                        <div className="py-8 flex justify-center"><i className="fas fa-spinner fa-spin text-blue-500 text-xl" /></div>
+                    ) : !departments || departments.length === 0 ? (
+                        <div className="py-10 text-center text-sm text-gray-400">
+                            <i className="fas fa-building text-3xl mb-2 opacity-30 block" />
+                            Thành viên đã tham gia tất cả phòng ban.
+                        </div>
+                    ) : (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Chọn phòng ban muốn thêm thành viên vào:</p>
+                            <div className="space-y-2">
+                            {departments.map((dept: any, i: number) => {
+                                const deptId = dept.DepartmentId ?? dept.departmentId;
+                                const deptName = dept.Name ?? dept.name ?? dept.departmentName ?? '—';
+                                const deptDesc = dept.Description ?? dept.description;
+                                return (
+                                <button
+                                    key={deptId ?? i}
+                                    onClick={() => setSelected(selected === deptId ? null : deptId)}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all cursor-pointer border-2 ${selected === deptId
+                                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400'
+                                        : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40'
+                                        }`}
+                                >
+                                    <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                                        <i className="fas fa-sitemap text-blue-500 dark:text-blue-400 text-sm" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{deptName}</p>
+                                        {deptDesc && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{deptDesc}</p>}
+                                    </div>
+                                    {selected === deptId && (
+                                        <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                                            <i className="fas fa-check text-white text-[10px]" />
+                                        </div>
+                                    )}
+                                </button>
+                                );
+                            })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2">
+                    <button onClick={onClose} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                        Hủy
+                    </button>
+                    <button
+                        onClick={handleAdd}
+                        disabled={!selected || isAdding}
+                        className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                    >
+                        {isAdding && <i className="fas fa-spinner fa-spin" />}
+                        Thêm vào phòng ban
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Kick from Department Modal ──────────────────────────────────────────── */
+function KickFromDepartmentModal({ member, clubId, onClose }: { member: ClubMember; clubId: number; onClose: () => void }) {
+    const { show } = useNotification();
+    const { data: departments, isLoading } = useGetMemberJoinedDepartmentsQuery({ clubId, memberId: member.clubMemberId });
+    const [removeMember, { isLoading: isRemoving }] = useRemoveMemberFromDepartmentMutation();
+    const [confirmDept, setConfirmDept] = useState<any | null>(null);
+
+    const handleRemove = async () => {
+        if (!confirmDept) return;
+        const deptId = confirmDept.DepartmentId ?? confirmDept.departmentId;
+        const deptName = confirmDept.Name ?? confirmDept.name ?? confirmDept.departmentName ?? '—';
+        try {
+            await removeMember({ clubId, departmentId: deptId, memberId: member.clubMemberId }).unwrap();
+            show({ type: 'success', title: 'Đã xóa', message: `${member.fullName} đã được xóa khỏi "${deptName}".`, duration: 3000 });
+            setConfirmDept(null);
+            if (!departments || departments.length <= 1) onClose();
+        } catch (err: any) {
+            show({ type: 'error', title: 'Thất bại', message: err?.data?.message ?? 'Không thể xóa khỏi phòng ban.', duration: 4000 });
+        }
+    };
+
+    if (confirmDept) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setConfirmDept(null)}>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-500">
+                            <i className="fas fa-user-minus text-xl" />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-gray-900 dark:text-white">Xác nhận xóa khỏi phòng ban</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{confirmDept.Name}</p>
+                        </div>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                        Bạn có chắc muốn xóa <span className="font-semibold text-gray-900 dark:text-white">{member.fullName}</span> khỏi phòng ban <span className="font-semibold text-gray-900 dark:text-white">"{confirmDept.Name}"</span>? Thành viên vẫn còn trong câu lạc bộ.
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                        <button onClick={() => setConfirmDept(null)} disabled={isRemoving} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                            Hủy
+                        </button>
+                        <button onClick={handleRemove} disabled={isRemoving} className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-red-500/20 disabled:opacity-50 transition-all cursor-pointer">
+                            {isRemoving && <i className="fas fa-spinner fa-spin" />}
+                            Xác nhận xóa
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                    <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white">Xóa khỏi phòng ban</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{member.fullName}</p>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                        <i className="fas fa-times" />
+                    </button>
+                </div>
+
+                <div className="px-6 py-4 max-h-72 overflow-y-auto">
+                    {isLoading ? (
+                        <div className="py-8 flex justify-center"><i className="fas fa-spinner fa-spin text-red-400 text-xl" /></div>
+                    ) : !departments || departments.length === 0 ? (
+                        <div className="py-10 text-center text-sm text-gray-400">
+                            <i className="fas fa-building text-3xl mb-2 opacity-30 block" />
+                            Thành viên chưa tham gia phòng ban nào.
+                        </div>
+                    ) : (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Chọn phòng ban muốn xóa thành viên khỏi:</p>
+                            <div className="space-y-2">
+                            {departments.map((dept: any, i: number) => {
+                                const deptId = dept.DepartmentId ?? dept.departmentId;
+                                const deptName = dept.Name ?? dept.name ?? dept.departmentName ?? '—';
+                                const deptDesc = dept.Description ?? dept.description;
+                                return (
+                                <button
+                                    key={deptId ?? i}
+                                    onClick={() => setConfirmDept(dept)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all cursor-pointer border-2 border-transparent hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 group"
+                                >
+                                    <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 group-hover:bg-red-100 dark:group-hover:bg-red-900/40 flex items-center justify-center flex-shrink-0 transition-colors">
+                                        <i className="fas fa-sitemap text-gray-500 dark:text-gray-400 group-hover:text-red-500 text-sm transition-colors" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{deptName}</p>
+                                        {deptDesc && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{deptDesc}</p>}
+                                    </div>
+                                    <i className="fas fa-chevron-right text-gray-300 dark:text-gray-600 group-hover:text-red-400 text-xs transition-colors" />
+                                </button>
+                                );
+                            })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-6 py-3 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                    Bấm vào phòng ban để xóa thành viên khỏi phòng ban đó.
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Kick from Club Modal ────────────────────────────────────────────────── */
+function KickFromClubModal({ member, clubId, onClose, onSuccess }: { member: ClubMember; clubId: number; onClose: () => void; onSuccess: () => void }) {
+    const { show } = useNotification();
+    const [removeMember, { isLoading }] = useRemoveMemberMutation();
+
+    const handleRemove = async () => {
+        try {
+            await removeMember({ clubId, memberId: member.clubMemberId }).unwrap();
+            show({ type: 'success', title: 'Đã xóa khỏi CLB', message: `${member.fullName} đã bị xóa khỏi câu lạc bộ.`, duration: 3000 });
+            onSuccess();
+        } catch (err: any) {
+            show({ type: 'error', title: 'Thất bại', message: err?.data?.message ?? 'Không thể xóa thành viên.', duration: 4000 });
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-500">
+                        <i className="fas fa-user-slash text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white">Xóa khỏi câu lạc bộ</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{member.fullName}</p>
+                    </div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    Bạn có chắc muốn xóa <span className="font-semibold text-gray-900 dark:text-white">{member.fullName}</span> khỏi câu lạc bộ? Hành động này sẽ xóa thành viên khỏi tất cả phòng ban và không thể hoàn tác.
+                </p>
+                <div className="flex gap-3 justify-end">
+                    <button onClick={onClose} disabled={isLoading} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                        Hủy
+                    </button>
+                    <button onClick={handleRemove} disabled={isLoading} className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-red-500/20 disabled:opacity-50 transition-all cursor-pointer">
+                        {isLoading && <i className="fas fa-spinner fa-spin" />}
+                        Xác nhận xóa
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN
+   ═══════════════════════════════════════════════════════════════════════════ */
+type ModalType = 'addDept' | 'kickDept' | 'kickClub';
+
 export default function ClubMembersModule() {
     const navigate = useNavigate();
     const { clubId: clubIdParam } = useParams<{ clubId: string }>();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const clubId = Number(clubIdParam) || 0;
 
-    const { data: club } = useGetClubByIdQuery(clubId, {
-        skip: !clubId,
-    });
-    const { data: members, isLoading, error } = useGetClubMembersQuery(clubId, {
-        skip: !clubId,
-    });
+    const { data: club } = useGetClubByIdQuery(clubId, { skip: !clubId });
+    const { data: members, isLoading, error } = useGetClubMembersQuery(clubId, { skip: !clubId });
 
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
+    const [activeModal, setActiveModal] = useState<{ type: ModalType; member: ClubMember } | null>(null);
 
-    const roleOptions = Array.from(
-        new Set((members ?? []).map((m) => m.roleName).filter(Boolean))
-    ) as string[];
+    const roleOptions = Array.from(new Set((members ?? []).map((m) => m.roleName).filter(Boolean))) as string[];
 
     const filtered = (members ?? []).filter((m) => {
         const matchesSearch =
@@ -186,6 +374,8 @@ export default function ClubMembersModule() {
         const matchesRole = roleFilter === '' || m.roleName === roleFilter;
         return matchesSearch && matchesRole;
     });
+
+    const closeModal = () => setActiveModal(null);
 
     return (
         <div className="min-h-screen">
@@ -211,7 +401,6 @@ export default function ClubMembersModule() {
                     </div>
                 </div>
 
-                {/* Loading / Error */}
                 {isLoading && <Loading />}
                 {error && (
                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-6 text-center">
@@ -241,9 +430,7 @@ export default function ClubMembersModule() {
                                     className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                                 >
                                     <option value="">Tất cả vai trò</option>
-                                    {roleOptions.map((r) => (
-                                        <option key={r} value={r}>{r}</option>
-                                    ))}
+                                    {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
                                 </select>
                             )}
                         </div>
@@ -262,17 +449,15 @@ export default function ClubMembersModule() {
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Thành viên</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Email</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">MSSV</th>
-                                            <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Vai trò</th>
+                                            <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Vai trò CLB</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Ngày tham gia</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Trạng thái</th>
+                                            <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide text-right">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                                         {filtered.map((member) => (
-                                            <tr
-                                                key={member.clubMemberId}
-                                                className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                                            >
+                                            <tr key={member.clubMemberId} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-3">
                                                         <MemberAvatar member={member} />
@@ -292,6 +477,37 @@ export default function ClubMembersModule() {
                                                 <td className="px-4 py-3">
                                                     <StatusBadge status={member.status} />
                                                 </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        {/* Thêm vào phòng ban */}
+                                                        <button
+                                                            onClick={() => setActiveModal({ type: 'addDept', member })}
+                                                            title="Thêm vào phòng ban"
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all cursor-pointer"
+                                                        >
+                                                            <i className="fas fa-folder-plus text-[11px]" />
+                                                            Thêm ban
+                                                        </button>
+                                                        {/* Xóa khỏi phòng ban */}
+                                                        <button
+                                                            onClick={() => setActiveModal({ type: 'kickDept', member })}
+                                                            title="Xóa khỏi phòng ban"
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all cursor-pointer"
+                                                        >
+                                                            <i className="fas fa-folder-minus text-[11px]" />
+                                                            Xóa ban
+                                                        </button>
+                                                        {/* Xóa khỏi CLB */}
+                                                        <button
+                                                            onClick={() => setActiveModal({ type: 'kickClub', member })}
+                                                            title="Xóa khỏi câu lạc bộ"
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-all cursor-pointer"
+                                                        >
+                                                            <i className="fas fa-user-slash text-[11px]" />
+                                                            Xóa CLB
+                                                        </button>
+                                                    </div>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -307,6 +523,17 @@ export default function ClubMembersModule() {
                     </div>
                 )}
             </main>
+
+            {/* Modals */}
+            {activeModal?.type === 'addDept' && (
+                <AddToDepartmentModal member={activeModal.member} clubId={clubId} onClose={closeModal} />
+            )}
+            {activeModal?.type === 'kickDept' && (
+                <KickFromDepartmentModal member={activeModal.member} clubId={clubId} onClose={closeModal} />
+            )}
+            {activeModal?.type === 'kickClub' && (
+                <KickFromClubModal member={activeModal.member} clubId={clubId} onClose={closeModal} onSuccess={closeModal} />
+            )}
         </div>
     );
 }

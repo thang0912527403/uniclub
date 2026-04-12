@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import type { CriteriaScoreItemDto } from '~/cores/api/types';
-import { useGetCampaignCriteriaQuery, useSubmitCriteriaFeedbackMutation } from '~/cores/api/interviewApi';
+import React, { useState } from "react";
+import type { CriteriaNoteItemDto } from "~/cores/api/types";
+import {
+  useGetCampaignCriteriaQuery,
+  useSubmitCriteriaFeedbackMutation,
+  useCreateCriterionMutation,
+} from "~/cores/api/interviewApi";
 
 interface CriteriaFeedbackFormProps {
   scheduleId: number;
@@ -10,44 +14,63 @@ interface CriteriaFeedbackFormProps {
   onCancel?: () => void;
 }
 
-const resultOptions = [
-  { value: 'Pass', label: 'Đạt (Pass)', color: 'text-green-600', icon: 'fa-solid fa-circle-check' },
-  { value: 'Fail', label: 'Không đạt (Fail)', color: 'text-red-600', icon: 'fa-solid fa-circle-xmark' },
-  { value: 'OnHold', label: 'Chờ xem xét (OnHold)', color: 'text-yellow-600', icon: 'fa-solid fa-clock' },
-  { value: 'NoShow', label: 'Vắng mặt (NoShow)', color: 'text-gray-500', icon: 'fa-solid fa-ban' },
-];
-
 const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
-  scheduleId, assignmentId, campaignId, onSuccess, onCancel,
+  scheduleId,
+  assignmentId,
+  campaignId,
+  onSuccess,
+  onCancel,
 }) => {
   const { data: criteria, isLoading } = useGetCampaignCriteriaQuery(campaignId);
   const [submitFeedback] = useSubmitCriteriaFeedbackMutation();
+  const [createCriterion, { isLoading: isCreatingCriterion }] =
+    useCreateCriterionMutation();
 
-  const [scores, setScores] = useState<Record<number, number>>({});
   const [notes, setNotes] = useState<Record<number, string>>({});
-  const [overallNotes, setOverallNotes] = useState('');
-  const [result, setResult] = useState('');
+  const [overallNotes, setOverallNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (criteria) {
-      const defaultScores: Record<number, number> = {};
-      criteria.forEach((c) => { defaultScores[c.id] = 3; });
-      setScores(defaultScores);
+  // Add-criteria form state
+  const [isAddingCriteria, setIsAddingCriteria] = useState(false);
+  const [newCriteriaName, setNewCriteriaName] = useState("");
+  const [newCriteriaDesc, setNewCriteriaDesc] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const hasCriteria = criteria && criteria.length > 0;
+
+  const handleAddCriteria = async () => {
+    if (!newCriteriaName.trim()) return;
+    setAddError(null);
+
+    try {
+      await createCriterion({
+        campaignId,
+        dto: {
+          name: newCriteriaName.trim(),
+          description: newCriteriaDesc.trim() || null,
+          weight: 0,
+          displayOrder: (criteria?.length || 0) + 1,
+        },
+      }).unwrap();
+      setNewCriteriaName("");
+      setNewCriteriaDesc("");
+      setIsAddingCriteria(false);
+    } catch (err) {
+      console.error("Failed to add criterion:", err);
+      setAddError("Thêm tiêu chí thất bại.");
     }
-  }, [criteria]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!result || !criteria) return;
+    if (!criteria || criteria.length === 0) return;
 
     setIsSubmitting(true);
     setError(null);
 
-    const scoreItems: CriteriaScoreItemDto[] = criteria.map((c) => ({
+    const noteItems: CriteriaNoteItemDto[] = criteria.map((c) => ({
       criterionId: c.id,
-      score: scores[c.id] ?? 3,
       note: notes[c.id]?.trim() || null,
     }));
 
@@ -55,48 +78,42 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
       await submitFeedback({
         scheduleId,
         assignmentId,
-        dto: { scores: scoreItems, feedbackNotes: overallNotes.trim() || null, result },
+        dto: {
+          notes: noteItems,
+          feedbackNotes: overallNotes.trim() || null,
+          result: "OnHold",
+        },
       }).unwrap();
       onSuccess?.();
     } catch (err: unknown) {
-      setError('Gửi đánh giá thất bại');
-      console.error('Failed to submit criteria feedback:', err);
+      setError("Gửi đánh giá thất bại");
+      console.error("Failed to submit criteria feedback:", err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const renderStars = (criterionId: number) => {
-    const currentScore = scores[criterionId] ?? 3;
-    return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() => setScores((prev) => ({ ...prev, [criterionId]: star }))}
-            className="focus:outline-none transition-transform hover:scale-110"
-          >
-            <i
-              className={`fa-star text-xl ${
-                star <= currentScore ? 'fa-solid text-amber-400' : 'fa-regular text-gray-300 dark:text-gray-600'
-              }`}
-            />
-          </button>
-        ))}
-        <span className="ml-2 text-sm font-bold text-gray-700 dark:text-gray-300">
-          {currentScore}/5
-        </span>
-      </div>
-    );
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <svg className="w-6 h-6 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        <svg
+          className="w-6 h-6 animate-spin text-orange-500"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
         </svg>
       </div>
     );
@@ -105,9 +122,23 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 animate-fadeIn">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-1">
-        <i className="fa-solid fa-star text-amber-400" />
-        <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">Đánh giá theo tiêu chí</h3>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <i className="fa-solid fa-clipboard-list text-blue-500" />
+          <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
+            Đánh giá theo tiêu chí
+          </h3>
+        </div>
+        {!isAddingCriteria && (
+          <button
+            type="button"
+            onClick={() => setIsAddingCriteria(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-all hover:scale-[1.02]"
+          >
+            <i className="fa-solid fa-plus text-[10px]" />
+            Thêm tiêu chí
+          </button>
+        )}
       </div>
 
       {error && (
@@ -116,62 +147,104 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
         </div>
       )}
 
+      {/* Add criteria form */}
+      {isAddingCriteria && (
+        <div className="p-3.5 rounded-xl border-2 border-dashed border-orange-300 bg-orange-50/50 dark:bg-orange-900/10 space-y-2 animate-fadeIn">
+          <input
+            type="text"
+            value={newCriteriaName}
+            onChange={(e) => setNewCriteriaName(e.target.value)}
+            placeholder="Tên tiêu chí mới..."
+            className="w-full px-3 py-2 rounded-lg border border-orange-200 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all"
+            autoFocus
+          />
+          <input
+            type="text"
+            value={newCriteriaDesc}
+            onChange={(e) => setNewCriteriaDesc(e.target.value)}
+            placeholder="Mô tả (tùy chọn)..."
+            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all"
+          />
+          {addError && <p className="text-xs text-red-500">{addError}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingCriteria(false);
+                setNewCriteriaName("");
+                setNewCriteriaDesc("");
+                setAddError(null);
+              }}
+              className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleAddCriteria}
+              disabled={!newCriteriaName.trim() || isCreatingCriterion}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              {isCreatingCriterion ? (
+                <i className="fa-solid fa-spinner fa-spin text-[10px]" />
+              ) : (
+                <i className="fa-solid fa-check text-[10px]" />
+              )}
+              Thêm
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Criteria cards */}
-      <div className="space-y-3">
-        {criteria?.map((criterion) => (
-          <div
-            key={criterion.id}
-            className="p-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/30 space-y-2"
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-semibold text-gray-800 dark:text-gray-200">{criterion.name}</p>
-                {criterion.description && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{criterion.description}</p>
+      {hasCriteria ? (
+        <div className="space-y-3">
+          {criteria.map((criterion) => (
+            <div
+              key={criterion.id}
+              className="p-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/30 space-y-2 transition-all hover:border-orange-200 hover:bg-orange-50/30"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-semibold text-gray-800 dark:text-gray-200">
+                    {criterion.name}
+                  </p>
+                  {criterion.description && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {criterion.description}
+                    </p>
+                  )}
+                </div>
+                {criterion.weight > 0 && (
+                  <span className="text-[10px] text-orange-500 font-semibold bg-orange-50 px-2 py-0.5 rounded-full flex-shrink-0 border border-orange-200">
+                    {criterion.weight}%
+                  </span>
                 )}
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs font-bold">
-                {criterion.weight}%
-              </span>
+              <textarea
+                value={notes[criterion.id] || ""}
+                onChange={(e) =>
+                  setNotes((prev) => ({
+                    ...prev,
+                    [criterion.id]: e.target.value,
+                  }))
+                }
+                placeholder={`Nhận xét về ${criterion.name.toLowerCase()}...`}
+                rows={2}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none transition-all resize-none"
+              />
             </div>
-            {renderStars(criterion.id)}
-            <textarea
-              value={notes[criterion.id] || ''}
-              onChange={(e) => setNotes((prev) => ({ ...prev, [criterion.id]: e.target.value }))}
-              placeholder={`Nhận xét về ${criterion.name.toLowerCase()}...`}
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/30 outline-none transition-all resize-none"
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* Separator */}
-      <hr className="border-gray-200 dark:border-gray-600" />
-
-      {/* Result */}
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          Kết quả đánh giá <span className="text-red-500">*</span>
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {resultOptions.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setResult(opt.value)}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                result === opt.value
-                  ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20 shadow-sm'
-                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-              }`}
-            >
-              <i className={`${opt.icon} ${opt.color}`} />
-              <span className="text-gray-700 dark:text-gray-300">{opt.label}</span>
-            </button>
           ))}
         </div>
-      </div>
+      ) : (
+        <div className="text-center py-6 text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl">
+          <i className="fa-solid fa-list-check text-2xl mb-2 block" />
+          <p className="text-sm">Chưa có tiêu chí nào.</p>
+          <p className="text-xs mt-0.5">
+            Hãy thêm tiêu chí để bắt đầu đánh giá.
+          </p>
+        </div>
+      )}
 
       {/* Overall notes */}
       <div>
@@ -200,19 +273,34 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
         )}
         <button
           type="submit"
-          disabled={!result || isSubmitting}
+          disabled={!hasCriteria || isSubmitting}
           className="px-5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-orange-200 dark:hover:shadow-orange-900/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {isSubmitting ? (
             <span className="flex items-center gap-2">
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <svg
+                className="w-4 h-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
               </svg>
               Đang gửi...
             </span>
           ) : (
-            'Gửi đánh giá'
+            "Gửi đánh giá"
           )}
         </button>
       </div>

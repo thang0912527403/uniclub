@@ -6,9 +6,9 @@ import { useGetClubPostByIdQuery } from '~/cores/api';
 import type { ClubPostResponseDto } from '~/cores/api';
 
 const NewsDetailPage: React.FC = () => {
-  const { id } = useParams();
+  const { clubId, id } = useParams();
 
-  const { data: post, isLoading } = useGetClubPostByIdQuery({ postId: Number(id) });
+  const { data: post, isLoading } = useGetClubPostByIdQuery(Number(id));
 
   useEffect(() => {
     window.scrollTo(0, 0);

@@ -85,7 +85,7 @@ const clubRoleApi = baseApi.injectEndpoints({
         }),
 
         getClubRolesByClubId: builder.query<ClubRole[], number>({
-            query: (clubId) => `/ClubRole/club/${clubId}`,
+            query: (clubId) => `/club/${clubId}/role`,
             transformResponse: (response: ApiResponse<ClubRole[]>) => response.data,
             providesTags: (result, error, clubId) =>
                 result

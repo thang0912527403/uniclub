@@ -4,10 +4,12 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import {
-    useGetClubPostsByClubIdQuery,
+    // useGetClubPostByClubIdQuery,
+    useGetClubPostsQuery,
     useCreateClubPostMutation,
     useUpdateClubPostMutation,
     useDeleteClubPostMutation,
+    useGetClubPostsByClubIdQuery,
 } from '~/cores/api/clubApi';
 import { getUserId } from '~/utils/auth';
 import { useClubRole } from '~/hooks/useClubRole';
@@ -18,7 +20,19 @@ import {
     TrendingUp, FileText, CheckCircle2, EyeOff as HideIcon,
     Calendar, User, ArrowUpRight
 } from 'lucide-react';
-import { ConfirmDialog } from '~/components/ConfirmDialog';
+
+/* ═══════════════════════════════════════════════════════════
+   Design system (ui-ux-promax skill)
+   Style    : #39 Bento Grids + #19 Soft UI Evolution
+   Colors   : orange-500 primary (match homepage)
+              White cards, zinc-50 background
+   Effects  : elevation-1: 0 2px 8px rgba(0,0,0,0.06)
+              elevation-2: 0 8px 24px rgba(0,0,0,0.10)
+              hover:shadow on cards, hover:-translate-y-0.5
+              transitions 150-300ms
+   Rules    : cursor-pointer, 44px min touch targets
+              Lucide icons only, alt text on all images
+══════════════════════════════════════════════════════════ */
 
 /* ── Stat Card ─────────────────────────────────────────── */
 function StatCard({ label, value, icon: Icon, gradient }: {
@@ -94,7 +108,7 @@ function CreatePostModal({
         fd.append('status', form.status);
         if (imageFile) fd.append('imageFile', imageFile);
         try {
-            await createClubPost({ clubId, formData: fd }).unwrap();
+            await createClubPost(fd).unwrap();
             onClose();
         } catch { alert('Tạo bài viết thất bại!'); }
     };
@@ -221,44 +235,35 @@ export default function ClubPostModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { clubManagerMembership } = useClubRole();
     const clubId = clubManagerMembership?.clubId ?? 0;
-    const { data: clubPosts = [], isLoading } = useGetClubPostsByClubIdQuery(clubId, { skip: clubId === 0 });
+    const { data: clubPosts = [], isLoading } = useGetClubPostsByClubIdQuery(clubId, { skip: !clubId });
     const [deleteClubPost] = useDeleteClubPostMutation();
     const [updateClubPost] = useUpdateClubPostMutation();
     const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
-    // Confirm dialog state
-    const [confirmOpen, setConfirmOpen] = useState(false);
-    const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-
+    
     const userId = getUserId();
     const published = clubPosts.filter(p => p.status !== 'inactive' && p.status !== 'DRAFT').length;
     const hidden = clubPosts.filter(p => p.status === 'inactive').length;
 
-    const handleDelete = (postId: number) => {
-        setPendingDeleteId(postId);
-        setConfirmOpen(true);
-    };
-
-    const confirmDelete = async () => {
-        if (pendingDeleteId === null) return;
-        try { await deleteClubPost({ clubId, id: pendingDeleteId }).unwrap(); }
+    const handleDelete = async (postId: number) => {
+        if (!window.confirm('Bạn có chắc muốn xóa bài viết này?')) return;
+        try { await deleteClubPost(postId).unwrap(); }
         catch { alert('Xóa thất bại!'); }
-        finally { setConfirmOpen(false); setPendingDeleteId(null); }
     };
 
     const handleToggleStatus = async (postId: number, status: string) => {
         const fd = new FormData();
         fd.append('status', status === 'inactive' ? 'PUBLISHED' : 'inactive');
-        try { await updateClubPost({ clubId, id: postId, formData: fd }).unwrap(); }
+        try { await updateClubPost({ id: postId, formData: fd }).unwrap(); }
         catch { alert('Cập nhật thất bại!'); }
     };
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-gray-900">
             <SettingButton />
-            <Sidebar currentPath="/club-posts" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+            <Sidebar currentPath="/club-posts" isOpen={isSidebarOpen} />
             <HeaderBar
                 title="Quản lý Bảng tin"
                 breadcrumb="Pages / Club Management / Posts"
@@ -270,7 +275,7 @@ export default function ClubPostModule() {
                 <CreatePostModal onClose={() => setShowModal(false)} clubId={clubId} userId={userId} />
             )}
 
-            <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
+            <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
 
                 {/* ── Stats Row ── */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -350,7 +355,7 @@ export default function ClubPostModule() {
                                 </div>
                                 {/* Actions */}
                                 <div className="px-4 pb-4 flex items-center gap-2 border-t border-zinc-50 pt-3">
-                                    <button onClick={() => navigate(`/club/post/edit/${post.postId}?clubId=${clubId}`)}
+                                    <button onClick={() => navigate(`/club/post/edit/${post.postId}`)}
                                         className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-zinc-50 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-xs font-semibold text-zinc-600 transition-colors cursor-pointer">
                                         <Pencil size={12} /> Sửa
                                     </button>
@@ -404,7 +409,7 @@ export default function ClubPostModule() {
 
                                     {/* Actions */}
                                     <div className="shrink-0 flex items-center gap-1 px-3 border-l border-zinc-50">
-                                        <button onClick={() => navigate(`/club/post/edit/${post.postId}?clubId=${clubId}`)}
+                                        <button onClick={() => navigate(`/club/post/edit/${post.postId}`)}
                                             title="Chỉnh sửa"
                                             className="w-9 h-9 flex items-center justify-center rounded-xl text-zinc-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer">
                                             <Pencil size={15} />
@@ -419,7 +424,7 @@ export default function ClubPostModule() {
                                             className="w-9 h-9 flex items-center justify-center rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
                                             <Trash2 size={15} />
                                         </button>
-                                        <button onClick={() => navigate(`/club/posts/${post.postId}?clubId=${clubId}`)}
+                                        <button onClick={() => navigate(`/club/${clubId}/posts/${post.postId}`)}
                                             title="Xem bài"
                                             className="w-9 h-9 flex items-center justify-center rounded-xl text-zinc-400 hover:text-orange-500 hover:bg-orange-50 transition-colors cursor-pointer">
                                             <ArrowUpRight size={15} />

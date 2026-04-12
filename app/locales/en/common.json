@@ -41,9 +41,9 @@
     "manageFunds": {
       "title": "Manage Funds",
       "budgetOverview": "Budget Overview",
+      "myFunds": "My Funds",
       "transactions": "Transactions",
-      "expenseReports": "Expense Reports",
-      "fundSettings": "Fund Settings"
+      "expenseReports": "Expense Reports"
     }
   },
   "settings": {

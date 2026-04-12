@@ -1,49 +1,71 @@
 import { baseApi } from "./baseApi";
 import { type Department, type DepartmentCreateRequest, type ApiResponse } from "./types";
+import type { DepartmentMember } from "./types/department";
 
 export const departmentApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
-        getDepartments: builder.query<Department[], void>({
-            query: () => '/Department',
+        getDepartments: builder.query<Department[], number>({
+            query: (clubId) => `/club/${clubId}/Department`,
             transformResponse: (response: ApiResponse<Department[]>) => response.data,
             providesTags: ['Department'],
         }),
-        getDepartmentById: builder.query<Department, number>({
-            query: (id) => `/Department/${id}`,
+        getDepartmentById: builder.query<Department, { clubId: number; id: number }>({
+            query: ({ clubId, id }) => `/club/${clubId}/Department/${id}`,
             transformResponse: (response: ApiResponse<Department>) => response.data,
-            providesTags: (result, error, id) => [{ type: 'Department', id }],
+            providesTags: (_result, _error, { id }) => [{ type: 'Department', id }],
         }),
-        createDepartment: builder.mutation<Department, DepartmentCreateRequest | Partial<DepartmentCreateRequest>>({
-            query: (department) => ({
-                url: '/Department',
+        createDepartment: builder.mutation<Department, { clubId: number; department: DepartmentCreateRequest | Partial<DepartmentCreateRequest> }>({
+            query: ({ clubId, department }) => ({
+                url: `/club/${clubId}/Department`,
                 method: 'POST',
                 body: department,
             }),
             transformResponse: (response: ApiResponse<Department>) => response.data,
             invalidatesTags: ['Department'],
         }),
-        updateDepartment: builder.mutation<Department, { id: number; department: Partial<Department> }>({
-            query: ({ id, department }) => ({
-                url: `/Department/${id}`,
+        updateDepartment: builder.mutation<Department, { clubId: number; id: number; department: Partial<Department> }>({
+            query: ({ clubId, id, department }) => ({
+                url: `/club/${clubId}/Department/${id}`,
                 method: 'PUT',
                 body: department,
             }),
             transformResponse: (response: ApiResponse<Department>) => response.data,
-            invalidatesTags: (result, error, { id }) => [{ type: 'Department', id }],
+            invalidatesTags: (_result, _error, { id }) => [{ type: 'Department', id }, 'Department'],
         }),
-        deleteDepartment: builder.mutation<void, number>({
-            query: (id) => ({
-                url: `/Department/${id}`,
+        deleteDepartment: builder.mutation<void, { clubId: number; id: number }>({
+            query: ({ clubId, id }) => ({
+                url: `/club/${clubId}/Department/${id}`,
                 method: 'DELETE',
             }),
             invalidatesTags: ['Department'],
         }),
-        getDepartmentMembers: builder.query<import('./types/department').DepartmentMember[], { clubId: number; departmentId: number }>({
+        getDepartmentMembers: builder.query<DepartmentMember[], { clubId: number; departmentId: number }>({
             query: ({ clubId, departmentId }) => `/club/${clubId}/Department/${departmentId}/all-members`,
-            transformResponse: (response: ApiResponse<import('./types/department').DepartmentMember[]>) => response.data ?? [],
+            transformResponse: (response: ApiResponse<DepartmentMember[]>) => response.data ?? [],
             providesTags: ['Member'],
         }),
+        // Lấy club members chưa thuộc department (dùng cho modal thêm thành viên)
+        getNonMembers: builder.query<DepartmentMember[], { clubId: number; departmentId: number }>({
+            query: ({ clubId, departmentId }) => `/club/${clubId}/Department/${departmentId}/non-members`,
+            transformResponse: (response: ApiResponse<DepartmentMember[]>) => response.data ?? [],
+            providesTags: ['Member'],
+        }),
+        addMemberToDepartment: builder.mutation<void, { clubId: number; departmentId: number; memberId: number }>({
+            query: ({ clubId, departmentId, memberId }) => ({
+                url: `/club/${clubId}/Department/${departmentId}/members/${memberId}/add`,
+                method: 'POST',
+            }),
+            invalidatesTags: ['Member'],
+        }),
+        removeMemberFromDepartment: builder.mutation<void, { clubId: number; departmentId: number; memberId: number }>({
+            query: ({ clubId, departmentId, memberId }) => ({
+                url: `/club/${clubId}/Department/${departmentId}/members/${memberId}/remove`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['Member'],
+        }),
     }),
+    overrideExisting: false,
 });
 
 export const {
@@ -53,4 +75,7 @@ export const {
     useUpdateDepartmentMutation,
     useDeleteDepartmentMutation,
     useGetDepartmentMembersQuery,
+    useGetNonMembersQuery,
+    useAddMemberToDepartmentMutation,
+    useRemoveMemberFromDepartmentMutation,
 } = departmentApi;

@@ -1,22 +1,22 @@
-import React, { useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router';
-import { WebRtcProvider, MeetingRoom } from '~/modules/webrtc';
-import RoomAccessGate from './components/RoomAccessGate';
-import ScoringPanel from './components/ScoringPanel';
+import React, { useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router";
+import { WebRtcProvider, MeetingRoom } from "~/modules/webrtc";
+import RoomAccessGate from "./components/RoomAccessGate";
+import ScoringPanel from "./components/ScoringPanel";
 import {
   useJoinRoomMutation,
   useSubmitFeedbackMutation,
   useGetInterviewsQuery,
-} from '~/cores/api';
+} from "~/cores/api";
 import type {
   InterviewScheduleResponse,
   InterviewAssignmentResponse,
-} from '~/cores/api';
-import { getUserId } from '~/utils/auth';
+} from "~/cores/api";
+import { getUserId } from "~/utils/auth";
 
 /**
  * InterviewRoom wraps the existing MeetingRoom (WebRTC) module
- * and adds a ScoringPanel sidebar for interviewers to score candidates.
+ * and adds a ScoringPanel sidebar for interviewers to evaluate candidates.
  * Includes:
  *  - Room validation: block entry if room is Closed/Completed/Cancelled/not found.
  *  - ScoringPanel: shown only to assigned interviewers.
@@ -29,42 +29,44 @@ const InterviewRoomContent: React.FC<{
   currentUserId: string;
 }> = ({ roomCode, currentUserId }) => {
   const navigate = useNavigate();
-  const [submitFeedback, { isLoading: isSubmitting }] = useSubmitFeedbackMutation();
+  const [submitFeedback, { isLoading: isSubmitting }] =
+    useSubmitFeedbackMutation();
   const [isScoringOpen, setIsScoringOpen] = useState(true);
 
   const { data: interviews = [] } = useGetInterviewsQuery();
-  const relatedInterview: InterviewScheduleResponse | undefined = interviews.find(
-    iv => iv.meetingRoom?.roomCode === roomCode
-  );
-  const currentAssignment: InterviewAssignmentResponse | undefined = relatedInterview?.assignments?.find(
-    a => a.interviewerUserId === currentUserId
-  );
+  const relatedInterview: InterviewScheduleResponse | undefined =
+    interviews.find((iv) => iv.meetingRoom?.roomCode === roomCode);
+  const currentAssignment: InterviewAssignmentResponse | undefined =
+    relatedInterview?.assignments?.find(
+      (a) => a.interviewerUserId === currentUserId,
+    );
 
   const handleLeave = useCallback(() => {
-    navigate('/interview/schedule');
+    navigate("/home");
   }, [navigate]);
 
-  const handleSubmitFeedback = useCallback(async (data: {
-    scheduleId: number;
-    assignmentId: number;
-    feedbackNotes: string;
-    result: string;
-    score: number;
-  }) => {
-    try {
-      await submitFeedback({
-        scheduleId: data.scheduleId,
-        assignmentId: data.assignmentId,
-        dto: {
-          feedbackNotes: data.feedbackNotes,
-          result: data.result,
-          score: data.score,
-        },
-      }).unwrap();
-    } catch (err) {
-      console.error('Failed to submit feedback:', err);
-    }
-  }, [submitFeedback]);
+  const handleSubmitFeedback = useCallback(
+    async (data: {
+      scheduleId: number;
+      assignmentId: number;
+      feedbackNotes: string;
+      result: string;
+    }) => {
+      try {
+        await submitFeedback({
+          scheduleId: data.scheduleId,
+          assignmentId: data.assignmentId,
+          dto: {
+            feedbackNotes: data.feedbackNotes,
+            result: data.result,
+          },
+        }).unwrap();
+      } catch (err) {
+        console.error("Failed to submit feedback:", err);
+      }
+    },
+    [submitFeedback],
+  );
 
   const showScoringPanel = !!currentAssignment && !!relatedInterview;
 
@@ -76,12 +78,17 @@ const InterviewRoomContent: React.FC<{
 
       {showScoringPanel && (
         <button
-          onClick={() => setIsScoringOpen(prev => !prev)}
+          onClick={() => setIsScoringOpen((prev) => !prev)}
           className="absolute right-0 top-1/2 -translate-y-1/2 z-30 bg-gradient-to-b from-orange-500 to-amber-500 text-white w-8 h-16 flex items-center justify-center rounded-l-xl shadow-lg hover:shadow-xl hover:w-9 transition-all duration-200"
-          style={{ right: isScoringOpen ? '380px' : '0px', transition: 'right 0.3s ease' }}
-          title={isScoringOpen ? 'Ẩn bảng chấm điểm' : 'Hiện bảng chấm điểm'}
+          style={{
+            right: isScoringOpen ? "380px" : "0px",
+            transition: "right 0.3s ease",
+          }}
+          title={isScoringOpen ? "Ẩn bảng chấm điểm" : "Hiện bảng chấm điểm"}
         >
-          <i className={`fa-solid ${isScoringOpen ? 'fa-chevron-right' : 'fa-chevron-left'} text-sm`} />
+          <i
+            className={`fa-solid ${isScoringOpen ? "fa-chevron-right" : "fa-chevron-left"} text-sm`}
+          />
         </button>
       )}
 
@@ -89,8 +96,8 @@ const InterviewRoomContent: React.FC<{
         <div
           className="flex-shrink-0 border-l border-gray-700/50 overflow-hidden transition-all duration-300 ease-in-out"
           style={{
-            width: isScoringOpen ? '380px' : '0px',
-            minWidth: isScoringOpen ? '380px' : '0px',
+            width: isScoringOpen ? "380px" : "0px",
+            minWidth: isScoringOpen ? "380px" : "0px",
             opacity: isScoringOpen ? 1 : 0,
           }}
         >
@@ -99,6 +106,7 @@ const InterviewRoomContent: React.FC<{
               scheduleId={relatedInterview!.id}
               assignment={currentAssignment!}
               allAssignments={relatedInterview!.assignments}
+              campaignId={relatedInterview!.campaignId}
               onSubmitFeedback={handleSubmitFeedback}
               isSubmitting={isSubmitting}
             />
@@ -123,10 +131,12 @@ const RoomBlockedScreen: React.FC<{ reason: string }> = ({ reason }) => {
         <div className="w-20 h-20 mx-auto mb-5 bg-red-500/20 rounded-2xl flex items-center justify-center">
           <i className="fa-solid fa-lock text-red-400 text-3xl" />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">Phòng không khả dụng</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          Phòng không khả dụng
+        </h2>
         <p className="text-white/60 text-sm mb-8">{reason}</p>
         <button
-          onClick={() => navigate('/interview/schedule')}
+          onClick={() => navigate("/interview/schedule")}
           className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl hover:shadow-lg transition-all"
         >
           <i className="fa-solid fa-arrow-left mr-2" />
@@ -145,14 +155,15 @@ const InterviewRoom: React.FC = () => {
 
   const [hasJoined, setHasJoined] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
-  const [activeRoomCode, setActiveRoomCode] = useState(urlRoomCode || '');
+  const [activeRoomCode, setActiveRoomCode] = useState(urlRoomCode || "");
 
   const [joinRoomApi, { isLoading: isJoining }] = useJoinRoomMutation();
 
   // Validate room by looking it up in all interviews (avoids extra endpoint)
-  const { data: interviews = [], isLoading: isValidating } = useGetInterviewsQuery(undefined, {
-    skip: !urlRoomCode,
-  });
+  const { data: interviews = [], isLoading: isValidating } =
+    useGetInterviewsQuery(undefined, {
+      skip: !urlRoomCode,
+    });
 
   // Parse current user from context
   const currentUserId = getUserId();
@@ -161,17 +172,23 @@ const InterviewRoom: React.FC = () => {
   if (urlRoomCode && !isValidating) {
     // Only block if we got data back (avoid false positives on empty response)
     if (interviews.length > 0) {
-      const matchedInterview = interviews.find(iv => iv.meetingRoom?.roomCode === urlRoomCode);
+      const matchedInterview = interviews.find(
+        (iv) => iv.meetingRoom?.roomCode === urlRoomCode,
+      );
 
       if (!matchedInterview) {
-        return <RoomBlockedScreen reason="Mã phòng không tồn tại hoặc đã bị xóa. Vui lòng kiểm tra lại." />;
+        return (
+          <RoomBlockedScreen reason="Mã phòng không tồn tại hoặc đã bị xóa. Vui lòng kiểm tra lại." />
+        );
       }
 
-      if (matchedInterview.meetingRoom?.status === 'Closed') {
-        return <RoomBlockedScreen reason="Phòng đã bị đóng sau khi buổi phỏng vấn kết thúc." />;
+      if (matchedInterview.meetingRoom?.status === "Closed") {
+        return (
+          <RoomBlockedScreen reason="Phòng đã bị đóng sau khi buổi phỏng vấn kết thúc." />
+        );
       }
 
-      if (['Completed', 'Cancelled'].includes(matchedInterview.status)) {
+      if (["Completed", "Cancelled"].includes(matchedInterview.status)) {
         return (
           <RoomBlockedScreen
             reason={`Buổi phỏng vấn đã ở trạng thái "${matchedInterview.status}" — phòng không còn nhận người vào.`}
@@ -197,7 +214,7 @@ const InterviewRoom: React.FC = () => {
     roomCode: string,
     userId: string,
     displayName: string,
-    role: string
+    role: string,
   ) => {
     setJoinError(null);
     try {
@@ -210,7 +227,10 @@ const InterviewRoom: React.FC = () => {
       setHasJoined(true);
       navigate(`/interview/room/${roomCode}`);
     } catch (err: any) {
-      setJoinError(err?.data?.message || 'Không thể tham gia phòng. Vui lòng kiểm tra mã phòng.');
+      setJoinError(
+        err?.data?.message ||
+          "Không thể tham gia phòng. Vui lòng kiểm tra mã phòng.",
+      );
     }
   };
 

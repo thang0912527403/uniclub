@@ -12,6 +12,21 @@ import type {
   InterviewAssignmentResponse,
 } from "~/cores/api";
 import FeedbackForm from "~/modules/interview/components/FeedbackForm";
+import CriteriaFeedbackForm from "~/modules/interview/components/CriteriaFeedbackForm";
+import CriteriaAssignment from "~/modules/interview/components/CriteriaAssignment";
+import { useGetEvaluationSummaryQuery, useGetCriteriaScoresQuery } from "~/cores/api/interviewApi";
+
+/** Small badge showing assigned criteria count from CriteriaScore API */
+const CriteriaBadge: React.FC<{ scheduleId: number; assignmentId: number }> = ({ scheduleId, assignmentId }) => {
+  const { data: scores } = useGetCriteriaScoresQuery({ scheduleId, assignmentId });
+  const count = scores?.length || 0;
+  if (count === 0) return null;
+  return (
+    <p className="text-[11px] text-blue-500 font-medium">
+      {count} tiêu chí được phân
+    </p>
+  );
+};
 
 interface InterviewerInterviewsSectionProps {
   userId: string;
@@ -63,6 +78,82 @@ const UserName: React.FC<{ userId: string }> = ({ userId }) => {
   return <>{user?.fullName || userId.slice(0, 12) + "..."}</>;
 };
 
+// ─── Criteria Note Breakdown (per-interviewer) ───────────────────
+const CriteriaNoteBreakdown: React.FC<{
+  scheduleId: number;
+  interviewerUserId: string;
+}> = ({ scheduleId, interviewerUserId }) => {
+  const { data: summary } = useGetEvaluationSummaryQuery(scheduleId);
+  const [expanded, setExpanded] = useState(false);
+
+  if (!summary?.criteriaSummaries?.length) return null;
+
+  const myNotes = summary.criteriaSummaries
+    .map((cs) => {
+      const myNote = cs.individualNotes.find(
+        (s) => s.interviewerUserId === interviewerUserId,
+      );
+      return myNote
+        ? {
+            name: cs.criterionName,
+            weight: cs.weight,
+            note: myNote.note,
+          }
+        : null;
+    })
+    .filter(Boolean) as {
+    name: string;
+    weight: number;
+    note?: string | null;
+  }[];
+
+  if (myNotes.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 transition-colors"
+      >
+        <i
+          className={`fa-solid fa-chevron-${expanded ? "up" : "down"} text-[9px]`}
+        />
+        <i className="fa-solid fa-clipboard-list text-violet-400" />
+        Nhận xét theo tiêu chí ({myNotes.length})
+      </button>
+      {expanded && (
+        <div className="mt-2 space-y-1.5 animate-fadeIn">
+          {myNotes.map((item, idx) => (
+            <div
+              key={idx}
+              className="px-3 py-2 rounded-lg bg-white border border-green-100"
+            >
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-xs font-medium text-gray-700">
+                  {item.name}
+                </span>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  ({item.weight}%)
+                </span>
+              </div>
+              {item.note ? (
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {item.note}
+                </p>
+              ) : (
+                <p className="text-[10px] text-gray-400 italic mt-0.5">
+                  Không có nhận xét
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const InterviewerInterviewsSection: React.FC<
   InterviewerInterviewsSectionProps
 > = ({ userId }) => {
@@ -74,6 +165,7 @@ const InterviewerInterviewsSection: React.FC<
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [feedbackFormId, setFeedbackFormId] = useState<number | null>(null);
   const [completingId, setCompletingId] = useState<number | null>(null);
+  const [criteriaManageId, setCriteriaManageId] = useState<number | null>(null);
 
   // Filter interviews where current user is assigned as interviewer
   const myAssignedInterviews = useMemo(() => {
@@ -224,9 +316,7 @@ const InterviewerInterviewsSection: React.FC<
           );
           const canConfirm = !myAssignment.hasConfirmed && !isReadOnly;
           const hasRoom = !!interview.meetingRoom;
-          const cleanDescription = interview.description
-            ?.replace(/\n*<!--PROPOSED_SLOTS:.*?-->/, "")
-            .trim();
+          const cleanDescription = interview.description?.trim() || '';
 
           return (
             <div
@@ -499,6 +589,59 @@ const InterviewerInterviewsSection: React.FC<
                       </div>
                     )}
 
+                  {/* Criteria self-management for interviewer */}
+                  {["Confirmed", "InProgress", "Completed"].includes(interview.status) &&
+                    !myAssignment.feedbackSubmittedAt && (
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCriteriaManageId(
+                              criteriaManageId === interview.id ? null : interview.id
+                            )
+                          }
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-left ${
+                            criteriaManageId === interview.id
+                              ? "border-blue-300 bg-blue-50/50 dark:bg-blue-900/10"
+                              : "border-gray-200 dark:border-gray-600 hover:border-blue-200 hover:bg-blue-50/30"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <i className={`fa-solid fa-clipboard-list text-sm ${
+                              criteriaManageId === interview.id ? "text-blue-500" : "text-gray-400"
+                            }`} />
+                            <div>
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Quản lý tiêu chí đánh giá
+                              </p>
+                              <CriteriaBadge scheduleId={interview.id} assignmentId={myAssignment.id} />
+                            </div>
+                          </div>
+                          <svg
+                            className={`w-4 h-4 text-gray-400 transition-transform ${
+                              criteriaManageId === interview.id ? "rotate-180" : ""
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {criteriaManageId === interview.id && (
+                          <div className="mt-2 p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800 animate-fadeIn">
+                            <CriteriaAssignment
+                              scheduleId={interview.id}
+                              assignmentId={myAssignment.id}
+                              campaignId={interview.campaignId}
+                              interviewerName="bạn"
+                              onSuccess={() => {}}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                   {/* Feedback info if completed */}
                   {interview.status === "Completed" &&
                     myAssignment.feedbackSubmittedAt && (
@@ -507,19 +650,6 @@ const InterviewerInterviewsSection: React.FC<
                           Đã đánh giá
                         </p>
                         <div className="flex items-center gap-3">
-                          {myAssignment.score != null && (
-                            <span
-                              className={`text-sm font-bold ${
-                                myAssignment.score >= 70
-                                  ? "text-green-600"
-                                  : myAssignment.score >= 50
-                                    ? "text-yellow-600"
-                                    : "text-red-600"
-                              }`}
-                            >
-                              {myAssignment.score}/100
-                            </span>
-                          )}
                           {myAssignment.result && (
                             <span
                               className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
@@ -539,6 +669,11 @@ const InterviewerInterviewsSection: React.FC<
                             {myAssignment.feedbackNotes}
                           </p>
                         )}
+                        {/* Per-criterion notes breakdown */}
+                        <CriteriaNoteBreakdown
+                          scheduleId={interview.id}
+                          interviewerUserId={userId}
+                        />
                       </div>
                     )}
 
@@ -580,14 +715,15 @@ const InterviewerInterviewsSection: React.FC<
                                   d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                                 />
                               </svg>
-                              Đánh giá ngay
+                              Đánh giá theo tiêu chí
                             </button>
                           )}
                         </div>
                         {feedbackFormId === interview.id && (
-                          <FeedbackForm
+                          <CriteriaFeedbackForm
                             scheduleId={interview.id}
                             assignmentId={myAssignment.id}
+                            campaignId={interview.campaignId}
                             onSuccess={() => {
                               setFeedbackFormId(null);
                               message.success("Đã gửi đánh giá thành công!");
