@@ -30,9 +30,10 @@ export interface AttendanceDetailDto {
     eventId: number;
     userId: string;
     memberName: string;
+    email?: string;
     studentId?: string;
     registrationDate: string;
-    attendanceStatus: 'PENDING' | 'REGISTERED' | 'WAITLIST' | 'PRESENT' | 'ABSENT' | 'CANCELLED';
+    attendanceStatus: 'PENDING' | 'REGISTERED' | 'WAITLIST' | 'PRESENT' | 'ABSENT' | 'CANCELLED' | 'REJECTED';
     checkInTime?: string;
     score?: number;
     comment?: string;

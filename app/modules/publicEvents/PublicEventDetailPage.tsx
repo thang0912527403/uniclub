@@ -2,8 +2,10 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
-import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation } from '~/cores/api';
+import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyCheckInQrQuery } from '~/cores/api';
+import { useGetMyEventsQuery } from '~/cores/api/eventApi';
 import { useNotification } from '~/components/Notification';
+import { QRCodeSVG } from 'qrcode.react';
 
 function formatDate(dateStr?: string) {
     if (!dateStr) return 'TBD';
@@ -46,6 +48,31 @@ const PublicEventDetailPage: React.FC = () => {
 
     const [showCheckInForm, setShowCheckInForm] = React.useState(false);
     const [checkInCode, setCheckInCode] = React.useState('');
+    const [checkInTab, setCheckInTab] = React.useState<'code' | 'qr'>('code');
+
+    // Fetch QR token for participant check-in
+    const { data: myCheckInQr, isLoading: isLoadingMyQr } = useGetMyCheckInQrQuery(eventId, {
+        skip: !user || event?.status !== 'ONGOING',
+    });
+
+    // Lookup user's attendance status for this event
+    const { data: myEventsData, refetch: refetchMyEvents } = useGetMyEventsQuery(
+        { search: '', page: 1, pageSize: 100 },
+        { skip: !user }
+    );
+    const myAttendance = myEventsData?.items?.find(e => e.eventId === eventId);
+    const myStatus = myAttendance?.attendanceStatus;
+
+    const attendanceStatusConfig: Record<string, { icon: string; label: string; cls: string }> = {
+        PENDING:    { icon: 'fas fa-clock',         label: 'Đăng ký đang chờ duyệt',  cls: 'text-amber-700 bg-amber-50 border-amber-200' },
+        REGISTERED: { icon: 'fas fa-check-circle',  label: 'Đã đăng ký thành công',    cls: 'text-green-700 bg-green-50 border-green-200' },
+        WAITLIST:   { icon: 'fas fa-list-ol',       label: 'Đang trong danh sách chờ', cls: 'text-purple-700 bg-purple-50 border-purple-200' },
+        CHECKED_IN: { icon: 'fas fa-map-marker-alt',label: 'Đã điểm danh',             cls: 'text-green-700 bg-green-50 border-green-200' },
+        PRESENT:    { icon: 'fas fa-user-check',    label: 'Có mặt',                   cls: 'text-green-700 bg-green-50 border-green-200' },
+        ABSENT:     { icon: 'fas fa-user-times',    label: 'Vắng mặt',                 cls: 'text-red-700 bg-red-50 border-red-200' },
+        REJECTED:   { icon: 'fas fa-ban',           label: 'Đăng ký bị từ chối',       cls: 'text-red-700 bg-red-50 border-red-200' },
+        CANCELLED:  { icon: 'fas fa-undo',          label: 'Đã huỷ đăng ký',           cls: 'text-gray-600 bg-gray-50 border-gray-200' },
+    };
 
     const handleRegister = async () => {
         if (!user) {
@@ -54,7 +81,12 @@ const PublicEventDetailPage: React.FC = () => {
         }
         try {
             await registerForEvent(eventId).unwrap();
-            showNotification({ type: 'success', title: 'Thành công', message: 'Đăng ký thành công! Vui lòng kiểm tra email để nhận vé thư mời.' });
+            refetchMyEvents();
+            if (event?.requiresApproval) {
+                showNotification({ type: 'info', title: 'Đã gửi đăng ký', message: 'Đăng ký của bạn đang chờ ban tổ chức duyệt.' });
+            } else {
+                showNotification({ type: 'success', title: 'Thành công', message: 'Đăng ký thành công! Vui lòng kiểm tra email để nhận vé.' });
+            }
         } catch (err: any) {
             showNotification({ type: 'error', title: 'Đăng ký thất bại', message: err?.data?.error ?? 'Sự kiện có thể đã đầy hoặc chưa mở.' });
         }
@@ -214,6 +246,45 @@ const PublicEventDetailPage: React.FC = () => {
                                             value={event.isPublic ? 'Sự kiện công khai' : 'Sự kiện nội bộ'}
                                         />
 
+                                        {/* Online event badge */}
+                                        {event.isOnline && (
+                                            <div className="pt-3 border-t border-gray-100">
+                                                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl">
+                                                    <i className="fas fa-video text-blue-500 text-sm" />
+                                                    <span className="text-sm font-semibold text-blue-700">Sự kiện trực tuyến</span>
+                                                </div>
+
+                                                {/* Show meetLink only for registered users */}
+                                                {user && myStatus && ['REGISTERED', 'PRESENT', 'CHECKED_IN'].includes(myStatus) ? (
+                                                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                                                        <p className="text-xs text-green-600 font-medium mb-1">
+                                                            <i className="fas fa-link mr-1" />Đường dẫn tham gia
+                                                        </p>
+                                                        {event.meetLink ? (
+                                                            <a
+                                                                href={event.meetLink.startsWith('http') ? event.meetLink : `/meeting/${event.meetLink}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline break-all"
+                                                            >
+                                                                {event.meetLink.startsWith('http') ? event.meetLink : `Phòng họp nội bộ: ${event.meetLink}`}
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-sm text-gray-400 italic">Link chưa được cung cấp</span>
+                                                        )}
+                                                    </div>
+                                                ) : user ? (
+                                                    <p className="mt-2 text-xs text-gray-400 italic">
+                                                        <i className="fas fa-lock mr-1" />Đăng ký để xem đường dẫn phòng họp
+                                                    </p>
+                                                ) : (
+                                                    <p className="mt-2 text-xs text-gray-400 italic">
+                                                        <i className="fas fa-lock mr-1" />Đăng nhập và đăng ký để xem đường dẫn
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+
                                         {/* Attendee count / slots */}
                                         {(event.status === 'REGISTRATION_OPEN' || event.status === 'ONGOING' || event.status === 'COMPLETED') && (
                                             <div className="pt-3 border-t border-gray-100">
@@ -249,14 +320,29 @@ const PublicEventDetailPage: React.FC = () => {
                                             </div>
                                         )}
 
-                                        {event.status === 'REGISTRATION_OPEN' && (
-                                            <button onClick={handleRegister} disabled={isRegistering || (event.maxAttendees != null && event.currentAttendees >= event.maxAttendees)}
-                                                className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50">
-                                                {isRegistering ? 'Đang đăng ký...' : event.maxAttendees != null && event.currentAttendees >= event.maxAttendees ? 'Đã hết chỗ' : 'Đăng ký nhận vé'}
+                                        {/* User's registration status */}
+                                        {user && myStatus && attendanceStatusConfig[myStatus] && (
+                                            <div className={`flex items-center gap-2 p-3 rounded-xl border ${attendanceStatusConfig[myStatus].cls}`}>
+                                                <i className={`${attendanceStatusConfig[myStatus].icon} text-sm`} />
+                                                <span className="text-sm font-semibold">{attendanceStatusConfig[myStatus].label}</span>
+                                            </div>
+                                        )}
+
+                                        {event.status === 'REGISTRATION_OPEN' && (!myStatus || myStatus === 'REJECTED' || myStatus === 'CANCELLED') && (
+                                            <button onClick={handleRegister} disabled={isRegistering}
+                                                className={`w-full mt-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50 ${
+                                                    event.maxAttendees != null && event.currentAttendees >= event.maxAttendees
+                                                        ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                                                        : 'bg-orange-500 hover:bg-orange-600 text-white'
+                                                }`}>
+                                                {isRegistering ? 'Đang đăng ký...'
+                                                    : event.maxAttendees != null && event.currentAttendees >= event.maxAttendees
+                                                        ? 'Đăng ký chờ (Waitlist)'
+                                                        : myStatus === 'REJECTED' ? 'Đăng ký lại' : 'Đăng ký nhận vé'}
                                             </button>
                                         )}
 
-                                        {event.status === 'ONGOING' && !showCheckInForm && (
+                                        {event.status === 'ONGOING' && myStatus === 'REGISTERED' && !showCheckInForm && (
                                             <button onClick={() => setShowCheckInForm(true)}
                                                 className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg">
                                                 Điểm danh ngay
@@ -265,21 +351,80 @@ const PublicEventDetailPage: React.FC = () => {
 
                                         {showCheckInForm && (
                                             <div className="mt-4 p-4 border border-green-200 bg-green-50 rounded-xl space-y-3">
-                                                <label className="block text-sm font-medium text-green-800">Mã Check-in (6 ký tự)</label>
-                                                <input type="text" maxLength={6}
-                                                    value={checkInCode} onChange={e => setCheckInCode(e.target.value.toUpperCase())}
-                                                    placeholder="VD: CHK123"
-                                                    className="w-full px-4 py-2 border border-green-300 rounded-lg outline-none focus:border-green-500 uppercase tracking-widest font-mono text-center" />
-                                                <div className="flex gap-2">
-                                                    <button onClick={handleCheckIn} disabled={isCheckingIn}
-                                                        className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium disabled:opacity-50 transition-colors">
-                                                        {isCheckingIn ? 'Đang gửi...' : 'Xác nhận'}
+                                                {/* Tab switcher */}
+                                                <div className="flex gap-1 bg-green-100 rounded-lg p-1">
+                                                    <button
+                                                        onClick={() => setCheckInTab('code')}
+                                                        className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
+                                                            checkInTab === 'code' ? 'bg-white text-green-700 shadow-sm' : 'text-green-600 hover:text-green-700'
+                                                        }`}>
+                                                        <i className="fas fa-keyboard mr-1.5" />Nhập mã
                                                     </button>
-                                                    <button onClick={() => setShowCheckInForm(false)}
-                                                        className="px-4 py-2 border border-green-300 text-green-700 bg-white hover:bg-green-100 rounded-lg font-medium transition-colors">
-                                                        Hủy
+                                                    <button
+                                                        onClick={() => setCheckInTab('qr')}
+                                                        className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
+                                                            checkInTab === 'qr' ? 'bg-white text-green-700 shadow-sm' : 'text-green-600 hover:text-green-700'
+                                                        }`}>
+                                                        <i className="fas fa-qrcode mr-1.5" />Mã QR
                                                     </button>
                                                 </div>
+
+                                                {/* Tab: Nhập mã 6 ký tự */}
+                                                {checkInTab === 'code' && (
+                                                    <div className="space-y-3">
+                                                        <label className="block text-sm font-medium text-green-800">Mã Check-in (6 ký tự)</label>
+                                                        <p className="text-xs text-green-600">Nhập mã do ban tổ chức chia sẻ tại sự kiện.</p>
+                                                        <input type="text" maxLength={6}
+                                                            value={checkInCode} onChange={e => setCheckInCode(e.target.value.toUpperCase())}
+                                                            placeholder="VD: CHK123"
+                                                            className="w-full px-4 py-3 border-2 border-green-300 rounded-xl outline-none focus:border-green-500 uppercase tracking-[0.3em] font-mono text-center text-lg font-bold" />
+                                                        <div className="flex gap-2">
+                                                            <button onClick={handleCheckIn} disabled={isCheckingIn || checkInCode.length < 6}
+                                                                className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-50 transition-colors">
+                                                                {isCheckingIn ? 'Đang gửi...' : 'Xác nhận điểm danh'}
+                                                            </button>
+                                                            <button onClick={() => setShowCheckInForm(false)}
+                                                                className="px-4 py-2 border border-green-300 text-green-700 bg-white hover:bg-green-100 rounded-lg font-medium transition-colors">
+                                                                Đóng
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Tab: QR code */}
+                                                {checkInTab === 'qr' && (
+                                                    <div className="space-y-3">
+                                                        <p className="text-sm text-green-800 font-medium">Đưa mã QR này cho ban tổ chức quét</p>
+                                                        <p className="text-xs text-green-600">Mã QR đã được gửi qua email khi bạn đăng ký. Bạn cũng có thể dùng mã trên màn hình này.</p>
+                                                        {isLoadingMyQr ? (
+                                                            <div className="animate-pulse h-48 w-48 mx-auto bg-green-200 rounded-lg" />
+                                                        ) : (myCheckInQr?.token ?? myCheckInQr?.qrContent) ? (
+                                                            <div className="flex flex-col items-center gap-3">
+                                                                <div className="rounded-xl border-2 border-green-300 p-3 bg-white">
+                                                                    <QRCodeSVG
+                                                                        value={myCheckInQr.token ?? myCheckInQr.qrContent ?? ''}
+                                                                        size={200}
+                                                                        level="M"
+                                                                        bgColor="#ffffff"
+                                                                        fgColor="#000000"
+                                                                        title="QR điểm danh"
+                                                                    />
+                                                                </div>
+                                                                {myCheckInQr.expiresAt && (
+                                                                    <p className="text-xs text-green-600">
+                                                                        Hết hạn lúc {new Date(myCheckInQr.expiresAt).toLocaleTimeString('vi-VN')}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-sm text-gray-500 text-center py-4">Không có mã QR. Vui lòng sử dụng mã 6 ký tự.</p>
+                                                        )}
+                                                        <button onClick={() => setShowCheckInForm(false)}
+                                                            className="w-full px-4 py-2 border border-green-300 text-green-700 bg-white hover:bg-green-100 rounded-lg font-medium transition-colors">
+                                                            Đóng
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>

@@ -243,7 +243,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                   >
                     <option value="">— Chọn chức vụ —</option>
                     {roles
-                      .filter((r) => r.level !== 1) // Do not allow manual assign of Creator
+                      .filter((r) => r.level !== 0) // Do not allow manual assign of Creator
                       .map((r) => (
                         <option key={r.eventRoleId} value={r.eventRoleId}>
                           {r.roleName}
@@ -286,7 +286,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {members.map((m) => {
-                  const isCreator = roles.find((r) => r.eventRoleId === m.roleId)?.level === 1;
+                  const isCreator = roles.find((r) => r.eventRoleId === m.roleId)?.level === 0;
                   const isEditingPolicies = editingPoliciesFor === m.eventMemberId;
                   const hasCustomPolicies = m.customPolicies && m.customPolicies.length > 0;
 
@@ -317,7 +317,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                         <td className="px-4 py-3">
                           <select
                             value={m.roleId || ""}
-                            disabled={isUpdatingRole || isCreator}
+                            disabled={isUpdatingRole || isCreator || eventStatus === "CANCELED"}
                             onChange={(e) =>
                               handleUpdateRole(m.eventMemberId, Number(e.target.value))
                             }
@@ -331,7 +331,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                               <option value={m.roleId}>{m.roleName}</option>
                             ) : (
                               roles
-                                .filter((r) => r.level !== 1)
+                                .filter((r) => r.level !== 0)
                                 .map((r) => (
                                   <option key={r.eventRoleId} value={r.eventRoleId}>
                                     {r.roleName}
@@ -356,7 +356,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {!isCreator && (
+                            {!isCreator && eventStatus !== "CANCELED" && (
                               <button
                                 onClick={() => {
                                   if (isEditingPolicies) {
@@ -380,7 +380,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                                 {isEditingPolicies ? "Đóng" : "Đặc quyền"}
                               </button>
                             )}
-                            {!isCreator && (
+                            {!isCreator && eventStatus !== "CANCELED" && (
                               <button
                                 onClick={() => setDeleteId(m.eventMemberId)}
                                 className={`px-2.5 py-1.5 text-xs text-red-500 border border-red-200 dark:border-red-900/80 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors`}

@@ -362,7 +362,7 @@ export const interviewApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<AiSearchResponse>) => response.data,
     }),
   }),
-  overrideExisting: false,
+  overrideExisting: true,
 });
 
 export const {

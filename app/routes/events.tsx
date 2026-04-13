@@ -23,6 +23,7 @@ export default function EventsPage() {
     const [pageNumber, setPageNumber] = useState(1);
     const pageSize = 12;
     const [selectedClubId, setSelectedClubId] = useState<number | 'all'>('all');
+    const [searchTerm, setSearchTerm] = useState('');
 
     const { data: allEvents, isLoading, error } = useGetAllEventsQuery({ pageNumber, pageSize: 100 });
     const { data: clubs } = useGetClubsQuery(undefined, { skip: !isAdmin });
@@ -45,13 +46,24 @@ export default function EventsPage() {
         return allEvents;
     }, [allEvents, isAdmin, isClubManager, cookieClubId, selectedClubId]);
 
+    // Apply text search
+    const searchFiltered = useMemo(() => {
+        if (!searchTerm.trim()) return filteredEvents;
+        const q = searchTerm.toLowerCase();
+        return filteredEvents.filter(e =>
+            e.eventName.toLowerCase().includes(q) ||
+            (e.location ?? '').toLowerCase().includes(q) ||
+            (e.description ?? '').toLowerCase().includes(q)
+        );
+    }, [filteredEvents, searchTerm]);
+
     // Paginate the filtered results
     const paginatedEvents = useMemo(() => {
         const start = (pageNumber - 1) * pageSize;
-        return filteredEvents.slice(start, start + pageSize);
-    }, [filteredEvents, pageNumber, pageSize]);
+        return searchFiltered.slice(start, start + pageSize);
+    }, [searchFiltered, pageNumber, pageSize]);
 
-    const totalPages = Math.ceil(filteredEvents.length / pageSize);
+    const totalPages = Math.ceil(searchFiltered.length / pageSize);
 
     const bgClass = isDark ? 'bg-[#1a1d2e]' : 'bg-[#f5f7fa]';
     const cardClass = isDark ? 'bg-[#242838]' : 'bg-white';
@@ -135,6 +147,31 @@ export default function EventsPage() {
                     </button>
                 </div>
 
+                {/* Search bar */}
+                <div className="mb-6">
+                    <div className="relative max-w-md">
+                        <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}></i>
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => { setSearchTerm(e.target.value); setPageNumber(1); }}
+                            placeholder="Tìm kiếm sự kiện..."
+                            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm outline-none transition-all ${isDark
+                                ? 'bg-[#242838] border-gray-600 text-white focus:border-blue-500 placeholder-gray-500'
+                                : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder-gray-400'
+                            }`}
+                        />
+                        {searchTerm && (
+                            <button
+                                onClick={() => setSearchTerm('')}
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                <i className="fas fa-times text-xs"></i>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
                 {isLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[1, 2, 3, 4, 5, 6].map(i => (
@@ -172,9 +209,9 @@ export default function EventsPage() {
                     </div>
                 ) : (
                     <>
-                        {/* Event count badge */}
                         <div className={`mb-4 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            Hiển thị {paginatedEvents.length} / {filteredEvents.length} sự kiện
+                            Hiển thị {paginatedEvents.length} / {searchFiltered.length} sự kiện
+                            {searchTerm && <span> · tìm kiếm: "{searchTerm}"</span>}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

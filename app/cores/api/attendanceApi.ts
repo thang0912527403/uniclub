@@ -10,6 +10,22 @@ import type {
     CheckInByQrResponse,
 } from './types/attendance';
 
+// New response types for improved API
+export interface BulkApproveResult {
+    approved: number;
+    total: number;
+    skippedDueToSlot: number;
+    remainingSlots: number;
+    message: string;
+}
+
+export interface AttendeePagedResult {
+    items: AttendanceDetailDto[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+}
+
 export const attendanceApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         // ===== USER-FACING endpoints (api/events) =====
@@ -68,8 +84,8 @@ export const attendanceApi = baseApi.injectEndpoints({
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
         }),
 
-        // duyệt hàng loạt (Bulk approve) — Manager only
-        bulkApproveRegistrations: builder.mutation<{ message: string; approvedCount: number }, { clubId: number; eventId: number; userIds: string[] }>({
+        // duyệt hàng loạt (Bulk approve) — trả về chi tiết slot
+        bulkApproveRegistrations: builder.mutation<BulkApproveResult, { clubId: number; eventId: number; userIds: string[] }>({
             query: ({ clubId, eventId, userIds }) => ({
                 url: `/club/${clubId}/events/${eventId}/approve-bulk`,
                 method: 'POST',
@@ -95,9 +111,18 @@ export const attendanceApi = baseApi.injectEndpoints({
             }),
         }),
 
-        // lấy danh sách người đăng ký — Manager only
+        // lấy danh sách người đăng ký — KHÔNG filter (backward compatible)
         getEventAttendees: builder.query<AttendanceDetailDto[], { clubId: number; eventId: number }>({
             query: ({ clubId, eventId }) => `/club/${clubId}/events/${eventId}/attendees`,
+            providesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+        }),
+
+        // lấy danh sách theo status + phân trang — server-side
+        getEventAttendeesPaged: builder.query<AttendeePagedResult, {
+            clubId: number; eventId: number; status: string; page?: number; pageSize?: number
+        }>({
+            query: ({ clubId, eventId, status, page = 1, pageSize = 50 }) =>
+                `/club/${clubId}/events/${eventId}/attendees?status=${status}&page=${page}&pageSize=${pageSize}`,
             providesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
         }),
 
@@ -107,6 +132,28 @@ export const attendanceApi = baseApi.injectEndpoints({
                 url: `/club/${clubId}/events/${eventId}/checkin-qr`,
                 method: 'POST',
                 body: { token },
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+        }),
+
+        // Manager thêm thành viên CLB vào sự kiện
+        addAttendees: builder.mutation<{ message: string; addedCount: number }, { clubId: number; eventId: number; userIds: string[] }>({
+            query: ({ clubId, eventId, userIds }) => ({
+                url: `/club/${clubId}/events/${eventId}/add-attendees`,
+                method: 'POST',
+                body: userIds,
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+        }),
+
+        // Cập nhật trạng thái (PENDING ↔ WAITLIST) — Manager only
+        updateAttendeeStatus: builder.mutation<{ message: string }, {
+            clubId: number; eventId: number; userId: string; status: string
+        }>({
+            query: ({ clubId, eventId, userId, status }) => ({
+                url: `/club/${clubId}/events/${eventId}/attendees/${userId}/status`,
+                method: 'PATCH',
+                body: { status },
             }),
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
         }),
@@ -123,6 +170,9 @@ export const {
     useCheckInMutation,
     useEvaluateMemberMutation,
     useGetEventAttendeesQuery,
+    useGetEventAttendeesPagedQuery,
     useGetMyCheckInQrQuery,
     useCheckInByQrMutation,
+    useAddAttendeesMutation,
+    useUpdateAttendeeStatusMutation,
 } = attendanceApi;

@@ -1,5 +1,7 @@
 import Cookies from 'js-cookie';
 import type { LoginResponse } from '~/cores/api/types/auth';
+import { store } from '~/cores/store';
+import { baseApi } from '~/cores/api/baseApi';
 
 export function getUserId(): string {
   return Cookies.get('userId') || '';
@@ -23,6 +25,8 @@ export function loginUser(payload: LoginResponse) {
   if (payload.user?.userId) {
     Cookies.set('userId', payload.user.userId);
   }
+  // Reset cache từ tài khoản cũ khi login mới
+  store.dispatch(baseApi.util.resetApiState());
   window.dispatchEvent(new Event('authchange'));
 }
 
@@ -31,6 +35,8 @@ export function logoutUser() {
   Cookies.remove('refreshToken');
   Cookies.remove('userId');
   Cookies.remove('clubId');
+  // Xoá toàn bộ cache RTK Query → tránh hiện data tài khoản cũ
+  store.dispatch(baseApi.util.resetApiState());
   window.dispatchEvent(new Event('authchange'));
 }
 

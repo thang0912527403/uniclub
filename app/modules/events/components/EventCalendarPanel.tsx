@@ -217,6 +217,19 @@ export function EventCalendarPanel({
         state.sessions[0]?.start ||
         new Date().toISOString();
 
+    // ── scrollTime: cuộn đến giờ sớm nhất của event để không bị ẩn ──
+    const scrollTime = (() => {
+        const times: Date[] = [];
+        if (state.mainEvent?.start) times.push(new Date(state.mainEvent.start));
+        if (state.registration?.start) times.push(new Date(state.registration.start));
+        state.sessions.forEach(s => { if (s.start) times.push(new Date(s.start)); });
+        if (times.length === 0) return '06:00:00';
+        const earliest = times.reduce((a, b) => a < b ? a : b);
+        // Lùi 1 giờ để có context
+        const h = Math.max(0, earliest.getHours() - 1);
+        return `${String(h).padStart(2, '0')}:00:00`;
+    })();
+
     const hasEvents = events.filter(e => e.display !== 'background').length > 0;
 
     // ── eventDrop ─────────────────────────────────────────
@@ -324,8 +337,8 @@ export function EventCalendarPanel({
                                 type="button"
                                 onClick={() => setCalMode('event')}
                                 className={`px-3 py-1.5 transition-colors ${calMode === 'event'
-                                        ? 'bg-blue-500 text-white'
-                                        : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-blue-500 text-white'
+                                    : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
                                     }`}
                                 title="Kéo đặt thời gian sự kiện hoặc kéo block xanh để di chuyển"
                             >
@@ -337,8 +350,8 @@ export function EventCalendarPanel({
                                 type="button"
                                 onClick={() => setCalMode('session')}
                                 className={`px-3 py-1.5 transition-colors ${calMode === 'session'
-                                        ? 'bg-purple-500 text-white'
-                                        : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-purple-500 text-white'
+                                    : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
                                     }`}
                                 title="Kéo chọn vùng thời gian hoặc click để tạo phiên mới"
                             >
@@ -350,8 +363,8 @@ export function EventCalendarPanel({
                                 type="button"
                                 onClick={() => setCalMode('registration')}
                                 className={`px-3 py-1.5 transition-colors ${calMode === 'registration'
-                                        ? 'bg-green-500 text-white'
-                                        : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-green-500 text-white'
+                                    : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
                                     }`}
                                 title="Kéo đặt thời gian đăng ký hoặc kéo block xanh lá để di chuyển"
                             >
@@ -374,8 +387,8 @@ export function EventCalendarPanel({
             {/* Registration Alert Banner */}
             {state.registration?.start && state.registration?.end && (
                 <div className={`px-4 py-2 flex items-center gap-2 text-xs border-b ${isDark
-                        ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300'
-                        : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                    ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300'
+                    : 'bg-emerald-50 border-emerald-100 text-emerald-700'
                     }`}>
                     <i className="fas fa-calendar-check text-sm" />
                     <span>
@@ -413,21 +426,21 @@ export function EventCalendarPanel({
                     .unic-fc .fc-event-resizer { opacity: 0.6; transition: opacity .15s; }
                     .unic-fc .fc-event-resizer:hover { opacity: 1; }
                     .unic-fc .fc-now-indicator-line { border-color: #ef4444; }
-                    /* Main event block — thu hẹp bên phải để còn chỗ click tạo session */
+                    /* Main event block — full width, opacity thấp để session overlay lên trên */
                     .unic-fc .unic-main-event {
-                        width: 28% !important;
-                        right: 0 !important;
-                        left: auto !important;
-                        margin-left: auto !important;
-                        opacity: 0.85;
-                        font-size: 0.68rem !important;
-                        writing-mode: vertical-rl;
-                        text-orientation: mixed;
-                        overflow: hidden;
+                        opacity: 0.7;
+                        font-size: 0.72rem !important;
+                        z-index: 1 !important;
                     }
                     .unic-fc .unic-main-event .fc-event-main {
-                        padding: 4px 2px;
-                        writing-mode: vertical-rl;
+                        padding: 2px 6px;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
+                    /* Session và Registration nổi lên trên main event */
+                    .unic-fc .fc-event:not(.unic-main-event) {
+                        z-index: 2 !important;
                     }
                     .unic-fc .fc-timegrid-now-indicator-arrow {
                         border-top-color: #ef4444; border-bottom-color: #ef4444;
@@ -485,8 +498,9 @@ export function EventCalendarPanel({
                         slotDuration="00:30:00"
                         height="auto"
                         expandRows={true}
-                        slotMinTime="05:00:00"
-                        slotMaxTime="23:30:00"
+                        slotMinTime="00:00:00"
+                        slotMaxTime="23:59:00"
+                        scrollTime={scrollTime}
                         nowIndicator={true}
                         allDaySlot={true}
                         eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}

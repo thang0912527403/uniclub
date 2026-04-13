@@ -13,6 +13,7 @@ interface Props {
   eventId: number;
   clubId: number;
   isDark: boolean;
+  eventStatus?: string;
 }
 
 const ALL_EVENT_POLICIES = [
@@ -30,7 +31,7 @@ const ALL_EVENT_POLICIES = [
   { name: "evaluatemember", label: "Đánh giá thành viên" },
 ];
 
-export function EventRolesTab({ eventId, clubId, isDark }: Props) {
+export function EventRolesTab({ eventId, clubId, isDark, eventStatus }: Props) {
   const { show: showNotification } = useNotification();
   const { data: roles = [], isLoading, refetch } = useGetEventRolesQuery({
     clubId,
@@ -150,12 +151,14 @@ export function EventRolesTab({ eventId, clubId, isDark }: Props) {
             Định nghĩa các chức vụ trong sự kiện và thiết lập quyền hạn cho từng chức vụ.
           </p>
         </div>
-        <button
-          onClick={() => setFormState({ roleName: "", description: "", isOpen: true })}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-        >
-          <i className="fas fa-plus" /> Thêm chức vụ
-        </button>
+        {eventStatus !== "CANCELED" && (
+            <button
+            onClick={() => setFormState({ roleName: "", description: "", isOpen: true })}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+            >
+            <i className="fas fa-plus" /> Thêm chức vụ
+            </button>
+        )}
       </div>
 
       {formState.isOpen && (
@@ -205,7 +208,7 @@ export function EventRolesTab({ eventId, clubId, isDark }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {roles.map((role) => {
-          const isCreator = role.level === 1;
+          const isCreator = role.level === 0;
           const isEditingPolicies = editingPoliciesFor === role.eventRoleId;
 
           return (
@@ -224,7 +227,7 @@ export function EventRolesTab({ eventId, clubId, isDark }: Props) {
                     </h4>
                     <p className={`text-sm ${sub}`}>{role.description || "Không có mô tả."}</p>
                   </div>
-                  {!isCreator && (
+                  {!isCreator && eventStatus !== "CANCELED" && (
                     <div className="flex gap-2">
                       <button
                         onClick={() =>
@@ -257,7 +260,7 @@ export function EventRolesTab({ eventId, clubId, isDark }: Props) {
                       <i className="fas fa-key mr-1.5" />
                       Quyền hạn ({role.policies?.length || 0})
                     </span>
-                    {!isCreator && (
+                    {!isCreator && eventStatus !== "CANCELED" && (
                       <button
                         onClick={() => {
                           if (isEditingPolicies) {

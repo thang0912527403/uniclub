@@ -40,6 +40,7 @@ export default [
     route("profile", "routes/user_profile.tsx"),
     route("auth/change-password", "routes/auth/change-password.tsx"),
     route("my-applications", "routes/my-applications.tsx"),
+    route("my-events", "routes/my-events.tsx"),
 
     // User management
     route("users", "routes/users.tsx"),

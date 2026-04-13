@@ -18,8 +18,9 @@ export function useEventPermission(clubId: number | undefined, eventId: number) 
     const role = data?.role ?? null;
     const policies = data?.policies ?? [];
 
-    /** Check if user has a specific event policy */
-    const can = (policy: string) => policies.includes(policy);
+    /** Check if user has a specific event policy (case-insensitive). Wildcard '*' grants all. */
+    const can = (policy: string) =>
+        policies.includes('*') || policies.some((p: string) => p?.toLowerCase() === policy.toLowerCase());
 
     /** True when role is ADMIN (club manager or system admin) */
     const isAdmin = role === 'ADMIN';

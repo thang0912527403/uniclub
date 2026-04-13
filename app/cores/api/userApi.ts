@@ -149,7 +149,7 @@ export const userApi = baseApi.injectEndpoints({
       providesTags: ['Department'],
     }),
   }),
-  overrideExisting: false,
+  overrideExisting: true,
 });
 
 export const {

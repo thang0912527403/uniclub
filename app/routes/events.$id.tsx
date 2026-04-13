@@ -15,7 +15,12 @@ import {
     useRejectRegistrationMutation,
     useBulkApproveRegistrationsMutation,
     useCancelRegistrationMutation,
+    useCancelEventMutation,
+    useAddAttendeesMutation,
+    useUpdateAttendeeStatusMutation,
+    useCheckInMutation,
 } from '~/cores/api';
+import { useGetClubMembersQuery } from '~/cores/api/clubApi';
 import { useGetCurrentUserQuery } from '~/cores/api/authApi';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
@@ -74,6 +79,15 @@ export default function EventDetailPage() {
     const [qrSuccess, setQrSuccess] = useState<string | null>(null);
     const [showQrScanner, setShowQrScanner] = useState(false);
     const qrScanCooldownRef = useRef<{ token: string; until: number } | null>(null);
+
+    // Member self check-in state
+    const [checkInCode, setCheckInCode] = useState('');
+    const [checkInError, setCheckInError] = useState<string | null>(null);
+    const [checkInSuccess, setCheckInSuccess] = useState(false);
+
+    // Refs for registration date pickers (native calendar)
+    const regStartDateRef = useRef<HTMLInputElement>(null);
+    const regEndDateRef = useRef<HTMLInputElement>(null);
     /** Tránh request 404 (token đã dùng) ghi đè thông báo thành công khi scanner gọi onScan nhiều lần */
     const qrSuccessLockRef = useRef(false);
 
@@ -93,7 +107,9 @@ export default function EventDetailPage() {
     );
 
     // Per-event permission gating (replaces isManager for granular control)
-    const { can, isCollaborator } = useEventPermission(event?.clubId, eventId);
+    const { can, isCollaborator, isAdmin: isEventAdmin } = useEventPermission(event?.clubId, eventId);
+
+    const isCanceled = event?.status === 'CANCELED';
 
     const { data: attendees, isLoading: isLoadingAttendees, refetch: refetchAttendees } =
         useGetEventAttendeesQuery(
@@ -112,10 +128,54 @@ export default function EventDetailPage() {
     const [rejectRegistration, { isLoading: isRejecting }] = useRejectRegistrationMutation();
     const [bulkApproveRegistrations, { isLoading: isBulkApproving }] = useBulkApproveRegistrationsMutation();
     const [cancelRegistration, { isLoading: isCancelling }] = useCancelRegistrationMutation();
+    const [cancelEvent, { isLoading: isCanceling }] = useCancelEventMutation();
     const [generateCheckInCode, { isLoading: isGeneratingCode }] = useGenerateCheckInCodeMutation();
     const [checkInByQr, { isLoading: isCheckingInByQr }] = useCheckInByQrMutation();
     const [startEvent, { isLoading: isStarting, error: startError }] = useStartEventMutation();
     const [completeEvent, { isLoading: isCompleting, error: completeError }] = useCompleteEventMutation();
+    const [addAttendees, { isLoading: isAddingAttendees }] = useAddAttendeesMutation();
+    const [updateAttendeeStatus] = useUpdateAttendeeStatusMutation();
+    const [checkInByCode, { isLoading: isCheckingInByCode }] = useCheckInMutation();
+
+    // Add members modal state
+    const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+    const [addMemberSearch, setAddMemberSearch] = useState('');
+    const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+    const { data: clubMembers } = useGetClubMembersQuery(event?.clubId ?? 0, { skip: !showAddMembersModal || !event?.clubId });
+
+    const handleAddAttendees = async () => {
+        if (selectedUserIds.length === 0) return;
+        try {
+            const res = await addAttendees({ clubId: event?.clubId ?? 0, eventId, userIds: selectedUserIds }).unwrap();
+            showNotification({ type: 'success', title: 'Thành công', message: res.message });
+            setShowAddMembersModal(false);
+            setSelectedUserIds([]);
+            setAddMemberSearch('');
+            refetchAttendees();
+        } catch (e: any) {
+            showNotification({ type: 'error', title: 'Lỗi', message: e?.data?.error ?? 'Không thể thêm thành viên.' });
+        }
+    };
+
+    const handleCancelEvent = () => {
+        setConfirmConfig({
+            title: 'Hủy sự kiện',
+            message: 'Bạn có chắc chắn muốn hủy sự kiện này? Thao tác này sẽ gửi email thông báo cho tất cả người đã đăng ký.',
+            type: 'danger',
+            confirmText: 'Hủy sự kiện'
+        });
+        setConfirmAction(() => async () => {
+            try {
+                await cancelEvent({ clubId: event?.clubId ?? 0, eventId: Number(id) }).unwrap();
+                showNotification({ type: 'success', title: 'Đã hủy sự kiện', message: 'Hủy sự kiện và đã ghi nhận gửi mail thành công.' });
+            } catch (error: any) {
+                showNotification({ type: 'error', title: 'Lỗi', message: error?.data?.error ?? 'Hủy sự kiện thất bại' });
+            } finally {
+                setConfirmOpen(false);
+            }
+        });
+        setConfirmOpen(true);
+    };
 
     // State cho panel Chờ duyệt
     const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
@@ -157,6 +217,16 @@ export default function EventDetailPage() {
     const fmtDate = (d?: string) => {
         if (!d) return 'Chưa có';
         return new Date(d).toLocaleString('vi-VN', { dateStyle: 'medium', timeStyle: 'short' });
+    };
+
+    /** Format datetime-local "YYYY-MM-DDTHH:MM" → "Ngày DD/MM/YYYY HH:mm" */
+    const formatViDate = (localDT: string): string => {
+        if (!localDT) return '';
+        try {
+            const d = new Date(localDT);
+            const pad = (n: number) => String(n).padStart(2, '0');
+            return `Ngày ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        } catch { return localDT; }
     };
 
     // --- Registration deadline helpers (client-side live check) ---
@@ -216,8 +286,14 @@ export default function EventDetailPage() {
             await registerForEvent(eventId).unwrap();
             setMemberSuccess(true);
             refetchAttendees();
+            if (event?.requiresApproval) {
+                showNotification({ type: 'info', title: 'Đã gửi đăng ký', message: 'Đăng ký của bạn đang chờ ban tổ chức duyệt.' });
+            } else {
+                showNotification({ type: 'success', title: 'Thành công', message: 'Đăng ký tham gia sự kiện thành công!' });
+            }
         } catch (e: any) {
             setMemberError(e?.data?.error ?? 'Đăng ký thất bại');
+            showNotification({ type: 'error', title: 'Lỗi', message: e?.data?.error ?? 'Đăng ký thất bại' });
         }
     };
 
@@ -231,14 +307,26 @@ export default function EventDetailPage() {
         }
     };
 
-    const handleReject = async (userId: string) => {
-        try {
-            await rejectRegistration({ eventId, clubId: event?.clubId ?? 0, userId }).unwrap();
-            showNotification({ type: 'success', title: 'Đã từ chối', message: 'Đã từ chối đăng ký.' });
-            refetchAttendees();
-        } catch (e: any) {
-            showNotification({ type: 'error', title: 'Lỗi', message: e?.data?.error ?? 'Không thể từ chối.' });
-        }
+    const handleReject = (userId: string) => {
+        const attendee = attendees?.find(a => a.userId === userId);
+        setConfirmConfig({
+            title: 'Xác nhận huỷ đăng ký',
+            message: `Bạn có chắc chắn muốn huỷ đăng ký của "${attendee?.memberName ?? 'thành viên'}"? Nếu có người trong Waitlist sẽ tự động được duyệt thay thế.`,
+            type: 'danger',
+            confirmText: 'Huỷ đăng ký'
+        });
+        setConfirmAction(() => async () => {
+            try {
+                await rejectRegistration({ eventId, clubId: event?.clubId ?? 0, userId }).unwrap();
+                showNotification({ type: 'success', title: 'Đã huỷ', message: 'Đã huỷ đăng ký thành viên.' });
+                refetchAttendees();
+            } catch (e: any) {
+                showNotification({ type: 'error', title: 'Lỗi', message: e?.data?.error ?? 'Không thể huỷ đăng ký.' });
+            } finally {
+                setConfirmOpen(false);
+            }
+        });
+        setConfirmOpen(true);
     };
 
     const handleBulkApprove = async () => {
@@ -249,11 +337,40 @@ export default function EventDetailPage() {
                 clubId: event?.clubId ?? 0,
                 userIds: selectedPendingIds,
             }).unwrap();
-            showNotification({ type: 'success', title: 'Duyệt hàng loạt', message: result.message });
+
+            if (result.skippedDueToSlot > 0) {
+                showNotification({
+                    type: 'warning',
+                    title: 'Cảnh báo: Không đủ slot',
+                    message: `${result.message} Còn lại ${result.remainingSlots} slot.`,
+                });
+            } else {
+                showNotification({ type: 'success', title: 'Duyệt hàng loạt', message: result.message });
+            }
             setSelectedPendingIds([]);
             refetchAttendees();
         } catch (e: any) {
             showNotification({ type: 'error', title: 'Lỗi', message: e?.data?.error ?? 'Không thể duyệt hàng loạt.' });
+        }
+    };
+
+    const handleMoveToWaitlist = async (userId: string) => {
+        try {
+            await updateAttendeeStatus({ clubId: event?.clubId ?? 0, eventId, userId, status: 'WAITLIST' }).unwrap();
+            showNotification({ type: 'success', title: 'Thành công', message: 'Đã chuyển vào danh sách chờ.' });
+            refetchAttendees();
+        } catch (e: any) {
+            showNotification({ type: 'error', title: 'Lỗi', message: e?.data?.error ?? 'Không thể chuyển trạng thái.' });
+        }
+    };
+
+    const handleMoveToPending = async (userId: string) => {
+        try {
+            await updateAttendeeStatus({ clubId: event?.clubId ?? 0, eventId, userId, status: 'PENDING' }).unwrap();
+            showNotification({ type: 'success', title: 'Thành công', message: 'Đã chuyển về chờ duyệt.' });
+            refetchAttendees();
+        } catch (e: any) {
+            showNotification({ type: 'error', title: 'Lỗi', message: e?.data?.error ?? 'Không thể chuyển trạng thái.' });
         }
     };
 
@@ -394,6 +511,9 @@ export default function EventDetailPage() {
     }
 
     const pendingCount = attendees?.filter(a => a.attendanceStatus === 'PENDING').length ?? 0;
+    const waitlistCount = attendees?.filter(a => a.attendanceStatus === 'WAITLIST').length ?? 0;
+    const registeredCount = attendees?.filter(a => ['REGISTERED', 'PRESENT', 'CHECKED_IN', 'ABSENT'].includes(a.attendanceStatus)).length ?? 0;
+    const availableSlots = event?.maxAttendees ? event.maxAttendees - registeredCount : null;
 
     const tabs: { key: Tab; label: React.ReactNode }[] = [
         { key: 'sessions', label: 'Lịch trình' },
@@ -403,16 +523,16 @@ export default function EventDetailPage() {
             label: (
                 <span className="flex items-center gap-1.5">
                     Chờ duyệt
-                    {pendingCount > 0 && (
+                    {(pendingCount + waitlistCount) > 0 && (
                         <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full">
-                            {pendingCount}
+                            {pendingCount + waitlistCount}
                         </span>
                     )}
                 </span>
             ),
         }] : []),
         { key: 'checkin', label: 'Điểm danh' },
-        ...(can('manage_collaborator') || isManager ? [
+        ...(can('manage_collaborator') || isManager || isEventAdmin ? [
             {
                 key: 'roles' as Tab,
                 label: (
@@ -476,14 +596,22 @@ export default function EventDetailPage() {
                                 <div className="flex gap-2 flex-wrap">
                                     {(can('editevent') || can('openregistration') || can('startevent') || can('completeevent')) && (
                                         <>
-                                            {can('editevent') && (
+                                            {can('editevent') && !['CANCELED'].includes(event.status ?? '') && (
                                             <button onClick={() => navigate(`/events/${event.eventId}/edit`)}
                                                 className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
                                                 Chỉnh sửa
                                             </button>
                                             )}
                                             {can('openregistration') && event.status === 'PLANNED' && (
-                                                <button onClick={() => { setShowRegForm(true); setActiveTab('registration'); }}
+                                                <button onClick={() => {
+                                                    setRegForm({
+                                                        startDate: '',
+                                                        endDate: '',
+                                                        maxAttendees: event.maxAttendees?.toString() ?? '',
+                                                    });
+                                                    setShowRegForm(true);
+                                                    setActiveTab('registration');
+                                                }}
                                                     className="px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
                                                     Mở đăng ký
                                                 </button>
@@ -500,6 +628,12 @@ export default function EventDetailPage() {
                                                     {isCompleting ? 'Đang chốt...' : 'Kết thúc sự kiện'}
                                                 </button>
                                             )}
+                                            {can('editevent') && !['CANCELED', 'CLOSED', 'ENDED'].includes(event.status ?? '') && (
+                                                <button onClick={handleCancelEvent} disabled={isCanceling}
+                                                    className="px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors shadow-sm">
+                                                    {isCanceling ? 'Đang hủy...' : 'Hủy sự kiện'}
+                                                </button>
+                                            )}
                                         </>
                                     )}
                                 </div>
@@ -509,8 +643,20 @@ export default function EventDetailPage() {
 
                             <div className={`mt-4 pt-4 border-t ${border} grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm`}>
                                 <div>
-                                    <span className={sub}>Địa điểm</span>
-                                    <p className={`${text} font-medium mt-0.5`}>{event.location || '—'}</p>
+                                    <span className={sub}>{event?.isOnline ? 'Đường dẫn tham gia' : 'Địa điểm'}</span>
+                                    {event?.isOnline ? (
+                                        <p className={`${text} font-medium mt-0.5 truncate`}>
+                                            {event?.meetLink || event?.location ? (
+                                                <a href={event?.meetLink || event?.location || undefined} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 hover:underline">
+                                                    {(event?.meetLink || event?.location || '')?.startsWith('/') ? 'Phòng họp nội bộ (Click)' : (event?.meetLink || event?.location)}
+                                                </a>
+                                            ) : (
+                                                '—'
+                                            )}
+                                        </p>
+                                    ) : (
+                                        <p className={`${text} font-medium mt-0.5`}>{event?.location || '—'}</p>
+                                    )}
                                 </div>
                                 <div>
                                     <span className={sub}>Bắt đầu</span>
@@ -546,7 +692,7 @@ export default function EventDetailPage() {
                                         <h2 className={`font-semibold ${text}`}>
                                             Sessions ({event.sessions?.length ?? 0})
                                         </h2>
-                                        {can('managesession') && (
+                                        {can('managesession') && !isCanceled && (
                                             <button onClick={() => setShowSessionForm(v => !v)}
                                                 className="px-3 py-1.5 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors">
                                                 {showSessionForm ? 'Hủy' : 'Thêm session'}
@@ -627,58 +773,122 @@ export default function EventDetailPage() {
                                             )}
 
                                             {/* Open registration form (PLANNED) or Edit form (REGISTRATION_OPEN) */}
-                                            {(event.status === 'PLANNED' && !showRegForm) && (
-                                                <button onClick={() => setShowRegForm(true)}
+                                            {(event.status === 'PLANNED' && !showRegForm && !isCanceled) && (
+                                                <button onClick={() => {
+                                                    setRegForm({
+                                                        startDate: '',
+                                                        endDate: '',
+                                                        maxAttendees: event.maxAttendees?.toString() ?? '',
+                                                    });
+                                                    setShowRegForm(true);
+                                                }}
                                                     className="mt-2 px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
                                                     Mở đăng ký sự kiện
                                                 </button>
                                             )}
 
                                             {showRegForm && (event.status === 'PLANNED' || event.status === 'REGISTRATION_OPEN') && (
-                                                <div className="mt-3 space-y-3">
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="mt-3 space-y-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        {/* Ngày bắt đầu đăng ký — styled calendar picker */}
                                                         <div>
-                                                            <label className={`block text-xs mb-1 ${sub}`}>
+                                                            <label className={`block text-sm font-medium mb-2 ${sub}`}>
                                                                 Ngày bắt đầu đăng ký <span className="text-red-500">*</span>
                                                             </label>
-                                                            <input type="datetime-local"
-                                                                value={regForm.startDate}
-                                                                onChange={e => setRegForm(f => ({ ...f, startDate: e.target.value }))}
-                                                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
+                                                            <div
+                                                                className={`relative w-full rounded-lg border outline-none transition-colors cursor-pointer ${isDark ? 'bg-[#1a1d2e] border-gray-700 hover:border-blue-400' : 'bg-white border-gray-300 hover:border-blue-500'}`}
+                                                                onClick={() => regStartDateRef.current?.showPicker?.()}
+                                                            >
+                                                                <div className={`px-4 py-2.5 text-sm select-none ${regForm.startDate
+                                                                    ? (isDark ? 'text-white' : 'text-gray-900')
+                                                                    : (isDark ? 'text-gray-500' : 'text-gray-400')
+                                                                }`}>
+                                                                    {regForm.startDate
+                                                                        ? <><i className="fas fa-calendar-alt mr-2 text-green-500" />{formatViDate(regForm.startDate)}</>
+                                                                        : <><i className="fas fa-calendar-alt mr-2 text-gray-400" />Chọn ngày giờ bắt đầu đăng ký</>
+                                                                    }
+                                                                </div>
+                                                                <input
+                                                                    ref={regStartDateRef}
+                                                                    type="datetime-local"
+                                                                    value={regForm.startDate}
+                                                                    onChange={e => setRegForm(f => ({ ...f, startDate: e.target.value }))}
+                                                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                                                    tabIndex={-1}
+                                                                />
+                                                            </div>
                                                         </div>
+
+                                                        {/* Ngày kết thúc đăng ký — styled calendar picker */}
                                                         <div>
-                                                            <label className={`block text-xs mb-1 ${sub}`}>
+                                                            <label className={`block text-sm font-medium mb-2 ${sub}`}>
                                                                 Ngày kết thúc đăng ký <span className="text-red-500">*</span>
                                                             </label>
-                                                            <input type="datetime-local"
-                                                                value={regForm.endDate}
-                                                                onChange={e => setRegForm(f => ({ ...f, endDate: e.target.value }))}
-                                                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
+                                                            <div
+                                                                className={`relative w-full rounded-lg border outline-none transition-colors cursor-pointer ${isDark ? 'bg-[#1a1d2e] border-gray-700 hover:border-blue-400' : 'bg-white border-gray-300 hover:border-blue-500'}`}
+                                                                onClick={() => regEndDateRef.current?.showPicker?.()}
+                                                            >
+                                                                <div className={`px-4 py-2.5 text-sm select-none ${regForm.endDate
+                                                                    ? (isDark ? 'text-white' : 'text-gray-900')
+                                                                    : (isDark ? 'text-gray-500' : 'text-gray-400')
+                                                                }`}>
+                                                                    {regForm.endDate
+                                                                        ? <><i className="fas fa-calendar-alt mr-2 text-red-500" />{formatViDate(regForm.endDate)}</>
+                                                                        : <><i className="fas fa-calendar-alt mr-2 text-gray-400" />Chọn ngày giờ kết thúc đăng ký</>
+                                                                    }
+                                                                </div>
+                                                                <input
+                                                                    ref={regEndDateRef}
+                                                                    type="datetime-local"
+                                                                    value={regForm.endDate}
+                                                                    onChange={e => setRegForm(f => ({ ...f, endDate: e.target.value }))}
+                                                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                                                    tabIndex={-1}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
+
+                                                    {/* Thời gian sự kiện — reference info */}
+                                                    {event.startDate && (
+                                                        <div className={`px-4 py-3 rounded-lg text-xs ${isDark ? 'bg-blue-900/20 text-blue-300 border border-blue-800' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                                                            <i className="fas fa-info-circle mr-1.5" />
+                                                            Sự kiện bắt đầu lúc <span className="font-semibold">{fmtDate(event.startDate)}</span>
+                                                            {event.endDate && <> — kết thúc lúc <span className="font-semibold">{fmtDate(event.endDate)}</span></>}
+                                                            . Ngày kết thúc đăng ký phải trước ngày bắt đầu sự kiện.
+                                                        </div>
+                                                    )}
+
+                                                    {/* Số lượng tối đa */}
                                                     <div className="max-w-xs">
-                                                        <label className={`block text-xs mb-1 ${sub}`}>
-                                                            Số lượng tối đa (để trống = không giới hạn)
+                                                        <label className={`block text-sm font-medium mb-2 ${sub}`}>
+                                                            Số lượng tối đa
+                                                            <span className={`ml-2 text-xs font-normal ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>(để trống = không giới hạn)</span>
                                                         </label>
-                                                        <input type="number" min={1}
-                                                            value={regForm.maxAttendees}
-                                                            onChange={e => setRegForm(f => ({ ...f, maxAttendees: e.target.value }))}
-                                                            placeholder="Không giới hạn"
-                                                            className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
+                                                        <div className="relative">
+                                                            <i className={`fas fa-users absolute left-3 top-1/2 -translate-y-1/2 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                                                            <input type="number" min={1}
+                                                                value={regForm.maxAttendees}
+                                                                onChange={e => setRegForm(f => ({ ...f, maxAttendees: e.target.value }))}
+                                                                placeholder="VD: 50"
+                                                                className={`w-full pl-9 pr-4 py-2.5 text-sm border rounded-lg outline-none transition-colors ${inputCls}`} />
+                                                        </div>
                                                     </div>
+
                                                     {regError && (
-                                                        <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">
-                                                            {regError}
+                                                        <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 flex items-center gap-2">
+                                                            <i className="fas fa-exclamation-circle" />{regError}
                                                         </p>
                                                     )}
-                                                    <div className="flex gap-2">
+                                                    <div className="flex gap-3 pt-1">
                                                         <button onClick={handleOpenRegistration} disabled={isOpeningReg}
-                                                            className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors">
+                                                            className="px-5 py-2.5 text-sm font-medium bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-all duration-200 hover:shadow-md flex items-center gap-2">
+                                                            {isOpeningReg && <i className="fas fa-spinner fa-spin" />}
                                                             {isOpeningReg ? 'Đang xử lý...'
                                                                 : event.status === 'REGISTRATION_OPEN' ? 'Cập nhật thời gian' : 'Xác nhận mở đăng ký'}
                                                         </button>
                                                         <button onClick={() => { setShowRegForm(false); setRegError(null); }}
-                                                            className={`px-4 py-2 text-sm border ${border} rounded-lg ${sub} hover:opacity-80 transition-colors`}>
+                                                            className={`px-5 py-2.5 text-sm font-medium border ${border} rounded-lg ${sub} hover:opacity-80 transition-colors`}>
                                                             Hủy
                                                         </button>
                                                     </div>
@@ -759,8 +969,26 @@ export default function EventDetailPage() {
                                                     if (myRow.attendanceStatus === 'CANCELLED') {
                                                         return <span className={`text-sm ${sub}`}>Bạn đã huỷ đăng ký.</span>;
                                                     }
+                                                    if (myRow.attendanceStatus === 'REJECTED') {
+                                                        return (
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-sm text-red-600 font-medium">
+                                                                    <i className="fas fa-times-circle mr-1" />Đăng ký của bạn đã bị từ chối.
+                                                                </span>
+                                                                {isRegOpen && (
+                                                                    <button
+                                                                        onClick={handleRegisterMember}
+                                                                        disabled={isRegistering}
+                                                                        className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                                                                    >
+                                                                        {isRegistering ? 'Đang đăng ký...' : 'Đăng ký lại'}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    }
                                                     if (myRow.attendanceStatus === 'PENDING') {
-                                                        return <span className="text-sm text-amber-600 font-medium">Đăng ký của bạn đang chờ duyệt.</span>;
+                                                        return <span className="text-sm text-amber-600 font-medium"><i className="fas fa-clock mr-1" />Đăng ký của bạn đang chờ duyệt.</span>;
                                                     }
                                                     if (myRow.attendanceStatus === 'WAITLIST') {
                                                         return <span className="text-sm text-purple-600 font-medium">Bạn đang trong danh sách chờ.</span>;
@@ -768,7 +996,7 @@ export default function EventDetailPage() {
                                                     return (
                                                         <div className="flex items-center gap-3">
                                                             <span className="text-sm text-green-600 font-medium">Bạn đã đăng ký ({myRow.attendanceStatus}).</span>
-                                                            {['PENDING', 'REGISTERED', 'WAITLIST'].includes(myRow.attendanceStatus) && (
+                                                            {['PENDING', 'REGISTERED', 'WAITLIST'].includes(myRow.attendanceStatus) && !isCanceled && (
                                                                 <button
                                                                     onClick={handleCancelRegistration}
                                                                     disabled={isCancelling}
@@ -783,6 +1011,19 @@ export default function EventDetailPage() {
                                             </div>
                                         )}
 
+                                        {/* Nút thêm thành viên — chỉ Manager */}
+                                        {can('approveattendance') && !isCanceled && (
+                                            <div className="flex justify-end mb-3">
+                                                <button
+                                                    onClick={() => setShowAddMembersModal(true)}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                                                >
+                                                    <i className="fas fa-user-plus" />
+                                                    Thêm thành viên
+                                                </button>
+                                            </div>
+                                        )}
+
                                         {isLoadingAttendees ? (
                                             <div className="animate-pulse space-y-2">
                                                 {[1, 2, 3].map(i => <div key={i} className="h-10 bg-gray-200 rounded" />)}
@@ -794,7 +1035,7 @@ export default function EventDetailPage() {
                                                 <table className="w-full text-sm">
                                                     <thead className={`${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
                                                         <tr>
-                                                            {['Họ tên', 'MSSV', 'Ngày đăng ký', 'Trạng thái', 'Check-in', 'Điểm', ...(can('approveattendance') ? ['Hành động'] : [])].map(h => (
+                                                            {['Họ tên', 'Email', 'MSSV', 'Ngày đăng ký', 'Trạng thái', 'Check-in', 'Điểm', ...(can('approveattendance') && !isCanceled ? ['Hành động'] : [])].map(h => (
                                                                 <th key={h} className={`px-3 py-2 text-left text-xs font-semibold ${sub}`}>{h}</th>
                                                             ))}
                                                         </tr>
@@ -803,6 +1044,7 @@ export default function EventDetailPage() {
                                                         {attendees.map(a => (
                                                             <tr key={a.attendId} className={`border-t ${border} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
                                                                 <td className={`px-3 py-2.5 font-medium ${text}`}>{a.memberName}</td>
+                                                                <td className={`px-3 py-2.5 ${sub} text-xs`}>{a.email || '—'}</td>
                                                                 <td className={`px-3 py-2.5 ${sub}`}>{a.studentId || '—'}</td>
                                                                 <td className={`px-3 py-2.5 ${sub}`}>{new Date(a.registrationDate).toLocaleDateString('vi-VN')}</td>
                                                                 <td className="px-3 py-2.5">
@@ -816,7 +1058,7 @@ export default function EventDetailPage() {
                                                                 <td className={`px-3 py-2.5 font-semibold ${a.score != null ? 'text-blue-500' : sub}`}>
                                                                     {a.score != null ? `${a.score}/100` : '—'}
                                                                 </td>
-                                                                {can('approveattendance') && (
+                                                                {can('approveattendance') && !isCanceled && (
                                                                     <td className="px-3 py-2.5">
                                                                         <div className="flex items-center gap-1.5">
                                                                             {a.attendanceStatus === 'PENDING' && (
@@ -873,7 +1115,66 @@ export default function EventDetailPage() {
                             {/* ── PENDING APPROVALS ── */}
                             {activeTab === 'pending' && can('approveattendance') && (
                                 <div className="space-y-4">
-                                    {/* Header + bulk action */}
+
+                                    {/* ── Slot Warning Banner ── */}
+                                    {event?.maxAttendees && (
+                                        <div className={`p-4 rounded-xl border-2 ${
+                                            availableSlots !== null && availableSlots <= 0
+                                                ? 'border-red-400 bg-red-50 dark:bg-red-900/20'
+                                                : availableSlots !== null && availableSlots <= 3
+                                                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                                                    : `border-green-400 bg-green-50 dark:bg-green-900/20`
+                                        }`}>
+                                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-center">
+                                                        <div className={`text-2xl font-bold ${
+                                                            availableSlots !== null && availableSlots <= 0 ? 'text-red-600' : 'text-green-600'
+                                                        }`}>
+                                                            {availableSlots ?? '∞'}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">Slot trống</div>
+                                                    </div>
+                                                    <div className="text-center border-l border-gray-300 pl-4">
+                                                        <div className="text-2xl font-bold text-blue-600">{registeredCount}</div>
+                                                        <div className="text-xs text-gray-500">Đã đăng ký</div>
+                                                    </div>
+                                                    <div className="text-center border-l border-gray-300 pl-4">
+                                                        <div className="text-2xl font-bold text-gray-600">{event.maxAttendees}</div>
+                                                        <div className="text-xs text-gray-500">Tối đa</div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-sm">
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">
+                                                        <i className="fas fa-clock text-xs" /> {pendingCount} chờ duyệt
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 font-medium">
+                                                        <i className="fas fa-list-ul text-xs" /> {waitlistCount} waitlist
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {availableSlots !== null && availableSlots <= 0 && (pendingCount + waitlistCount) > 0 && (
+                                                <div className="mt-3 text-sm text-red-700 dark:text-red-300 flex items-start gap-2">
+                                                    <i className="fas fa-exclamation-triangle mt-0.5" />
+                                                    <span>
+                                                        <strong>Hết slot!</strong> Không thể duyệt thêm. Bạn có thể tăng số slot tối đa trong phần <strong>Đăng ký</strong>,
+                                                        hoặc chuyển người vào <strong>Waitlist</strong> để chờ slot trống.
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {availableSlots !== null && availableSlots > 0 && selectedPendingIds.length > availableSlots && (
+                                                <div className="mt-3 text-sm text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                                                    <i className="fas fa-exclamation-triangle mt-0.5" />
+                                                    <span>
+                                                        <strong>Cảnh báo:</strong> Bạn chọn {selectedPendingIds.length} người nhưng chỉ còn {availableSlots} slot.
+                                                        Chỉ {availableSlots} người được duyệt, còn lại sẽ bị bỏ qua.
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* ── Header + bulk action ── */}
                                     <div className="flex items-center justify-between flex-wrap gap-3">
                                         <div>
                                             <h3 className={`font-semibold ${text}`}>
@@ -886,7 +1187,7 @@ export default function EventDetailPage() {
                                                     : 'Không có đơn nào đang chờ duyệt'}
                                             </p>
                                         </div>
-                                        {selectedPendingIds.length > 0 && (
+                                        {selectedPendingIds.length > 0 && !isCanceled && (
                                             <button
                                                 onClick={handleBulkApprove}
                                                 disabled={isBulkApproving}
@@ -905,13 +1206,14 @@ export default function EventDetailPage() {
                                         </div>
                                     )}
 
-                                    {!isLoadingAttendees && pendingCount === 0 && (
+                                    {!isLoadingAttendees && pendingCount === 0 && waitlistCount === 0 && (
                                         <div className={`flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed ${isDark ? 'border-gray-600' : 'border-gray-200'}`}>
                                             <i className={`fas fa-check-circle text-3xl mb-3 text-green-400`} />
-                                            <p className={`${sub} text-sm`}>Không có đơn chờ duyệt</p>
+                                            <p className={`${sub} text-sm`}>Không có đơn chờ duyệt hoặc waitlist</p>
                                         </div>
                                     )}
 
+                                    {/* ── PENDING Table ── */}
                                     {!isLoadingAttendees && pendingCount > 0 && (() => {
                                         const pendingList = attendees?.filter(a => a.attendanceStatus === 'PENDING') ?? [];
                                         const allSelected = pendingList.length > 0 && selectedPendingIds.length === pendingList.length;
@@ -929,58 +1231,149 @@ export default function EventDetailPage() {
                                                 <table className="w-full text-sm">
                                                     <thead>
                                                         <tr className={isDark ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                                                            <th className="px-3 py-2.5 w-10">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={allSelected}
-                                                                    onChange={toggleAll}
-                                                                    className="w-4 h-4 rounded text-blue-500"
-                                                                />
-                                                            </th>
+                                                            {!isCanceled && (
+                                                                <th className="px-3 py-2.5 w-10">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={allSelected}
+                                                                        onChange={toggleAll}
+                                                                        className="w-4 h-4 rounded text-blue-500"
+                                                                    />
+                                                                </th>
+                                                            )}
                                                             <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thành viên</th>
+                                                            <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Email</th>
                                                             <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>MSSV</th>
                                                             <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Đăng ký lúc</th>
-                                                            <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thao tác</th>
+                                                            {!isCanceled && (
+                                                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thao tác</th>
+                                                            )}
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         {pendingList.map(a => (
                                                             <tr key={a.attendId} className={`border-t ${border} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors`}>
-                                                                <td className="px-3 py-3">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={selectedPendingIds.includes(a.userId)}
-                                                                        onChange={() => toggleOne(a.userId)}
-                                                                        className="w-4 h-4 rounded text-blue-500"
-                                                                    />
-                                                                </td>
+                                                                {!isCanceled && (
+                                                                    <td className="px-3 py-3">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={selectedPendingIds.includes(a.userId)}
+                                                                            onChange={() => toggleOne(a.userId)}
+                                                                            className="w-4 h-4 rounded text-blue-500"
+                                                                        />
+                                                                    </td>
+                                                                )}
                                                                 <td className={`px-3 py-3 font-medium ${text}`}>{a.memberName}</td>
+                                                                <td className={`px-3 py-3 ${sub} text-xs`}>{a.email || '—'}</td>
                                                                 <td className={`px-3 py-3 ${sub}`}>{a.studentId || '—'}</td>
                                                                 <td className={`px-3 py-3 ${sub}`}>
                                                                     {new Date(a.registrationDate).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                                                 </td>
-                                                                <td className="px-3 py-3">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button
-                                                                            onClick={() => handleApprove(a.userId)}
-                                                                            disabled={isApproving}
-                                                                            className="px-3 py-1 text-xs font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
-                                                                        >
-                                                                            <i className="fas fa-check mr-1" />Duyệt
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleReject(a.userId)}
-                                                                            disabled={isRejecting}
-                                                                            className="px-3 py-1 text-xs font-semibold border border-red-300 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
-                                                                        >
-                                                                            <i className="fas fa-times mr-1" />Từ chối
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
+                                                                {!isCanceled && (
+                                                                    <td className="px-3 py-3">
+                                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                                            <button
+                                                                                onClick={() => handleApprove(a.userId)}
+                                                                                disabled={isApproving}
+                                                                                className="px-2.5 py-1 text-xs font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
+                                                                            >
+                                                                                <i className="fas fa-check mr-1" />Duyệt
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleReject(a.userId)}
+                                                                                disabled={isRejecting}
+                                                                                className="px-2.5 py-1 text-xs font-semibold border border-red-300 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                                                                            >
+                                                                                <i className="fas fa-times mr-1" />Từ chối
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleMoveToWaitlist(a.userId)}
+                                                                                title="Chuyển vào Waitlist"
+                                                                                className="px-2.5 py-1 text-xs font-semibold border border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 disabled:opacity-50 transition-colors"
+                                                                            >
+                                                                                <i className="fas fa-list-ul mr-1" />Waitlist
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                )}
                                                             </tr>
                                                         ))}
                                                     </tbody>
                                                 </table>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* ── WAITLIST Table ── */}
+                                    {!isLoadingAttendees && waitlistCount > 0 && (() => {
+                                        const waitlistList = attendees?.filter(a => a.attendanceStatus === 'WAITLIST') ?? [];
+                                        return (
+                                            <div>
+                                                <h3 className={`font-semibold mb-2 ${text}`}>
+                                                    <i className="fas fa-list-ul mr-2 text-purple-500" />
+                                                    Danh sách chờ (Waitlist)
+                                                    <span className="ml-2 text-xs font-normal text-purple-500">{waitlistCount} người</span>
+                                                </h3>
+                                                <p className={`text-xs mb-3 ${sub}`}>
+                                                    Những người đăng ký khi đã hết slot. Sẽ tự động được lên khi có slot trống.
+                                                </p>
+                                                <div className={`rounded-xl border ${border} overflow-hidden`}>
+                                                    <table className="w-full text-sm">
+                                                        <thead>
+                                                            <tr className={isDark ? 'bg-purple-900/30' : 'bg-purple-50'}>
+                                                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>#</th>
+                                                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thành viên</th>
+                                                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Email</th>
+                                                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>MSSV</th>
+                                                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Đăng ký lúc</th>
+                                                                {!isCanceled && (
+                                                                    <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thao tác</th>
+                                                                )}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {waitlistList.map((a, idx) => (
+                                                                <tr key={a.attendId} className={`border-t ${border} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors`}>
+                                                                    <td className={`px-3 py-3 ${sub}`}>{idx + 1}</td>
+                                                                    <td className={`px-3 py-3 font-medium ${text}`}>{a.memberName}</td>
+                                                                    <td className={`px-3 py-3 ${sub} text-xs`}>{a.email || '—'}</td>
+                                                                    <td className={`px-3 py-3 ${sub}`}>{a.studentId || '—'}</td>
+                                                                    <td className={`px-3 py-3 ${sub}`}>
+                                                                        {new Date(a.registrationDate).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                                    </td>
+                                                                    {!isCanceled && (
+                                                                        <td className="px-3 py-3">
+                                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                                <button
+                                                                                    onClick={() => handleApprove(a.userId)}
+                                                                                    disabled={isApproving}
+                                                                                    title="Duyệt (trừ slot)"
+                                                                                    className="px-2.5 py-1 text-xs font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
+                                                                                >
+                                                                                    <i className="fas fa-check mr-1" />Duyệt
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleMoveToPending(a.userId)}
+                                                                                    title="Chuyển về chờ duyệt"
+                                                                                    className="px-2.5 py-1 text-xs font-semibold border border-amber-300 text-amber-600 rounded-lg hover:bg-amber-50 disabled:opacity-50 transition-colors"
+                                                                                >
+                                                                                    <i className="fas fa-arrow-up mr-1" />Chờ duyệt
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleReject(a.userId)}
+                                                                                    disabled={isRejecting}
+                                                                                    className="px-2.5 py-1 text-xs font-semibold border border-red-300 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                                                                                >
+                                                                                    <i className="fas fa-times mr-1" />Từ chối
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    )}
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
                                         );
                                     })()}
@@ -991,7 +1384,7 @@ export default function EventDetailPage() {
                             {activeTab === 'checkin' && (
                                 <div className="space-y-5">
                                     {/* generate code */}
-                                    {can('checkin') && (
+                                    {(can('checkin') || isManager || isEventAdmin) && !isCanceled && (
                                         <div className={`p-4 rounded-lg border ${border}`}>
                                             <h3 className={`font-semibold mb-1 ${text}`}>Tạo mã điểm danh</h3>
                                             <p className={`text-xs mb-3 ${sub}`}>Mã có hiệu lực 15 phút. Chia sẻ cho thành viên để điểm danh.</p>
@@ -1015,12 +1408,85 @@ export default function EventDetailPage() {
                                         </div>
                                     )}
 
+                                    {/* ── Participant: Điểm danh bằng mã code ── */}
+                                    {currentUser && event?.status === 'ONGOING' && !isCanceled && (() => {
+                                        const myAttendance = attendees?.find(a => a.userId === currentUser.id);
+                                        const isCheckedIn = myAttendance?.attendanceStatus === 'PRESENT' || (myAttendance?.attendanceStatus as string) === 'CHECKED_IN';
+                                        const isRegistered = myAttendance?.attendanceStatus === 'REGISTERED';
+                                        return (
+                                            <div className={`p-5 rounded-xl border-2 ${isCheckedIn ? 'border-green-400 bg-green-50 dark:bg-green-900/20' : `${border}`}`}>
+                                                <h3 className={`font-semibold mb-1 ${text} flex items-center gap-2`}>
+                                                    <i className={`fas ${isCheckedIn ? 'fa-check-circle text-green-500' : 'fa-hand-paper text-orange-500'}`} />
+                                                    Điểm danh
+                                                </h3>
+
+                                                {isCheckedIn ? (
+                                                    <div className="mt-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-800 flex items-center justify-center">
+                                                                <i className="fas fa-check text-2xl text-green-600" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-semibold text-green-700 dark:text-green-400">Đã điểm danh thành công!</p>
+                                                                {myAttendance?.checkInTime && (
+                                                                    <p className={`text-xs ${sub}`}>
+                                                                        Lúc {new Date(myAttendance.checkInTime).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ) : isRegistered ? (
+                                                    <div className="mt-3">
+                                                        <p className={`text-sm mb-3 ${sub}`}>
+                                                            Nhập mã 6 ký tự được ban tổ chức chia sẻ để điểm danh, hoặc đưa mã QR bên dưới cho BTC quét.
+                                                        </p>
+                                                        <div className="flex flex-col sm:flex-row gap-2 max-w-md">
+                                                            <input
+                                                                type="text"
+                                                                value={checkInCode}
+                                                                onChange={e => { setCheckInCode(e.target.value.toUpperCase()); setCheckInError(null); setCheckInSuccess(false); }}
+                                                                placeholder="VD: ABC123"
+                                                                maxLength={6}
+                                                                className={`flex-1 min-w-0 px-4 py-3 text-lg font-mono font-bold tracking-[0.3em] text-center border-2 rounded-xl outline-none transition-colors focus:border-orange-400 ${inputCls}`}
+                                                            />
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!checkInCode.trim() || !currentUser) return;
+                                                                    try {
+                                                                        await checkInByCode({ eventId, userId: currentUser.id, code: checkInCode.trim() }).unwrap();
+                                                                        setCheckInSuccess(true);
+                                                                        setCheckInCode('');
+                                                                        showNotification({ type: 'success', title: 'Điểm danh thành công!', message: 'Bạn đã điểm danh sự kiện này.' });
+                                                                        refetchAttendees();
+                                                                    } catch (e: any) {
+                                                                        setCheckInError(e?.data?.error ?? 'Mã không hợp lệ hoặc đã hết hạn.');
+                                                                    }
+                                                                }}
+                                                                disabled={!checkInCode.trim() || checkInCode.length < 6 || isCheckingInByCode}
+                                                                className="px-6 py-3 text-sm font-semibold bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl hover:from-orange-600 hover:to-amber-600 disabled:opacity-40 transition-all shadow-sm"
+                                                            >
+                                                                <i className="fas fa-check-circle mr-1.5" />Điểm danh
+                                                            </button>
+                                                        </div>
+                                                        {checkInError && <p className="text-sm text-red-500 mt-2 flex items-center gap-1"><i className="fas fa-exclamation-circle" />{checkInError}</p>}
+                                                        {checkInSuccess && <p className="text-sm text-green-600 font-medium mt-2 flex items-center gap-1"><i className="fas fa-check" />Điểm danh thành công!</p>}
+                                                    </div>
+                                                ) : (
+                                                    <p className={`text-sm mt-2 ${sub}`}>
+                                                        {myAttendance ? `Trạng thái: ${myAttendance.attendanceStatus}. Bạn cần ở trạng thái REGISTERED để điểm danh.` : 'Bạn chưa đăng ký sự kiện này.'}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
                                     {/* Participant: Mã QR điểm danh của tôi (để BTC quét) */}
-                                    {currentUser && event?.status === 'ONGOING' && (
+                                    {currentUser && event?.status === 'ONGOING' && !isCanceled && (
                                         <div className={`p-4 rounded-lg border ${border}`}>
                                             <h3 className={`font-semibold mb-2 ${text}`}>Mã QR điểm danh của tôi</h3>
                                             <p className={`text-xs mb-3 ${sub}`}>
-                                                Mã QR cũng đã được gửi qua email khi bạn đăng ký. Bạn có thể dùng mã trên màn hình này hoặc trong email — đưa cho ban tổ chức quét để điểm danh.
+                                                Hoặc đưa mã QR dưới đây cho ban tổ chức quét.
                                             </p>
                                             {isLoadingMyQr ? (
                                                 <div className="animate-pulse h-48 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg" />
@@ -1041,7 +1507,6 @@ export default function EventDetailPage() {
                                                             Hết hạn lúc {new Date(myCheckInQr.expiresAt).toLocaleTimeString('vi-VN')}
                                                         </p>
                                                     )}
-                                                    {/* Dev: copy token để test điểm danh QR khi không có máy quét */}
                                                     {import.meta.env.DEV && (
                                                         <details className={`mt-2 text-xs ${sub}`}>
                                                             <summary className="cursor-pointer hover:underline">Copy mã để test (chỉ hiện khi dev)</summary>
@@ -1052,13 +1517,13 @@ export default function EventDetailPage() {
                                                     )}
                                                 </div>
                                             ) : (
-                                                <p className={`text-sm ${sub}`}>Bạn chưa đăng ký sự kiện này. Vui lòng đăng ký ở tab Đăng ký trước.</p>
+                                                <p className={`text-sm ${sub}`}>Bạn chưa đăng ký sự kiện này.</p>
                                             )}
                                         </div>
                                     )}
 
                                     {/* Organizer: Điểm danh bằng QR (camera hoặc dán token) */}
-                                    {can('checkin') && (
+                                    {(can('checkin') || isManager || isEventAdmin) && !isCanceled && (
                                         <div className={`p-4 rounded-lg border ${border}`}>
                                             <h3 className={`font-semibold mb-2 ${text}`}>Điểm danh bằng QR</h3>
                                             <p className={`text-xs mb-3 ${sub}`}>
@@ -1121,16 +1586,17 @@ export default function EventDetailPage() {
                             )}
 
                             {/* ── CHỨC VỤ SỰ KIỆN ── */}
-                            {activeTab === 'roles' && (can('manage_collaborator') || isManager) && (
+                            {activeTab === 'roles' && (can('manage_collaborator') || isManager || isEventAdmin) && (
                                 <EventRolesTab
                                     eventId={eventId}
                                     clubId={event.clubId ?? 0}
                                     isDark={isDark}
+                                    eventStatus={event.status ?? ''}
                                 />
                             )}
 
                             {/* ── THÀNH VIÊN SỰ KIỆN ── */}
-                            {activeTab === 'members' && (can('manage_collaborator') || isManager) && (
+                            {activeTab === 'members' && (can('manage_collaborator') || isManager || isEventAdmin) && (
                                 <EventMembersTab
                                     eventId={eventId}
                                     clubId={event.clubId ?? 0}
@@ -1154,6 +1620,129 @@ export default function EventDetailPage() {
                 onConfirm={() => confirmAction?.()}
                 onCancel={() => setConfirmOpen(false)}
             />
+
+            {/* Add Members Modal */}
+            {showAddMembersModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className={`w-full max-w-lg mx-4 rounded-2xl shadow-2xl ${isDark ? 'bg-gray-800' : 'bg-white'} max-h-[80vh] flex flex-col`}>
+                        {/* Header */}
+                        <div className={`p-5 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between`}>
+                            <div>
+                                <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                                    <i className="fas fa-user-plus mr-2 text-blue-500" />Thêm thành viên CLB
+                                </h3>
+                                <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    Chọn thành viên để thêm vào sự kiện (status REGISTERED ngay)
+                                </p>
+                            </div>
+                            <button onClick={() => { setShowAddMembersModal(false); setSelectedUserIds([]); setAddMemberSearch(''); }}
+                                className={`p-2 rounded-lg hover:bg-gray-200 ${isDark ? 'text-gray-400 hover:bg-gray-700' : ''}`}>
+                                <i className="fas fa-times" />
+                            </button>
+                        </div>
+
+                        {/* Search */}
+                        <div className={`px-5 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                            <div className="relative">
+                                <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                                <input
+                                    type="text"
+                                    value={addMemberSearch}
+                                    onChange={e => setAddMemberSearch(e.target.value)}
+                                    placeholder="Tìm theo tên hoặc email..."
+                                    className={`w-full pl-9 pr-4 py-2 rounded-lg border outline-none text-sm ${isDark ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'} focus:ring-2 focus:ring-blue-500/30`}
+                                />
+                            </div>
+                            {selectedUserIds.length > 0 && (
+                                <p className="text-xs text-blue-500 font-medium mt-2">
+                                    <i className="fas fa-check-circle mr-1" />Đã chọn {selectedUserIds.length} thành viên
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Member list */}
+                        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1">
+                            {(() => {
+                                const existingUserIds = new Set(attendees?.map(a => a.userId) ?? []);
+                                const q = addMemberSearch.toLowerCase();
+                                const filtered = (clubMembers ?? [])
+                                    .filter(m => m.status === 'ACTIVE')
+                                    .filter(m => !existingUserIds.has(m.userId))
+                                    .filter(m => !q || m.fullName.toLowerCase().includes(q) || m.email.toLowerCase().includes(q));
+
+                                if (!filtered.length) {
+                                    return <p className={`text-sm text-center py-6 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                        {addMemberSearch ? 'Không tìm thấy thành viên phù hợp.' : 'Tất cả thành viên đã được thêm.'}
+                                    </p>;
+                                }
+
+                                return filtered.map(m => {
+                                    const isSelected = selectedUserIds.includes(m.userId);
+                                    return (
+                                        <label key={m.userId}
+                                            className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${isSelected
+                                                    ? (isDark ? 'bg-blue-900/30 border border-blue-500/50' : 'bg-blue-50 border border-blue-200')
+                                                    : (isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50')
+                                                } ${!isSelected ? 'border border-transparent' : ''}`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => setSelectedUserIds(prev =>
+                                                    isSelected ? prev.filter(id => id !== m.userId) : [...prev, m.userId]
+                                                )}
+                                                className="w-4 h-4 text-blue-500 rounded"
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{m.fullName}</p>
+                                                <p className={`text-xs truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{m.email}</p>
+                                            </div>
+                                            {m.roleName && (
+                                                <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                                                    {m.roleName}
+                                                </span>
+                                            )}
+                                        </label>
+                                    );
+                                });
+                            })()}
+                        </div>
+
+                        {/* Footer */}
+                        <div className={`p-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between`}>
+                            <button
+                                onClick={() => {
+                                    const existingUserIds = new Set(attendees?.map(a => a.userId) ?? []);
+                                    const q = addMemberSearch.toLowerCase();
+                                    const allIds = (clubMembers ?? [])
+                                        .filter(m => m.status === 'ACTIVE' && !existingUserIds.has(m.userId))
+                                        .filter(m => !q || m.fullName.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
+                                        .map(m => m.userId);
+                                    setSelectedUserIds(prev => prev.length === allIds.length ? [] : allIds);
+                                }}
+                                className={`text-sm ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                            >
+                                <i className="fas fa-check-double mr-1" />Chọn tất cả
+                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => { setShowAddMembersModal(false); setSelectedUserIds([]); setAddMemberSearch(''); }}
+                                    className={`px-4 py-2 text-sm rounded-lg border ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                    Huỷ
+                                </button>
+                                <button
+                                    onClick={handleAddAttendees}
+                                    disabled={selectedUserIds.length === 0 || isAddingAttendees}
+                                    className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg disabled:opacity-50 transition-colors"
+                                >
+                                    {isAddingAttendees ? 'Đang thêm...' : `Thêm ${selectedUserIds.length > 0 ? `(${selectedUserIds.length})` : ''}`}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

@@ -76,7 +76,7 @@ export function EventForm({
         location: initialData?.location || '',
         meetLink: initialData?.meetLink || '',
         startDate: isoToLocal(initialData?.startDate),   // ✅ local time
-        endDate:   isoToLocal(initialData?.endDate),     // ✅ local time
+        endDate: isoToLocal(initialData?.endDate),     // ✅ local time
         clubId: initialData?.clubId || undefined,
         requiresApproval: initialData?.requiresApproval ?? false,
         isPublic: initialData?.isPublic ?? true,
@@ -90,16 +90,16 @@ export function EventForm({
      */
     useEffect(() => {
         const newStart = isoToLocal(initialData?.startDate);
-        const newEnd   = isoToLocal(initialData?.endDate);
+        const newEnd = isoToLocal(initialData?.endDate);
         setFormData(prev => {
             const hasChange =
                 (newStart && newStart !== prev.startDate) ||
-                (newEnd   && newEnd   !== prev.endDate);
+                (newEnd && newEnd !== prev.endDate);
             if (!hasChange) return prev;   // không re-render nếu không thay đổi
             return {
                 ...prev,
                 ...(newStart && newStart !== prev.startDate ? { startDate: newStart } : {}),
-                ...(newEnd   && newEnd   !== prev.endDate   ? { endDate:   newEnd   } : {}),
+                ...(newEnd && newEnd !== prev.endDate ? { endDate: newEnd } : {}),
             };
         });
     }, [initialData?.startDate, initialData?.endDate]);
@@ -109,9 +109,9 @@ export function EventForm({
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string>(initialData?.imageUrl || '');
     const [imageError, setImageError] = useState('');
-    const fileInputRef   = useRef<HTMLInputElement>(null);
-    const startDateRef   = useRef<HTMLInputElement>(null);
-    const endDateRef     = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const startDateRef = useRef<HTMLInputElement>(null);
+    const endDateRef = useRef<HTMLInputElement>(null);
 
     const inputClass = isDark
         ? 'bg-[#1a1d2e] border-gray-700 text-white focus:border-blue-400'
@@ -127,7 +127,7 @@ export function EventForm({
     };
 
     const handleToggleOnline = (online: boolean) => {
-        const next = { ...formData, isOnline: online };
+        const next = { ...formData, isOnline: online, ...(online ? { isPublic: false } : {}) };
         setFormData(next);
         onChange?.(next);
     };
@@ -170,6 +170,8 @@ export function EventForm({
         if (!formData.endDate) newErrors.endDate = 'Vui lòng chọn thời gian kết thúc';
         if (formData.startDate && formData.endDate && new Date(formData.endDate) < new Date(formData.startDate))
             newErrors.endDate = 'Thời gian kết thúc phải sau thời gian bắt đầu';
+        if (formData.maxAttendees !== '' && Number(formData.maxAttendees) <= 0)
+            newErrors.maxAttendees = 'Số lượng người phải lớn hơn 0';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -192,7 +194,7 @@ export function EventForm({
     };
 
     return (
-        <form id={formId} onSubmit={handleSubmit} className="space-y-6">
+        <form id={formId} onSubmit={handleSubmit} className="space-y-6" noValidate>
 
             {/* ── 2 cột: Fields | Ảnh ── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -386,10 +388,11 @@ export function EventForm({
                                 min={1}
                                 value={formData.maxAttendees}
                                 onChange={handleChange}
-                                className={`w-full pl-9 pr-4 py-2 rounded-lg border outline-none transition-colors ${inputClass}`}
+                                className={`w-full pl-9 pr-4 py-2 rounded-lg border outline-none transition-colors ${inputClass} ${errors.maxAttendees ? 'border-red-500' : ''}`}
                                 placeholder="VD: 50"
                             />
                         </div>
+                        {errors.maxAttendees && <p className="text-red-500 text-sm mt-1">{errors.maxAttendees}</p>}
                     </div>
                 </div>
             </div>
@@ -403,16 +406,14 @@ export function EventForm({
                     </label>
                     {/* Custom wrapper: hiển thị format Việt Nam, click mở native picker */}
                     <div
-                        className={`relative w-full rounded-lg border outline-none transition-colors cursor-pointer ${
-                            isDark ? 'bg-[#1a1d2e] border-gray-700' : 'bg-white border-gray-300'
-                        } ${errors.startDate ? 'border-red-500' : ''}`}
+                        className={`relative w-full rounded-lg border outline-none transition-colors cursor-pointer ${isDark ? 'bg-[#1a1d2e] border-gray-700' : 'bg-white border-gray-300'
+                            } ${errors.startDate ? 'border-red-500' : ''}`}
                         onClick={() => startDateRef.current?.showPicker?.()}
                     >
-                        <div className={`px-4 py-2 text-sm select-none ${
-                            formData.startDate
-                                ? (isDark ? 'text-white' : 'text-gray-900')
-                                : (isDark ? 'text-gray-500' : 'text-gray-400')
-                        }`}>
+                        <div className={`px-4 py-2 text-sm select-none ${formData.startDate
+                            ? (isDark ? 'text-white' : 'text-gray-900')
+                            : (isDark ? 'text-gray-500' : 'text-gray-400')
+                            }`}>
                             {formData.startDate
                                 ? <><i className="fas fa-calendar-alt mr-2 text-blue-500" />{formatViDate(formData.startDate)}</>
                                 : 'Chọn ngày giờ bắt đầu'
@@ -437,16 +438,14 @@ export function EventForm({
                         Thời gian kết thúc <span className="text-red-500">*</span>
                     </label>
                     <div
-                        className={`relative w-full rounded-lg border outline-none transition-colors cursor-pointer ${
-                            isDark ? 'bg-[#1a1d2e] border-gray-700' : 'bg-white border-gray-300'
-                        } ${errors.endDate ? 'border-red-500' : ''}`}
+                        className={`relative w-full rounded-lg border outline-none transition-colors cursor-pointer ${isDark ? 'bg-[#1a1d2e] border-gray-700' : 'bg-white border-gray-300'
+                            } ${errors.endDate ? 'border-red-500' : ''}`}
                         onClick={() => endDateRef.current?.showPicker?.()}
                     >
-                        <div className={`px-4 py-2 text-sm select-none ${
-                            formData.endDate
-                                ? (isDark ? 'text-white' : 'text-gray-900')
-                                : (isDark ? 'text-gray-500' : 'text-gray-400')
-                        }`}>
+                        <div className={`px-4 py-2 text-sm select-none ${formData.endDate
+                            ? (isDark ? 'text-white' : 'text-gray-900')
+                            : (isDark ? 'text-gray-500' : 'text-gray-400')
+                            }`}>
                             {formData.endDate
                                 ? <><i className="fas fa-calendar-alt mr-2 text-blue-500" />{formatViDate(formData.endDate)}</>
                                 : 'Chọn ngày giờ kết thúc'
@@ -480,16 +479,20 @@ export function EventForm({
                         Đăng ký cần phê duyệt
                     </span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+                <label className={`flex items-center gap-2 select-none ${formData.isOnline ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                     <input
                         type="checkbox"
                         checked={formData.isPublic}
                         onChange={(e) => setFormData(prev => ({ ...prev, isPublic: e.target.checked }))}
+                        disabled={formData.isOnline}
                         className="w-4 h-4 text-blue-500 rounded focus:ring-blue-400"
                     />
                     <span className={`text-sm ${labelClass}`}>
                         Sự kiện công khai
                     </span>
+                    {formData.isOnline && (
+                        <span className="text-xs text-amber-500 italic">(Sự kiện online mặc định là nội bộ)</span>
+                    )}
                 </label>
             </div>
 

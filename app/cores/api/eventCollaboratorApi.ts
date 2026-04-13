@@ -38,7 +38,6 @@ export const eventCollaboratorApi = baseApi.injectEndpoints({
         /** Event Roles */
         getEventRoles: builder.query<EventRole[], { clubId: number; eventId: number }>({
             query: ({ clubId, eventId }) => `/club/${clubId}/events/${eventId}/roles`,
-            transformResponse: (response: ApiResponse<EventRole[]>) => response.data,
             providesTags: (r, e, arg) => [{ type: 'EventRoles', id: arg.eventId }],
         }),
         createEventRole: builder.mutation<void, { clubId: number; eventId: number; roleName: string; description?: string }>({
@@ -79,7 +78,6 @@ export const eventCollaboratorApi = baseApi.injectEndpoints({
         /** Event Members */
         getEventMembers: builder.query<EventMember[], { clubId: number; eventId: number }>({
             query: ({ clubId, eventId }) => `/club/${clubId}/events/${eventId}/members`,
-            transformResponse: (response: ApiResponse<EventMember[]>) => response.data,
             providesTags: (r, e, arg) => [{ type: 'EventMembers', id: arg.eventId }],
         }),
         addEventMember: builder.mutation<void, { clubId: number; eventId: number; userId: string; eventRoleId?: number }>({
@@ -114,7 +112,7 @@ export const eventCollaboratorApi = baseApi.injectEndpoints({
             invalidatesTags: (r, e, arg) => [{ type: 'EventMembers', id: arg.eventId }],
         }),
     }),
-    overrideExisting: false,
+    overrideExisting: true,
 });
 
 export const {

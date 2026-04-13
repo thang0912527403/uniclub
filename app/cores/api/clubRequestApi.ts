@@ -113,7 +113,7 @@ const clubRequestApi = baseApi.injectEndpoints({
         }),
     }),
 
-    overrideExisting: false,
+    overrideExisting: true,
 });
 
 export const {

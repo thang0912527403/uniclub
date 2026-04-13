@@ -64,7 +64,7 @@ const policyApi = baseApi.injectEndpoints({
             invalidatesTags: ['Policy'],
         }),
     }),
-    overrideExisting: false,
+    overrideExisting: true,
 });
 
 export const {

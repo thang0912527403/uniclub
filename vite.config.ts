@@ -6,7 +6,15 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
   server: {
-    host: true, // Cho phép truy cập từ điện thoại/máy khác trong mạng (http://<IP-máy>:5173)
-    hmr: false, // Tắt hẳn HMR — tránh lỗi khi truy cập qua ngrok/proxy từ điện thoại
+    host: true,
+    hmr: false,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'https://localhost:7237',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 });

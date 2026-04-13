@@ -21,6 +21,7 @@ import { useEventPermission } from '~/hooks/useEventPermission';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
+import { useNotification } from '~/components/Notification';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { EventForm } from '~/modules/events/components/EventForm';
@@ -147,6 +148,7 @@ export default function EditEventPage() {
     const navigate = useNavigate();
     const { isDark, toggleTheme } = useTheme();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+    const { show: showNotification } = useNotification();
 
     const { data: event, isLoading: isLoadingEvent } = useGetEventByIdQuery(Number(id));
     const [updateEvent, { isLoading: isUpdating }] = useUpdateEventMutation();
@@ -159,6 +161,15 @@ export default function EditEventPage() {
 
     // Per-event permission gate
     const { can, isLoading: isLoadingPerm } = useEventPermission(event?.clubId, Number(id));
+    
+    // Gating for canceled events
+    useEffect(() => {
+        if (event && event.status === 'CANCELED') {
+            showNotification({ type: 'error', title: 'Lỗi', message: 'Không thể cập nhật sự kiện. Vui lòng thử lại.' });
+            navigate(`/events/${id}`, { replace: true });
+        }
+    }, [event, navigate, id, showNotification]);
+
     /** IDs của sessions hiện có (id > 0) đã bị xóa khỏi UI — cần gọi DELETE */
     const [deletedSessionIds, setDeletedSessionIds] = useState<number[]>([]);
 
@@ -314,7 +325,7 @@ export default function EditEventPage() {
             // Edit page: event đã có ID → call API ngay
             if (event?.eventId && event?.clubId) {
                 try {
-                    await createSession({
+                    const created = await createSession({
                         clubId: event.clubId,
                         eventId: event.eventId,
                         sessionName: data.sessionName,
@@ -324,7 +335,20 @@ export default function EditEventPage() {
                         description: data.description,
                         sessionType: data.sessionType,
                     }).unwrap();
-                } catch { return; }   // lỗi API → đóng modal
+                    // Thêm session mới vào form state để calendar hiển thị ngay
+                    setForm(prev => ({
+                        ...prev,
+                        sessions: [...prev.sessions, {
+                            id: created.scheduleId,
+                            sessionName: created.scheduleName ?? data.sessionName,
+                            startTime: toLocal(created.startTime) || data.start,
+                            endTime: toLocal(created.endTime) || data.end,
+                            location: created.location ?? data.location ?? '',
+                            description: created.description ?? data.description ?? '',
+                            sessionType: (created.sessionType as 'main' | 'setup' | 'break') ?? data.sessionType ?? 'main',
+                        }],
+                    }));
+                } catch { return; }   // lỗi API → không đóng modal
             } else {
                 // Draft mode (chưa có eventId)
                 setForm(prev => ({
@@ -691,8 +715,25 @@ export default function EditEventPage() {
                                         Hủy
                                     </button>
                                     <button
-                                        type="submit"
-                                        form="event-edit-form"
+                                        type="button"
+                                        onClick={() => {
+                                            if (!event) return;
+                                            // Build submitData trực tiếp từ form state — không phụ thuộc EventForm
+                                            const submitData = {
+                                                eventName: form.eventName || event.eventName,
+                                                description: form.description || event.description,
+                                                location: form.location || event.location,
+                                                meetLink: form.meetLink || event.meetLink || '',
+                                                startDate: form.startDate ? toIso(form.startDate) : event.startDate,
+                                                endDate: form.endDate ? toIso(form.endDate) : event.endDate,
+                                                isOnline: form.isOnline,
+                                                isPublic: form.isPublic,
+                                                requiresApproval: form.requiresApproval,
+                                                imageUrl: event.imageUrl,
+                                            };
+                                            setPendingSubmitData(submitData);
+                                            setConfirmModal(true);
+                                        }}
                                         disabled={isSaving}
                                         className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 transition-all shadow-md hover:shadow-lg"
                                     >
@@ -735,8 +776,17 @@ export default function EditEventPage() {
                                     <p className={`text-sm mt-1 ${sub}`}>
                                         {form.startDate ? formatViDate(form.startDate) : '—'} → {form.endDate ? formatViDate(form.endDate) : '—'}
                                     </p>
-                                    {form.location && <p className={`text-sm mt-0.5 ${sub}`}><i className="fas fa-map-marker-alt mr-1" />{form.location}</p>}
+                                    {form.isOnline ? (
+                                        <p className={`text-sm mt-0.5 ${sub}`}>
+                                            Sự kiện trực tuyến: <span className="font-medium text-blue-500">{form.meetLink || '(WebRTC tự động)'}</span>
+                                        </p>
+                                    ) : (
+                                        form.location && (
+                                            <p className={`text-sm mt-0.5 ${sub}`}> Địa điểm: {form.location}</p>
+                                        )
+                                    )}
                                 </div>
+
 
                                 {/* Registration */}
                                 {(form.regStart || form.regEnd) && (
