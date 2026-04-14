@@ -736,9 +736,6 @@ export default function FundsReportsPage() {
                             Số tiền
                           </th>
                           <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
-                            Cổng TT
-                          </th>
-                          <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
                             Mô tả
                           </th>
                           <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
@@ -772,9 +769,6 @@ export default function FundsReportsPage() {
                                 <td className={`px-4 py-2 ${t.type.body}`}>{txSenderLabel(item)}</td>
                                 <td className={`px-4 py-2 ${t.type.body} whitespace-nowrap`}>
                                   {item.amount != null ? `${Number(item.amount).toLocaleString('vi-VN')} ₫` : '—'}
-                                </td>
-                                <td className={`px-4 py-2 text-sm ${t.type.muted} whitespace-nowrap`}>
-                                  {fundTransactionPaymentProviderLabel(item) || '—'}
                                 </td>
                                 <td className={`px-4 py-2 ${t.type.body}`}>
                                   {item.description?.trim() ? item.description : '—'}

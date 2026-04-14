@@ -50,13 +50,29 @@ export function parseFundMineType(v: string | null): FundMineType {
   return DEFAULT_FUND_MINE_TYPE;
 }
 
-export function buildCreateFundPayload(fundName: string, expiresAt?: string, description?: string) {
-  const payload: { fundName: string; expiresAt?: string; description?: string } = {
+export function buildCreateFundPayload(
+  fundName: string,
+  fundTypeId: number,
+  expiresAt?: string,
+  description?: string,
+  goalAmount?: number,
+) {
+  const payload: {
+    fundName: string;
+    expiresAt?: string;
+    description?: string;
+    fundTypeId: number;
+    goalAmount?: number;
+  } = {
     fundName: fundName.trim(),
+    fundTypeId,
   };
   if (expiresAt) payload.expiresAt = expiresAt;
   const normalizedDescription = description?.trim();
   if (normalizedDescription) payload.description = normalizedDescription;
+  if (goalAmount != null && Number.isFinite(goalAmount) && goalAmount >= 0) {
+    payload.goalAmount = goalAmount;
+  }
   return payload;
 }
 
@@ -94,9 +110,6 @@ export type ParseVndIntegerResult =
   | { ok: true; amount: number }
   | { ok: false; message: string };
 
-/**
- * Chuẩn hóa nhập số tiền VND: chỉ số nguyên; hỗ trợ dấu phân cách hàng nghìn (10.000 hoặc 10,000).
- */
 export function parseVndIntegerFromInput(raw: string): ParseVndIntegerResult {
   const trimmed = raw.trim();
   if (!trimmed) return { ok: false, message: 'Vui lòng nhập số tiền.' };

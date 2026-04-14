@@ -26,6 +26,7 @@ import {
   useApproveFundMutation,
   useGetUserAllClubsQuery,
   useGetUserClubInfoQuery,
+  useGetFundTypesQuery,
 } from '~/cores/api';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
@@ -51,8 +52,10 @@ import {
   parseFundPageMainView,
   parseFundSort,
   parseFundStatus,
+  parseVndIntegerFromInput,
 } from './funds.utils';
 import { ManagerRefundQueue } from '~/modules/funds/components/refunds/ManagerRefundQueue';
+import { ManagerProactiveRefundPanel } from '~/modules/funds/components/refunds/ManagerProactiveRefundPanel';
 import { extractClubFundErrorMessage, stripClubFundErrorDisplaySuffixes } from '~/modules/funds/utils/fundRefundErrors';
 
 function fundStatusLabel(f: ClubFund): string {
@@ -170,6 +173,8 @@ export default function FundsPage() {
   const [newFundName, setNewFundName] = useState('');
   const [newFundDescription, setNewFundDescription] = useState('');
   const [newFundExpiresDate, setNewFundExpiresDate] = useState('');
+  const [newFundTypeId, setNewFundTypeId] = useState<number>(0);
+  const [goalAmountInput, setGoalAmountInput] = useState('');
   const [createFundFormError, setCreateFundFormError] = useState<string | null>(null);
   const [rejectTargetFund, setRejectTargetFund] = useState<ClubFund | null>(null);
   const [listRejectReason, setListRejectReason] = useState('');
@@ -201,6 +206,7 @@ export default function FundsPage() {
     (isAdmin || caps?.hasEditFinancePolicy === true);
 
   const effectiveMainView = showManagerRefundTab ? mainView : 'funds';
+  const [refundsSubTab, setRefundsSubTab] = useState<'requests' | 'proactive'>('requests');
 
   const effectiveFundListStatus: FundListStatus = useMemo(() => {
     if (canFilterFundStatusOnOverview) return fundStatus;
@@ -231,6 +237,11 @@ export default function FundsPage() {
       { replace: true },
     );
   }, [showManagerRefundTab, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (effectiveMainView !== 'refunds') return;
+    setRefundsSubTab('requests');
+  }, [effectiveMainView, clubId]);
 
   const {
     data: fundsPaged,
@@ -339,6 +350,24 @@ export default function FundsPage() {
   const [createFund, { isLoading: isCreatingFund }] = useCreateFundMutation();
   const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
 
+  const {
+    data: fundTypes = [],
+    isLoading: isLoadingFundTypes,
+    isError: isFundTypesError,
+  } = useGetFundTypesQuery(undefined, { skip: !hasToken || !showCreateFundForm });
+
+  const activeFundTypes = useMemo(
+    () => (Array.isArray(fundTypes) ? fundTypes : []).filter((t) => t.isActive !== false),
+    [fundTypes],
+  );
+
+  useEffect(() => {
+    if (!showCreateFundForm) return;
+    if (newFundTypeId > 0) return;
+    const first = activeFundTypes[0];
+    if (first?.fundTypeId != null && first.fundTypeId > 0) setNewFundTypeId(first.fundTypeId);
+  }, [showCreateFundForm, newFundTypeId, activeFundTypes]);
+
   useEffect(() => {
     if (!hasToken || clubId < 1 || capsLoading) return;
     if (!canFilterFundStatusOnOverview && fundStatus !== 'APPROVED') {
@@ -371,6 +400,10 @@ export default function FundsPage() {
   const handleCreateFundSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clubId || !newFundName.trim()) return;
+    if (!(newFundTypeId > 0)) {
+      setCreateFundFormError('Vui lòng chọn loại quỹ.');
+      return;
+    }
     setCreateFundFormError(null);
     let expiresAt: string | undefined;
     if (newFundExpiresDate.trim()) {
@@ -379,15 +412,26 @@ export default function FundsPage() {
         expiresAt = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999)).toISOString();
       }
     }
+    let goalAmount: number | undefined;
+    if (goalAmountInput.trim()) {
+      const parsed = parseVndIntegerFromInput(goalAmountInput);
+      if (!parsed.ok) {
+        setCreateFundFormError(parsed.message);
+        return;
+      }
+      goalAmount = parsed.amount;
+    }
     try {
       await createFund({
         clubId,
-        ...buildCreateFundPayload(newFundName, expiresAt, newFundDescription),
+        ...buildCreateFundPayload(newFundName, newFundTypeId, expiresAt, newFundDescription, goalAmount),
       }).unwrap();
       setShowCreateFundForm(false);
       setNewFundName('');
       setNewFundDescription('');
       setNewFundExpiresDate('');
+      setNewFundTypeId(0);
+      setGoalAmountInput('');
       setCreateFundFormError(null);
       const createFundSuccessMessage =
         isAdmin || isManagerRole(caps?.clubRoleName)
@@ -481,6 +525,41 @@ export default function FundsPage() {
                 >
                   <div className={`grid grid-cols-1 ${t.space.grid}`}>
                     <div>
+                      <label htmlFor="fund-type" className={`block ${t.type.label} mb-1.5`}>
+                        Loại quỹ
+                      </label>
+                      <select
+                        id="fund-type"
+                        value={String(newFundTypeId)}
+                        onChange={(e) => {
+                          setNewFundTypeId(Number(e.target.value));
+                          if (createFundFormError) setCreateFundFormError(null);
+                        }}
+                        className={t.input}
+                        required
+                        disabled={isLoadingFundTypes || isFundTypesError}
+                      >
+                        {activeFundTypes.length === 0 ? (
+                          <option value="0">Không có loại quỹ</option>
+                        ) : (
+                          activeFundTypes.map((ft) => (
+                            <option key={ft.fundTypeId} value={String(ft.fundTypeId)}>
+                              {ft.name}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      {isFundTypesError ? (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                          Không tải được danh sách loại quỹ. Vui lòng thử lại.
+                        </p>
+                      ) : (
+                        <p className={`mt-1 text-xs ${t.type.muted}`}>
+                          {isLoadingFundTypes ? 'Đang tải loại quỹ...' : ''}
+                        </p>
+                      )}
+                    </div>
+                    <div>
                       <label htmlFor="fund-name" className={`block ${t.type.label} mb-1.5`}>
                         Tên quỹ
                       </label>
@@ -521,9 +600,23 @@ export default function FundsPage() {
                         onChange={(e) => setNewFundExpiresDate(e.target.value)}
                         className={t.input}
                       />
-                      <p className={`mt-1 text-xs ${t.type.muted}`}>
-                        Ngày cuối cùng quỹ còn nhận nộp. Để trống nếu không giới hạn.
-                      </p>
+                    </div>
+                    <div>
+                      <label htmlFor="fund-goal" className={`block ${t.type.label} mb-1.5`}>
+                        Mục tiêu quỹ (tuỳ chọn)
+                      </label>
+                      <input
+                        id="fund-goal"
+                        type="text"
+                        inputMode="numeric"
+                        value={goalAmountInput}
+                        onChange={(e) => {
+                          setGoalAmountInput(e.target.value);
+                          if (createFundFormError) setCreateFundFormError(null);
+                        }}
+                        className={t.input}
+                        placeholder="VD: 1.000.000"
+                      />
                     </div>
                   </div>
                   {createFundFormError ? (
@@ -765,7 +858,44 @@ export default function FundsPage() {
 
           {effectiveMainView === 'refunds' ? (
             <div role="tabpanel" aria-labelledby="tab-funds-refunds" className="space-y-6">
-              <ManagerRefundQueue clubId={clubId} skip={skipFundsQuery} />
+              <div
+                className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-1.5"
+                role="tablist"
+                aria-label="Xử lý hoàn tiền"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={refundsSubTab === 'requests'}
+                  className={`flex-1 min-w-[160px] sm:flex-none rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    refundsSubTab === 'requests'
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80'
+                  }`}
+                  onClick={() => setRefundsSubTab('requests')}
+                >
+                  Yêu cầu hoàn tiền
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={refundsSubTab === 'proactive'}
+                  className={`flex-1 min-w-[160px] sm:flex-none rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    refundsSubTab === 'proactive'
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80'
+                  }`}
+                  onClick={() => setRefundsSubTab('proactive')}
+                >
+                  Hoàn tiền 
+                </button>
+              </div>
+
+              {refundsSubTab === 'requests' ? (
+                <ManagerRefundQueue clubId={clubId} skip={skipFundsQuery} />
+              ) : (
+                <ManagerProactiveRefundPanel clubId={clubId} skip={skipFundsQuery} />
+              )}
             </div>
           ) : null}
 

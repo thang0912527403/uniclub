@@ -3,6 +3,7 @@ export const FUND_REFUND_LIMITS = {
   bankNameMax: 100,
   bankAccountNumberMax: 32,
   accountHolderNameMax: 200,
+  transferReferenceMax: 100,
   managerNoteMax: 500,
   rejectionReasonMin: 5,
   rejectionReasonMax: 2000,

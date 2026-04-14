@@ -101,7 +101,6 @@ const SORT_OPTIONS: Array<{ value: FundListSort; label: string }> = [
 
 const SEARCH_DEBOUNCE_MS = 300;
 const USE_MOCK_MY_FUNDS = String(import.meta.env.VITE_MOCK_MY_FUNDS ?? '').toLowerCase() === 'true';
-
 const MY_FUNDS_TAB_META: Array<{
   id: MyFundsScopeTab;
   label: string;
@@ -227,6 +226,7 @@ export default function MyFundsPage() {
     },
     { skip: skipQuery || scopeTab !== 'contributions' },
   );
+
 
   useEffect(() => {
     setSearchInput(search);
@@ -549,10 +549,8 @@ export default function MyFundsPage() {
                         <th className="pb-2 pr-3 font-medium">Thời gian</th>
                         <th className="pb-2 pr-3 font-medium">Quỹ</th>
                         <th className="pb-2 pr-3 font-medium">Loại</th>
-                        <th className="pb-2 pr-3 font-medium text-right">Số tiền (₫)</th>
+                        <th className="pb-2 pr-3 font-medium text-right">Số tiền</th>
                         <th className="pb-2 pr-3 font-medium">Trạng thái</th>
-                        <th className="pb-2 pr-3 font-medium">Cổng TT</th>
-                        <th className="pb-2 font-medium w-[100px]"> </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-600">
@@ -569,18 +567,6 @@ export default function MyFundsPage() {
                               {Number(row.amount).toLocaleString('vi-VN')}
                             </td>
                             <td className="py-2.5 pr-3">{txStatusLabelVi(row.status)}</td>
-                            <td className="py-2.5 pr-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                              {fundTransactionPaymentProviderLabel(row) || '—'}
-                            </td>
-                            <td className="py-2.5">
-                              <Link
-                                to={`/clubs/${clubId}/funds/${row.fundId}`}
-                                className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium hover:underline text-xs"
-                              >
-                                Chi tiết
-                                <ArrowRight className="w-3.5 h-3.5" aria-hidden />
-                              </Link>
-                            </td>
                           </tr>
                         );
                       })}

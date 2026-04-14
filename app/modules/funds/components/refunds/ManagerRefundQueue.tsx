@@ -73,15 +73,15 @@ type Props = {
 
 export function ManagerRefundQueue({ clubId, skip }: Props) {
   const { show: showNotification } = useNotification();
-  const [status, setStatus] = useState<FundRefundQueueStatusFilter>('PENDING');
+  const [status, setStatus] = useState<FundRefundQueueStatusFilter>('ALL');
   const [page, setPage] = useState(1);
-  const pageSize = L.managerPageSizeDefault;
+  const [pageSize, setPageSize] = useState<number>(L.managerPageSizeDefault);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   useEffect(() => {
     setPage(1);
     setExpandedId(null);
-  }, [clubId, status]);
+  }, [clubId, status, pageSize]);
 
   const [completeTarget, setCompleteTarget] = useState<FundRefundRequestResponseDto | null>(null);
   const [managerNote, setManagerNote] = useState('');
@@ -187,11 +187,8 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
       aria-labelledby="manager-refund-queue-title"
     >
       <h2 id="manager-refund-queue-title" className={t.type.sectionTitle}>
-        Hàng chờ hoàn tiền (quản lý)
+        Danh sách yêu cầu hoàn tiền
       </h2>
-      <p className={`mt-1 ${t.type.body}`}>
-        Sau khi chuyển khoản ngoài hệ thống, bấm Hoàn tất. Từ chối cần nhập lý do (tối thiểu 5 ký tự).
-      </p>
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1 min-w-[200px]">
@@ -211,6 +208,30 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1 min-w-[200px]">
+          <label htmlFor="mgr-refund-page-size" className={t.type.label}>
+            Số dòng/trang
+          </label>
+          <select
+            id="mgr-refund-page-size"
+            className={`${t.input} h-11`}
+            value={String(pageSize)}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              const safe = Number.isFinite(n) ? Math.max(1, Math.min(100, n)) : L.managerPageSizeDefault;
+              setPageSize(safe);
+              setPage(1);
+            }}
+            disabled={skip}
+          >
+            {[10, 20, 50, 100].map((n) => (
+              <option key={n} value={String(n)}>
+                {n}
               </option>
             ))}
           </select>
@@ -239,6 +260,35 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
         <p className={`mt-4 ${t.type.muted}`}>Không có yêu cầu nào khớp bộ lọc.</p>
       ) : !forbidden ? (
         <>
+          {meta && (meta.totalPages > 1 || meta.hasPreviousPage || meta.hasNextPage) ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <p className={`text-xs ${t.type.muted}`}>
+                Trang {meta.pageNumber}/{Math.max(1, meta.totalPages)} · {meta.totalCount.toLocaleString('vi-VN')} yêu
+                cầu
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1`}
+                  disabled={!meta.hasPreviousPage || isFetching}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="w-4 h-4" aria-hidden />
+                  Trước
+                </button>
+                <button
+                  type="button"
+                  className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1`}
+                  disabled={!meta.hasNextPage || isFetching}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Sau
+                  <ChevronRight className="w-4 h-4 shrink-0" aria-hidden />
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="mt-4 space-y-3">
             {items.map((row) => {
               const open = expandedId === row.refundRequestId;

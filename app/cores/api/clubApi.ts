@@ -39,6 +39,9 @@ import {
   type GetClubFundRefundRequestsParams,
   type RecordCashContributionRequest,
   type RecordCashContributionResponse,
+  type CreateManagerRefundDto,
+  type FundTypeDto,
+  type FundMemberContributionsDto,
 } from "./types";
 
 function normalizeRecordCashContributionResponse(
@@ -399,11 +402,24 @@ function normalizeClubFund(raw: unknown): ClubFund {
     const n = Number(v);
     return Number.isFinite(n) ? n : undefined;
   };
+  const str = (v: unknown): string => (v == null ? "" : String(v).trim());
+  const optStr = (v: unknown): string | null => {
+    const s = str(v);
+    return s || null;
+  };
+  const nullableNum = (v: unknown): number | null => {
+    if (v == null || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
   const canAcceptRaw = d.canAcceptContributions ?? d.CanAcceptContributions;
   return {
     fundId: num(d.fundId ?? d.FundId) ?? 0,
     clubId: num(d.clubId ?? d.ClubId) ?? 0,
     fundName: String(d.fundName ?? d.FundName ?? "").trim() || undefined,
+    fundTypeId: nullableNum(d.fundTypeId ?? d.FundTypeId),
+    fundTypeName: optStr(d.fundTypeName ?? d.FundTypeName),
+    goalAmount: nullableNum(d.goalAmount ?? d.GoalAmount),
     currentBalance: num(d.currentBalance ?? d.CurrentBalance),
     totalAmount: num(d.totalAmount ?? d.TotalAmount),
     balance: num(d.balance ?? d.Balance),
@@ -517,6 +533,13 @@ const USE_MOCK_MY_FUNDS =
 
 export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getFundTypes: builder.query<FundTypeDto[], void>({
+      query: () => "/fund-types",
+      transformResponse: (response: ApiResponse<FundTypeDto[]>) =>
+        response.data ?? [],
+      providesTags: ["ClubFund"],
+    }),
+
     getClubs: builder.query<
       { data: Club[]; totalPage: number; totalCount: number },
       { pageIndex: string; searchQuery: string; pageSize: string }
@@ -855,6 +878,19 @@ export const clubApi = baseApi.injectEndpoints({
         normalizeClubFund(response.data),
       invalidatesTags: ["ClubFund"],
     }),
+
+    getFundMemberContributions: builder.query<
+      FundMemberContributionsDto,
+      { clubId: number; fundId: number }
+    >({
+      query: ({ clubId, fundId }) =>
+        `/clubs/${clubId}/funds/${fundId}/member-contributions`,
+      transformResponse: (response: ApiResponse<FundMemberContributionsDto>) =>
+        response.data as FundMemberContributionsDto,
+      providesTags: (result, error, { clubId, fundId }) => [
+        { type: "ClubFund", id: `member-contrib-${clubId}-${fundId}` },
+      ],
+    }),
     getMyClubsForFunds: builder.query<Club[], void>({
       query: () => "/ClubFund/my-clubs",
       transformResponse: (response: ApiResponse<Club[]>) => response.data ?? [],
@@ -1154,7 +1190,7 @@ export const clubApi = baseApi.injectEndpoints({
     >({
       query: ({ clubId, page = 1, pageSize = 20, status }) => {
         const params: Record<string, string | number> = { page, pageSize };
-        if (status && status !== "ALL") params.status = status;
+        if (status) params.status = status;
         return {
           url: `/clubs/${clubId}/funds/refund-requests`,
           params,
@@ -1221,14 +1257,34 @@ export const clubApi = baseApi.injectEndpoints({
         { type: "ClubFund", id: `refund-club-${clubId}` },
       ],
     }),
+
+    createManagerRefund: builder.mutation<
+      FundHistoryItem,
+      { clubId: number; fundId: number; body: CreateManagerRefundDto }
+    >({
+      query: ({ clubId, fundId, body }) => ({
+        url: `/clubs/${clubId}/funds/${fundId}/manager-refunds`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<FundHistoryItem>) => response.data,
+      invalidatesTags: (result, error, { clubId, fundId }) => [
+        { type: "ClubFund", id: fundId },
+        { type: "ClubFund", id: `club-${clubId}` },
+        { type: "ClubFund", id: `club-tx-${clubId}` },
+        { type: "ClubFund", id: `member-contrib-${clubId}-${fundId}` },
+      ],
+    }),
   }),
 });
 
 export const {
+  useGetFundTypesQuery,
   useGetClubsQuery,
   useGetFundCapabilitiesQuery,
   useGetFundReportSummaryQuery,
   useGetClubFundTransactionsQuery,
+  useLazyGetFundHistoryQuery,
   useGetFundCategoriesQuery,
   useGetActiveClubsQuery,
   useGetClubByIdQuery,
@@ -1238,6 +1294,7 @@ export const {
   useGetFundsByClubQuery,
   useGetMyFundsQuery,
   useCreateFundMutation,
+  useGetFundMemberContributionsQuery,
   useApproveFundMutation,
   useContributeToFundMutation,
   useRecordCashContributionMutation,
@@ -1265,4 +1322,5 @@ export const {
   useGetClubFundRefundRequestsQuery,
   useCompleteFundRefundRequestMutation,
   useRejectFundRefundRequestMutation,
+  useCreateManagerRefundMutation,
 } = clubApi;

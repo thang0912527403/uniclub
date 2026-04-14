@@ -14,6 +14,9 @@ export interface ClubFund {
   fundId: number;
   clubId: number;
   fundName?: string;
+  fundTypeId?: number | null;
+  fundTypeName?: string | null;
+  goalAmount?: number | null;
   currentBalance?: number;
   totalAmount?: number;
   balance?: number;
@@ -226,6 +229,8 @@ export interface CreateFundDto {
   fundName: string;
   description?: string;
   expiresAt?: string;
+  fundTypeId: number;
+  goalAmount?: number;
 }
 
 export interface ContributeToFundDto {
@@ -263,6 +268,14 @@ export interface RecordCashContributionResponse {
   newCurrentBalance: number;
   contributorUserId: string;
   recordedByUserId: string;
+}
+
+export interface CreateManagerRefundDto {
+  originalTransactionId: number;
+  amount: number;
+  reason?: string;
+  transferReference?: string;
+  managerNote?: string;
 }
 
 export interface FundContributeTransactionStatus {
@@ -304,7 +317,6 @@ export interface OnlinePaymentProviderOption {
 
 export interface ClubPayosGuide {
   clubId?: number;
-  /** Phiên bản schema credential; FE hiện hỗ trợ 1 — version cao hơn cần cập nhật app. */
   paymentCredentialSchemaVersion: number;
   onlinePaymentProviders: OnlinePaymentProviderOption[];
   payos: {
@@ -332,4 +344,35 @@ export interface UpdateClubPayosSettingsDto {
   apiKey: string;
   checksumKey: string;
   isEnabled: boolean;
+}
+
+export interface FundTypeDto {
+  fundTypeId: number;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface FundMemberContributionMemberDto {
+  userId: string;
+  fullName: string;
+  email: string;
+  status: string;
+  paidAmount: number;
+  requiredAmount?: number | null;
+  remainingAmount?: number | null;
+  isPaidEnough?: boolean | null;
+}
+
+export interface FundMemberContributionsDto {
+  clubId: number;
+  fundId: number;
+  fundName: string;
+  fundTypeId?: number | null;
+  fundTypeName?: string | null;
+  goalAmount?: number | null;
+  activeMemberCount: number;
+  requiredPerMember?: number | null;
+  totalApprovedMemberContributions: number;
+  members: FundMemberContributionMemberDto[];
 }
