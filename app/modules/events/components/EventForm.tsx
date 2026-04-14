@@ -472,7 +472,11 @@ export function EventForm({
                     <input
                         type="checkbox"
                         checked={formData.requiresApproval}
-                        onChange={(e) => setFormData(prev => ({ ...prev, requiresApproval: e.target.checked }))}
+                        onChange={(e) => {
+                            const next = { ...formData, requiresApproval: e.target.checked };
+                            setFormData(next);
+                            onChange?.(next);
+                        }}
                         className="w-4 h-4 text-blue-500 rounded focus:ring-blue-400"
                     />
                     <span className={`text-sm ${labelClass}`}>
@@ -483,7 +487,11 @@ export function EventForm({
                     <input
                         type="checkbox"
                         checked={formData.isPublic}
-                        onChange={(e) => setFormData(prev => ({ ...prev, isPublic: e.target.checked }))}
+                        onChange={(e) => {
+                            const next = { ...formData, isPublic: e.target.checked };
+                            setFormData(next);
+                            onChange?.(next);
+                        }}
                         disabled={formData.isOnline}
                         className="w-4 h-4 text-blue-500 rounded focus:ring-blue-400"
                     />

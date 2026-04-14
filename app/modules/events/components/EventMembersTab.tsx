@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   useGetEventMembersQuery,
   useAddEventMemberMutation,
@@ -56,6 +56,19 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
     roleId: undefined,
   });
   const [memberSearch, setMemberSearch] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const [editingPoliciesFor, setEditingPoliciesFor] = useState<number | null>(null);
   const [editedPolicies, setEditedPolicies] = useState<Set<string>>(new Set());
@@ -99,6 +112,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
       showNotification({ type: "success", title: "Đã thêm thành viên mới" });
       setTeamForm({ userId: "", roleId: undefined });
       setMemberSearch("");
+      setDropdownOpen(false);
       refetch();
     } catch (err: any) {
       showNotification({
@@ -202,36 +216,102 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
             <p className={`text-sm ${sub}`}>Đang tải danh sách thành viên Câu lạc bộ...</p>
           ) : (
             <div className="space-y-3">
-              <input
-                type="text"
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Tìm thành viên theo tên, email hoặc MSSV..."
-                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`}
-              />
-              {filteredMembers.length === 0 ? (
-                <p className={`text-sm ${sub}`}>
-                  {memberSearch.trim()
-                    ? "Không tìm thấy thành viên phù hợp."
-                    : "Tất cả thành viên quản lý đã tham gia sự kiện này."}
-                </p>
-              ) : (
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <select
-                    value={teamForm.userId}
-                    onChange={(e) =>
-                      setTeamForm((f) => ({ ...f, userId: e.target.value }))
-                    }
-                    className={`flex-1 px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`}
-                  >
-                    <option value="">— Chọn thành viên —</option>
-                    {filteredMembers.map((m) => (
-                      <option key={m.userId} value={m.userId}>
-                        {m.fullName} {m.studentId ? `(${m.studentId})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <select
+              {/* Searchable dropdown */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1 relative" ref={dropdownRef}>
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={(e) => {
+                      setMemberSearch(e.target.value);
+                      setDropdownOpen(true);
+                    }}
+                    onFocus={() => setDropdownOpen(true)}
+                    placeholder="Tìm thành viên theo tên, email hoặc MSSV..."
+                    className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`}
+                  />
+                  {/* Selected member indicator */}
+                  {teamForm.userId && (() => {
+                    const sel = clubMembers.find(m => m.userId === teamForm.userId);
+                    return sel ? (
+                      <div className={`mt-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
+                        <i className="fas fa-user-check" />
+                        <span className="font-medium">{sel.fullName}</span>
+                        <span className="opacity-70">— {sel.email}</span>
+                        <button
+                          type="button"
+                          onClick={() => { setTeamForm(f => ({ ...f, userId: "" })); setMemberSearch(""); }}
+                          className="ml-auto text-blue-400 hover:text-red-400 transition-colors"
+                        >
+                          <i className="fas fa-times" />
+                        </button>
+                      </div>
+                    ) : null;
+                  })()}
+                  {/* Dropdown results */}
+                  {dropdownOpen && (
+                    <div
+                      className={`absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border shadow-lg ${isDark ? 'bg-[#1e2235] border-gray-700' : 'bg-white border-gray-200'}`}
+                    >
+                      {filteredMembers.length === 0 ? (
+                        <div className={`px-4 py-3 text-sm ${sub}`}>
+                          {memberSearch.trim()
+                            ? availableMembers.length === 0
+                              ? "Tất cả thành viên CLB đã tham gia sự kiện này."
+                              : clubMembers.some(
+                                  (m) =>
+                                    m.status === "ACTIVE" &&
+                                    ((m.email ?? "").toLowerCase().includes(memberSearch.toLowerCase()) ||
+                                     m.fullName.toLowerCase().includes(memberSearch.toLowerCase()) ||
+                                     (m.studentId ?? "").toLowerCase().includes(memberSearch.toLowerCase()))
+                                )
+                                ? "Thành viên này đã có trong ban tổ chức sự kiện."
+                                : "Không tìm thấy thành viên phù hợp."
+                            : availableMembers.length === 0
+                              ? "Tất cả thành viên đã tham gia sự kiện."
+                              : "Nhập tên, email hoặc MSSV để tìm..."}
+                        </div>
+                      ) : (
+                        filteredMembers.map((m) => (
+                          <button
+                            key={m.userId}
+                            type="button"
+                            onClick={() => {
+                              setTeamForm((f) => ({ ...f, userId: m.userId }));
+                              setMemberSearch(m.fullName);
+                              setDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors ${
+                              teamForm.userId === m.userId
+                                ? isDark ? 'bg-blue-900/40' : 'bg-blue-50'
+                                : isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            {m.avatar ? (
+                              <img src={m.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs shrink-0">
+                                {m.fullName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className={`text-sm font-medium truncate ${text}`}>
+                                {m.fullName} {m.studentId ? <span className={`font-normal ${sub}`}>({m.studentId})</span> : null}
+                              </div>
+                              <div className={`text-xs truncate ${sub}`}>{m.email}</div>
+                            </div>
+                            {m.roleName && (
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-500'}`}>
+                                {m.roleName}
+                              </span>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <select
                     value={teamForm.roleId || ""}
                     onChange={(e) =>
                       setTeamForm((f) => ({
@@ -259,7 +339,6 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                     Thêm
                   </button>
                 </div>
-              )}
             </div>
           )}
         </div>

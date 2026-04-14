@@ -322,95 +322,48 @@ export default function EditEventPage() {
     const handleSessionModalConfirm = useCallback(async (data: SessionQuickModalData) => {
         if (!sessionModal) return;
         if (sessionModal.mode === 'create') {
-            // Edit page: event đã có ID → call API ngay
-            if (event?.eventId && event?.clubId) {
-                try {
-                    const created = await createSession({
-                        clubId: event.clubId,
-                        eventId: event.eventId,
-                        sessionName: data.sessionName,
-                        startTime: new Date(data.start).toISOString(),
-                        endTime: new Date(data.end).toISOString(),
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    }).unwrap();
-                    // Thêm session mới vào form state để calendar hiển thị ngay
-                    setForm(prev => ({
-                        ...prev,
-                        sessions: [...prev.sessions, {
-                            id: created.scheduleId,
-                            sessionName: created.scheduleName ?? data.sessionName,
-                            startTime: toLocal(created.startTime) || data.start,
-                            endTime: toLocal(created.endTime) || data.end,
-                            location: created.location ?? data.location ?? '',
-                            description: created.description ?? data.description ?? '',
-                            sessionType: (created.sessionType as 'main' | 'setup' | 'break') ?? data.sessionType ?? 'main',
-                        }],
-                    }));
-                } catch { return; }   // lỗi API → không đóng modal
-            } else {
-                // Draft mode (chưa có eventId)
-                setForm(prev => ({
-                    ...prev,
-                    sessions: [...prev.sessions, {
-                        id: nextTempId(),
-                        sessionName: data.sessionName,
-                        startTime: data.start,
-                        endTime: data.end,
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    }],
-                }));
-            }
+            // Chỉ thêm vào local state với temp ID — API sẽ gọi khi bấm Lưu
+            setForm(prev => ({
+                ...prev,
+                sessions: [...prev.sessions, {
+                    id: nextTempId(),
+                    sessionName: data.sessionName,
+                    startTime: data.start,
+                    endTime: data.end,
+                    location: data.location,
+                    description: data.description,
+                    sessionType: data.sessionType,
+                }],
+            }));
         } else if (sessionModal.mode === 'edit' && sessionModal.sessionId != null) {
             const sid = sessionModal.sessionId;
-            if (sid > 0 && event?.clubId) {
-                // Session đã lưu → call updateSession API
-                try {
-                    await updateSession({
-                        clubId: event.clubId,
-                        eventId: event!.eventId,
-                        scheduleId: sid,
-                        sessionName: data.sessionName,
-                        startTime: new Date(data.start).toISOString(),
-                        endTime: new Date(data.end).toISOString(),
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    }).unwrap();
-                } catch { return; }
-            } else {
-                // Draft → update state
-                setForm(prev => ({
-                    ...prev,
-                    sessions: prev.sessions.map(s => s.id === sid ? {
-                        ...s,
-                        sessionName: data.sessionName,
-                        startTime: data.start,
-                        endTime: data.end,
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    } : s),
-                }));
-            }
+            // Chỉ update local state — API sẽ gọi khi bấm Lưu
+            setForm(prev => ({
+                ...prev,
+                sessions: prev.sessions.map(s => s.id === sid ? {
+                    ...s,
+                    sessionName: data.sessionName,
+                    startTime: data.start,
+                    endTime: data.end,
+                    location: data.location,
+                    description: data.description,
+                    sessionType: data.sessionType,
+                } : s),
+            }));
         }
         setSessionModal(null);
-    }, [sessionModal, event, createSession, updateSession]);
+    }, [sessionModal]);
 
     const handleSessionModalDelete = useCallback(async () => {
         if (!sessionModal?.sessionId) return;
         const sid = sessionModal.sessionId;
-        if (sid > 0 && event?.clubId) {
-            try { await deleteSession({ clubId: event.clubId, eventId: event!.eventId, scheduleId: sid }).unwrap(); }
-            catch { return; }
-        } else {
-            removeSession(sid);
+        if (sid > 0) {
+            // Đánh dấu để xoá khi bấm Lưu — chỉ remove khỏi local state
+            setDeletedSessionIds(prev => [...prev, sid]);
         }
+        removeSession(sid);
         setSessionModal(null);
-    }, [sessionModal, event, deleteSession]);
+    }, [sessionModal]);
 
     // ── Submit: nhận data từ EventForm, lưu vào pending rồi mở modal xác nhận ──
     const handleSubmit = (submitData: any) => {
@@ -462,6 +415,7 @@ export default function EditEventPage() {
                         endTime: toIso(s.endTime),
                         location: s.location || undefined,
                         description: s.description || undefined,
+                        sessionType: s.sessionType,
                     }))
                 );
             }
@@ -479,6 +433,7 @@ export default function EditEventPage() {
                         endTime: toIso(s.endTime),
                         location: s.location || undefined,
                         description: s.description || undefined,
+                        sessionType: s.sessionType,
                     }))
                 );
                 const failed = results

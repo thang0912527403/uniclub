@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
-import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyCheckInQrQuery } from '~/cores/api';
+import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyCheckInQrQuery, useCancelRegistrationMutation } from '~/cores/api';
 import { useGetMyEventsQuery } from '~/cores/api/eventApi';
 import { useNotification } from '~/components/Notification';
 import { QRCodeSVG } from 'qrcode.react';
@@ -44,11 +44,13 @@ const PublicEventDetailPage: React.FC = () => {
     const { data: user } = useGetCurrentUserQuery();
 
     const [registerForEvent, { isLoading: isRegistering }] = useRegisterForEventMutation();
+    const [cancelRegistration, { isLoading: isCancelling }] = useCancelRegistrationMutation();
     const [checkIn, { isLoading: isCheckingIn }] = useCheckInMutation();
 
     const [showCheckInForm, setShowCheckInForm] = React.useState(false);
     const [checkInCode, setCheckInCode] = React.useState('');
     const [checkInTab, setCheckInTab] = React.useState<'code' | 'qr'>('code');
+    const [showCancelConfirm, setShowCancelConfirm] = React.useState(false);
 
     // Fetch QR token for participant check-in
     const { data: myCheckInQr, isLoading: isLoadingMyQr } = useGetMyCheckInQrQuery(eventId, {
@@ -92,6 +94,18 @@ const PublicEventDetailPage: React.FC = () => {
         }
     };
 
+    const handleCancelRegistration = async () => {
+        try {
+            await cancelRegistration(eventId).unwrap();
+            refetchMyEvents();
+            showNotification({ type: 'success', title: 'Đã huỷ', message: 'Đã huỷ đăng ký tham gia sự kiện.' });
+            setShowCancelConfirm(false);
+        } catch (err: any) {
+            showNotification({ type: 'error', title: 'Lỗi', message: err?.data?.error ?? 'Không thể huỷ đăng ký.' });
+            setShowCancelConfirm(false);
+        }
+    };
+
     const handleCheckIn = async () => {
         if (!user) {
             showNotification({ type: 'warning', title: 'Cảnh báo', message: 'Vui lòng đăng nhập để điểm danh!' });
@@ -107,7 +121,7 @@ const PublicEventDetailPage: React.FC = () => {
             setShowCheckInForm(false);
             setCheckInCode('');
         } catch (err: any) {
-            showNotification({ type: 'error', title: 'Điểm danh thất bại', message: err?.data?.error ?? 'Mã không đúng hoặc đã hết hạn.' });
+            showNotification({ type: 'error', title: 'Điểm danh thất bại', message: err?.data?.error ?? 'Mã điểm danh không hợp lệ hoặc đã hết hạn.' });
         }
     };
 
@@ -322,9 +336,41 @@ const PublicEventDetailPage: React.FC = () => {
 
                                         {/* User's registration status */}
                                         {user && myStatus && attendanceStatusConfig[myStatus] && (
-                                            <div className={`flex items-center gap-2 p-3 rounded-xl border ${attendanceStatusConfig[myStatus].cls}`}>
-                                                <i className={`${attendanceStatusConfig[myStatus].icon} text-sm`} />
-                                                <span className="text-sm font-semibold">{attendanceStatusConfig[myStatus].label}</span>
+                                            <div className="space-y-2">
+                                                <div className={`flex items-center gap-2 p-3 rounded-xl border ${attendanceStatusConfig[myStatus].cls}`}>
+                                                    <i className={`${attendanceStatusConfig[myStatus].icon} text-sm`} />
+                                                    <span className="text-sm font-semibold">{attendanceStatusConfig[myStatus].label}</span>
+                                                </div>
+                                                {/* Cancel button for cancellable statuses */}
+                                                {['PENDING', 'WAITLIST', 'REGISTERED'].includes(myStatus) && event.status !== 'CANCELED' && (
+                                                    !showCancelConfirm ? (
+                                                        <button
+                                                            onClick={() => setShowCancelConfirm(true)}
+                                                            className="w-full py-2.5 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors"
+                                                        >
+                                                            Huỷ đăng ký
+                                                        </button>
+                                                    ) : (
+                                                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-2">
+                                                            <p className="text-sm text-red-700 font-medium">Bạn có chắc chắn muốn huỷ đăng ký?</p>
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={handleCancelRegistration}
+                                                                    disabled={isCancelling}
+                                                                    className="flex-1 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50 transition-colors"
+                                                                >
+                                                                    {isCancelling ? 'Đang huỷ...' : 'Xác nhận huỷ'}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setShowCancelConfirm(false)}
+                                                                    className="flex-1 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+                                                                >
+                                                                    Không
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
                                             </div>
                                         )}
 

@@ -597,10 +597,10 @@ export default function EventDetailPage() {
                                     {(can('editevent') || can('openregistration') || can('startevent') || can('completeevent')) && (
                                         <>
                                             {can('editevent') && !['CANCELED'].includes(event.status ?? '') && (
-                                            <button onClick={() => navigate(`/events/${event.eventId}/edit`)}
-                                                className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                                                Chỉnh sửa
-                                            </button>
+                                                <button onClick={() => navigate(`/events/${event.eventId}/edit`)}
+                                                    className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                                                    Chỉnh sửa
+                                                </button>
                                             )}
                                             {can('openregistration') && event.status === 'PLANNED' && (
                                                 <button onClick={() => {
@@ -702,11 +702,11 @@ export default function EventDetailPage() {
                                     {showSessionForm && can('managesession') && (
                                         <div className={`mb-4 p-4 border ${border} rounded-lg`}>
                                             <SessionForm eventId={event.eventId}
-                                        clubId={event.clubId ?? 0}
-                                        onSubmit={handleCreateSession}
-                                        onCancel={() => setShowSessionForm(false)}
-                                        isLoading={isCreatingSession}
-                                        isDark={isDark} />
+                                                clubId={event.clubId ?? 0}
+                                                onSubmit={handleCreateSession}
+                                                onCancel={() => setShowSessionForm(false)}
+                                                isLoading={isCreatingSession}
+                                                isDark={isDark} />
                                         </div>
                                     )}
                                     <SessionList sessions={event.sessions ?? []} isDark={isDark} />
@@ -802,7 +802,7 @@ export default function EventDetailPage() {
                                                                 <div className={`px-4 py-2.5 text-sm select-none ${regForm.startDate
                                                                     ? (isDark ? 'text-white' : 'text-gray-900')
                                                                     : (isDark ? 'text-gray-500' : 'text-gray-400')
-                                                                }`}>
+                                                                    }`}>
                                                                     {regForm.startDate
                                                                         ? <><i className="fas fa-calendar-alt mr-2 text-green-500" />{formatViDate(regForm.startDate)}</>
                                                                         : <><i className="fas fa-calendar-alt mr-2 text-gray-400" />Chọn ngày giờ bắt đầu đăng ký</>
@@ -831,7 +831,7 @@ export default function EventDetailPage() {
                                                                 <div className={`px-4 py-2.5 text-sm select-none ${regForm.endDate
                                                                     ? (isDark ? 'text-white' : 'text-gray-900')
                                                                     : (isDark ? 'text-gray-500' : 'text-gray-400')
-                                                                }`}>
+                                                                    }`}>
                                                                     {regForm.endDate
                                                                         ? <><i className="fas fa-calendar-alt mr-2 text-red-500" />{formatViDate(regForm.endDate)}</>
                                                                         : <><i className="fas fa-calendar-alt mr-2 text-gray-400" />Chọn ngày giờ kết thúc đăng ký</>
@@ -988,17 +988,88 @@ export default function EventDetailPage() {
                                                         );
                                                     }
                                                     if (myRow.attendanceStatus === 'PENDING') {
-                                                        return <span className="text-sm text-amber-600 font-medium"><i className="fas fa-clock mr-1" />Đăng ký của bạn đang chờ duyệt.</span>;
+                                                        return (
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-sm text-amber-600 font-medium"><i className="fas fa-clock mr-1" />Đăng ký của bạn đang chờ duyệt.</span>
+                                                                {!isCanceled && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setConfirmConfig({
+                                                                                title: 'Huỷ đăng ký',
+                                                                                message: 'Bạn có chắc chắn muốn huỷ đăng ký tham gia sự kiện này?',
+                                                                                type: 'danger',
+                                                                                confirmText: 'Huỷ đăng ký'
+                                                                            });
+                                                                            setConfirmAction(() => async () => {
+                                                                                try {
+                                                                                    await handleCancelRegistration();
+                                                                                } finally {
+                                                                                    setConfirmOpen(false);
+                                                                                }
+                                                                            });
+                                                                            setConfirmOpen(true);
+                                                                        }}
+                                                                        disabled={isCancelling}
+                                                                        className="px-3 py-1.5 text-sm bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+                                                                    >
+                                                                        {isCancelling ? 'Đang huỷ...' : 'Huỷ đăng ký'}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        );
                                                     }
                                                     if (myRow.attendanceStatus === 'WAITLIST') {
-                                                        return <span className="text-sm text-purple-600 font-medium">Bạn đang trong danh sách chờ.</span>;
+                                                        return (
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-sm text-purple-600 font-medium">Bạn đang trong danh sách chờ.</span>
+                                                                {!isCanceled && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setConfirmConfig({
+                                                                                title: 'Huỷ đăng ký',
+                                                                                message: 'Bạn có chắc chắn muốn huỷ đăng ký và rời khỏi danh sách chờ?',
+                                                                                type: 'danger',
+                                                                                confirmText: 'Huỷ đăng ký'
+                                                                            });
+                                                                            setConfirmAction(() => async () => {
+                                                                                try {
+                                                                                    await handleCancelRegistration();
+                                                                                } finally {
+                                                                                    setConfirmOpen(false);
+                                                                                }
+                                                                            });
+                                                                            setConfirmOpen(true);
+                                                                        }}
+                                                                        disabled={isCancelling}
+                                                                        className="px-3 py-1.5 text-sm bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+                                                                    >
+                                                                        {isCancelling ? 'Đang huỷ...' : 'Huỷ đăng ký'}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        );
                                                     }
                                                     return (
                                                         <div className="flex items-center gap-3">
                                                             <span className="text-sm text-green-600 font-medium">Bạn đã đăng ký ({myRow.attendanceStatus}).</span>
-                                                            {['PENDING', 'REGISTERED', 'WAITLIST'].includes(myRow.attendanceStatus) && !isCanceled && (
+                                                            {['REGISTERED'].includes(myRow.attendanceStatus) && !isCanceled && (
                                                                 <button
-                                                                    onClick={handleCancelRegistration}
+                                                                    onClick={() => {
+                                                                        setConfirmConfig({
+                                                                            title: 'Huỷ đăng ký',
+                                                                            message: 'Bạn có chắc chắn muốn huỷ đăng ký tham gia sự kiện này? Nếu có người trong Waitlist họ sẽ được tự động thay thế.',
+                                                                            type: 'danger',
+                                                                            confirmText: 'Huỷ đăng ký'
+                                                                        });
+                                                                        setConfirmAction(() => async () => {
+                                                                            try {
+                                                                                await handleCancelRegistration();
+                                                                            } finally {
+                                                                                setConfirmOpen(false);
+                                                                            }
+                                                                        });
+                                                                        setConfirmOpen(true);
+                                                                    }}
                                                                     disabled={isCancelling}
                                                                     className="px-3 py-1.5 text-sm bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
                                                                 >
@@ -1118,19 +1189,17 @@ export default function EventDetailPage() {
 
                                     {/* ── Slot Warning Banner ── */}
                                     {event?.maxAttendees && (
-                                        <div className={`p-4 rounded-xl border-2 ${
-                                            availableSlots !== null && availableSlots <= 0
+                                        <div className={`p-4 rounded-xl border-2 ${availableSlots !== null && availableSlots <= 0
                                                 ? 'border-red-400 bg-red-50 dark:bg-red-900/20'
                                                 : availableSlots !== null && availableSlots <= 3
                                                     ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20'
                                                     : `border-green-400 bg-green-50 dark:bg-green-900/20`
-                                        }`}>
+                                            }`}>
                                             <div className="flex items-center justify-between flex-wrap gap-3">
                                                 <div className="flex items-center gap-4">
                                                     <div className="text-center">
-                                                        <div className={`text-2xl font-bold ${
-                                                            availableSlots !== null && availableSlots <= 0 ? 'text-red-600' : 'text-green-600'
-                                                        }`}>
+                                                        <div className={`text-2xl font-bold ${availableSlots !== null && availableSlots <= 0 ? 'text-red-600' : 'text-green-600'
+                                                            }`}>
                                                             {availableSlots ?? '∞'}
                                                         </div>
                                                         <div className="text-xs text-gray-500">Slot trống</div>
@@ -1681,8 +1750,8 @@ export default function EventDetailPage() {
                                     return (
                                         <label key={m.userId}
                                             className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${isSelected
-                                                    ? (isDark ? 'bg-blue-900/30 border border-blue-500/50' : 'bg-blue-50 border border-blue-200')
-                                                    : (isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50')
+                                                ? (isDark ? 'bg-blue-900/30 border border-blue-500/50' : 'bg-blue-50 border border-blue-200')
+                                                : (isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50')
                                                 } ${!isSelected ? 'border border-transparent' : ''}`}
                                         >
                                             <input

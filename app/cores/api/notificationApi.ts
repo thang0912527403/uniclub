@@ -24,7 +24,7 @@ const notificationApi = baseApi.injectEndpoints({
                             id: notificationId,
                         })),
                         'Notification',
-                      ]
+                    ]
                     : ['Notification'],
         }),
 
@@ -47,7 +47,7 @@ const notificationApi = baseApi.injectEndpoints({
             invalidatesTags: ['Notification'],
         }),
     }),
-    overrideExisting: true,
+    overrideExisting: false,
 });
 
 export const {
