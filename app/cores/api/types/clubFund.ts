@@ -126,6 +126,64 @@ export interface GetMyFundsParams {
   pageSize?: number;
 }
 
+export type FundRefundStatus = 'PENDING' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
+
+export interface FundRefundRequestResponseDto {
+  refundRequestId: number;
+  clubId: number;
+  fundId: number;
+  originalTransactionId: number;
+  requestedBy: string;
+  amount: number;
+  reason?: string | null;
+  bankName: string;
+  bankAccountNumber: string;
+  accountHolderName: string;
+  status: FundRefundStatus | string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  completedAtUtc?: string | null;
+  completedBy?: string | null;
+  rejectedAtUtc?: string | null;
+  rejectedBy?: string | null;
+  rejectionReason?: string | null;
+  transferReference?: string | null;
+  managerNote?: string | null;
+  fundName?: string | null;
+}
+
+export interface CreateFundRefundRequestDto {
+  originalTransactionId: number;
+  amount: number;
+  reason?: string;
+  bankName: string;
+  bankAccountNumber: string;
+  accountHolderName: string;
+}
+
+export interface CompleteFundRefundRequestDto {
+  transferReference?: string;
+  managerNote?: string;
+}
+
+export interface RejectFundRefundRequestDto {
+  rejectionReason: string;
+}
+
+export type FundRefundQueueStatusFilter =
+  | 'PENDING'
+  | 'COMPLETED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'ALL';
+
+export interface GetClubFundRefundRequestsParams {
+  clubId: number;
+  page?: number;
+  pageSize?: number;
+  status?: FundRefundQueueStatusFilter;
+}
+
 export interface FundHistoryItem {
   transactionId?: number;
   id?: number;
@@ -148,6 +206,10 @@ export interface FundHistoryItem {
   senderName?: string;
   createdByName?: string;
   isMemberContribution?: boolean;
+  transactionType?: string;
+  refundForTransactionId?: number;
+  contributionSource?: string | null;
+  paymentProvider?: string | null;
 }
 
 export interface FundHistoryResponse {
@@ -183,6 +245,26 @@ export interface ContributeToFundResponse {
   message?: string;
 }
 
+export interface RecordCashContributionRequest {
+  fundId: number;
+  contributorUserId: string;
+  amount: number;
+  note: string;
+  categoryId?: number;
+  contributedAtUtc?: string;
+}
+
+export interface RecordCashContributionResponse {
+  transactionId: number;
+  fundId: number;
+  amount: number;
+  status: string;
+  contributionSource: string;
+  newCurrentBalance: number;
+  contributorUserId: string;
+  recordedByUserId: string;
+}
+
 export interface FundContributeTransactionStatus {
   transactionId: number;
   fundId: number;
@@ -201,7 +283,30 @@ export interface PayosFundContributionReturn {
   message?: string;
 }
 
+export type PaymentCredentialInputType = 'text' | 'password';
+
+export type PaymentCredentialFieldName = 'clientId' | 'apiKey' | 'checksumKey';
+
+export interface PaymentCredentialFieldSchema {
+  name: PaymentCredentialFieldName;
+  labelVi: string;
+  requiredWhenEnabled: boolean;
+  maxLength: number;
+  inputType: PaymentCredentialInputType;
+  helpTextVi?: string;
+}
+
+export interface OnlinePaymentProviderOption {
+  code: string;
+  labelVi: string;
+  credentialFields: PaymentCredentialFieldSchema[];
+}
+
 export interface ClubPayosGuide {
+  clubId?: number;
+  /** Phiên bản schema credential; FE hiện hỗ trợ 1 — version cao hơn cần cập nhật app. */
+  paymentCredentialSchemaVersion: number;
+  onlinePaymentProviders: OnlinePaymentProviderOption[];
   payos: {
     isConfigured: boolean;
     isEnabled: boolean;
@@ -211,13 +316,18 @@ export interface ClubPayosGuide {
 }
 
 export interface ClubPayosSettings {
+  clubId?: number;
+  paymentProvider: string;
+  isConfigured: boolean;
   clientId?: string | null;
   apiKeyMasked?: string | null;
   checksumKeyMasked?: string | null;
   isEnabled: boolean;
+  updatedAtUtc?: string | null;
 }
 
 export interface UpdateClubPayosSettingsDto {
+  paymentProvider?: string | null;
   clientId: string;
   apiKey: string;
   checksumKey: string;

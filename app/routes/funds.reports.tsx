@@ -24,6 +24,7 @@ import {
   FUND_HISTORY_STATUS_OPTIONS,
 } from '~/modules/funds/constants/fundHistory';
 import { FinanceAccessHintBanner, ReportDateFilterNote } from '~/modules/funds/components/FundUxHints';
+import { fundTransactionPaymentProviderLabel } from '~/modules/funds/utils/fundTransactionPaymentProvider';
 
 function ymdToUtcStartIso(ymd: string): string | undefined {
   const [y, m, d] = ymd.split('-').map(Number);
@@ -459,7 +460,11 @@ export default function FundsReportsPage() {
                       </option>
                     ))
                   : memberClubOptions.map((c) => (
-                      <option key={c.clubId} value={c.clubId}>
+                      <option
+                        key={c.clubId}
+                        value={c.clubId}
+                        title={c.roleName ? `Vai trò của bạn trong CLB này: ${c.roleName}` : undefined}
+                      >
                         {c.label}
                       </option>
                     ))}
@@ -718,7 +723,7 @@ export default function FundsReportsPage() {
               ) : (
                 <>
                   <div className="overflow-x-auto" role="region" aria-label="Bảng giao dịch quỹ theo CLB">
-                    <table className="w-full min-w-[860px]">
+                    <table className="w-full min-w-[940px]">
                       <thead>
                         <tr className="bg-slate-100 dark:bg-slate-800">
                           <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
@@ -731,6 +736,9 @@ export default function FundsReportsPage() {
                             Số tiền
                           </th>
                           <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            Cổng TT
+                          </th>
+                          <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
                             Mô tả
                           </th>
                           <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
@@ -741,7 +749,7 @@ export default function FundsReportsPage() {
                       <tbody>
                         {txItems.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className={`px-4 py-6 text-center ${t.type.muted}`}>
+                            <td colSpan={6} className={`px-4 py-6 text-center ${t.type.muted}`}>
                               Không có giao dịch trên trang này.
                             </td>
                           </tr>
@@ -764,6 +772,9 @@ export default function FundsReportsPage() {
                                 <td className={`px-4 py-2 ${t.type.body}`}>{txSenderLabel(item)}</td>
                                 <td className={`px-4 py-2 ${t.type.body} whitespace-nowrap`}>
                                   {item.amount != null ? `${Number(item.amount).toLocaleString('vi-VN')} ₫` : '—'}
+                                </td>
+                                <td className={`px-4 py-2 text-sm ${t.type.muted} whitespace-nowrap`}>
+                                  {fundTransactionPaymentProviderLabel(item) || '—'}
                                 </td>
                                 <td className={`px-4 py-2 ${t.type.body}`}>
                                   {item.description?.trim() ? item.description : '—'}
@@ -868,13 +879,13 @@ export default function FundsReportsPage() {
                   </p>
                 </div>
                 <div className={`${t.card.base} ${t.space.card} border-slate-200 dark:border-slate-600`}>
-                  <p className={`text-sm ${t.type.muted}`}>Tổng thu (giao dịch APPROVED, INCOME)</p>
+                  <p className={`text-sm ${t.type.muted}`}>Tổng thu giao dịch</p>
                   <p className="text-xl font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
                     {formatVnd(summary.totalApprovedIncome)}
                   </p>
                 </div>
                 <div className={`${t.card.base} ${t.space.card} border-slate-200 dark:border-slate-600`}>
-                  <p className={`text-sm ${t.type.muted}`}>Tổng chi (giao dịch APPROVED, EXPENSE)</p>
+                  <p className={`text-sm ${t.type.muted}`}>Tổng chi giao dịch</p>
                   <p className="text-xl font-semibold text-amber-700 dark:text-amber-300 mt-1">
                     {formatVnd(summary.totalApprovedExpense)}
                   </p>

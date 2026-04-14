@@ -39,8 +39,8 @@ export default function FundsPayosPage() {
     <div className="min-h-screen">
       <Sidebar currentPath="/funds/payos" isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
-        title="Kết nối PayOS"
-        breadcrumb="Tài chính / Quản lý quỹ / Kết nối PayOS"
+        title="Thanh toán online"
+        breadcrumb="Tài chính / Quản lý quỹ / Thanh toán online"
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />

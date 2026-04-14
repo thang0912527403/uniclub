@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Cookies from 'js-cookie';
 import { skipToken } from '@reduxjs/toolkit/query';
-import { useGetClubsQuery, useGetUserClubInfoQuery } from '~/cores/api';
+import { useGetClubsQuery } from '~/cores/api';
+import { useGetUserAllClubsQuery, useGetUserClubInfoQuery, type ClubMembership } from '~/cores/api/userApi';
 import { useClubRole } from '~/hooks/useClubRole';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { getClubId, setClubId } from '~/utils/auth';
@@ -19,6 +20,15 @@ export function useFundsClubSelection() {
     skip: !hasToken || isAdmin || !userId,
   });
 
+  const { data: userClubs = [] } = useGetUserAllClubsQuery(userId, {
+    skip: !hasToken || isAdmin || !userId,
+  });
+
+  const userClubNameById = useMemo(
+    () => new Map(userClubs.map((c) => [c.clubId, c.clubName] as const)),
+    [userClubs],
+  );
+
   const memberships = useMemo(() => {
     const arr = Array.isArray(rawMemberships)
       ? rawMemberships
@@ -28,16 +38,20 @@ export function useFundsClubSelection() {
     return arr;
   }, [rawMemberships]);
 
-  const memberClubOptions = useMemo(
-    () =>
-      memberships
-        .filter((m) => String((m as { status?: string }).status ?? '').toUpperCase() === 'ACTIVE')
-        .map((m) => ({
-          clubId: (m as { clubId: number }).clubId,
-          label: `CLB #${(m as { clubId: number }).clubId} • ${(m as { roleName?: string }).roleName || `RoleId ${(m as { clubRoleId?: number }).clubRoleId}`}`,
-        })),
-    [memberships],
-  );
+  const memberClubOptions = useMemo(() => {
+    return memberships
+      .filter((m) => String((m as ClubMembership).status ?? '').toUpperCase() === 'ACTIVE')
+      .map((m) => {
+        const rec = m as ClubMembership;
+        const name =
+          rec.clubName?.trim() || userClubNameById.get(rec.clubId)?.trim() || `CLB #${rec.clubId}`;
+        return {
+          clubId: rec.clubId,
+          label: name,
+          roleName: rec.roleName?.trim() || undefined,
+        };
+      });
+  }, [memberships, userClubNameById]);
 
   const hasAnyClub = isAdmin ? clubs.length > 0 : memberClubOptions.length > 0;
   const [selectedClubId, setSelectedClubId] = useState(0);

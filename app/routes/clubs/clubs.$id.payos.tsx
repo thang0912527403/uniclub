@@ -41,8 +41,8 @@ export default function ClubPayosSettingsPage() {
     <div className="min-h-screen">
       <Sidebar currentPath="/clubs" isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
-        title="Kết nối PayOS"
-        breadcrumb={`Câu lạc bộ / ${club?.clubName?.trim() || (isInvalidParams ? "—" : `CLB #${clubId}`)} / PayOS`}
+        title="Thanh toán online"
+        breadcrumb={`Câu lạc bộ / ${club?.clubName?.trim() || (isInvalidParams ? "—" : `CLB #${clubId}`)} / Thanh toán online`}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />

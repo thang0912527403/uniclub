@@ -6,6 +6,35 @@ export const DEFAULT_FUND_SORT: FundListSort = 'NEWEST';
 export const DEFAULT_FUND_PAGE_SIZE = 9;
 export const DEFAULT_FUND_MINE_TYPE: FundMineType = 'ALL';
 
+export type FundPageMainView = 'funds' | 'refunds';
+
+export function parseFundPageMainView(v: string | null): FundPageMainView {
+  return v === 'refunds' ? 'refunds' : 'funds';
+}
+
+export type MyFundsScopeTab = 'created' | 'responsible' | 'contributions' | 'refunds';
+
+export function parseMyFundsScopeTab(v: string | null): MyFundsScopeTab {
+  if (v === 'responsible') return 'responsible';
+  if (v === 'contributions' || v === 'transactions') return 'contributions';
+  if (v === 'refunds') return 'refunds';
+  return 'created';
+}
+
+export function applyMyFundsTabChangeParams(
+  prev: URLSearchParams,
+  tab: MyFundsScopeTab,
+  pageSize: number,
+) {
+  const next = new URLSearchParams(prev);
+  if (tab === 'created') next.delete('tab');
+  else next.set('tab', tab);
+  next.set('page', '1');
+  if (pageSize !== DEFAULT_FUND_PAGE_SIZE) next.set('pageSize', String(pageSize));
+  else next.delete('pageSize');
+  return next;
+}
+
 export function parseFundStatus(v: string | null): FundListStatus {
   if (v === 'PENDING' || v === 'APPROVED' || v === 'REJECTED' || v === 'ALL') return v;
   return DEFAULT_FUND_STATUS;
@@ -32,7 +61,15 @@ export function buildCreateFundPayload(fundName: string, expiresAt?: string, des
 }
 
 export function isDuplicateFundNameError(message?: string): boolean {
-  return message === FUND_DUPLICATE_NAME_MESSAGE;
+  const normalized = String(message ?? '').trim();
+  if (!normalized) return false;
+  if (normalized === FUND_DUPLICATE_NAME_MESSAGE) return true;
+
+  const lower = normalized.toLowerCase();
+  const mentionsFundName = lower.includes('fundname') || lower.includes('fund name');
+  const mentionsDuplicateVi = lower.includes('tồn tại') || lower.includes('trùng');
+  const mentionsClubVi = lower.includes('câu lạc bộ') || lower.includes('clb') || lower.includes('club');
+  return mentionsFundName && mentionsDuplicateVi && mentionsClubVi;
 }
 
 export function buildFundsListQueryArgs(input: {

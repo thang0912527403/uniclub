@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams } from 'react-router';
-import { Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { Banknote, Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { FinanceAccessHintBanner, resolveFundBalanceHoverTextVi } from '~/modules/funds/components/FundUxHints';
 import {
   useGetFundByIdQuery,
@@ -11,6 +11,8 @@ import {
   useLazyGetContributeTransactionStatusQuery,
   useGetPayosGuideQuery,
 } from '~/cores/api';
+import { RecordCashContributionForm } from '~/modules/funds/components/RecordCashContributionForm';
+import { canShowRecordCashContributionForm } from '~/modules/funds/utils/fundCashContributionAccess';
 import { useDialogAccessibility } from '~/hooks/useDialogAccessibility';
 import { parseVndIntegerFromInput } from '../funds.utils';
 import { Sidebar } from '~/components/Sidebar';
@@ -23,6 +25,7 @@ import { isManagerRole } from '~/hooks/useClubRole';
 import type { FundHistoryItem, ClubFund, FundHistoryScopeFilter, FundHistoryStatusFilter } from '~/cores/api';
 import { fundTokens as t } from '../funds.design-tokens';
 import { savePayosPendingContribute } from '~/utils/payosContributeSession';
+import { fundTransactionPaymentProviderLabel } from '~/modules/funds/utils/fundTransactionPaymentProvider';
 import { setClubId } from '~/utils/auth';
 import { useFundHistory } from '~/modules/funds/hooks/useFundHistory';
 import {
@@ -193,6 +196,7 @@ export default function FundDetailPageByClub() {
   const [debouncedScope, setDebouncedScope] = useState<FundHistoryScopeFilter>('');
   const [rejectFundOpen, setRejectFundOpen] = useState(false);
   const [rejectReasonInput, setRejectReasonInput] = useState('');
+  const [showRecordCashModal, setShowRecordCashModal] = useState(false);
 
   const isInvalidParams = !clubIdParam || !fundIdParam || isNaN(clubId) || isNaN(fundId) || clubId < 1 || fundId < 1;
 
@@ -231,6 +235,7 @@ export default function FundDetailPageByClub() {
   const canApproveOrRejectFundEntity = caps?.canApproveOrRejectFundEntity ?? false;
 
   const canUseFullFundHistoryFilters = isAdmin || isManagerRole(caps?.clubRoleName);
+  const canRecordCashContribution = canShowRecordCashContributionForm(isAdmin, caps);
 
   const capsBlocked =
     isInvalidParams || capsLoading || capsForbidden || capsOtherError;
@@ -304,8 +309,18 @@ export default function FundDetailPageByClub() {
     setRejectReasonInput('');
   }, []);
 
+  const closeRecordCashModal = useCallback(() => {
+    setShowRecordCashModal(false);
+  }, []);
+
+  const openRecordCashModal = useCallback(() => {
+    if (showContribute) closeContributeModal();
+    setShowRecordCashModal(true);
+  }, [showContribute, closeContributeModal]);
+
   const contributeDialogRef = useDialogAccessibility(showContribute, closeContributeModal);
   const rejectFundDialogRef = useDialogAccessibility(rejectFundOpen, closeRejectFundModal);
+  const recordCashDialogRef = useDialogAccessibility(showRecordCashModal, closeRecordCashModal);
 
   const paymentExpiresUtc =
     payStatus?.paymentLinkExpiresAtUtc ?? contributeResult?.paymentLinkExpiresAtUtc;
@@ -409,9 +424,9 @@ export default function FundDetailPageByClub() {
     if (payosGuide && (!payosGuide.payos?.isConfigured || !payosGuide.payos?.isEnabled)) {
       showNotification({
         type: 'error',
-        title: 'PayOS chưa sẵn sàng',
+        title: 'Thanh toán online chưa sẵn sàng',
         message:
-          'CLB chưa kết nối PayOS. Vui lòng xem mục Kết nối PayOS hoặc dùng hướng dẫn chuyển khoản thủ công (nếu có).',
+          'CLB chưa bật cổng thanh toán online (ví dụ PayOS). Vui lòng xem mục Thanh toán online trong CLB hoặc dùng hướng dẫn chuyển khoản thủ công (nếu có).',
       });
       return;
     }
@@ -463,18 +478,21 @@ export default function FundDetailPageByClub() {
         title: 'Đã tạo yêu cầu thanh toán',
         message:
           (res.checkoutUrl
-            ? 'Đã mở trang PayOS trong tab mới. Nếu không thấy tab, bấm nút cam bên dưới. '
+            ? 'Đã mở trang thanh toán trong tab mới. Nếu không thấy tab, bấm nút cam bên dưới. '
             : '') +
           (res.message ||
             'Quỹ chỉ tăng sau khi thanh toán được xác nhận.'),
       });
     } catch (err: unknown) {
       console.error('Contribute failed:', err);
-      const msg =
-        (err as { data?: { message?: string } })?.data?.message ||
-        (err as { message?: string })?.message ||
-        'Không thể tạo giao dịch nộp tiền.';
-      showNotification({ type: 'error', title: 'Lỗi', message: msg });
+      const status =
+        err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : undefined;
+      showNotification({
+        type: 'error',
+        title: 'Không thể nộp tiền',
+        message:
+          status === 403 ? 'Bạn không có quyền nộp tiền vào quỹ này.' : 'Không thể tạo giao dịch. Vui lòng thử lại.',
+      });
     }
   };
 
@@ -676,28 +694,43 @@ export default function FundDetailPageByClub() {
                       </p>
                     ) : null}
                   </div>
-                  {isFundApproved && canContribute && (
+                  {isFundApproved && (canContribute || canRecordCashContribution) && (
                     <div className="flex flex-col items-stretch sm:items-end gap-2">
-                      {canShowContributeBtn ? (
+                      {canContribute ? (
+                        canShowContributeBtn ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowRecordCashModal(false);
+                              setShowContribute(true);
+                            }}
+                            className={`${t.btn.primary} inline-flex items-center gap-2`}
+                          >
+                            <HandCoins className="w-4 h-4" aria-hidden />
+                            Nộp tiền
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            className={`${t.btn.primary} inline-flex items-center gap-2 opacity-60 cursor-not-allowed`}
+                            title={fund.cannotContributeReasonVi?.trim() || undefined}
+                          >
+                            <HandCoins className="w-4 h-4" aria-hidden />
+                            Nộp tiền
+                          </button>
+                        )
+                      ) : null}
+                      {canRecordCashContribution ? (
                         <button
                           type="button"
-                          onClick={() => setShowContribute(true)}
-                          className={`${t.btn.primary} inline-flex items-center gap-2`}
+                          onClick={openRecordCashModal}
+                          className={`${t.btn.secondary} inline-flex items-center justify-center gap-2`}
                         >
-                          <HandCoins className="w-4 h-4" aria-hidden />
-                          Nộp tiền
+                          <Banknote className="w-4 h-4 shrink-0" aria-hidden />
+                          Ghi nhận tiền mặt
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled
-                          className={`${t.btn.primary} inline-flex items-center gap-2 opacity-60 cursor-not-allowed`}
-                          title={fund.cannotContributeReasonVi?.trim() || undefined}
-                        >
-                          <HandCoins className="w-4 h-4" aria-hidden />
-                          Nộp tiền
-                        </button>
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -823,12 +856,13 @@ export default function FundDetailPageByClub() {
                   ) : (
                     <>
                       <div className="overflow-x-auto" role="region" aria-label="Bảng lịch sử giao dịch quỹ">
-                        <table className="w-full min-w-[900px]">
+                        <table className="w-full min-w-[980px]">
                           <thead>
                             <tr className="bg-slate-100 dark:bg-slate-800">
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Người gửi</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Số tiền</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Trạng thái</th>
+                              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Cổng TT</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Mô tả</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Thời gian nộp</th>
                             </tr>
@@ -836,7 +870,7 @@ export default function FundDetailPageByClub() {
                           <tbody>
                             {history.length === 0 ? (
                               <tr>
-                                <td colSpan={5} className={`px-4 py-6 text-center ${t.type.muted}`}>
+                                <td colSpan={6} className={`px-4 py-6 text-center ${t.type.muted}`}>
                                   Không có giao dịch trên trang này.
                                 </td>
                               </tr>
@@ -851,6 +885,9 @@ export default function FundDetailPageByClub() {
                                     {item.amount != null ? `${Number(item.amount).toLocaleString('vi-VN')} ₫` : '—'}
                                   </td>
                                   <td className={`px-4 py-2 text-sm ${t.type.body} whitespace-nowrap`}>{fundHistoryStatusLabelVi(item)}</td>
+                                  <td className={`px-4 py-2 text-sm ${t.type.muted} whitespace-nowrap`}>
+                                    {fundTransactionPaymentProviderLabel(item) || '—'}
+                                  </td>
                                   <td className={`px-4 py-2 ${t.type.body}`}>{item.description?.trim() ? item.description : '—'}</td>
                                   <td className={`px-4 py-2 text-sm ${t.type.muted} whitespace-nowrap`}>
                                     {formatFundHistoryDateTime(fundHistoryContributionTimeIso(item))}
@@ -905,7 +942,7 @@ export default function FundDetailPageByClub() {
         <div
           className="fixed inset-0 bg-black/55 flex items-center justify-center z-50 p-4"
           role="presentation"
-          aria-hidden={rejectFundOpen}
+          aria-hidden={rejectFundOpen || showRecordCashModal}
         >
           <div
             ref={contributeDialogRef}
@@ -989,7 +1026,7 @@ export default function FundDetailPageByClub() {
                             : 'bg-amber-600 text-white hover:bg-amber-700'
                         }`}
                       >
-                        {isContributePaid ? 'Mở PayOS' : 'Mở lại trang PayOS'}
+                        {isContributePaid ? 'Mở trang thanh toán' : 'Mở lại trang thanh toán'}
                       </a>
                       <button
                         type="button"
@@ -1009,7 +1046,7 @@ export default function FundDetailPageByClub() {
                   ) : null}
                   {contributeResult.checkoutUrl && !isContributePaid ? (
                     <p className={`text-xs text-center sm:text-left ${t.type.muted}`}>
-                      Thanh toán trên trang PayOS. Tab mới đã được mở — nếu không thấy, dùng nút cam.
+                      Thanh toán trên trang cổng thanh toán. Tab mới đã được mở — nếu không thấy, dùng nút cam.
                     </p>
                   ) : null}
                 </div>
@@ -1017,7 +1054,6 @@ export default function FundDetailPageByClub() {
 
               {showContributeFormFields ? (
                 <>
-                  <p className={`text-xs ${t.type.muted}`}>Số dư quỹ chỉ tăng sau khi thanh toán được xác nhận.</p>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label htmlFor="contribute-amount" className={`block ${t.type.label} mb-1.5`}>Số tiền</label>
@@ -1032,14 +1068,9 @@ export default function FundDetailPageByClub() {
                           onChange={(e) => setContributeAmount(e.target.value)}
                           className={`${t.input} pl-11 ${inputClass}`}
                           placeholder={`Tối thiểu ${MIN_FUND_TX_AMOUNT.toLocaleString('vi-VN')}`}
-                          aria-describedby="contribute-amount-hint"
                           required
                         />
                       </div>
-                      <p id="contribute-amount-hint" className={`text-xs mt-1 ${t.type.muted}`}>
-                        Số nguyên ₫; có thể nhập 50000 hoặc 50.000 / 50,000. Tối thiểu{' '}
-                        {MIN_FUND_TX_AMOUNT.toLocaleString('vi-VN')} ₫.
-                      </p>
                     </div>
                     <div>
                       <label htmlFor="contribute-desc" className={`block ${t.type.label} mb-1.5`}>Ghi chú (tuỳ chọn)</label>
@@ -1068,6 +1099,46 @@ export default function FundDetailPageByClub() {
           </div>
         </div>
       )}
+
+      {showRecordCashModal && fund ? (
+        <div
+          className="fixed inset-0 bg-black/55 flex items-center justify-center z-[55] p-4"
+          role="presentation"
+          aria-hidden={rejectFundOpen}
+        >
+          <div
+            ref={recordCashDialogRef}
+            className={`${t.card.base} w-full max-w-md max-h-[92vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-lg outline-none`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="record-cash-title"
+          >
+            <div className="px-6 pt-5 pb-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
+              <h2 id="record-cash-title" className={t.type.sectionTitle}>
+                Ghi nhận đóng quỹ tiền mặt
+              </h2>
+              <button type="button" onClick={closeRecordCashModal} className={t.btn.ghost} aria-label="Đóng">
+                <X className="w-5 h-5" aria-hidden />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <RecordCashContributionForm
+                key={`${clubId}-${fund.fundId}`}
+                clubId={clubId}
+                presetFundId={fund.fundId}
+                fundLabel={fund.fundName || `Quỹ #${fund.fundId}`}
+                isDark={isDark}
+                embeddedInModal
+                onRecorded={() => {
+                  void refetchFund();
+                  void refetchHistory();
+                  closeRecordCashModal();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {rejectFundOpen && fund ? (
         <div className="fixed inset-0 bg-black/55 flex items-center justify-center z-[60] p-4" role="presentation">
@@ -1129,9 +1200,14 @@ export default function FundDetailPageByClub() {
                       closeRejectFundModal();
                     } catch (err) {
                       console.error(err);
-                      const msg =
-                        (err as { data?: { message?: string } })?.data?.message || 'Không thể từ chối quỹ.';
-                      showNotification({ type: 'error', title: 'Lỗi', message: msg });
+                      const status =
+                        err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : undefined;
+                      showNotification({
+                        type: 'error',
+                        title: 'Không thể từ chối quỹ',
+                        message:
+                          status === 403 ? 'Bạn không có quyền từ chối quỹ trong CLB này.' : 'Vui lòng thử lại sau.',
+                      });
                     }
                   }}
                 >

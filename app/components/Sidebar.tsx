@@ -179,7 +179,7 @@ export function Sidebar({
           label: t("sidebar.manageFunds.transactions"),
           url: "/funds/reports?tab=transactions",
         },
-        { label: "Cài đặt", url: "/funds/payos" },
+        { label: "Thiết lập thanh toán", url: "/funds/payos" },
       ],
     },
     {

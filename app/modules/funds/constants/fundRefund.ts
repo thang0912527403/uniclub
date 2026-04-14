@@ -1,0 +1,14 @@
+export const FUND_REFUND_LIMITS = {
+  reasonMax: 2000,
+  bankNameMax: 100,
+  bankAccountNumberMax: 32,
+  accountHolderNameMax: 200,
+  managerNoteMax: 500,
+  rejectionReasonMin: 5,
+  rejectionReasonMax: 2000,
+  minePageSizeDefault: 20,
+  minePageSizeMax: 100,
+  managerPageSizeDefault: 20,
+  managerPageSizeMax: 100,
+  txPickerPageSize: 100,
+} as const;
