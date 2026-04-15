@@ -84,6 +84,7 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
   }, [clubId, status, pageSize]);
 
   const [completeTarget, setCompleteTarget] = useState<FundRefundRequestResponseDto | null>(null);
+  const [transferReference, setTransferReference] = useState('');
   const [managerNote, setManagerNote] = useState('');
 
   const [rejectTarget, setRejectTarget] = useState<FundRefundRequestResponseDto | null>(null);
@@ -91,6 +92,7 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
 
   const closeComplete = useCallback(() => {
     setCompleteTarget(null);
+    setTransferReference('');
     setManagerNote('');
   }, []);
   const closeReject = useCallback(() => {
@@ -119,7 +121,17 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
 
   const onCompleteSubmit = async () => {
     if (!completeTarget) return;
-    const mn = managerNote.trim();
+    const tr = (transferReference ?? '').trim();
+    const mn = (managerNote ?? '').trim();
+
+    if (tr.length > L.transferReferenceMax) {
+      showNotification({
+        type: 'error',
+        title: 'Lỗi',
+        message: `Mã CK tối đa ${L.transferReferenceMax} ký tự.`,
+      });
+      return;
+    }
     if (mn.length > L.managerNoteMax) {
       showNotification({
         type: 'error',
@@ -133,6 +145,7 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
         clubId,
         refundRequestId: completeTarget.refundRequestId,
         body: {
+          ...(tr ? { transferReference: tr } : {}),
           ...(mn ? { managerNote: mn } : {}),
         },
       }).unwrap();
@@ -150,7 +163,7 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
 
   const onRejectSubmit = async () => {
     if (!rejectTarget) return;
-    const reason = rejectReason.trim();
+    const reason = (rejectReason ?? '').trim();
     if (reason.length < L.rejectionReasonMin) {
       showNotification({
         type: 'error',
@@ -335,6 +348,7 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
                             className={`${t.btn.primary} !min-h-0 !py-2 !px-3 text-sm`}
                             onClick={() => {
                               setCompleteTarget(row);
+                              setTransferReference('');
                               setManagerNote('');
                             }}
                           >
@@ -460,22 +474,48 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
                 {completeTarget.amount.toLocaleString('vi-VN')} ₫).
               </p>
               <div>
+                <label htmlFor="refund-transfer-reference" className={`block ${t.type.label} mb-1.5`}>
+                  Mã CK (tuỳ chọn)
+                </label>
+                <input
+                  id="refund-transfer-reference"
+                  className={t.input}
+                  value={transferReference}
+                  onChange={(e) => setTransferReference(e.target.value)}
+                  autoComplete="off"
+                />
+                <p className={`mt-1 text-xs ${t.type.muted}`}>
+                  {transferReference.trim().length}/{L.transferReferenceMax}
+                </p>
+              </div>
+              <div>
                 <label htmlFor="refund-mgr-note" className={`block ${t.type.label} mb-1.5`}>
-                  Ghi chú quản lý (tuỳ chọn)
+                  Ghi chú (tuỳ chọn)
                 </label>
                 <textarea
                   id="refund-mgr-note"
                   className={`${t.input} min-h-[80px]`}
                   value={managerNote}
-                  maxLength={L.managerNoteMax}
                   onChange={(e) => setManagerNote(e.target.value)}
                 />
+                <p className={`mt-1 text-xs ${t.type.muted}`}>
+                  {managerNote.trim().length}/{L.managerNoteMax}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2 justify-end">
                 <button type="button" onClick={closeComplete} className={t.btn.secondary} disabled={completing}>
                   Hủy
                 </button>
-                <button type="button" className={t.btn.cta} disabled={completing} onClick={onCompleteSubmit}>
+                <button
+                  type="button"
+                  className={t.btn.cta}
+                  disabled={
+                    completing ||
+                    transferReference.trim().length > L.transferReferenceMax ||
+                    managerNote.trim().length > L.managerNoteMax
+                  }
+                  onClick={onCompleteSubmit}
+                >
                   {completing ? 'Đang xử lý…' : 'Xác nhận hoàn tất'}
                 </button>
               </div>
@@ -511,16 +551,27 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
                   id="refund-reject-reason"
                   className={`${t.input} min-h-[100px]`}
                   value={rejectReason}
-                  maxLength={L.rejectionReasonMax}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="Nêu rõ lý do để thành viên theo dõi"
                 />
+                <p className={`mt-1 text-xs ${t.type.muted}`}>
+                  {rejectReason.trim().length}/{L.rejectionReasonMax}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2 justify-end">
                 <button type="button" onClick={closeReject} className={t.btn.secondary} disabled={rejecting}>
                   Hủy
                 </button>
-                <button type="button" className={t.btn.danger} disabled={rejecting} onClick={onRejectSubmit}>
+                <button
+                  type="button"
+                  className={t.btn.danger}
+                  disabled={
+                    rejecting ||
+                    rejectReason.trim().length < L.rejectionReasonMin ||
+                    rejectReason.trim().length > L.rejectionReasonMax
+                  }
+                  onClick={onRejectSubmit}
+                >
                   {rejecting ? 'Đang xử lý…' : 'Xác nhận từ chối'}
                 </button>
               </div>

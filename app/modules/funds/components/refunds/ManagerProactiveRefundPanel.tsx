@@ -168,7 +168,7 @@ export function ManagerProactiveRefundPanel({ clubId, skip }: Props) {
       showNotification({
         type: 'error',
         title: 'Số tiền không hợp lệ',
-        message: parsedAmount.ok ? 'Số tiền phải > 0.' : parsedAmount.message,
+        message: parsedAmount.ok ? 'Số tiền phải lớn hơn 0.' : parsedAmount.message,
       });
       return;
     }
