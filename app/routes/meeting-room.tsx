@@ -6,6 +6,7 @@ import {
 } from "~/modules/meeting";
 import { useJoinRoomMutation } from "~/cores/api";
 import { getUserId } from "~/utils/auth";
+import { useNotification } from "~/components/Notification";
 
 /**
  * General-purpose meeting room route.
@@ -20,6 +21,7 @@ const MeetingRoomPage: React.FC = () => {
   const [activeRoomCode, setActiveRoomCode] = useState(urlRoomCode || "");
 
   const [joinRoomApi, { isLoading: isJoining }] = useJoinRoomMutation();
+  const { show: showToast } = useNotification();
 
   const handleJoinRoom = async (
     roomCode: string,
@@ -29,10 +31,22 @@ const MeetingRoomPage: React.FC = () => {
   ) => {
     setJoinError(null);
     try {
-      await joinRoomApi({
+      const result = await joinRoomApi({
         roomCode,
         dto: { userId, displayName, role },
       }).unwrap();
+
+      // If this is an interview room, redirect to the interview route
+      if (result.roomType === "Interview") {
+        showToast({
+          type: "info",
+          title: "Đây là phòng phỏng vấn",
+          message: "Đang chuyển hướng sang trang phỏng vấn...",
+          duration: 4000,
+        });
+        navigate(`/interview/room/${roomCode}`);
+        return;
+      }
 
       setActiveRoomCode(roomCode);
       setHasJoined(true);

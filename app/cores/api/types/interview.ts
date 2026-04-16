@@ -141,6 +141,8 @@ export interface JoinRoomDto {
 
 export interface JoinRoomResponse {
   roomCode: string;
+  /** "Interview" | "General" | "Internal" | "Training" */
+  roomType: string;
   peerId?: string | null;
   stunServerUri?: string | null;
   turnServerUri?: string | null;

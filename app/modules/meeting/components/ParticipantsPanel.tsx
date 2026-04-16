@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { useWebRtc } from "~/modules/webrtc";
+import { useMeeting } from '../context/MeetingContext';
 
 interface ParticipantsPanelProps {
   roomCode: string;
 }
 
 const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({ roomCode }) => {
-  const { users, userStates, isAudioEnabled, isVideoEnabled } = useWebRtc();
+  const { users, userStates, isAudioEnabled, isVideoEnabled } = useMeeting();
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 

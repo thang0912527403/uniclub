@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router";
-import { WebRtcProvider, MeetingRoom } from "~/modules/webrtc";
+import { MeetingProvider } from "../context/MeetingContext";
+import { MeetingRoom } from "./MeetingRoom";
 import ParticipantsPanel from "./ParticipantsPanel";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -24,7 +25,7 @@ export interface GenericMeetingRoomProps {
   customTabIcon?: string;
 }
 
-// ── Inner content (rendered inside WebRtcProvider) ───────────────
+// ── Inner content (rendered inside MeetingProvider) ──────────────
 
 const MeetingRoomContent: React.FC<GenericMeetingRoomProps> = ({
   roomCode,
@@ -182,12 +183,12 @@ export const RoomLoadingScreen: React.FC<{ message?: string }> = ({
   </div>
 );
 
-// ── Main wrapper (adds WebRtcProvider) ──────────────────────────
+// ── Main wrapper (adds MeetingProvider) ─────────────────────────
 
 const GenericMeetingRoom: React.FC<GenericMeetingRoomProps> = (props) => (
-  <WebRtcProvider>
+  <MeetingProvider>
     <MeetingRoomContent {...props} />
-  </WebRtcProvider>
+  </MeetingProvider>
 );
 
 export default GenericMeetingRoom;

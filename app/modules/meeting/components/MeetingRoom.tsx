@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useWebRtc } from '../hooks/useWebRtc';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useMeeting } from '../context/MeetingContext';
 import { VideoTile } from './VideoTile';
 import { ControlBar } from './ControlBar';
 import { ChatPanel } from './ChatPanel';
-import { getUserId } from '~/utils/auth';
+import { getUserId, getAccessToken } from '~/utils/auth';
+import { useLeaveRoomMutation } from '~/cores/api';
+import { API_URLS } from '~/cores/api/baseApi';
 
 export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({ roomId, onLeave }) => {
   const {
@@ -25,24 +27,94 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
     screenSharingUser,
     messages,
     sendMessage
-  } = useWebRtc();
+  } = useMeeting();
 
   const [spotlightUser, setSpotlightUser] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const lastReadCountRef = useRef(0);
-  
-  const currentUserId = getUserId();
+  const hasLeftRef = useRef(false);
 
+  const currentUserId = getUserId();
+  const [leaveRoomApi] = useLeaveRoomMutation();
+
+  // ── Call REST API to record participant.left ─────────────────────
+  const callLeaveApi = useCallback(() => {
+    if (hasLeftRef.current || !roomId || !currentUserId) return;
+    hasLeftRef.current = true;
+
+    leaveRoomApi({ roomCode: roomId, dto: { userId: currentUserId } })
+      .unwrap()
+      .then(() => console.log('[Room] REST leave API called successfully'))
+      .catch((err) => console.error('[Room] REST leave API error:', err));
+  }, [roomId, currentUserId, leaveRoomApi]);
+
+  // ── Beacon fallback for tab close (async fetch may not complete) ──
+  const callLeaveBeacon = useCallback(() => {
+    if (hasLeftRef.current || !roomId || !currentUserId) return;
+    hasLeftRef.current = true;
+
+    const baseUrl = API_URLS.MAIN_SERVICE;
+    const url = `${baseUrl}/rooms/${roomId}/leave`;
+    const body = JSON.stringify({ userId: currentUserId });
+    const accessToken = getAccessToken();
+
+    // sendBeacon doesn't support custom headers, so use fetch with keepalive
+    try {
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body,
+        keepalive: true, // ensures the request completes even if page is unloading
+      }).catch(() => {
+        // Last resort: sendBeacon (no auth header but at least hits the server)
+        const blob = new Blob([body], { type: 'application/json' });
+        navigator.sendBeacon(url, blob);
+      });
+    } catch {
+      const blob = new Blob([body], { type: 'application/json' });
+      navigator.sendBeacon(url, blob);
+    }
+  }, [roomId, currentUserId]);
+
+  // ── Join room on connect ──────────────────────────────────────────
   useEffect(() => {
     if (isConnected && roomId) {
+      hasLeftRef.current = false;
       joinRoom(roomId).catch(console.error);
     }
-    
+
     return () => {
       leaveRoom();
     };
   }, [isConnected, roomId]);
+
+  // ── Handle tab close / navigation away ────────────────────────────
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      callLeaveBeacon();
+      // Also try SignalR synchronous stop
+      leaveRoom();
+    };
+
+    const handleVisibilityChange = () => {
+      // Mobile browsers: page hidden = user switched away/closed
+      if (document.visibilityState === 'hidden') {
+        callLeaveBeacon();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [callLeaveBeacon, leaveRoom]);
 
   // Auto-spotlight screen sharing user (including self)
   useEffect(() => {
@@ -55,17 +127,6 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
     }
   }, [screenSharingUser, isScreenSharing]);
 
-  // Debug: Log screen share state changes
-  useEffect(() => {
-    console.log('[MeetingRoom] Screen share state:', {
-      isScreenSharing,
-      screenStream: screenStream ? 'exists' : 'null',
-      screenStreamTracks: screenStream?.getTracks().length || 0,
-      localStream: localStream ? 'exists' : 'null',
-      spotlightUser
-    });
-  }, [isScreenSharing, screenStream, localStream, spotlightUser]);
-
   // Track unread messages
   useEffect(() => {
     if (!isChatOpen && messages.length > lastReadCountRef.current) {
@@ -74,6 +135,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
   }, [messages, isChatOpen]);
 
   const handleLeave = () => {
+    callLeaveApi();
     leaveRoom();
     onLeave();
   };
