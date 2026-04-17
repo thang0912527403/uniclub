@@ -833,16 +833,17 @@ export const clubApi = baseApi.injectEndpoints({
     // ─── Member Roles ───────────────────────────────────────────────────
     updateMemberRole: builder.mutation<
       void,
-      { clubId: number; memberId: number; clubRoleId: number | null }
+      { clubId: number; memberId: number; clubRoleIds: number[] }
     >({
-      query: ({ clubId, memberId, clubRoleId }) => ({
+      query: ({ clubId, memberId, clubRoleIds }) => ({
         url: `/clubs/${clubId}/members/${memberId}/role`,
         method: "PUT",
-        body: { clubRoleId },
+        body: { clubRoleIds },
       }),
-      invalidatesTags: (_result, _error, { clubId }) =>
+      invalidatesTags: (_result, _error, { clubId, memberId }) =>
         [
           { type: "Club", id: `members-${clubId}` },
+          { type: "Club", id: `member-${memberId}` },
         ],
     }),
     getFundLocation: builder.query<FundLocationResponse, number>({

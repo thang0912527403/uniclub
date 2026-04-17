@@ -9,13 +9,11 @@ import { useNotification } from '~/components/Notification';
 import {
     useGetClubByIdQuery,
     useGetClubMembersQuery,
-    useUpdateMemberRoleMutation,
     useRemoveMemberMutation,
     useGetMemberJoinedDepartmentsQuery,
     useGetMemberNotJoinedDepartmentsQuery,
     type ClubMember,
 } from '~/cores/api';
-import { useGetClubStructureRolesQuery } from '~/cores/api/clubRoleApi';
 import { useAddMemberToDepartmentMutation, useRemoveMemberFromDepartmentMutation } from '~/cores/api/departmentApi';
 
 /* ─── Avatar ──────────────────────────────────────────────────────────────── */
@@ -45,56 +43,19 @@ function StatusBadge({ status }: { status: string }) {
     );
 }
 
-/* ─── Inline Role Editor ──────────────────────────────────────────────────── */
+/* ─── Role Navigate Button ────────────────────────────────────────────────── */
 function RoleCell({ member, clubId }: { member: ClubMember; clubId: number }) {
-    const { show } = useNotification();
-    const { data: roles } = useGetClubStructureRolesQuery(clubId, { skip: !clubId });
-    const [updateRole, { isLoading }] = useUpdateMemberRoleMutation();
-    const [editing, setEditing] = useState(false);
-    const [selected, setSelected] = useState<number | null>(member.clubRoleId);
-
-    const handleSave = async () => {
-        try {
-            await updateRole({ clubId, memberId: member.clubMemberId, clubRoleId: selected }).unwrap();
-            show({ type: 'success', title: 'Cập nhật thành công!', message: `Đã cập nhật vai trò cho ${member.fullName}.`, duration: 3000 });
-            setEditing(false);
-        } catch (err: any) {
-            show({ type: 'error', title: 'Thất bại', message: err?.data?.message ?? 'Vui lòng thử lại.', duration: 4000 });
-        }
-    };
-
-    if (!editing) {
-        return (
-            <div className="flex items-center gap-2">
-                {member.roleName
-                    ? <span className="inline-flex justify-center px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-medium">{member.roleName}</span>
-                    : <span className="italic text-gray-300 dark:text-gray-600 text-xs">Chưa có vai trò</span>
-                }
-                <button onClick={() => setEditing(true)} className="cursor-pointer w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all" title="Đổi vai trò">
-                    <i className="fas fa-pen text-[10px]" />
-                </button>
-            </div>
-        );
-    }
-
+    const navigate = useNavigate();
     return (
-        <div className="flex items-center gap-2">
-            <select
-                value={selected ?? ''}
-                onChange={(e) => setSelected(e.target.value === '' ? null : Number(e.target.value))}
-                className="text-xs px-2 py-1.5 bg-white dark:bg-gray-900 border border-blue-400 dark:border-blue-600 rounded-lg text-gray-900 dark:text-white focus:outline-none"
-                autoFocus
-            >
-                <option value="0">— Không có vai trò —</option>
-                {roles?.map((r) => <option key={r.clubRoleId} value={r.clubRoleId}>{r.roleName}</option>)}
-            </select>
-            <button onClick={handleSave} disabled={isLoading} className="cursor-pointer w-7 h-7 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center disabled:opacity-50 transition-colors" title="Lưu">
-                {isLoading ? <i className="fas fa-spinner fa-spin text-[10px]" /> : <i className="fas fa-check text-[10px]" />}
-            </button>
-            <button onClick={() => { setSelected(member.clubRoleId); setEditing(false); }} disabled={isLoading} className="cursor-pointer w-7 h-7 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center transition-colors" title="Hủy">
-                <i className="fas fa-times text-[10px]" />
-            </button>
-        </div>
+        <button
+            onClick={() => navigate(`/clubs/${clubId}/members/${member.clubMemberId}/roles`)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 text-xs font-semibold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all cursor-pointer group shadow-sm border border-purple-200 dark:border-purple-800"
+            title="Xem vai trò"
+        >
+            <i className="fas fa-shield-alt text-[11px]" />
+            <span>Xem vai trò</span>
+            <i className="fas fa-chevron-right text-[9px] opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all ml-0.5" />
+        </button>
     );
 }
 
@@ -141,34 +102,34 @@ function AddToDepartmentModal({ member, clubId, onClose }: { member: ClubMember;
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Chọn phòng ban muốn thêm thành viên vào:</p>
                             <div className="space-y-2">
-                            {departments.map((dept: any, i: number) => {
-                                const deptId = dept.DepartmentId ?? dept.departmentId;
-                                const deptName = dept.Name ?? dept.name ?? dept.departmentName ?? '—';
-                                const deptDesc = dept.Description ?? dept.description;
-                                return (
-                                <button
-                                    key={deptId ?? i}
-                                    onClick={() => setSelected(selected === deptId ? null : deptId)}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all cursor-pointer border-2 ${selected === deptId
-                                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400'
-                                        : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40'
-                                        }`}
-                                >
-                                    <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
-                                        <i className="fas fa-sitemap text-blue-500 dark:text-blue-400 text-sm" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{deptName}</p>
-                                        {deptDesc && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{deptDesc}</p>}
-                                    </div>
-                                    {selected === deptId && (
-                                        <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                                            <i className="fas fa-check text-white text-[10px]" />
-                                        </div>
-                                    )}
-                                </button>
-                                );
-                            })}
+                                {departments.map((dept: any, i: number) => {
+                                    const deptId = dept.DepartmentId ?? dept.departmentId;
+                                    const deptName = dept.Name ?? dept.name ?? dept.departmentName ?? '—';
+                                    const deptDesc = dept.Description ?? dept.description;
+                                    return (
+                                        <button
+                                            key={deptId ?? i}
+                                            onClick={() => setSelected(selected === deptId ? null : deptId)}
+                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all cursor-pointer border-2 ${selected === deptId
+                                                ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400'
+                                                : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40'
+                                                }`}
+                                        >
+                                            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
+                                                <i className="fas fa-sitemap text-blue-500 dark:text-blue-400 text-sm" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{deptName}</p>
+                                                {deptDesc && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{deptDesc}</p>}
+                                            </div>
+                                            {selected === deptId && (
+                                                <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                                                    <i className="fas fa-check text-white text-[10px]" />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -268,27 +229,27 @@ function KickFromDepartmentModal({ member, clubId, onClose }: { member: ClubMemb
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Chọn phòng ban muốn xóa thành viên khỏi:</p>
                             <div className="space-y-2">
-                            {departments.map((dept: any, i: number) => {
-                                const deptId = dept.DepartmentId ?? dept.departmentId;
-                                const deptName = dept.Name ?? dept.name ?? dept.departmentName ?? '—';
-                                const deptDesc = dept.Description ?? dept.description;
-                                return (
-                                <button
-                                    key={deptId ?? i}
-                                    onClick={() => setConfirmDept(dept)}
-                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all cursor-pointer border-2 border-transparent hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 group"
-                                >
-                                    <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 group-hover:bg-red-100 dark:group-hover:bg-red-900/40 flex items-center justify-center flex-shrink-0 transition-colors">
-                                        <i className="fas fa-sitemap text-gray-500 dark:text-gray-400 group-hover:text-red-500 text-sm transition-colors" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{deptName}</p>
-                                        {deptDesc && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{deptDesc}</p>}
-                                    </div>
-                                    <i className="fas fa-chevron-right text-gray-300 dark:text-gray-600 group-hover:text-red-400 text-xs transition-colors" />
-                                </button>
-                                );
-                            })}
+                                {departments.map((dept: any, i: number) => {
+                                    const deptId = dept.DepartmentId ?? dept.departmentId;
+                                    const deptName = dept.Name ?? dept.name ?? dept.departmentName ?? '—';
+                                    const deptDesc = dept.Description ?? dept.description;
+                                    return (
+                                        <button
+                                            key={deptId ?? i}
+                                            onClick={() => setConfirmDept(dept)}
+                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all cursor-pointer border-2 border-transparent hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 group"
+                                        >
+                                            <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 group-hover:bg-red-100 dark:group-hover:bg-red-900/40 flex items-center justify-center flex-shrink-0 transition-colors">
+                                                <i className="fas fa-sitemap text-gray-500 dark:text-gray-400 group-hover:text-red-500 text-sm transition-colors" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{deptName}</p>
+                                                {deptDesc && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{deptDesc}</p>}
+                                            </div>
+                                            <i className="fas fa-chevron-right text-gray-300 dark:text-gray-600 group-hover:text-red-400 text-xs transition-colors" />
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -364,14 +325,16 @@ export default function ClubMembersModule() {
     const [roleFilter, setRoleFilter] = useState('');
     const [activeModal, setActiveModal] = useState<{ type: ModalType; member: ClubMember } | null>(null);
 
-    const roleOptions = Array.from(new Set((members ?? []).map((m) => m.roleName).filter(Boolean))) as string[];
+    const roleOptions = Array.from(new Set((members ?? []).flatMap((m) => m.roles?.map(r => r.roleName) ?? [m.roleName]).filter(Boolean))) as string[];
 
     const filtered = (members ?? []).filter((m) => {
         const matchesSearch =
             m.fullName.toLowerCase().includes(search.toLowerCase()) ||
             m.email.toLowerCase().includes(search.toLowerCase()) ||
             (m.studentId ?? '').toLowerCase().includes(search.toLowerCase());
-        const matchesRole = roleFilter === '' || m.roleName === roleFilter;
+
+        const memberRoles = m.roles?.map(r => r.roleName) ?? (m.roleName ? [m.roleName] : []);
+        const matchesRole = roleFilter === '' || memberRoles.includes(roleFilter);
         return matchesSearch && matchesRole;
     });
 
@@ -419,7 +382,7 @@ export default function ClubMembersModule() {
                                     type="text"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Tìm theo tên, email, MSSV..."
+                                    placeholder="Tìm theo tên, email..."
                                     className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
                                 />
                             </div>
@@ -448,7 +411,6 @@ export default function ClubMembersModule() {
                                         <tr className="bg-gray-50 dark:bg-gray-900/50 text-left">
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Thành viên</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Email</th>
-                                            <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">MSSV</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Vai trò CLB</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Ngày tham gia</th>
                                             <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Trạng thái</th>
@@ -465,9 +427,6 @@ export default function ClubMembersModule() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{member.email}</td>
-                                                <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                                                    {member.studentId ?? <span className="italic text-gray-300 dark:text-gray-600">—</span>}
-                                                </td>
                                                 <td className="px-4 py-3">
                                                     <RoleCell member={member} clubId={clubId} />
                                                 </td>
