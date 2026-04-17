@@ -17,7 +17,7 @@ export function useCurrentUser() {
     return () => window.removeEventListener('authchange', syncUserId);
   }, [syncUserId]);
 
-  const { data, isLoading } = useGetUserByIdQuery(userId, {
+  const { data, isLoading, isError } = useGetUserByIdQuery(userId, {
     skip: !userId,
   });
 
@@ -25,5 +25,5 @@ export function useCurrentUser() {
   const isAdmin = user?.role === 'Admin';
   const role = user?.role ?? null;
 
-  return { user, role, isAdmin, isLoading: userId ? isLoading : false, userId, isAuth };
+  return { user, role, isAdmin, isLoading: userId ? isLoading : false, isError: userId ? isError : false, userId, isAuth };
 }
