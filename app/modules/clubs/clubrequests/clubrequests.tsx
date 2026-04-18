@@ -218,7 +218,7 @@ export default function ClubRequestsModule() {
   return (
     <div className="min-h-screen">
       <SettingButton />
-      <Sidebar currentPath="/club-requests" isOpen={isSidebarOpen} />
+      <Sidebar currentPath="/club/all-requests" isOpen={isSidebarOpen} />
       <HeaderBar title="Yêu cầu thành lập CLB" breadcrumb="Pages / Club Requests" isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />
 
       <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>

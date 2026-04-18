@@ -219,7 +219,7 @@ export default function ClubMemberRoleModule() {
     return (
         <div className="min-h-screen">
             <SettingButton />
-            <Sidebar currentPath="/clubs" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+            <Sidebar currentPath={`/clubs/${clubId}/members`} isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Vai trò thành viên"
                 breadcrumb={`Pages / Clubs / ${club?.clubName ?? club?.shortName} / Members / Roles`}

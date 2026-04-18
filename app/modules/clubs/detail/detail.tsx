@@ -19,7 +19,7 @@ export default function ClubDetailModule() {
             <SettingButton />
 
             <Sidebar
-                currentPath="/clubs"
+                currentPath={`/clubs/${id}`}
                 isOpen={isSidebarOpen}
                 onClose={toggleSidebar}
             />
@@ -35,11 +35,11 @@ export default function ClubDetailModule() {
                 }`}>
                 {/* Back Button */}
                 <button
-                    onClick={() => navigate('/clubs')}
+                    onClick={() => navigate(-1)}
                     className="mb-6 cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white transition-colors"
                 >
                     <i className="fas fa-arrow-left"></i>
-                    <span>Quay lại danh sách</span>
+                    <span>Quay lại</span>
                 </button>
 
                 {/* Loading State */}

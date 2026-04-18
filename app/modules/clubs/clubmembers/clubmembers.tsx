@@ -559,7 +559,7 @@ export default function ClubMembersModule() {
     return (
         <div className="min-h-screen">
             <SettingButton />
-            <Sidebar currentPath="/clubs" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+            <Sidebar currentPath={`/clubs/${clubId}/members`} isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Thành viên Câu lạc bộ"
                 breadcrumb={`Pages / Clubs / ${club?.clubName ?? club?.shortName} / Members`}
