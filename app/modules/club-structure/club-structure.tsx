@@ -944,7 +944,7 @@ export default function ClubStructureModule() {
       <Sidebar currentPath={`/clubs/${id}/structure`} isOpen={isSidebarOpen} />
       <HeaderBar
         title="Cấu trúc Câu lạc bộ"
-        breadcrumb={`Pages / Clubs / ${id} / Structure`}
+        breadcrumb={`Pages / Clubs / Structure`}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />

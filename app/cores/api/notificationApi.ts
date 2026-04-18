@@ -46,6 +46,24 @@ const notificationApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ['Notification'],
         }),
+
+        sendNotification: builder.mutation<void, { userId: string; title: string; message: string; type: string }>({
+            query: ({ userId, title, message, type }) => ({
+                url: `/notifications/send`,
+                method: 'POST',
+                params: { userId, title, message, type },
+            }),
+            invalidatesTags: ['Notification'],
+        }),
+
+        sendBulkNotification: builder.mutation<void, { userIds: string[]; title: string; message: string; type: string }>({
+            query: (body) => ({
+                url: `/notifications/send-bulk`,
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['Notification'],
+        }),
     }),
     overrideExisting: false,
 });
@@ -54,4 +72,6 @@ export const {
     useGetNotificationsByUserIdQuery,
     useMarkNotificationAsReadMutation,
     useMarkAllNotificationsAsReadMutation,
+    useSendNotificationMutation,
+    useSendBulkNotificationMutation,
 } = notificationApi;

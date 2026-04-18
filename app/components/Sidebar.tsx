@@ -192,6 +192,16 @@ export function Sidebar({
         },
       ],
     },
+    {
+      label: t("sidebar.manageNotifications.title"),
+      icon: "fa-bell",
+      subItems: [
+        {
+          label: t("sidebar.manageNotifications.sendNotification"),
+          url: `/clubs/${getClubId() || 1}/notifications/send`,
+        },
+      ],
+    },
   ];
 
   return (

@@ -157,6 +157,12 @@ export const userApi = baseApi.injectEndpoints({
       providesTags: ['User'],
     }),
 
+    searchUsers: builder.query<User[], string>({
+      query: (q) => `/Users/search?query=${encodeURIComponent(q)}`,
+      transformResponse: (response: any) => response?.data ?? [],
+      providesTags: ['User'],
+    }),
+
     // Gán role hệ thống cho user
     assignUserRole: builder.mutation<void, { uid: string; roleName: string }>({
       query: ({ uid, roleName }) => ({
@@ -184,4 +190,6 @@ export const {
   useGetUserDepartmentsQuery,
   useGetUserRoleQuery,
   useAssignUserRoleMutation,
+  useSearchUsersQuery,
+  useLazySearchUsersQuery,
 } = userApi;

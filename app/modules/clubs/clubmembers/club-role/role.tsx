@@ -221,7 +221,7 @@ export default function ClubMemberRoleModule() {
             <Sidebar currentPath="/clubs" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Vai trò thành viên"
-                breadcrumb={`Pages / Clubs / ${club?.clubName ?? clubId} / Members / Roles`}
+                breadcrumb={`Pages / Clubs / ${club?.clubName ?? club?.shortName} / Members / Roles`}
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={toggleSidebar}
             />

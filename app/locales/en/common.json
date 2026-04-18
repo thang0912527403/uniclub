@@ -44,6 +44,10 @@
       "myFunds": "My Funds",
       "transactions": "Transactions",
       "expenseReports": "Expense Reports"
+    },
+    "manageNotifications": {
+      "title": "Manage Notifications",
+      "sendNotification": "Send Notification"
     }
   },
   "settings": {

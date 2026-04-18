@@ -54,6 +54,7 @@ export default [
     ),
     route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
     route("clubs/:clubId/members/:memberId/roles", "routes/clubs/clubmembers.role.tsx"),
+    route("clubs/:id/notifications/send", "routes/clubs/clubs.$id.notifications.send.tsx"),
     route("club-roles", "routes/club-roles.tsx"),
     route("manage-clubs", "routes/my-clubs.tsx"),
     route("application-form/:formId?", "routes/question.tsx"),
