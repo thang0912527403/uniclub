@@ -69,6 +69,12 @@ export interface ClubFundCapabilities {
   canContribute: boolean;
   canCreateFund: boolean;
   canApproveOrRejectFundEntity: boolean;
+  /** Cấu hình PayOS/VNPay (BE: Admin hoặc Manager cấp 1 + editfinance). */
+  canManageOnlinePaymentSettings: boolean;
+  /** Ghi nhận đóng quỹ tiền mặt (BE: Admin hoặc Manager cấp 1 + editfinance). */
+  canRecordCashContributions: boolean;
+  /** Hàng đợi hoàn / complete / reject / manager-refund (BE: Admin hoặc Manager cấp 1 + editfinance). */
+  canProcessClubRefunds: boolean;
   hasViewFinancePolicy: boolean;
   hasCreateFinancePolicy: boolean;
   hasEditFinancePolicy: boolean;

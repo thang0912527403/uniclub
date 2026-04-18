@@ -1,3 +1,4 @@
+import Cookies from 'js-cookie';
 import { Navigate, Link, useParams } from 'react-router';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
@@ -14,8 +15,9 @@ export default function FundDetailPage() {
 
   const bgClass = isDark ? 'bg-[#0f1729]' : 'bg-slate-50';
   const isValidFundId = !!fundIdParam && !isNaN(fundId) && fundId > 0;
+  const hasToken = !!Cookies.get('accessToken');
   const { data: location, isLoading, isError } = useGetFundLocationQuery(fundId, {
-    skip: !isValidFundId,
+    skip: !isValidFundId || !hasToken,
   });
 
   if (location && location.clubId && location.fundId) {

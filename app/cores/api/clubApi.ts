@@ -1,4 +1,5 @@
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import { normalizeClubFundCapabilitiesFromApi } from "~/modules/funds/utils/normalizeClubFundCapabilities";
 import { baseApi } from "./baseApi";
 import {
   type Club,
@@ -25,9 +26,7 @@ import {
   type FundMineType,
   type FundListSort,
   type FundListStatus,
-  type FundMenuItemDto,
   type FundReportSummaryDto,
-  type FundSidebarMenuId,
   type GetClubFundTransactionsParams,
   type GetMyFundsParams,
   type MyFundsPagedResult,
@@ -132,34 +131,6 @@ function normalizePagedResult<T>(raw: unknown): PagedResult<T> {
 type ClubFundScoped = { clubId: number };
 type FundScoped = { clubId: number; fundId: number };
 type FundLocationResponse = { fundId: number; clubId: number };
-
-const FUND_SIDEBAR_MENU_IDS: readonly FundSidebarMenuId[] = [
-  "overview",
-  "transactions",
-  "reports",
-  "settings",
-];
-
-function isFundSidebarMenuId(id: string): id is FundSidebarMenuId {
-  return (FUND_SIDEBAR_MENU_IDS as readonly string[]).includes(id);
-}
-
-function normalizeFundMenuItemsFromApi(raw: unknown): FundMenuItemDto[] {
-  if (!Array.isArray(raw)) return [];
-  const out: FundMenuItemDto[] = [];
-  for (const entry of raw) {
-    const e = entry as Record<string, unknown>;
-    const id = String(e.id ?? e.Id ?? "").trim();
-    if (!isFundSidebarMenuId(id)) continue;
-    out.push({
-      id,
-      labelVi: String(e.labelVi ?? e.LabelVi ?? "").trim() || id,
-      labelEn: String(e.labelEn ?? e.LabelEn ?? "").trim() || id,
-      visible: !!(e.visible ?? e.Visible),
-    });
-  }
-  return out;
-}
 
 function numFundReport(v: unknown): number {
   const x = Number(v);
@@ -673,32 +644,8 @@ export const clubApi = baseApi.injectEndpoints({
     // ─── ClubFund endpoints ─────────────────────────────────────────────
     getFundCapabilities: builder.query<ClubFundCapabilities, number>({
       query: (clubId) => `/clubs/${clubId}/funds/capabilities`,
-      transformResponse: (response: ApiResponse<ClubFundCapabilities>) => {
-        const d = response.data;
-        const rawCap = d as unknown as Record<string, unknown> | undefined;
-        return {
-          canViewFunds: !!d?.canViewFunds,
-          canContribute: !!d?.canContribute,
-          canCreateFund: !!d?.canCreateFund,
-          canApproveOrRejectFundEntity: !!d?.canApproveOrRejectFundEntity,
-          hasViewFinancePolicy: !!d?.hasViewFinancePolicy,
-          hasCreateFinancePolicy: !!d?.hasCreateFinancePolicy,
-          hasEditFinancePolicy: !!d?.hasEditFinancePolicy,
-          clubRoleName: d?.clubRoleName ?? null,
-          clubRoleLevel: d?.clubRoleLevel ?? null,
-          isActiveClubMember: !!d?.isActiveClubMember,
-          menuItems: normalizeFundMenuItemsFromApi(
-            rawCap ? (rawCap.menuItems ?? rawCap.MenuItems) : undefined,
-          ),
-          financeAccessHintVi: rawCap
-            ? pickOptionalViString(
-                rawCap,
-                "financeAccessHintVi",
-                "FinanceAccessHintVi",
-              )
-            : null,
-        };
-      },
+      transformResponse: (response: ApiResponse<ClubFundCapabilities>) =>
+        normalizeClubFundCapabilitiesFromApi(response),
       providesTags: (result, error, clubId) => [
         { type: "ClubFund", id: `capabilities-${clubId}` },
       ],

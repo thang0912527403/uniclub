@@ -10,6 +10,7 @@ export function showMemberRefundRequestForm(
   isAdmin: boolean,
 ): boolean {
   if (isAdmin) return false;
+  if (caps?.canProcessClubRefunds === true) return false;
   if (caps?.hasEditFinancePolicy) return false;
   if (isManagerRole(caps?.clubRoleName)) return false;
   return true;
@@ -55,7 +56,10 @@ type Props = {
 };
 
 export function FundsRefundSection({ clubId, skip, caps, isAdmin }: Props) {
-  const showManagerQueue = isAdmin || caps?.hasEditFinancePolicy === true;
+  const showManagerQueue =
+    isAdmin ||
+    caps?.canProcessClubRefunds === true ||
+    caps?.hasEditFinancePolicy === true;
   const showForm = showMemberRefundRequestForm(caps, isAdmin);
 
   return (

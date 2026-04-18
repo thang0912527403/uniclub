@@ -203,7 +203,9 @@ export default function FundsPage() {
     !capsForbidden &&
     !capsOtherError &&
     canViewFunds &&
-    (isAdmin || caps?.hasEditFinancePolicy === true);
+    (isAdmin ||
+      caps?.canProcessClubRefunds === true ||
+      caps?.hasEditFinancePolicy === true);
 
   const effectiveMainView = showManagerRefundTab ? mainView : 'funds';
   const [refundsSubTab, setRefundsSubTab] = useState<'requests' | 'proactive'>('requests');

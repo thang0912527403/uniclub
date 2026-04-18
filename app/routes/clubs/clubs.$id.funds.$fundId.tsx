@@ -262,11 +262,18 @@ export default function FundDetailPageByClub() {
     data: memberContrib,
     isLoading: isLoadingMemberContrib,
     isError: isMemberContribError,
+    error: memberContribError,
     refetch: refetchMemberContrib,
   } = useGetFundMemberContributionsQuery(
     { clubId, fundId },
     { skip: skipFundQuery || (caps !== undefined && !canViewFunds) },
   );
+  const memberContribForbidden =
+    isMemberContribError &&
+    memberContribError &&
+    typeof memberContribError === 'object' &&
+    'status' in memberContribError &&
+    (memberContribError as { status: number }).status === 403;
 
   const requiredPerMember = memberContrib?.requiredPerMember ?? null;
   const hasGoal = (memberContrib?.goalAmount ?? 0) > 0 && (requiredPerMember ?? 0) > 0;
@@ -798,7 +805,11 @@ export default function FundDetailPageByClub() {
                 <div className="p-4 space-y-4">
                   {isMemberContribError ? (
                     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-700 dark:text-red-200 text-sm space-y-2" role="alert">
-                      <p>Không thể tải thống kê đóng góp. Vui lòng thử lại.</p>
+                      <p>
+                        {memberContribForbidden
+                          ? 'Bạn không có quyền xem thống kê đóng góp (cần viewfinance).'
+                          : 'Không thể tải thống kê đóng góp. Vui lòng thử lại.'}
+                      </p>
                       <button
                         type="button"
                         onClick={() => refetchMemberContrib()}

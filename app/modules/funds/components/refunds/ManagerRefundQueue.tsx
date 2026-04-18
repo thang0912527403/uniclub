@@ -474,21 +474,6 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
                 {completeTarget.amount.toLocaleString('vi-VN')} ₫).
               </p>
               <div>
-                <label htmlFor="refund-transfer-reference" className={`block ${t.type.label} mb-1.5`}>
-                  Mã CK (tuỳ chọn)
-                </label>
-                <input
-                  id="refund-transfer-reference"
-                  className={t.input}
-                  value={transferReference}
-                  onChange={(e) => setTransferReference(e.target.value)}
-                  autoComplete="off"
-                />
-                <p className={`mt-1 text-xs ${t.type.muted}`}>
-                  {transferReference.trim().length}/{L.transferReferenceMax}
-                </p>
-              </div>
-              <div>
                 <label htmlFor="refund-mgr-note" className={`block ${t.type.label} mb-1.5`}>
                   Ghi chú (tuỳ chọn)
                 </label>

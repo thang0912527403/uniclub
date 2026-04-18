@@ -27,13 +27,20 @@ export default function FundsPayosPage() {
     skip: !hasToken || clubId < 1,
   });
 
-  const canManagePayos = useMemo(
-    () =>
-      isAdmin ||
-      ((caps?.clubRoleLevel === 1 || isManagerRole(caps?.clubRoleName)) &&
-        (caps?.hasEditFinancePolicy ?? false)),
-    [isAdmin, caps?.clubRoleLevel, caps?.clubRoleName, caps?.hasEditFinancePolicy],
-  );
+  const canManagePayos = useMemo(() => {
+    if (isAdmin) return true;
+    if (caps?.canManageOnlinePaymentSettings === true) return true;
+    return (
+      (caps?.clubRoleLevel === 1 || isManagerRole(caps?.clubRoleName)) &&
+      (caps?.hasEditFinancePolicy ?? false)
+    );
+  }, [
+    isAdmin,
+    caps?.canManageOnlinePaymentSettings,
+    caps?.clubRoleLevel,
+    caps?.clubRoleName,
+    caps?.hasEditFinancePolicy,
+  ]);
 
   return (
     <div className="min-h-screen">

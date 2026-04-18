@@ -5,6 +5,7 @@ export function canShowRecordCashContributionForm(
   caps: ClubFundCapabilities | undefined,
 ): boolean {
   if (isAdmin) return true;
+  if (caps?.canRecordCashContributions === true) return true;
   if (!caps?.hasEditFinancePolicy) return false;
   return Number(caps.clubRoleLevel) === 1;
 }

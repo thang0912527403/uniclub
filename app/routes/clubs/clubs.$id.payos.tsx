@@ -34,6 +34,7 @@ export default function ClubPayosSettingsPage() {
 
   const canManagePayos =
     isAdmin ||
+    caps?.canManageOnlinePaymentSettings === true ||
     ((caps?.clubRoleLevel === 1 || isManagerRole(caps?.clubRoleName)) &&
       (caps?.hasEditFinancePolicy ?? false));
 
