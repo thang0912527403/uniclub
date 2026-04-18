@@ -14,6 +14,7 @@ import {
     useGetMemberNotJoinedDepartmentsQuery,
     type ClubMember,
 } from '~/cores/api';
+import { getMemberRoleNames } from '~/cores/api/types/clubMember';
 import { useAddMemberToDepartmentMutation, useRemoveMemberFromDepartmentMutation } from '~/cores/api/departmentApi';
 
 /* ─── Avatar ──────────────────────────────────────────────────────────────── */
@@ -325,15 +326,16 @@ export default function ClubMembersModule() {
     const [roleFilter, setRoleFilter] = useState('');
     const [activeModal, setActiveModal] = useState<{ type: ModalType; member: ClubMember } | null>(null);
 
-    const roleOptions = Array.from(new Set((members ?? []).flatMap((m) => m.roles?.map(r => r.roleName) ?? [m.roleName]).filter(Boolean))) as string[];
+    const roleOptions = Array.from(
+        new Set((members ?? []).flatMap(getMemberRoleNames).filter(Boolean))
+    ) as string[];
 
     const filtered = (members ?? []).filter((m) => {
         const matchesSearch =
             m.fullName.toLowerCase().includes(search.toLowerCase()) ||
             m.email.toLowerCase().includes(search.toLowerCase()) ||
             (m.studentId ?? '').toLowerCase().includes(search.toLowerCase());
-
-        const memberRoles = m.roles?.map(r => r.roleName) ?? (m.roleName ? [m.roleName] : []);
+        const memberRoles = getMemberRoleNames(m);
         const matchesRole = roleFilter === '' || memberRoles.includes(roleFilter);
         return matchesSearch && matchesRole;
     });

@@ -40,6 +40,7 @@ const prepareHeaders = (headers: Headers) => {
 export const createApiWithBaseUrl = (_baseUrl: string, reducerPath: string, tagTypes: string[]) => {
   return createApi({
     reducerPath,
+    refetchOnMountOrArgChange: true,
     baseQuery: async (args, api, extraOptions) => {
       const base = getMainServiceBaseUrl();
       return fetchBaseQuery({ baseUrl: base, prepareHeaders })(args, api, extraOptions);
