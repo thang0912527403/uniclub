@@ -44,4 +44,5 @@ export interface DepartmentMember {
   status: string;
   joinDate: string;
   departmentRole: string | null;
+  departmentRoles?: UserDepartmentRole[];
 }

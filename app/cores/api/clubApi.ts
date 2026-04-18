@@ -819,6 +819,17 @@ export const clubApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { clubId }) => [{ type: "Club", id: `members-${clubId}` }],
     }),
+    toggleMemberStatus: builder.mutation<void, { clubId: number; memberId: number; isActive: boolean }>({
+      query: ({ clubId, memberId, isActive }) => ({
+        url: `/clubs/${clubId}/members/${memberId}/status`,
+        method: "PUT",
+        body: { isActive },
+      }),
+      invalidatesTags: (_result, _error, { clubId, memberId }) => [
+        { type: "Club", id: `members-${clubId}` },
+        { type: "Club", id: `member-${memberId}` },
+      ],
+    }),
     // ─── Member Departments ──────────────────────────────────────────────
     getMemberJoinedDepartments: builder.query<import('./types/department').Department[], { clubId: number; memberId: number }>({
       query: ({ clubId, memberId }) => `/clubs/${clubId}/members/${memberId}/departments/joined`,
@@ -883,6 +894,7 @@ export const {
   useGetClubMemberByIdQuery,
   useAddMemberMutation,
   useRemoveMemberMutation,
+  useToggleMemberStatusMutation,
   useGetMemberJoinedDepartmentsQuery,
   useGetMemberNotJoinedDepartmentsQuery,
   useGetFundLocationQuery,
