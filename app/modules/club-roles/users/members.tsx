@@ -46,6 +46,16 @@ function RoleBadge({ roleName }: { roleName: string }) {
     );
 }
 
+function StatusBadge({ status }: { status: string }) {
+    const active = status?.toUpperCase() === 'ACTIVE';
+    return (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-green-500' : 'bg-gray-400'}`} />
+            {active ? 'Hoạt động' : status === 'INACTIVE' ? 'Vô hiệu hóa' : (status ?? 'N/A')}
+        </span>
+    );
+}
+
 export default function ClubRoleUsersMembersModule() {
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
@@ -183,30 +193,31 @@ export default function ClubRoleUsersMembersModule() {
                                                 <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{user.email}</td>
                                                 <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{user.studentId ?? '—'}</td>
                                                 <td className="px-4 py-3">
-                                                    <div className="flex flex-wrap gap-1.5">
-                                                        {user.roles.map((role) => (
-                                                            <span
-                                                                key={`${user.clubMemberId}-${role.clubRoleId}`}
-                                                                className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${role.clubRoleId === resolvedRoleId
-                                                                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                                                    }`}
-                                                            >
-                                                                {role.roleName}
-                                                            </span>
-                                                        ))}
-                                                    </div>
+                                                    {(() => {
+                                                        const selectedRole = user.roles.find((role) => role.clubRoleId === resolvedRoleId);
+                                                        const primaryRole = selectedRole ?? user.roles[0];
+                                                        const extraCount = Math.max(user.roles.length - (primaryRole ? 1 : 0), 0);
+
+                                                        if (!primaryRole) {
+                                                            return <span className="text-xs text-gray-400 italic">—</span>;
+                                                        }
+
+                                                        return (
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                                                                    {primaryRole.roleName}
+                                                                </span>
+                                                                {extraCount > 0 && (
+                                                                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                                                        +{extraCount} vai trò nữa
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span
-                                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${user.status?.toLowerCase() === 'active'
-                                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                                            }`}
-                                                    >
-                                                        <span className={`w-1.5 h-1.5 rounded-full ${user.status?.toLowerCase() === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
-                                                        {user.status}
-                                                    </span>
+                                                    <StatusBadge status={user.status} />
                                                 </td>
                                             </tr>
                                         ))}

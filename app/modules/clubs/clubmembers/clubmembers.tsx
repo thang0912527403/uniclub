@@ -10,6 +10,7 @@ import {
     useGetClubByIdQuery,
     useGetClubMembersQuery,
     useRemoveMemberMutation,
+    useToggleMemberStatusMutation,
     useGetMemberJoinedDepartmentsQuery,
     useGetMemberNotJoinedDepartmentsQuery,
     type ClubMember,
@@ -37,10 +38,59 @@ function MemberAvatar({ member, size = 'md' }: { member: ClubMember | { clubMemb
 function StatusBadge({ status }: { status: string }) {
     const active = status?.toUpperCase() === 'ACTIVE';
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${active ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-green-500' : 'bg-gray-400'}`} />
-            {active ? 'Hoạt động' : status}
+            {active ? 'Hoạt động' : status === 'INACTIVE' ? 'Vô hiệu hóa' : (status ?? 'N/A')}
         </span>
+    );
+}
+
+function StatusToggleConfirmModal({
+    member,
+    onConfirm,
+    onCancel,
+    isLoading,
+}: {
+    member: ClubMember;
+    onConfirm: () => void;
+    onCancel: () => void;
+    isLoading: boolean;
+}) {
+    const isActive = member.status?.toUpperCase() === 'ACTIVE';
+    const nextAction = isActive ? 'deactivate' : 'activate';
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onCancel}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-4 mb-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isActive ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'}`}>
+                        <i className={`fas ${isActive ? 'fa-user-slash' : 'fa-user-check'} text-xl`} />
+                    </div>
+                    <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                            {isActive ? 'Deactive thành viên' : 'Active thành viên'}
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{member.fullName}</p>
+                    </div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    Bạn có chắc muốn <span className="font-semibold text-gray-900 dark:text-white">{nextAction}</span> thành viên này không?
+                </p>
+                <div className="flex gap-3 justify-end">
+                    <button onClick={onCancel} disabled={isLoading} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                        Hủy
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={isLoading}
+                        className={`px-4 py-2 rounded-xl text-white text-sm font-bold flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all cursor-pointer ${isActive ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20' : 'bg-green-600 hover:bg-green-700 shadow-green-500/20'}`}
+                    >
+                        {isLoading && <i className="fas fa-spinner fa-spin" />}
+                        {isActive ? 'Xác nhận Deactive' : 'Xác nhận Active'}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -325,6 +375,9 @@ export default function ClubMembersModule() {
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [activeModal, setActiveModal] = useState<{ type: ModalType; member: ClubMember } | null>(null);
+    const [statusTarget, setStatusTarget] = useState<ClubMember | null>(null);
+    const [toggleMemberStatus, { isLoading: isTogglingStatus }] = useToggleMemberStatusMutation();
+    const { show } = useNotification();
 
     const roleOptions = Array.from(
         new Set((members ?? []).flatMap(getMemberRoleNames).filter(Boolean))
@@ -341,6 +394,36 @@ export default function ClubMembersModule() {
     });
 
     const closeModal = () => setActiveModal(null);
+
+    const handleToggleStatus = async () => {
+        if (!statusTarget) return;
+
+        const isCurrentlyActive = statusTarget.status?.toUpperCase() === 'ACTIVE';
+        const nextIsActive = !isCurrentlyActive;
+
+        try {
+            await toggleMemberStatus({
+                clubId,
+                memberId: statusTarget.clubMemberId,
+                isActive: nextIsActive,
+            }).unwrap();
+
+            show({
+                type: 'success',
+                title: 'Cập nhật trạng thái thành công',
+                message: `${statusTarget.fullName} đã được ${nextIsActive ? 'active' : 'deactive'}.`,
+                duration: 3000,
+            });
+            setStatusTarget(null);
+        } catch (err: any) {
+            show({
+                type: 'error',
+                title: 'Cập nhật trạng thái thất bại',
+                message: err?.data?.message ?? 'Không thể cập nhật trạng thái thành viên.',
+                duration: 4000,
+            });
+        }
+    };
 
     return (
         <div className="min-h-screen">
@@ -436,7 +519,13 @@ export default function ClubMembersModule() {
                                                     {new Date(member.joinDate).toLocaleDateString('vi-VN')}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <StatusBadge status={member.status} />
+                                                    <button
+                                                        onClick={() => setStatusTarget(member)}
+                                                        className="cursor-pointer"
+                                                        title="Đổi trạng thái thành viên"
+                                                    >
+                                                        <StatusBadge status={member.status} />
+                                                    </button>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center justify-end gap-1.5">
@@ -494,6 +583,14 @@ export default function ClubMembersModule() {
             )}
             {activeModal?.type === 'kickClub' && (
                 <KickFromClubModal member={activeModal.member} clubId={clubId} onClose={closeModal} onSuccess={closeModal} />
+            )}
+            {statusTarget && (
+                <StatusToggleConfirmModal
+                    member={statusTarget}
+                    onConfirm={handleToggleStatus}
+                    onCancel={() => setStatusTarget(null)}
+                    isLoading={isTogglingStatus}
+                />
             )}
         </div>
     );
