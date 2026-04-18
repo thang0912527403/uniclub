@@ -104,7 +104,6 @@ export default function CreateClubModule() {
             <Sidebar
                 currentPath="/clubs/create"
                 isOpen={isSidebarOpen}
-                onClose={toggleSidebar}
             />
 
             <HeaderBar
