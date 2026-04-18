@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router";
 import type { ApplicationFormResponseDto } from "~/cores/api";
+import { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 
 interface FormCardProps {
   form: ApplicationFormResponseDto;
@@ -18,6 +19,7 @@ export const FormCard: React.FC<FormCardProps> = ({
   onDelete,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const applyUrl = `${window.location.origin}/question/${form.formId}`;
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -40,8 +42,14 @@ export const FormCard: React.FC<FormCardProps> = ({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-800 dark:text-white text-sm truncate">
-            {form.formTitle || form.formName}
+            {form.formName}
           </p>
+          {form.formTitle && (
+            <p className="text-xs text-orange-500 dark:text-orange-400 mt-0.5 truncate font-medium">
+              <i className="fa-solid fa-tag text-[9px] mr-1 opacity-70" />
+              {form.formTitle}
+            </p>
+          )}
           {form.description && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
               {form.description}
@@ -66,7 +74,7 @@ export const FormCard: React.FC<FormCardProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              setShowConfirm(true);
             }}
             className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
             title="Xóa"
@@ -108,6 +116,17 @@ export const FormCard: React.FC<FormCardProps> = ({
 
       {isSelected && (
         <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-orange-500" />
+      )}
+
+      {showConfirm && (
+        <ConfirmDeleteModal
+          message="Biểu mẫu này và toàn bộ câu hỏi sẽ bị xóa vĩnh viễn."
+          onConfirm={() => {
+            onDelete();
+            setShowConfirm(false);
+          }}
+          onCancel={() => setShowConfirm(false)}
+        />
       )}
     </div>
   );

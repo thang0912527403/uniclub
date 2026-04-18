@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Cookies from 'js-cookie';
 import { useNavigate, Link, Navigate } from 'react-router';
 import { useGetManagedClubsQuery, useGetUserAllClubsQuery, useGetUserRoleQuery } from '~/cores/api/userApi';
@@ -5,6 +6,91 @@ import { getUserId, setClubId } from '~/utils/auth';
 import { SettingButton } from '~/components/SettingButton';
 import type { Club } from '~/cores/api/types';
 import { useCheckPendingRequestQuery, useGetClubRequestsByUserIdQuery } from '~/cores/api/clubRequestApi';
+import type { ClubCreationRequest } from '~/cores/api/clubRequestApi';
+
+/* ─── RequestDetailModal ──────────────────────────────────────────────────── */
+function RequestDetailModal({ request, onClose }: { request: ClubCreationRequest; onClose: () => void }) {
+  const status = request.status?.toLowerCase();
+  const statusStyle =
+    status === 'pending' ? 'bg-amber-100 text-amber-700' :
+    status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+    'bg-red-100 text-red-700';
+  const dot =
+    status === 'pending' ? 'bg-amber-500' :
+    status === 'approved' ? 'bg-emerald-500' :
+    'bg-red-500';
+  const label =
+    status === 'pending' ? 'Đang chờ' :
+    status === 'approved' ? 'Đã duyệt' :
+    'Từ chối';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
+          <h3 className="font-bold text-zinc-900 text-base">Chi tiết yêu cầu</h3>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Tên câu lạc bộ</span>
+            <span className="text-sm font-semibold text-zinc-900">{request.clubName}</span>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Mô tả</span>
+            <span className="text-sm text-zinc-700 leading-relaxed">{request.description || <span className="text-zinc-400 italic">Không có</span>}</span>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Lý do</span>
+            <span className="text-sm text-zinc-700 leading-relaxed">{request.reason || <span className="text-zinc-400 italic">Không có</span>}</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Trạng thái</span>
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-semibold w-fit ${statusStyle}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                {label}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1 text-right">
+              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Ngày tạo</span>
+              <span className="text-sm text-zinc-600">{new Date(request.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-zinc-100 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-sm font-semibold hover:bg-zinc-200 transition-colors"
+          >
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ─── ClubCard (Bento Card) ───────────────────────────────────────────────── */
 function ClubCard({ club }: { club: Club }) {
@@ -139,11 +225,16 @@ export default function MyClubsModule() {
       skip: !userId,
     });
 
+  const [selectedRequest, setSelectedRequest] = useState<ClubCreationRequest | null>(null);
+
   const handleSubmit = async () => {
     navigate('/clubs/create');
   };
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col">
+      {selectedRequest && (
+        <RequestDetailModal request={selectedRequest} onClose={() => setSelectedRequest(null)} />
+      )}
       {/* ── Breadcrumb Nav ── */}
       <nav className="px-6 md:px-12 pt-6">
         <div className="max-w-6xl mx-auto">
@@ -266,14 +357,12 @@ export default function MyClubsModule() {
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-zinc-100">
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Tên câu lạc bộ</th>
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Mô tả</th>
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Lý do</th>
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Trạng thái</th>
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Ngày tạo</th>
-                      {(managedClubs?.length === 0) && (
-                        <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider">Action</th>
-                      )}
+                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Tên câu lạc bộ</th>
+                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Mô tả</th>
+                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Lý do</th>
+                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Trạng thái</th>
+                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Ngày tạo</th>
+                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Hành động</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
@@ -282,16 +371,16 @@ export default function MyClubsModule() {
                         key={req.requestId}
                         className="hover:bg-orange-50/50 transition-colors duration-150"
                       >
-                        <td className="px-5 py-4 font-semibold text-zinc-900">
+                        <td className="px-5 py-4 font-semibold text-zinc-900 whitespace-nowrap">
                           {req.clubName}
                         </td>
-                        <td className="px-5 py-4 text-zinc-600 max-w-xs truncate">
+                        <td className="px-5 py-4 text-zinc-600 max-w-[200px] truncate">
                           {req.description}
                         </td>
-                        <td className="px-5 py-4 text-zinc-600 max-w-xs truncate">
+                        <td className="px-5 py-4 text-zinc-600 max-w-[200px] truncate">
                           {req.reason}
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 whitespace-nowrap">
                           {(() => {
                             const status = req.status?.toLowerCase();
 
@@ -326,17 +415,34 @@ export default function MyClubsModule() {
                             );
                           })()}
                         </td>
-                        <td className="px-5 py-4 text-zinc-500">
+                        <td className="px-5 py-4 text-zinc-500 whitespace-nowrap">
                           {new Date(req.createdAt).toLocaleDateString('vi-VN')}
                         </td>
-                        {(req.status.toLowerCase() === 'approved') && (managedClubs?.length === 0) && (
-                          <td className="px-5 py-4">
-                            <button className="px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-bold hover:bg-blue-600 transition-all"
-                              onClick={() => { handleSubmit() }}>
-                              Tạo câu lạc bộ
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setSelectedRequest(req)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 text-zinc-700 text-xs font-semibold hover:bg-zinc-200 transition-all whitespace-nowrap"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              Xem chi tiết
                             </button>
-                          </td>
-                        )}
+                            {(req.status.toLowerCase() === 'approved') && (managedClubs?.length === 0) && (
+                              <button
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition-all whitespace-nowrap"
+                                onClick={() => { handleSubmit() }}
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Tạo câu lạc bộ
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
