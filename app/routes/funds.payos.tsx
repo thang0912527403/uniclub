@@ -23,9 +23,14 @@ export default function FundsPayosPage() {
 
   const { data: club } = useGetClubByIdQuery(clubId, { skip: !hasToken || clubId < 1 });
 
-  const { data: caps } = useGetFundCapabilitiesQuery(clubId, {
-    skip: !hasToken || clubId < 1,
-  });
+  const { data: caps } = useGetFundCapabilitiesQuery(
+    { clubId, userId: userId || '' },
+    {
+      skip: !hasToken || clubId < 1 || !userId,
+      refetchOnFocus: true,
+      refetchOnMountOrArgChange: true,
+    },
+  );
 
   const canManagePayos = useMemo(() => {
     if (isAdmin) return true;

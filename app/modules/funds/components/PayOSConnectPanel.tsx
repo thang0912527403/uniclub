@@ -318,12 +318,6 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
                 </ul>
               </div>
             ) : null}
-
-            {guide?.payos?.noteVi?.trim() ? (
-              <p className={`text-sm ${t.type.body} whitespace-pre-line border-l-4 border-violet-400 pl-3 py-1`}>
-                {guide.payos.noteVi.trim()}
-              </p>
-            ) : null}
           </>
         )}
 
@@ -403,7 +397,7 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
             ) : null}
 
             <div className="lg:col-span-2">
-              <label className={`block ${t.type.label} mb-1.5`} htmlFor="club-payment-provider">
+              <label className="sr-only" htmlFor="club-payment-provider">
                 Cổng thanh toán
               </label>
               <select

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Banknote, Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { FinanceAccessHintBanner, resolveFundBalanceHoverTextVi } from '~/modules/funds/components/FundUxHints';
 import {
@@ -28,6 +28,12 @@ import { fundTokens as t } from '../funds.design-tokens';
 import { savePayosPendingContribute } from '~/utils/payosContributeSession';
 import { fundTransactionPaymentProviderLabel } from '~/modules/funds/utils/fundTransactionPaymentProvider';
 import { setClubId } from '~/utils/auth';
+import { useClubFundDetailSelection } from '~/modules/funds/hooks/useClubFundDetailSelection';
+import { ClubFundSoftDeleteControl } from '~/modules/funds/components/ClubFundSoftDeleteControl';
+import { FundWorkflowLifecycleBadges } from '~/modules/funds/components/FundWorkflowLifecycleBadges';
+import { clearClubFundDetailSession } from '~/modules/funds/utils/clubFundDetailSession';
+import { extractClubFundErrorMessage } from '~/modules/funds/utils/fundRefundErrors';
+import { isManagerClosedAmberNoteDuplicateVi } from '~/modules/funds/utils/fundContributeNoteFilter';
 import { useFundHistory } from '~/modules/funds/hooks/useFundHistory';
 import {
   DEFAULT_FUND_HISTORY_PAGE_SIZE,
@@ -127,42 +133,24 @@ function resolvedFundTotalRecordedVnd(fund: ClubFund): number | null {
   return null;
 }
 
-function fundStatusLabel(f: ClubFund): string {
-  const s = String(f.status ?? '').toUpperCase();
-  if (s === 'PENDING') return 'Chờ duyệt';
-  if (s === 'APPROVED') return 'Đã duyệt';
-  if (s === 'REJECTED') return 'Từ chối';
-  return '—';
-}
-
-function FundStatusBadge({ fund }: { fund: ClubFund }) {
-  const s = String(fund.status ?? '').toUpperCase();
-  if (s === 'APPROVED')
-    return (
-      <span className={t.status.approved}>
-        <span className="inline-block w-3 h-3 rounded-full bg-emerald-500" aria-hidden />
-        <span>{fundStatusLabel(fund)}</span>
-      </span>
-    );
-  if (s === 'REJECTED')
-    return (
-      <span className={t.status.rejected}>
-        <span className="inline-block w-3 h-3 rounded-full bg-red-500" aria-hidden />
-        <span>{fundStatusLabel(fund)}</span>
-      </span>
-    );
-  return (
-    <span className={t.status.pending}>
-      <span className="inline-block w-3 h-3 rounded-full bg-amber-500" aria-hidden />
-      <span>{fundStatusLabel(fund)}</span>
-    </span>
-  );
-}
-
 export default function FundDetailPageByClub() {
-  const { id: clubIdParam, fundId: fundIdParam } = useParams<{ id: string; fundId: string }>();
-  const clubId = parseInt(clubIdParam ?? '0', 10);
-  const fundId = parseInt(fundIdParam ?? '0', 10);
+  const navigate = useNavigate();
+  const { clubId: selClubId, fundId: selFundId } = useClubFundDetailSelection();
+  const clubId = selClubId ?? 0;
+  const fundId = selFundId ?? 0;
+
+  const isMissingContext = !clubId || !fundId || clubId < 1 || fundId < 1;
+
+  useEffect(() => {
+    if (!isMissingContext) return;
+    void navigate('/funds', {
+      replace: true,
+      state: {
+        flashMessage:
+          'Chưa chọn quỹ hoặc phiên hết hạn ngữ cảnh. Hãy mở quỹ từ danh sách quỹ. (URL không còn chứa mã CLB/quỹ.)',
+      },
+    });
+  }, [isMissingContext, navigate]);
 
   useEffect(() => {
     if (clubId > 0) setClubId(clubId);
@@ -170,7 +158,7 @@ export default function FundDetailPageByClub() {
 
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const { isAdmin } = useCurrentUser();
+  const { isAdmin, userId } = useCurrentUser();
   const { show: showNotification } = useNotification();
 
   const [showContribute, setShowContribute] = useState(false);
@@ -206,7 +194,7 @@ export default function FundDetailPageByClub() {
   const [memberContribTab, setMemberContribTab] = useState<'unpaid' | 'paid'>('unpaid');
   const [memberContribSearch, setMemberContribSearch] = useState('');
 
-  const isInvalidParams = !clubIdParam || !fundIdParam || isNaN(clubId) || isNaN(fundId) || clubId < 1 || fundId < 1;
+  const isInvalidParams = isMissingContext;
 
   const { data: breadcrumbClub, isLoading: breadcrumbClubLoading } = useGetClubByIdQuery(clubId, {
     skip: isInvalidParams || clubId < 1,
@@ -231,7 +219,14 @@ export default function FundDetailPageByClub() {
     isLoading: capsLoading,
     isError: capsIsError,
     error: capsError,
-  } = useGetFundCapabilitiesQuery(clubId, { skip: isInvalidParams });
+  } = useGetFundCapabilitiesQuery(
+    { clubId, userId: userId || '' },
+    {
+      skip: isInvalidParams || !userId,
+      refetchOnFocus: true,
+      refetchOnMountOrArgChange: true,
+    },
+  );
   const capsErrorStatus =
     capsError && typeof capsError === 'object' && 'status' in capsError
       ? (capsError as { status: number }).status
@@ -257,6 +252,18 @@ export default function FundDetailPageByClub() {
     { skip: skipFundQuery }
   );
 
+  const memberContribSkippedByPolicy = useMemo(() => {
+    if (!fund || isLoadingFund) return false;
+    if (fund.isDeleted === true) return true;
+    if (fund.isClosed === true && fund.closedReasonCode === 'MANAGER_CLOSED') return true;
+    return false;
+  }, [fund, isLoadingFund]);
+
+  const skipMemberContribQuery =
+    skipFundQuery ||
+    (caps !== undefined && !canViewFunds) ||
+    isLoadingFund ||
+    memberContribSkippedByPolicy;
 
   const {
     data: memberContrib,
@@ -266,14 +273,23 @@ export default function FundDetailPageByClub() {
     refetch: refetchMemberContrib,
   } = useGetFundMemberContributionsQuery(
     { clubId, fundId },
-    { skip: skipFundQuery || (caps !== undefined && !canViewFunds) },
+    { skip: skipMemberContribQuery },
   );
-  const memberContribForbidden =
+  const memberContribHttpStatus =
     isMemberContribError &&
     memberContribError &&
     typeof memberContribError === 'object' &&
-    'status' in memberContribError &&
-    (memberContribError as { status: number }).status === 403;
+    'status' in memberContribError
+      ? Number((memberContribError as { status: number }).status)
+      : undefined;
+  const memberContribForbidden = memberContribHttpStatus === 403;
+  const memberContribDetailMessage = extractClubFundErrorMessage(memberContribError);
+  const memberContribApiSaysFundMissing =
+    isMemberContribError &&
+    !!fund &&
+    !memberContribSkippedByPolicy &&
+    (memberContribHttpStatus === 400 || memberContribHttpStatus === 404) &&
+    /không\s*tồn\s*tại|not\s*exist|does\s*not\s*exist/i.test(memberContribDetailMessage ?? '');
 
   const requiredPerMember = memberContrib?.requiredPerMember ?? null;
   const hasGoal = (memberContrib?.goalAmount ?? 0) > 0 && (requiredPerMember ?? 0) > 0;
@@ -335,7 +351,7 @@ export default function FundDetailPageByClub() {
   const isFundApproved = fund && String(fund.status ?? '').toUpperCase() === 'APPROVED';
   const isFundPending = fund && String(fund.status ?? '').toUpperCase() === 'PENDING';
   const canShowContributeBtn =
-    !!fund && canContribute && fund.canAcceptContributions === true;
+    !!fund && canContribute && fund.canAcceptContributions === true && fund.isClosed !== true;
   const isUnauthorized =
     (fundError && 'status' in fundError && fundError.status === 401);
 
@@ -564,9 +580,13 @@ export default function FundDetailPageByClub() {
 
   if (isInvalidParams) {
     return (
-      <div className="min-h-screen flex items-center justify-center gap-2">
-        <p className={t.type.body}>Đường dẫn không hợp lệ.</p>
-        <Link to="/funds" className={`${t.btn.secondary} !min-h-0 !py-2`}>Quay lại danh sách quỹ</Link>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-4">
+        <p className={`${t.type.body} text-center`}>
+          Chưa chọn quỹ hoặc thiếu ngữ cảnh (URL không chứa mã CLB/quỹ). Đang chuyển về danh sách quỹ…
+        </p>
+        <Link to="/funds" className={`${t.btn.secondary} !min-h-0 !py-2`}>
+          Quay lại danh sách quỹ ngay
+        </Link>
       </div>
     );
   }
@@ -688,7 +708,9 @@ export default function FundDetailPageByClub() {
                   <div>
                     <h1 id="fund-info-heading" className={t.type.pageTitle}>{fund.fundName || `Quỹ #${fund.fundId}`}</h1>
                     <p className={`mt-1 ${t.type.muted}`}>{fund.description || 'Không có mô tả'}</p>
-                    <div className="mt-3"><FundStatusBadge fund={fund} /></div>
+                    <div className="mt-3">
+                      <FundWorkflowLifecycleBadges fund={fund} />
+                    </div>
                     {(() => {
                       const cur = resolvedFundCurrentBalanceVnd(fund);
                       const totalRec = resolvedFundTotalRecordedVnd(fund);
@@ -729,12 +751,16 @@ export default function FundDetailPageByClub() {
                         Hạn nhận nộp tiền: {new Date(fund.expiresAt).toLocaleDateString('vi-VN')}
                       </p>
                     ) : null}
-                    {isFundApproved && canContribute && fund.canAcceptContributions === false ? (
-                      <p className={`mt-2 text-sm text-amber-800 dark:text-amber-200/90`}>
-                        {fund.cannotContributeReasonVi?.trim() ||
-                          'Quỹ hiện không nhận nộp tiền (hết hạn hoặc đã đóng nhận nộp).'}
-                      </p>
-                    ) : null}
+                    {isFundApproved && canContribute && (fund.canAcceptContributions === false || fund.isClosed === true)
+                      ? (() => {
+                          const line =
+                            fund.cannotContributeReasonVi?.trim() ||
+                            fund.lifecycleStatusVi?.trim() ||
+                            'Quỹ hiện không nhận nộp tiền (hết hạn hoặc đã đóng nhận nộp).';
+                          if (isManagerClosedAmberNoteDuplicateVi(line)) return null;
+                          return <p className={`mt-2 text-sm text-amber-800 dark:text-amber-200/90`}>{line}</p>;
+                        })()
+                      : null}
                     {canContribute && !canViewFunds ? (
                       <p className={`mt-2 text-sm ${t.type.muted}`}>
                         Bạn có thể nộp tiền; lịch sử và danh mục nộp chỉ dành cho thành viên có quyền xem tài chính.
@@ -761,14 +787,18 @@ export default function FundDetailPageByClub() {
                             type="button"
                             disabled
                             className={`${t.btn.primary} inline-flex items-center gap-2 opacity-60 cursor-not-allowed`}
-                            title={fund.cannotContributeReasonVi?.trim() || undefined}
+                            title={
+                              fund.isClosed
+                                ? fund.lifecycleStatusVi?.trim() || 'Quỹ đã đóng'
+                                : fund.cannotContributeReasonVi?.trim() || undefined
+                            }
                           >
                             <HandCoins className="w-4 h-4" aria-hidden />
                             Nộp tiền
                           </button>
                         )
                       ) : null}
-                      {canRecordCashContribution ? (
+                      {canRecordCashContribution && fund.isClosed !== true ? (
                         <button
                           type="button"
                           onClick={openRecordCashModal}
@@ -777,10 +807,41 @@ export default function FundDetailPageByClub() {
                           <Banknote className="w-4 h-4 shrink-0" aria-hidden />
                           Ghi nhận tiền mặt
                         </button>
+                      ) : canRecordCashContribution && fund.isClosed === true ? (
+                        <button
+                          type="button"
+                          disabled
+                          className={`${t.btn.secondary} inline-flex items-center justify-center gap-2 opacity-60 cursor-not-allowed`}
+                          title={fund.lifecycleStatusVi?.trim() || 'Quỹ đã đóng'}
+                        >
+                          <Banknote className="w-4 h-4 shrink-0" aria-hidden />
+                          Ghi nhận tiền mặt
+                        </button>
                       ) : null}
                     </div>
                   )}
                 </div>
+                {!capsLoading && canViewFunds ? (
+                  <div className="flex flex-wrap justify-end gap-2 pt-4 mt-2 border-t border-slate-200 dark:border-slate-700">
+                    <ClubFundSoftDeleteControl
+                      clubId={clubId}
+                      fundId={fund.fundId}
+                      fundLabel={fund.fundName || `Quỹ #${fund.fundId}`}
+                      canSoftDeleteFund={caps?.canSoftDeleteFund === true}
+                      isFundClosed={fund.isClosed === true}
+                      financeAccessHintVi={caps?.financeAccessHintVi}
+                      onAfterSuccess={() => {
+                        clearClubFundDetailSession();
+                        void navigate('/funds', {
+                          replace: true,
+                          state: {
+                            flashMessage: 'Đã đóng quỹ. Danh sách quỹ đã được cập nhật.',
+                          },
+                        });
+                      }}
+                    />
+                  </div>
+                ) : null}
               </section>
 
               {canViewFunds ? (
@@ -803,20 +864,43 @@ export default function FundDetailPageByClub() {
                 </div>
 
                 <div className="p-4 space-y-4">
-                  {isMemberContribError ? (
-                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-700 dark:text-red-200 text-sm space-y-2" role="alert">
+                  {memberContribSkippedByPolicy ? (
+                    <div
+                      className={`p-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50/90 dark:bg-slate-800/50 text-sm text-slate-700 dark:text-slate-200`}
+                      role="status"
+                    >
+                      <p>
+                        {fund?.isDeleted === true
+                          ? 'Quỹ đã được đóng bởi quản lý.'
+                          : 'Quỹ đã đóng bởi quản lý. Thống kê đóng góp theo từng thành viên không hiển thị tại đây; bạn có thể xem lịch sử giao dịch bên dưới nếu được phép.'}
+                      </p>
+                    </div>
+                  ) : isMemberContribError ? (
+                    <div
+                      className={`p-4 rounded-xl text-sm space-y-2 ${
+                        memberContribApiSaysFundMissing
+                          ? 'border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 text-amber-950 dark:text-amber-100'
+                          : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200'
+                      }`}
+                      role="alert"
+                    >
                       <p>
                         {memberContribForbidden
                           ? 'Bạn không có quyền xem thống kê đóng góp (cần viewfinance).'
-                          : 'Không thể tải thống kê đóng góp. Vui lòng thử lại.'}
+                          : memberContribApiSaysFundMissing
+                            ? 'Thống kê theo thành viên không khả dụng: backend từ chối yêu cầu (đôi khi báo «quỹ không tồn tại» dù trang vẫn hiển thị thông tin quỹ). Bạn có thể xem lịch sử giao dịch phía dưới nếu được phép.'
+                            : memberContribDetailMessage?.trim() ||
+                              'Không thể tải thống kê đóng góp. Vui lòng thử lại.'}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => refetchMemberContrib()}
-                        className={`${t.btn.secondary} !min-h-0 !py-1.5 !px-3 text-xs`}
-                      >
-                        Thử lại
-                      </button>
+                      {!memberContribForbidden && !memberContribApiSaysFundMissing ? (
+                        <button
+                          type="button"
+                          onClick={() => refetchMemberContrib()}
+                          className={`${t.btn.secondary} !min-h-0 !py-1.5 !px-3 text-xs`}
+                        >
+                          Thử lại
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
 

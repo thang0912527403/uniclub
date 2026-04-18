@@ -36,7 +36,7 @@ export function applyMyFundsTabChangeParams(
 }
 
 export function parseFundStatus(v: string | null): FundListStatus {
-  if (v === 'PENDING' || v === 'APPROVED' || v === 'REJECTED' || v === 'ALL') return v;
+  if (v === 'PENDING' || v === 'APPROVED' || v === 'REJECTED' || v === 'ALL' || v === 'CLOSED') return v;
   return DEFAULT_FUND_STATUS;
 }
 
@@ -96,13 +96,16 @@ export function buildFundsListQueryArgs(input: {
   status: FundListStatus;
   sort: FundListSort;
 }) {
+  const lifecycle = input.status === 'CLOSED' ? ('CLOSED' as const) : ('ALL' as const);
+  const wireStatus = input.status === 'CLOSED' ? ('ALL' as const) : input.status;
   return {
     clubId: input.clubId,
     page: input.page,
     pageSize: input.pageSize,
     search: input.search.trim() || undefined,
-    status: input.status,
+    status: wireStatus,
     sort: input.sort,
+    lifecycle,
   };
 }
 
@@ -162,6 +165,7 @@ export function applyFilterChangeParams(
     if (options.sort === DEFAULT_FUND_SORT) next.delete('sort');
     else next.set('sort', options.sort);
   }
+  next.delete('lifecycle');
   next.set('page', '1');
   if (options.pageSize !== DEFAULT_FUND_PAGE_SIZE) next.set('pageSize', String(options.pageSize));
   else next.delete('pageSize');

@@ -27,6 +27,7 @@ export function refundManagerForbiddenCopy(message: string | undefined): {
   const m = raw.toLowerCase();
   const financePolicy =
     m.includes('editfinance') ||
+    m.includes('deletefinance') ||
     m.includes('edit finance') ||
     m.includes('chỉnh sửa tài chính') ||
     m.includes('policy');

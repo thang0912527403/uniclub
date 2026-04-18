@@ -16,7 +16,7 @@ export default function ClubPayosSettingsPage() {
 
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const { isAdmin } = useCurrentUser();
+  const { isAdmin, userId } = useCurrentUser();
 
   const isInvalidParams = !clubIdParam || isNaN(clubId) || clubId < 1;
 
@@ -24,7 +24,14 @@ export default function ClubPayosSettingsPage() {
 
   const { data: club } = useGetClubByIdQuery(clubId, { skip: isInvalidParams });
   const { data: caps, isLoading: capsLoading, isError: capsIsError, error: capsError } =
-    useGetFundCapabilitiesQuery(clubId, { skip: isInvalidParams });
+    useGetFundCapabilitiesQuery(
+      { clubId, userId: userId || '' },
+      {
+        skip: isInvalidParams || !userId,
+        refetchOnFocus: true,
+        refetchOnMountOrArgChange: true,
+      },
+    );
 
   const capsErrorStatus =
     capsError && typeof capsError === "object" && "status" in capsError

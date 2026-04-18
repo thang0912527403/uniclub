@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import Cookies from 'js-cookie';
-import { setClubId } from '~/utils/auth';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { BarChart3, Loader2, Lock, RefreshCw, ArrowRightLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
@@ -24,6 +24,7 @@ import {
   FUND_HISTORY_STATUS_OPTIONS,
 } from '~/modules/funds/constants/fundHistory';
 import { FinanceAccessHintBanner, ReportDateFilterNote } from '~/modules/funds/components/FundUxHints';
+import { ClubFundDetailLink } from '~/modules/funds/components/ClubFundDetailLink';
 import { fundTransactionPaymentProviderLabel } from '~/modules/funds/utils/fundTransactionPaymentProvider';
 
 function ymdToUtcStartIso(ymd: string): string | undefined {
@@ -139,6 +140,7 @@ function formatTxDateTime(iso: string | undefined): string {
 type FundsReportTab = 'summary' | 'transactions';
 
 export default function FundsReportsPage() {
+  const { userId } = useCurrentUser();
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { show: showNotification } = useNotification();
@@ -164,13 +166,11 @@ export default function FundsReportsPage() {
 
   const {
     clubId,
-    setSelectedClubId,
-    memberClubOptions,
-    clubs,
     hasToken: selHasToken,
     isAdmin,
     hasAnyClub,
     isLoadingUserMemberships,
+    currentClubLabel,
   } = useFundsClubSelection();
 
   const [draftFrom, setDraftFrom] = useState('');
@@ -193,7 +193,14 @@ export default function FundsReportsPage() {
     isLoading: capsLoading,
     isError: capsIsError,
     error: capsError,
-  } = useGetFundCapabilitiesQuery(clubId, { skip: !selHasToken || clubId < 1 });
+  } = useGetFundCapabilitiesQuery(
+    { clubId, userId: userId || '' },
+    {
+      skip: !selHasToken || clubId < 1 || !userId,
+      refetchOnFocus: true,
+      refetchOnMountOrArgChange: true,
+    },
+  );
 
   const capsErrorStatus =
     capsError && typeof capsError === 'object' && 'status' in capsError
@@ -438,37 +445,13 @@ export default function FundsReportsPage() {
 
           <div className={`${t.card.base} ${t.space.card} flex flex-wrap items-end gap-4 border-slate-200 dark:border-slate-600`}>
             <div className="flex flex-col gap-1 min-w-[200px]">
-              <label htmlFor="report-club" className={t.type.label}>
-                Câu lạc bộ
-              </label>
-              <select
-                id="report-club"
-                value={clubId}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setSelectedClubId(v);
-                  if (v > 0) setClubId(v);
-                }}
-                className={`${t.input} ${inputClass}`}
-                disabled={!selHasToken || (isAdmin ? clubs.length === 0 : memberClubOptions.length === 0)}
+              <p className={t.type.label}>Câu lạc bộ</p>
+              <div
+                className={`${t.input} ${inputClass} h-11 flex items-center px-3 cursor-default bg-slate-50/90 dark:bg-slate-900/50 text-slate-800 dark:text-slate-100`}
+                aria-live="polite"
               >
-                <option value={0}>-- Chọn CLB --</option>
-                {isAdmin
-                  ? clubs.map((c) => (
-                      <option key={c.clubId} value={c.clubId}>
-                        {c.clubName} (ID: {c.clubId})
-                      </option>
-                    ))
-                  : memberClubOptions.map((c) => (
-                      <option
-                        key={c.clubId}
-                        value={c.clubId}
-                        title={c.roleName ? `Vai trò của bạn trong CLB này: ${c.roleName}` : undefined}
-                      >
-                        {c.label}
-                      </option>
-                    ))}
-              </select>
+                {currentClubLabel}
+              </div>
             </div>
             {activeTab === 'summary' ? (
               <>
@@ -759,12 +742,17 @@ export default function FundsReportsPage() {
                                 className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-200"
                               >
                                 <td className={`px-4 py-2 ${t.type.body}`}>
-                                  <Link
-                                    to={`/clubs/${clubId}/funds/${item.fundId}`}
-                                    className="text-amber-700 dark:text-amber-300 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
-                                  >
-                                    {txFundLabel(item)}
-                                  </Link>
+                                  {item.fundId != null && item.fundId > 0 ? (
+                                    <ClubFundDetailLink
+                                      clubId={clubId}
+                                      fundId={item.fundId}
+                                      className="text-amber-700 dark:text-amber-300 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
+                                    >
+                                      {txFundLabel(item)}
+                                    </ClubFundDetailLink>
+                                  ) : (
+                                    <span>{txFundLabel(item)}</span>
+                                  )}
                                 </td>
                                 <td className={`px-4 py-2 ${t.type.body}`}>{txSenderLabel(item)}</td>
                                 <td className={`px-4 py-2 ${t.type.body} whitespace-nowrap`}>

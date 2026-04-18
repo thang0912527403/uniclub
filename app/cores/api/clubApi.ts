@@ -25,7 +25,7 @@ import {
   type FundHistoryScope,
   type FundMineType,
   type FundListSort,
-  type FundListStatus,
+  type FundListWorkflowStatus,
   type FundReportSummaryDto,
   type GetClubFundTransactionsParams,
   type GetMyFundsParams,
@@ -41,6 +41,9 @@ import {
   type CreateManagerRefundDto,
   type FundTypeDto,
   type FundMemberContributionsDto,
+  type SoftDeleteFundResponse,
+  type FundClosedReasonCode,
+  type FundLifecycleFilter,
 } from "./types";
 
 function normalizeRecordCashContributionResponse(
@@ -130,6 +133,20 @@ function normalizePagedResult<T>(raw: unknown): PagedResult<T> {
 
 type ClubFundScoped = { clubId: number };
 type FundScoped = { clubId: number; fundId: number };
+
+function parseSoftDeleteFundResponse(raw: unknown): SoftDeleteFundResponse {
+  if (!raw || typeof raw !== "object") return {};
+  const r = raw as Record<string, unknown>;
+  const data = r.data ?? r.Data;
+  if (data && typeof data === "object") {
+    const d = data as Record<string, unknown>;
+    const m = d.message ?? d.Message;
+    if (typeof m === "string" && m.trim()) return { message: m.trim() };
+  }
+  const m = r.message ?? r.Message;
+  if (typeof m === "string" && m.trim()) return { message: m.trim() };
+  return {};
+}
 type FundLocationResponse = { fundId: number; clubId: number };
 
 function numFundReport(v: unknown): number {
@@ -365,6 +382,15 @@ function normalizeFundRefundRequest(raw: unknown): FundRefundRequestResponseDto 
   };
 }
 
+function normalizeFundClosedReasonCode(raw: unknown): FundClosedReasonCode | null {
+  const u = String(raw ?? "")
+    .trim()
+    .toUpperCase();
+  if (u === "EXPIRED") return "EXPIRED";
+  if (u === "MANAGER_CLOSED" || u === "MANAGERCLOSED") return "MANAGER_CLOSED";
+  return null;
+}
+
 function normalizeClubFund(raw: unknown): ClubFund {
   if (raw == null || typeof raw !== "object") return {} as ClubFund;
   const d = raw as Record<string, unknown>;
@@ -384,6 +410,8 @@ function normalizeClubFund(raw: unknown): ClubFund {
     return Number.isFinite(n) ? n : null;
   };
   const canAcceptRaw = d.canAcceptContributions ?? d.CanAcceptContributions;
+  const isClosedRaw = d.isClosed ?? d.IsClosed;
+  const isDeletedRaw = d.isDeleted ?? d.IsDeleted;
   return {
     fundId: num(d.fundId ?? d.FundId) ?? 0,
     clubId: num(d.clubId ?? d.ClubId) ?? 0,
@@ -431,6 +459,16 @@ function normalizeClubFund(raw: unknown): ClubFund {
       d,
       "expiresAtUtcNoteVi",
       "ExpiresAtUtcNoteVi",
+    ),
+    isClosed: isClosedRaw == null ? false : Boolean(isClosedRaw),
+    isDeleted: isDeletedRaw == null ? undefined : Boolean(isDeletedRaw),
+    closedReasonCode: normalizeFundClosedReasonCode(
+      d.closedReasonCode ?? d.ClosedReasonCode,
+    ),
+    lifecycleStatusVi: pickOptionalViString(
+      d,
+      "lifecycleStatusVi",
+      "LifecycleStatusVi",
     ),
   };
 }
@@ -486,15 +524,21 @@ function buildMyFundsQuery(
   clubId: number,
   params: Omit<GetMyFundsParams, "clubId">,
 ) {
+  const rawStatus = params.status ?? "ALL";
+  const wireStatus: FundListWorkflowStatus =
+    rawStatus === "CLOSED" ? "ALL" : rawStatus;
+  const lifecycle: FundLifecycleFilter | undefined =
+    rawStatus === "CLOSED" ? "CLOSED" : undefined;
   return {
     url: `/clubs/${clubId}/funds/my`,
     params: {
       mineType: params.mineType ?? "ALL",
-      status: params.status ?? "ALL",
+      status: wireStatus,
       ...(params.search?.trim() ? { search: params.search.trim() } : {}),
       sort: params.sort ?? "NEWEST",
       page: params.page ?? 1,
       pageSize: params.pageSize ?? 9,
+      ...(lifecycle ? { lifecycle } : {}),
     },
   };
 }
@@ -642,11 +686,14 @@ export const clubApi = baseApi.injectEndpoints({
       invalidatesTags: ["ClubPost"],
     }),
     // ─── ClubFund endpoints ─────────────────────────────────────────────
-    getFundCapabilities: builder.query<ClubFundCapabilities, number>({
-      query: (clubId) => `/clubs/${clubId}/funds/capabilities`,
+    getFundCapabilities: builder.query<
+      ClubFundCapabilities,
+      { clubId: number; userId: string }
+    >({
+      query: ({ clubId }) => `/clubs/${clubId}/funds/capabilities`,
       transformResponse: (response: ApiResponse<ClubFundCapabilities>) =>
         normalizeClubFundCapabilitiesFromApi(response),
-      providesTags: (result, error, clubId) => [
+      providesTags: (result, error, { clubId }) => [
         { type: "ClubFund", id: `capabilities-${clubId}` },
       ],
     }),
@@ -690,11 +737,12 @@ export const clubApi = baseApi.injectEndpoints({
         page?: number;
         pageSize?: number;
         search?: string;
-        status?: FundListStatus;
+        status?: FundListWorkflowStatus;
         sort?: FundListSort;
+        lifecycle?: FundLifecycleFilter;
       }
     >({
-      query: ({ clubId, page = 1, pageSize = 10, search, status, sort }) => ({
+      query: ({ clubId, page = 1, pageSize = 10, search, status, sort, lifecycle }) => ({
         url: `/clubs/${clubId}/funds`,
         params: {
           page,
@@ -702,6 +750,7 @@ export const clubApi = baseApi.injectEndpoints({
           ...(search ? { search } : {}),
           ...(status ? { status } : {}),
           ...(sort ? { sort } : {}),
+          ...(lifecycle && lifecycle !== "ALL" ? { lifecycle } : {}),
         },
       }),
       transformResponse: (
@@ -773,7 +822,9 @@ export const clubApi = baseApi.injectEndpoints({
         let filtered = fallbackPaged.items
           .map((i) => normalizeClubFund(i))
           .filter((i) => matchesMineType(i, mineType));
-        if (status !== "ALL") {
+        if (status === "CLOSED") {
+          filtered = filtered.filter((i) => i.isClosed === true);
+        } else if (status !== "ALL") {
           filtered = filtered.filter(
             (i) => String(i.status ?? "").toUpperCase() === status,
           );
@@ -936,6 +987,23 @@ export const clubApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<ClubFund>) =>
         normalizeClubFund(response.data),
       invalidatesTags: ["ClubFund"],
+    }),
+
+    softDeleteFund: builder.mutation<SoftDeleteFundResponse, FundScoped>({
+      query: ({ clubId, fundId }) => ({
+        url: `/clubs/${clubId}/funds/${fundId}`,
+        method: "DELETE",
+      }),
+      transformResponse: (response: unknown) => parseSoftDeleteFundResponse(response),
+      invalidatesTags: (result, error, { clubId, fundId }) => [
+        { type: "ClubFund", id: fundId },
+        { type: "ClubFund", id: `capabilities-${clubId}` },
+        { type: "ClubFund", id: `club-${clubId}` },
+        { type: "ClubFund", id: `my-funds-${clubId}` },
+        { type: "ClubFund", id: `member-contrib-${clubId}-${fundId}` },
+        { type: "ClubFund", id: `report-summary-${clubId}` },
+        "ClubFund",
+      ],
     }),
 
     contributeToFund: builder.mutation<
@@ -1243,6 +1311,7 @@ export const {
   useCreateFundMutation,
   useGetFundMemberContributionsQuery,
   useApproveFundMutation,
+  useSoftDeleteFundMutation,
   useContributeToFundMutation,
   useRecordCashContributionMutation,
   useLazyGetContributeTransactionStatusQuery,

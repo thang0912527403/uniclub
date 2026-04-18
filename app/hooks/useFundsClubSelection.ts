@@ -6,6 +6,7 @@ import { useGetUserAllClubsQuery, useGetUserClubInfoQuery, type ClubMembership }
 import { useClubRole } from '~/hooks/useClubRole';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { getClubId, setClubId } from '~/utils/auth';
+import { clearClubFundDetailSession } from '~/modules/funds/utils/clubFundDetailSession';
 
 export function useFundsClubSelection() {
   const hasToken = !!Cookies.get('accessToken');
@@ -56,6 +57,20 @@ export function useFundsClubSelection() {
   const hasAnyClub = isAdmin ? clubs.length > 0 : memberClubOptions.length > 0;
   const [selectedClubId, setSelectedClubId] = useState(0);
 
+  const currentClubLabel = useMemo(() => {
+    if (selectedClubId > 0) {
+      if (isAdmin) {
+        const c = clubs.find((x) => x.clubId === selectedClubId);
+        return c?.clubName?.trim() || `CLB #${selectedClubId}`;
+      }
+      const m = memberClubOptions.find((x) => x.clubId === selectedClubId);
+      return m?.label || `CLB #${selectedClubId}`;
+    }
+    if (!hasToken) return '—';
+    if (!isAdmin && isLoadingUserMemberships) return 'Đang tải…';
+    return '—';
+  }, [selectedClubId, isAdmin, clubs, memberClubOptions, hasToken, isLoadingUserMemberships]);
+
   const cookieClubId = getClubId();
 
   const effectiveClubOptions = isAdmin
@@ -92,9 +107,14 @@ export function useFundsClubSelection() {
     clubs,
   ]);
 
-  const setSelectedClubIdAndPersist = useCallback((clubId: number) => {
-    setSelectedClubId(clubId);
-    if (clubId > 0) setClubId(clubId);
+  const setSelectedClubIdAndPersist = useCallback((nextClubId: number) => {
+    setSelectedClubId((prev) => {
+      if (nextClubId > 0 && prev > 0 && nextClubId !== prev) {
+        clearClubFundDetailSession();
+      }
+      return nextClubId;
+    });
+    if (nextClubId > 0) setClubId(nextClubId);
   }, []);
 
   return {
@@ -106,5 +126,6 @@ export function useFundsClubSelection() {
     isAdmin,
     hasAnyClub,
     isLoadingUserMemberships,
+    currentClubLabel,
   };
 }

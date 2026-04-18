@@ -1,5 +1,9 @@
 export type ClubFundStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
+export type FundClosedReasonCode = 'EXPIRED' | 'MANAGER_CLOSED';
+
+export type FundLifecycleFilter = 'ALL' | 'OPEN' | 'CLOSED' | 'EXPIRED' | 'MANAGER_CLOSED';
+
 export interface PagedResult<T> {
   items: T[];
   pageNumber: number;
@@ -30,6 +34,12 @@ export interface ClubFund {
   cannotContributeReasonVi?: string | null;
   rejectionReasonVi?: string | null;
   expiresAtUtcNoteVi?: string | null;
+  /** Quỹ đã “đóng” theo lifecycle (hết hạn nộp hoặc soft-delete). */
+  isClosed?: boolean;
+  /** Quỹ soft-delete; chỉ có trong list/chi tiết khi user đủ quyền (BE). */
+  isDeleted?: boolean;
+  closedReasonCode?: FundClosedReasonCode | null;
+  lifecycleStatusVi?: string | null;
 }
 
 export type MyFundsPagedResult = PagedResult<ClubFund> & {
@@ -53,7 +63,10 @@ export interface CreateFundRequestDto {
 }
 
 export type FundSidebarMenuId = 'overview' | 'transactions' | 'reports' | 'settings';
-export type FundListStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
+/** Trạng thái workflow trên API (không gồm “Đã đóng” lifecycle). */
+export type FundListWorkflowStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
+/** Bộ lọc UI: workflow + “Đã đóng” (map sang query `lifecycle=CLOSED`). */
+export type FundListStatus = FundListWorkflowStatus | 'CLOSED';
 export type FundListSort = 'NEWEST' | 'OLDEST' | 'NAME_ASC' | 'NAME_DESC';
 export type FundMineType = 'ALL' | 'CREATED' | 'RESPONSIBLE';
 
@@ -69,15 +82,16 @@ export interface ClubFundCapabilities {
   canContribute: boolean;
   canCreateFund: boolean;
   canApproveOrRejectFundEntity: boolean;
-  /** Cấu hình PayOS/VNPay (BE: Admin hoặc Manager cấp 1 + editfinance). */
   canManageOnlinePaymentSettings: boolean;
-  /** Ghi nhận đóng quỹ tiền mặt (BE: Admin hoặc Manager cấp 1 + editfinance). */
   canRecordCashContributions: boolean;
-  /** Hàng đợi hoàn / complete / reject / manager-refund (BE: Admin hoặc Manager cấp 1 + editfinance). */
   canProcessClubRefunds: boolean;
   hasViewFinancePolicy: boolean;
   hasCreateFinancePolicy: boolean;
   hasEditFinancePolicy: boolean;
+  hasDeleteFinancePolicy: boolean;
+  canSoftDeleteFund: boolean;
+  /** Xem cả quỹ soft-deleted trong list/chi tiết (manager + editfinance / admin). */
+  canViewSoftDeletedFunds: boolean;
   clubRoleName?: string | null;
   clubRoleLevel?: number | null;
   isActiveClubMember: boolean;
@@ -229,6 +243,11 @@ export interface FundHistoryResponse {
   totalPages: number;
   hasPreviousPage: boolean;
   hasNextPage: boolean;
+}
+
+/** Phản hồi DELETE `/clubs/{clubId}/funds/{fundId}` (đóng quỹ — xóa mềm phía server). */
+export interface SoftDeleteFundResponse {
+  message?: string;
 }
 
 export interface CreateFundDto {

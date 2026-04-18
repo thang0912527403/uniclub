@@ -14,6 +14,7 @@ import i18n from '~/utils/i18n';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import type { Route } from "./+types/root";
 import "./app.css";
+import "~/modules/funds/utils/clubFundDetailAuthSync";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },

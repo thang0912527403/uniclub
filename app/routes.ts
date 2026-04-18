@@ -44,14 +44,11 @@ export default [
 
     // Club management
     route("clubs", "routes/clubs/clubs.tsx"),
+    route("clubs/funds/detail", "routes/clubs/clubs.funds.detail.tsx"),
     route("clubs/:id", "routes/clubs/clubs.$id.tsx"),
     route("clubs/create", "routes/clubs/clubs.create.tsx"),
     route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
     route("clubs/:id/organization", "routes/clubs/clubs.$id.structure.tsx"),
-    route(
-      "clubs/:id/funds/:fundId",
-      "routes/clubs/clubs.$id.funds.$fundId.tsx",
-    ),
     route("clubs/:id/payos", "routes/clubs/clubs.$id.payos.tsx"),
     route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
     route("club-roles", "routes/club-roles.tsx"),
@@ -93,7 +90,6 @@ export default [
     route("funds/transactions", "routes/funds.transactions.tsx"),
     route("funds/reports", "routes/funds.reports.tsx"),
     route("funds/payos", "routes/funds.payos.tsx"),
-    route("funds/:fundId", "routes/funds.$fundId.tsx"),
 
     // Meeting (WebRTC)
     route("meeting/:roomId?", "routes/meeting.tsx"),
