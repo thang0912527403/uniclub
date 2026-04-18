@@ -10,7 +10,8 @@
       "manageClubName": "Quản lý Tên CLB",
       "recruitmentCampaigns": "Chiến dịch Tuyển sinh",
       "clubMembers": "Thành viên CLB",
-      "clubActivities": "Hoạt động CLB"
+      "clubActivities": "Hoạt động CLB",
+      "clubRequests": "Yêu cầu tạo CLB"
     },
     "manageDepartment": {
       "title": "Quản lý Bộ phận",

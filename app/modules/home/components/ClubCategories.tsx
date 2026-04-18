@@ -25,7 +25,7 @@ const ClubCategories: React.FC = () => {
                     {clubs.slice(0, 3).map((club) => (
                         <div
                             key={club.clubId}
-                            onClick={() => navigate(`/club/all-clubs/${club.clubId}`)}
+                            onClick={() => navigate(`/public/clubs/${club.clubId}`)}
                             className="group bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 flex flex-col h-full border border-gray-100"
                         >
                             {/* Image Header */}
@@ -83,7 +83,7 @@ const ClubCategories: React.FC = () => {
                 {/* Bottom Action */}
                 <div className="text-center mt-10">
                     <button className="text-orange-500 hover:text-orange-600 font-medium inline-flex items-center gap-2 group cursor-pointer"
-                        onClick={() => navigate("/club/all-clubs")}
+                        onClick={() => navigate("/public/clubs")}
                     >
                         Xem tất cả câu lạc bộ
                         <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

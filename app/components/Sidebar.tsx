@@ -76,7 +76,6 @@ export function Sidebar({
     navigate(url);
     onClose?.();
   };
-
   const navItems: NavItem[] = [
     { label: t("sidebar.dashboard"), icon: "fa-th-large", url: "/dashboard" },
     {
@@ -85,21 +84,29 @@ export function Sidebar({
       subItems: [
         { label: t("sidebar.manageClub.allClubs"), url: "/clubs" },
         {
+          label: t("sidebar.manageClub.yourClubInfo"),
+          url: `/clubs/${getClubId() || 1}`,
+        },
+        {
           label: t("sidebar.manageClub.clubStructure"),
           url: `/clubs/${getClubId() || 1}/organization`,
         },
         { label: t("sidebar.manageClub.clubRoles"), url: "/club-roles" },
-        { label: t("sidebar.manageClub.yourClubInfo"), url: "/club/info" },
-        { label: t("sidebar.manageClub.manageClubName"), url: "/club/name" },
         {
-          label: t("sidebar.manageClub.recruitmentCampaigns"),
-          url: "/club/recruitment-campaigns",
+          label: t("sidebar.manageClub.clubRequests"),
+          url: "/club/all-requests",
         },
-        { label: t("sidebar.manageClub.clubMembers"), url: "/club/members" },
-        {
-          label: t("sidebar.manageClub.clubActivities"),
-          url: "/club/activities",
-        },
+        // { label: t("sidebar.manageClub.yourClubInfo"), url: "/club/info" },
+        // { label: t("sidebar.manageClub.manageClubName"), url: "/club/name" },
+        // {
+        //   label: t("sidebar.manageClub.recruitmentCampaigns"),
+        //   url: "/club/recruitment-campaigns",
+        // },
+        // { label: t("sidebar.manageClub.clubMembers"), url: "/club/members" },
+        // {
+        //   label: t("sidebar.manageClub.clubActivities"),
+        //   url: "/club/activities",
+        // },
       ],
     },
     {
@@ -110,18 +117,18 @@ export function Sidebar({
           label: t("sidebar.manageDepartment.allDepartments"),
           url: "/department",
         },
-        {
-          label: t("sidebar.manageDepartment.createDepartment"),
-          url: "/department/create",
-        },
-        {
-          label: t("sidebar.manageDepartment.departmentRoles"),
-          url: "/department/roles",
-        },
-        {
-          label: t("sidebar.manageDepartment.departmentSettings"),
-          url: "/department/settings",
-        },
+        // {
+        //   label: t("sidebar.manageDepartment.createDepartment"),
+        //   url: "/department/create",
+        // },
+        // {
+        //   label: t("sidebar.manageDepartment.departmentRoles"),
+        //   url: "/department/roles",
+        // },
+        // {
+        //   label: t("sidebar.manageDepartment.departmentSettings"),
+        //   url: "/department/settings",
+        // },
       ],
     },
     {

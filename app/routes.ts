@@ -53,6 +53,7 @@ export default [
       "routes/clubs/clubs.$id.funds.$fundId.tsx",
     ),
     route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
+    route("clubs/:clubId/members/:memberId/roles", "routes/clubs/clubmembers.role.tsx"),
     route("club-roles", "routes/club-roles.tsx"),
     route("manage-clubs", "routes/my-clubs.tsx"),
     route("application-form/:formId?", "routes/question.tsx"),
@@ -61,13 +62,14 @@ export default [
     route("club/post", "routes/clubs/clubpost.tsx"),
     // Department
     route("department", "routes/department.tsx"),
+    route("department/create", "routes/department.create.tsx"),
     route("department/:id", "routes/department.member.tsx"),
 
     // Recruitment & Applications
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
     route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
-    route("club/all-clubs", "routes/clubs-homepage/clubs.tsx"),
-    route("club/all-clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
+    route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
+    route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
     route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
     route("club/all-requests", "routes/clubs/clubrequests.tsx"),
 

@@ -68,7 +68,7 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
     }
 
     const payload = {
-      questionText: optionsString,
+      questionText: text,
       questionType: type,
       isRequired: required,
       questionOptions:
@@ -135,7 +135,7 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
               >
                 <option value="text">Văn bản</option>
                 <option value="textarea">Đoạn văn</option>
-                <option value="number">Số</option>
+                {/* <option value="number">Số</option> */}
                 <option value="date">Ngày</option>
                 <option value="radio">Lựa chọn(chỉ chọn 1)</option>
                 <option value="checkbox">Lựa chọn(nhiều lựa chọn)</option>
