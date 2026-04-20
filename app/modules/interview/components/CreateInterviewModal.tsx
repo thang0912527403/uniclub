@@ -11,10 +11,21 @@ const BulkCandidateRow: React.FC<{
     skip: !app.userId,
   });
   return (
-    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
-      <span className="text-xs text-gray-400 dark:text-gray-500 w-5 flex-shrink-0">
+    <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300 py-1 border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+      <span className="text-[10px] text-gray-400 dark:text-gray-500 w-4 flex-shrink-0">
         {index + 1}.
       </span>
+      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-[10px] font-bold shadow-sm flex-shrink-0 overflow-hidden">
+        {user?.avatar ? (
+          <img
+            src={user.avatar}
+            alt={user.fullName}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          (user?.fullName?.[0] || app.userId.slice(0, 2)).toUpperCase()
+        )}
+      </div>
       <span className="font-medium truncate flex-1">
         {isLoading ? (
           <span className="inline-block w-24 h-3.5 bg-gray-200 dark:bg-gray-600 rounded animate-pulse" />
@@ -119,6 +130,17 @@ const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
       return;
     }
 
+    const now = new Date();
+    const hasPastSlot = validSlots.some((slot) => {
+      const slotDate = new Date(`${slot.date}T${slot.time}`);
+      return slotDate < now;
+    });
+
+    if (hasPastSlot) {
+      message.warning("Không thể chọn ngày giờ trong quá khứ");
+      return;
+    }
+
     setIsSubmitting(true);
     let created = 0;
     let failed = 0;
@@ -196,11 +218,26 @@ const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
               <h2 className="text-lg font-bold text-white">
                 {isBulkMode ? "Tạo lịch PV" : "Tạo lịch phỏng vấn"}
               </h2>
-              <p className="text-orange-100 text-sm mt-0.5">
-                {isBulkMode
-                  ? `${targetApps.length} ứng viên đã chọn`
-                  : `Application #${userData?.fullName}`}
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                {!isBulkMode && (
+                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold text-white overflow-hidden backdrop-blur-sm">
+                    {userData?.avatar ? (
+                      <img
+                        src={userData.avatar}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (userData?.fullName?.[0] || "U").toUpperCase()
+                    )}
+                  </div>
+                )}
+                <p className="text-orange-100 text-sm">
+                  {isBulkMode
+                    ? `${targetApps.length} ứng viên đã chọn`
+                    : `Ứng viên: ${userData?.fullName}`}
+                </p>
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -304,6 +341,12 @@ const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
                   </span>
                   <input
                     type="date"
+                    min={(() => {
+                      const d = new Date();
+                      const offset = d.getTimezoneOffset() * 60000;
+                      const localDate = new Date(d.getTime() - offset);
+                      return localDate.toISOString().split("T")[0];
+                    })()}
                     value={slot.date}
                     onChange={(e) =>
                       updateSlot(slot.id, "date", e.target.value)

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import Navbar from "../../components/Navbar";
 import {
   useGetUserByIdQuery,
@@ -28,9 +28,30 @@ const UserProfile = () => {
     useUploadAvatarMutation();
   const { show: showNotification } = useNotification();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
   const [activeTab, setActiveTab] = useState<
     "info" | "applications" | "candidate" | "interviewer"
   >("info");
+
+  // Sync tab from URL
+  useEffect(() => {
+    if (
+      tabParam === "applications" ||
+      tabParam === "info" ||
+      tabParam === "candidate" ||
+      tabParam === "interviewer"
+    ) {
+      setActiveTab(tabParam as any);
+    }
+  }, [tabParam]);
+
+  const handleTabChange = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
+
   const [isEditing, setIsEditing] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -217,7 +238,7 @@ const UserProfile = () => {
         {/* ─── Tabs Navigation ─────────────────────────────── */}
         <div className="flex flex-wrap gap-2 mb-6 p-1.5 bg-gray-100/50 dark:bg-gray-800/50 rounded-2xl w-fit border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
           <button
-            onClick={() => setActiveTab("info")}
+            onClick={() => handleTabChange("info")}
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
               activeTab === "info"
                 ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
@@ -229,7 +250,7 @@ const UserProfile = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab("candidate")}
+            onClick={() => handleTabChange("candidate")}
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
               activeTab === "candidate"
                 ? "bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
@@ -241,7 +262,7 @@ const UserProfile = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab("applications")}
+            onClick={() => handleTabChange("applications")}
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
               activeTab === "applications"
                 ? "bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
@@ -253,7 +274,7 @@ const UserProfile = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab("interviewer")}
+            onClick={() => handleTabChange("interviewer")}
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
               activeTab === "interviewer"
                 ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"

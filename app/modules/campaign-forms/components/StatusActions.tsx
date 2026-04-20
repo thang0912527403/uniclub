@@ -32,7 +32,7 @@ export const ApplicationStatusActions: React.FC<{
   onChangeStatus: (newStatus: string) => void;
 }> = ({ currentStatus, onChangeStatus }) => {
   const isPending = currentStatus === "PENDING";
-  
+
   return (
     <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
       <button
@@ -77,8 +77,6 @@ export const BulkActionBar: React.FC<{
   onClear: () => void;
   onBulkStatus: (status: string) => void;
 }> = ({ count, onClear, onBulkStatus }) => {
-  const [showMenu, setShowMenu] = useState(false);
-
   return (
     <div className="bg-indigo-600 text-white rounded-xl px-4 py-3 flex items-center justify-between shadow-lg animate-in slide-in-from-bottom">
       <div className="flex items-center gap-3">
@@ -88,40 +86,21 @@ export const BulkActionBar: React.FC<{
         <span className="text-sm font-medium">đơn đã chọn</span>
       </div>
       <div className="flex items-center gap-2">
-        <div className="relative">
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
-          >
-            <i className="fa-solid fa-pen text-[10px]" />
-            Đổi trạng thái
-            <i
-              className={`fa-solid fa-chevron-down text-[8px] transition-transform ${showMenu ? "rotate-180" : ""}`}
-            />
-          </button>
-          {showMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowMenu(false)}
-              />
-              <div className="absolute z-50 bottom-full right-0 mb-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1.5 min-w-[150px] overflow-hidden">
-                {Object.entries(statusConfig).map(([k, v]) => (
-                  <button
-                    key={k}
-                    onClick={() => {
-                      onBulkStatus(k);
-                      setShowMenu(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        <button
+          onClick={() => onBulkStatus("SUCCESS")}
+          className="px-3 py-1.5 bg-green-500 hover:bg-green-600 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+        >
+          <i className="fa-solid fa-check text-[10px]" />
+          Vào phỏng vấn
+        </button>
+        <button
+          onClick={() => onBulkStatus("REJECTED")}
+          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+        >
+          <i className="fa-solid fa-xmark text-[10px]" />
+          Từ chối
+        </button>
+        <div className="w-px h-4 bg-white/20 mx-1" />
         <button
           onClick={onClear}
           className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium transition-colors"

@@ -105,8 +105,18 @@ const InterviewRoom: React.FC = () => {
         return (
           <RoomBlockedScreen
             reason="Mã phòng không tồn tại hoặc đã bị xóa. Vui lòng kiểm tra lại."
-            backPath="/interview/schedule"
-            backLabel="Quay lại lịch phỏng vấn"
+            backPath="/meeting-room"
+            backLabel="Quay lại sảnh"
+          />
+        );
+      }
+
+      if (matchedInterview.meetingRoom?.status === "Idle") {
+        return (
+          <RoomBlockedScreen
+            reason="Chưa đến giờ phỏng vấn. Phòng hiện chưa mở, vui lòng quay lại sau."
+            backPath="/meeting-room"
+            backLabel="Quay lại sảnh"
           />
         );
       }
@@ -115,8 +125,8 @@ const InterviewRoom: React.FC = () => {
         return (
           <RoomBlockedScreen
             reason="Phòng đã bị đóng sau khi buổi phỏng vấn kết thúc."
-            backPath="/interview/schedule"
-            backLabel="Quay lại lịch phỏng vấn"
+            backPath="/meeting-room"
+            backLabel="Quay lại sảnh"
           />
         );
       }
@@ -125,8 +135,8 @@ const InterviewRoom: React.FC = () => {
         return (
           <RoomBlockedScreen
             reason={`Buổi phỏng vấn đã ở trạng thái "${matchedInterview.status}" — phòng không còn nhận người vào.`}
-            backPath="/interview/schedule"
-            backLabel="Quay lại lịch phỏng vấn"
+            backPath="/meeting-room"
+            backLabel="Quay lại sảnh"
           />
         );
       }
@@ -170,8 +180,8 @@ const InterviewRoom: React.FC = () => {
         error={joinError}
         title="Phòng phỏng vấn"
         subtitle="Nhập mã phòng để tham gia buổi phỏng vấn"
-        backPath="/interview/schedule"
-        backLabel="← Quay lại lịch phỏng vấn"
+        backPath="/meeting-room"
+        backLabel="← Quay lại sảnh"
       />
     );
   }
