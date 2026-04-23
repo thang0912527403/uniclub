@@ -23,9 +23,11 @@ const L = FUND_REFUND_LIMITS;
 type Props = {
   clubId: number;
   skip: boolean;
+  onSuccess?: () => void;
+  variant?: 'card' | 'plain';
 };
 
-export function MemberRequestForm({ clubId, skip }: Props) {
+export function MemberRequestForm({ clubId, skip, onSuccess, variant = 'card' }: Props) {
   const { show: showNotification } = useNotification();
   const [originalTxId, setOriginalTxId] = useState<string>('');
   const [amountRaw, setAmountRaw] = useState('');
@@ -163,6 +165,7 @@ export function MemberRequestForm({ clubId, skip }: Props) {
       });
       resetForm();
       setOriginalTxId('');
+      onSuccess?.();
     } catch (err: unknown) {
       const status = (err as { status?: number })?.status;
       const msg = extractClubFundErrorMessage(err);
@@ -175,11 +178,8 @@ export function MemberRequestForm({ clubId, skip }: Props) {
     }
   };
 
-  return (
-    <section
-      className={`${t.card.base} ${t.space.card} border-slate-200 dark:border-slate-600`}
-      aria-labelledby="refund-request-form-title"
-    >
+  const content = (
+    <>
       <h2 id="refund-request-form-title" className={t.type.sectionTitle}>
         Gửi yêu cầu hoàn tiền nộp quỹ
       </h2>
@@ -346,6 +346,19 @@ export function MemberRequestForm({ clubId, skip }: Props) {
           </div>
         </form>
       )}
+    </>
+  );
+
+  if (variant === 'plain') {
+    return <div className={`${t.space.card}`}>{content}</div>;
+  }
+
+  return (
+    <section
+      className={`${t.card.base} ${t.space.card} border-slate-200 dark:border-slate-600`}
+      aria-labelledby="refund-request-form-title"
+    >
+      {content}
     </section>
   );
 }

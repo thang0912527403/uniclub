@@ -1053,14 +1053,9 @@ export default function FundsPage() {
                     Tạo quỹ đầu tiên để bắt đầu quản lý tài chính.
                   </p>
                   {canCreateFundCap ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateFundForm(true)}
-                      className={`${t.btn.cta} inline-flex items-center gap-2`}
-                    >
-                      <Plus className="w-5 h-5 shrink-0" aria-hidden />
-                      Tạo quỹ mới
-                    </button>
+                    <p className={`${t.type.muted} text-sm`}>
+                      Dùng nút <span className="font-semibold">Tạo quỹ mới</span> ở phần bộ lọc phía trên để tạo quỹ.
+                    </p>
                   ) : (
                     <p className={`${t.type.muted} text-sm`}>Bạn không có quyền tạo quỹ mới trong CLB này.</p>
                   )}
@@ -1094,17 +1089,6 @@ export default function FundsPage() {
                   <h2 id="fund-list-heading" className={t.type.sectionTitle}>
                     Danh sách quỹ
                   </h2>
-                  {showCreateFundCta ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateFundForm(true)}
-                      className={`${t.btn.cta} inline-flex items-center gap-2 shrink-0`}
-                      aria-label="Tạo quỹ mới từ danh sách"
-                    >
-                      <Plus className="w-5 h-5 shrink-0" aria-hidden />
-                      Tạo quỹ mới
-                    </button>
-                  ) : null}
                 </div>
 
                 {displayFunds.length === 0 ? (
