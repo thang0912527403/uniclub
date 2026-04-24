@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import Cookies from 'js-cookie';
-import { useNavigate, Link, Navigate } from 'react-router';
+import { Link, Navigate } from 'react-router';
 import { useGetManagedClubsQuery, useGetUserAllClubsQuery, useGetUserRoleQuery } from '~/cores/api/userApi';
 import { getUserId, setClubId } from '~/utils/auth';
 import { SettingButton } from '~/components/SettingButton';
 import type { Club } from '~/cores/api/types';
 import { useCheckPendingRequestQuery, useGetClubRequestsByUserIdQuery } from '~/cores/api/clubRequestApi';
 import type { ClubCreationRequest } from '~/cores/api/clubRequestApi';
+import { useNavigate } from 'react-router';
 
 /* ─── RequestDetailModal ──────────────────────────────────────────────────── */
 function RequestDetailModal({ request, onClose }: { request: ClubCreationRequest; onClose: () => void }) {
@@ -207,7 +208,6 @@ function ClubCardSkeleton() {
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function MyClubsModule() {
   const userId = getUserId();
-  const navigate = useNavigate();
   const { data: clubs, isLoading, error } = useGetUserAllClubsQuery(userId, {
     skip: !userId,
   });
@@ -219,6 +219,7 @@ export default function MyClubsModule() {
   const { data: managedClubs } = useGetManagedClubsQuery(getUserId());
   const { data: userRoles } = useGetUserRoleQuery(userId);
   const isClubManager = userRoles?.includes('Club Manager') ?? false;
+  const isAdmin = userRoles?.includes('Admin') ?? false;
 
   const { data: userRequests, isLoading: requestLoading } =
     useGetClubRequestsByUserIdQuery(userId, {
@@ -226,10 +227,13 @@ export default function MyClubsModule() {
     });
 
   const [selectedRequest, setSelectedRequest] = useState<ClubCreationRequest | null>(null);
+  const [pageIndex, setPageIndex] = useState(1);
+  const PAGE_SIZE = 6;
 
-  const handleSubmit = async () => {
-    navigate('/clubs/create');
-  };
+  const totalCount = clubs?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const pagedClubs = clubs?.slice((pageIndex - 1) * PAGE_SIZE, pageIndex * PAGE_SIZE) ?? [];
+
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col">
       {selectedRequest && (
@@ -290,11 +294,84 @@ export default function MyClubsModule() {
 
           {/* Club Cards Grid */}
           {!isLoading && clubs && clubs.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {clubs.map((club) => (
-                <ClubCard key={club.clubId} club={club} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {pagedClubs.map((club) => (
+                  <ClubCard key={club.clubId} club={club} />
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-8 pt-6 border-t border-zinc-200">
+                  <p className="text-sm text-zinc-500">
+                    Hiển thị <span className="font-semibold text-zinc-700">{(pageIndex - 1) * PAGE_SIZE + 1}–{Math.min(pageIndex * PAGE_SIZE, totalCount)}</span> trong <span className="font-semibold text-zinc-700">{totalCount}</span> câu lạc bộ
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setPageIndex(1)}
+                      disabled={pageIndex === 1}
+                      className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7M18 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setPageIndex((p) => Math.max(1, p - 1))}
+                      disabled={pageIndex === 1}
+                      className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - pageIndex) <= 1)
+                      .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('...');
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, i) =>
+                        p === '...' ? (
+                          <span key={`ellipsis-${i}`} className="px-2 text-zinc-400 text-sm">…</span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => setPageIndex(p as number)}
+                            className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
+                              pageIndex === p
+                                ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/30'
+                                : 'text-zinc-600 hover:bg-zinc-100'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+                    <button
+                      onClick={() => setPageIndex((p) => Math.min(totalPages, p + 1))}
+                      disabled={pageIndex === totalPages}
+                      className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setPageIndex(totalPages)}
+                      disabled={pageIndex === totalPages}
+                      className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M6 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Empty State */}
@@ -320,7 +397,7 @@ export default function MyClubsModule() {
           )}
 
           {/* ── CTA: Create Club Request ── */}
-          {!hasPendingRequest && managedClubs?.length === 0 && !isClubManager && (
+          {!hasPendingRequest && managedClubs?.length === 0 && !isClubManager && !isAdmin && (
             <div className="mt-12 flex flex-col items-center">
               {/* Floating plus icon */}
               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 mb-4">
@@ -354,97 +431,58 @@ export default function MyClubsModule() {
               </h2>
 
               <div className="overflow-x-auto bg-white rounded-2xl border border-zinc-200 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-                <table className="min-w-full text-sm">
+                <table className="w-full table-fixed text-sm">
+                  <colgroup>
+                    <col className="w-[22%]" />
+                    <col className="w-[26%]" />
+                    <col className="w-[26%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[13%]" />
+                  </colgroup>
                   <thead>
-                    <tr className="border-b border-zinc-100">
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Tên câu lạc bộ</th>
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Mô tả</th>
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Lý do</th>
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Trạng thái</th>
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Ngày tạo</th>
-                      <th className="px-5 py-3.5 text-left font-semibold text-zinc-600 text-xs uppercase tracking-wider whitespace-nowrap">Hành động</th>
+                    <tr className="bg-zinc-50 border-b border-zinc-100">
+                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Tên câu lạc bộ</th>
+                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Mô tả</th>
+                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Lý do</th>
+                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Trạng thái</th>
+                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Ngày tạo</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {userRequests.map((req) => (
-                      <tr
-                        key={req.requestId}
-                        className="hover:bg-orange-50/50 transition-colors duration-150"
-                      >
-                        <td className="px-5 py-4 font-semibold text-zinc-900 whitespace-nowrap">
-                          {req.clubName}
-                        </td>
-                        <td className="px-5 py-4 text-zinc-600 max-w-[200px] truncate">
-                          {req.description}
-                        </td>
-                        <td className="px-5 py-4 text-zinc-600 max-w-[200px] truncate">
-                          {req.reason}
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          {(() => {
-                            const status = req.status?.toLowerCase();
-
-                            const style =
-                              status === 'pending'
-                                ? 'bg-amber-100 text-amber-700'
-                                : status === 'approved'
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-red-100 text-red-700';
-
-                            const dot =
-                              status === 'pending'
-                                ? 'bg-amber-500'
-                                : status === 'approved'
-                                  ? 'bg-emerald-500'
-                                  : 'bg-red-500';
-
-                            const label =
-                              status === 'pending'
-                                ? 'Đang chờ'
-                                : status === 'approved'
-                                  ? 'Đã duyệt'
-                                  : 'Từ chối';
-
-                            return (
-                              <span
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-semibold ${style}`}
-                              >
-                                <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-                                {label}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                        <td className="px-5 py-4 text-zinc-500 whitespace-nowrap">
-                          {new Date(req.createdAt).toLocaleDateString('vi-VN')}
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setSelectedRequest(req)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 text-zinc-700 text-xs font-semibold hover:bg-zinc-200 transition-all whitespace-nowrap"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                              Xem chi tiết
-                            </button>
-                            {(req.status.toLowerCase() === 'approved') && (managedClubs?.length === 0) && (
-                              <button
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition-all whitespace-nowrap"
-                                onClick={() => { handleSubmit() }}
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                Tạo câu lạc bộ
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {userRequests.map((req) => {
+                      const status = req.status?.toLowerCase();
+                      const style =
+                        status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                        status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-red-100 text-red-700';
+                      const dot =
+                        status === 'pending' ? 'bg-amber-500' :
+                        status === 'approved' ? 'bg-emerald-500' :
+                        'bg-red-500';
+                      const label =
+                        status === 'pending' ? 'Đang chờ' :
+                        status === 'approved' ? 'Đã duyệt' : 'Từ chối';
+                      return (
+                        <tr
+                          key={req.requestId}
+                          onClick={() => setSelectedRequest(req)}
+                          className="hover:bg-orange-50/50 transition-colors duration-150 cursor-pointer"
+                        >
+                          <td className="px-5 py-3.5 font-semibold text-zinc-900 truncate">{req.clubName}</td>
+                          <td className="px-5 py-3.5 text-zinc-500 truncate">{req.description || '—'}</td>
+                          <td className="px-5 py-3.5 text-zinc-500 truncate">{req.reason || '—'}</td>
+                          <td className="px-5 py-3.5">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full font-semibold ${style}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                              {label}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-zinc-500 text-xs">
+                            {new Date(req.createdAt).toLocaleDateString('vi-VN')}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

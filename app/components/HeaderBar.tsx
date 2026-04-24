@@ -8,6 +8,7 @@ import {
 import * as signalR from '@microsoft/signalr';
 import { useDispatch } from 'react-redux';
 import { baseApi } from '../cores/api/baseApi';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
 
 interface HeaderBarProps {
     title?: string;
@@ -21,10 +22,12 @@ export function useSignalRNotifications() {
     const dispatch = useDispatch();
     const userId = getUserId();
     const token = getAccessToken();
+    const { role } = useCurrentUser();
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://localhost:7237';
 
     useEffect(() => {
         if (!userId || !token) return;
+        if (role !== 'Club Manager') return;
 
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(`${backendUrl}/notifications`, {
@@ -61,7 +64,7 @@ export function useSignalRNotifications() {
                 connection.stop().catch(() => {});
             }
         };
-    }, [token]);
+    }, [token, role]);
 }
 
 export function HeaderBar({
@@ -74,7 +77,6 @@ export function HeaderBar({
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const userId = getUserId();
-
     useSignalRNotifications();
 
     const { data: notifications = [] } = useGetNotificationsByUserIdQuery(userId!, {

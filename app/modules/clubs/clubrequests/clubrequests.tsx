@@ -5,7 +5,6 @@ import { SettingButton } from '~/components/SettingButton';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useNotification } from '~/components/Notification';
 import { useGetClubRequestsQuery, useUpdateClubRequestStatusMutation } from '~/cores/api/clubRequestApi';
-import { useAssignUserRoleMutation } from '~/cores/api/userApi';
 
 const PAGE_SIZE_OPTIONS = [6, 10, 20, 50];
 
@@ -173,7 +172,6 @@ export default function ClubRequestsModule() {
   const allRequests = allData?.data ?? [];
 
   const [updateStatus] = useUpdateClubRequestStatusMutation();
-  const [assignUserRole] = useAssignUserRoleMutation();
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [detailRequest, setDetailRequest] = useState<any | null>(null);
   const [activeModal, setActiveModal] = useState<{ request: any; action: 'approve' | 'reject' } | null>(null);
@@ -194,13 +192,6 @@ export default function ClubRequestsModule() {
       showNotification({ type: 'error', title: 'Lỗi', message: 'Không thể cập nhật trạng thái yêu cầu.', duration: 4000 });
       setIsActionLoading(false);
       return;
-    }
-    if (isApprove) {
-      try {
-        await assignUserRole({ uid: req.userId, roleName: 'Club Manager' }).unwrap();
-      } catch {
-        showNotification({ type: 'error', title: 'Cảnh báo', message: 'Đã duyệt nhưng không thể gán role cho người dùng.', duration: 4000 });
-      }
     }
     showNotification({
       type: 'success', title: 'Thành công!',
