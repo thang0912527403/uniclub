@@ -28,9 +28,15 @@ export const API_URLS = {
 
 // Common headers
 const prepareHeaders = (headers: Headers) => {
-  const accessToken = Cookies.get('accessToken');
+  const rawAccessToken = Cookies.get('accessToken');
+  const accessToken = rawAccessToken?.replace(/^"|"$/g, '').trim();
+
   if (accessToken) {
-    headers.set('authorization', `Bearer ${accessToken}`);
+    // Normalize header/token format for all APIs, including dashboardApi.
+    const bearerToken = accessToken.startsWith('Bearer ')
+      ? accessToken
+      : `Bearer ${accessToken}`;
+    headers.set('Authorization', bearerToken);
   }
   //headers.set('Content-Type', 'application/json');
   return headers;

@@ -58,7 +58,7 @@ export default function ForbiddenPage() {
                             Về trang chủ
                         </button>
                         <button
-                            onClick={() => navigate(-1)}
+                            onClick={() => navigate(-2)}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-700 font-semibold rounded-xl border border-zinc-200 hover:border-orange-400 hover:text-orange-600 transition-all duration-200 cursor-pointer"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

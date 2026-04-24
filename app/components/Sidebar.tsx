@@ -77,7 +77,15 @@ export function Sidebar({
     onClose?.();
   };
   const navItems: NavItem[] = [
-    { label: t("sidebar.dashboard"), icon: "fa-th-large", url: "/dashboard" },
+    {
+      label: t("sidebar.dashboard"),
+      icon: "fa-th-large",
+      subItems: [
+        { label: "Overview", url: "/dashboard" },
+        { label: "Reports", url: "/dashboard/reports" },
+        { label: "Analytics", url: "/dashboard/analytics" },
+      ],
+    },
     {
       label: t("sidebar.manageClub.title"),
       icon: "fa-building",
@@ -248,10 +256,10 @@ export function Sidebar({
         {navItems.map((item) => {
           const hasSubItems = item.subItems && item.subItems.length > 0;
           const isActive = currentPath === item.url;
-          const expanded = isExpanded(item.label);
           const isSubItemActive =
             hasSubItems &&
             item.subItems?.some((sub) => sub.url === currentPath);
+          const expanded = isExpanded(item.label) || !!isSubItemActive;
 
           return (
             <div key={item.label}>
