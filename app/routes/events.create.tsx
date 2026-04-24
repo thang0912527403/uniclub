@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
+import { encodeId } from '~/utils/idEncoder';
 import { message } from 'antd';
 import { useCreateEventMutation, useCreateSessionMutation } from '~/cores/api';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
@@ -312,7 +313,7 @@ export default function CreateEventPage() {
             };
             const result = await createEvent(merged).unwrap();
             message.success('Tạo sự kiện thành công!');
-            navigate(`/events/${result.eventId}`);
+            navigate(`/events/${encodeId(result.eventId)}`);
         } catch (err: any) {
             let msg = 'Không thể tạo sự kiện. Vui lòng thử lại.';
             if (err?.data?.error) {

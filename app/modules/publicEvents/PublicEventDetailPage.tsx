@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router';
+import { decodeId } from '~/utils/idEncoder';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
 import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyCheckInQrQuery, useCancelRegistrationMutation } from '~/cores/api';
@@ -39,7 +40,7 @@ const PublicEventDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { show: showNotification } = useNotification();
-    const eventId = Number(id);
+    const eventId = decodeId(id!);
     const { data: event, isLoading, error } = useGetEventByIdQuery(eventId);
     const { data: user } = useGetCurrentUserQuery();
 

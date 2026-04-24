@@ -4,6 +4,7 @@ import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
 import { useGetAllEventsQuery } from '~/cores/api';
 import { useGetClubsQuery } from '~/cores/api/clubApi';
+import { encodeId } from '~/utils/idEncoder';
 import type { EventDetailDto } from '~/cores/api/types';
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
@@ -374,7 +375,7 @@ const PublicEventsPage: React.FC = () => {
                                     key={ev.eventId}
                                     event={ev}
                                     clubName={ev.clubId ? clubMap[ev.clubId] : undefined}
-                                    onClick={() => navigate(`/public/events/${ev.eventId}`)}
+                                    onClick={() => navigate(`/public/events/${encodeId(ev.eventId)}`)}
                                 />
                             ))}
                         </div>

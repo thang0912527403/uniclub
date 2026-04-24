@@ -45,7 +45,7 @@ export function useSignalRNotifications() {
             .start()
             .then(() => {
                 if (cleanupCalled) {
-                    connection.stop().catch(() => {});
+                    connection.stop().catch(() => { });
                     return;
                 }
                 return connection.invoke('RegisterUser', userId);
@@ -58,7 +58,7 @@ export function useSignalRNotifications() {
             cleanupCalled = true;
 
             if (connection.state === signalR.HubConnectionState.Connected) {
-                connection.stop().catch(() => {});
+                connection.stop().catch(() => { });
             }
         };
     }, [token]);
@@ -97,9 +97,8 @@ export function HeaderBar({
 
     return (
         <header
-            className={`fixed top-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-md transition-all duration-300 backdrop-blur-sm bg-opacity-95 left-0 ${
-                isSidebarOpen ? 'md:left-64' : 'md:left-0'
-            }`}
+            className={`fixed top-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-md transition-all duration-300 backdrop-blur-sm bg-opacity-95 left-0 ${isSidebarOpen ? 'md:left-64' : 'md:left-0'
+                }`}
         >
             <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 gap-2">
                 <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
@@ -121,7 +120,7 @@ export function HeaderBar({
                 <div className="flex items-center gap-1 md:gap-3 shrink-0">
                     <input
                         type="text"
-                        placeholder="Search here"
+                        placeholder="Tìm kiếm..."
                         className="hidden md:block pl-4 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none w-64 text-sm"
                     />
                     <button className="p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="User">
@@ -172,9 +171,8 @@ export function HeaderBar({
                                         <li
                                             key={n.notificationId}
                                             onClick={() => !n.isRead && markAsRead(n.notificationId)}
-                                            className={`px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                                                !n.isRead ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                                            }`}
+                                            className={`px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${!n.isRead ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                                }`}
                                         >
                                             <p className={`text-sm ${!n.isRead ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}>
                                                 {n.title}

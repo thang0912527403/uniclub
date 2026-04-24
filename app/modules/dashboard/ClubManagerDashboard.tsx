@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router';
+import { encodeId } from '~/utils/idEncoder';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
@@ -395,7 +396,7 @@ export default function ClubManagerDashboard() {
                 };
                 const st = statusMap[ev.status] ?? { bg: 'bg-gray-100', text: 'text-gray-600', label: ev.status };
                 return (
-                  <Link key={ev.eventId} to={`/events/${ev.eventId}`}
+                  <Link key={ev.eventId} to={`/events/${encodeId(ev.eventId)}`}
                     className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-pink-200 dark:hover:border-pink-700 hover:bg-pink-50/50 dark:hover:bg-pink-900/10 transition-all group cursor-pointer">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow">
                       <i className="fas fa-calendar text-sm" />

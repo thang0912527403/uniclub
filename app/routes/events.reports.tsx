@@ -21,7 +21,7 @@ export default function EventReportsPage() {
 
             <HeaderBar
                 title="Event Reports"
-                breadcrumb="Pages / Events / Reports"
+                breadcrumb="Sự kiện / Báo cáo"
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={toggleSidebar}
             />

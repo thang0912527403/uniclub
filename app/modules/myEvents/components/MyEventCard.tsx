@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router';
 import type { MyEventItem } from '~/cores/api/eventApi';
+import { encodeId } from '~/utils/idEncoder';
 
 interface Props {
     event: MyEventItem;
@@ -106,14 +107,14 @@ export function MyEventCard({ event, onCheckIn, onShowQr }: Props) {
                 {/* Attendance status for attendees */}
                 {event.isAttendee && event.attendanceStatus && (() => {
                     const statusMap: Record<string, { icon: string; label: string; cls: string }> = {
-                        PENDING:    { icon: 'fas fa-clock',         label: 'Chờ duyệt',    cls: 'text-amber-600 bg-amber-50 border-amber-200' },
-                        REGISTERED: { icon: 'fas fa-check-circle',  label: 'Đã đăng ký',    cls: 'text-green-600 bg-green-50 border-green-200' },
-                        WAITLIST:   { icon: 'fas fa-list-ol',       label: 'Danh sách chờ', cls: 'text-purple-600 bg-purple-50 border-purple-200' },
-                        CHECKED_IN: { icon: 'fas fa-map-marker-alt',label: 'Đã điểm danh', cls: 'text-green-700 bg-green-50 border-green-200' },
-                        PRESENT:    { icon: 'fas fa-user-check',    label: 'Có mặt',        cls: 'text-green-700 bg-green-50 border-green-200' },
-                        ABSENT:     { icon: 'fas fa-user-times',    label: 'Vắng mặt',      cls: 'text-red-600 bg-red-50 border-red-200' },
-                        REJECTED:   { icon: 'fas fa-ban',           label: 'Bị từ chối',    cls: 'text-red-600 bg-red-50 border-red-200' },
-                        CANCELLED:  { icon: 'fas fa-undo',          label: 'Đã huỷ',        cls: 'text-gray-500 bg-gray-50 border-gray-200' },
+                        PENDING: { icon: 'das fa-clock', label: 'Chờ duyệt', cls: 'text-amber-600 bg-amber-50 border-amber-200' },
+                        REGISTERED: { icon: 'fas fa-check-circle', label: 'Đã đăng ký', cls: 'text-green-600 bg-green-50 border-green-200' },
+                        WAITLIST: { icon: 'fas fa-list-ol', label: 'Danh sách chờ', cls: 'text-purple-600 bg-purple-50 border-purple-200' },
+                        CHECKED_IN: { icon: 'fas fa-map-marker-alt', label: 'Đã điểm danh', cls: 'text-green-700 bg-green-50 border-green-200' },
+                        PRESENT: { icon: 'fas fa-user-check', label: 'Có mặt', cls: 'text-green-700 bg-green-50 border-green-200' },
+                        ABSENT: { icon: 'fas fa-user-times', label: 'Vắng mặt', cls: 'text-red-600 bg-red-50 border-red-200' },
+                        REJECTED: { icon: 'fas fa-ban', label: 'Bị từ chối', cls: 'text-red-600 bg-red-50 border-red-200' },
+                        CANCELLED: { icon: 'fas fa-undo', label: 'Đã huỷ', cls: 'text-gray-500 bg-gray-50 border-gray-200' },
                     };
                     const s = statusMap[event.attendanceStatus];
                     if (!s) return null;
@@ -156,7 +157,7 @@ export function MyEventCard({ event, onCheckIn, onShowQr }: Props) {
                         <>
                             {hasPolicy(event, 'checkin') && event.status === 'ONGOING' && (
                                 <Link
-                                    to={`/events/${event.eventId}`}
+                                    to={`/events/${encodeId(event.eventId)}`}
                                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-all duration-200"
                                 >
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,7 +169,7 @@ export function MyEventCard({ event, onCheckIn, onShowQr }: Props) {
                             )}
                             {hasPolicy(event, 'viewattendance') && (
                                 <Link
-                                    to={`/events/${event.eventId}`}
+                                    to={`/events/${encodeId(event.eventId)}`}
                                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-teal-600 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-all duration-200"
                                 >
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,7 +180,7 @@ export function MyEventCard({ event, onCheckIn, onShowQr }: Props) {
                             )}
                             {hasPolicy(event, 'editevent') && (
                                 <Link
-                                    to={`/events/${event.eventId}/edit`}
+                                    to={`/events/${encodeId(event.eventId)}/edit`}
                                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-all duration-200"
                                 >
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,7 +190,7 @@ export function MyEventCard({ event, onCheckIn, onShowQr }: Props) {
                                 </Link>
                             )}
                             <Link
-                                to={`/events/${event.eventId}`}
+                                to={`/events/${encodeId(event.eventId)}`}
                                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-all duration-200"
                             >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,7 +204,7 @@ export function MyEventCard({ event, onCheckIn, onShowQr }: Props) {
 
                     {/* View detail link for all */}
                     <Link
-                        to={`/public/events/${event.eventId}`}
+                        to={`/public/events/${encodeId(event.eventId)}`}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-500 hover:text-orange-600 transition-colors ml-auto"
                     >
                         Chi tiết →

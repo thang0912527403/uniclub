@@ -5,6 +5,8 @@ import { useGetClubsQuery } from '~/cores/api/clubApi';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
+import { encodeId } from '~/utils/idEncoder';
+import { useGetClubByIdQuery } from '~/cores/api/clubApi';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
@@ -93,8 +95,8 @@ export default function EventsPage() {
             />
 
             <HeaderBar
-                title="Events"
-                breadcrumb="Pages / Events / All Events"
+                title="Sự kiện"
+                breadcrumb="Sự kiện / Tất cả"
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={toggleSidebar}
             />
@@ -104,7 +106,7 @@ export default function EventsPage() {
                 <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
                     <div className="flex items-center gap-4 flex-wrap">
                         <h1 className={`text-3xl font-bold ${textClass}`}>
-                            {isClubManager && !isAdmin ? 'Sự kiện CLB' : 'All Events'}
+                            {isClubManager && !isAdmin ? 'Sự kiện CLB' : 'Tất cả sự kiện'}
                         </h1>
 
                         {/* Admin club filter dropdown */}
@@ -131,11 +133,14 @@ export default function EventsPage() {
                         )}
 
                         {/* Show club badge for manager */}
-                        {isClubManager && !isAdmin && cookieClubId > 0 && (
-                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                                Club ID: {cookieClubId}
-                            </span>
-                        )}
+                        {isClubManager && !isAdmin && cookieClubId > 0 && (() => {
+                            const { data: clubData } = useGetClubByIdQuery(cookieClubId);
+                            return (
+                                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                                    {clubData?.clubName ?? 'Đang tải...'}
+                                </span>
+                            );
+                        })()}
                     </div>
 
                     <button
@@ -143,7 +148,7 @@ export default function EventsPage() {
                         className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
                     >
                         <i className="fas fa-plus"></i>
-                        Create Event
+                        Tạo sự kiện
                     </button>
                 </div>
 
@@ -159,7 +164,7 @@ export default function EventsPage() {
                             className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm outline-none transition-all ${isDark
                                 ? 'bg-[#242838] border-gray-600 text-white focus:border-blue-500 placeholder-gray-500'
                                 : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder-gray-400'
-                            }`}
+                                }`}
                         />
                         {searchTerm && (
                             <button
@@ -187,7 +192,7 @@ export default function EventsPage() {
                     </div>
                 ) : error ? (
                     <div className="bg-red-50 border border-red-200 rounded p-4">
-                        <h3 className="text-red-800 font-semibold">Error loading events</h3>
+                        <h3 className="text-red-800 font-semibold">Lỗi tải sự kiện</h3>
                         <p className="text-red-600 text-sm mt-2">
                             {error && 'status' in error ? `Error ${error.status}` : 'Error PARSING_ERROR'}
                         </p>
@@ -198,13 +203,13 @@ export default function EventsPage() {
                         <p className="text-gray-500 text-lg mb-4">
                             {isAdmin && selectedClubId !== 'all'
                                 ? 'Câu lạc bộ này chưa có sự kiện nào'
-                                : 'No events found'}
+                                : 'Không tìm thấy sự kiện nào'}
                         </p>
                         <button
                             onClick={() => navigate('/events/create')}
                             className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                         >
-                            Create Your First Event
+                            Tạo sự kiện đầu tiên
                         </button>
                     </div>
                 ) : (
@@ -220,7 +225,7 @@ export default function EventsPage() {
                                     key={event.eventId}
                                     event={event}
                                     isDark={isDark}
-                                    onClick={() => navigate(`/events/${event.eventId}`)}
+                                    onClick={() => navigate(`/events/${encodeId(event.eventId)}`)}
                                 />
                             ))}
                         </div>

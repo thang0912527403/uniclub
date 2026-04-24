@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useGetAllEventsQuery } from '~/cores/api';
+import { encodeId } from '~/utils/idEncoder';
 
 function formatDay(dateStr?: string) {
     if (!dateStr) return '--';
@@ -96,7 +97,7 @@ const UpcomingEvents: React.FC = () => {
                     {events.map((event) => (
                         <div
                             key={event.eventId}
-                            onClick={() => navigate(`/public/events/${event.eventId}`)}
+                            onClick={() => navigate(`/public/events/${encodeId(event.eventId)}`)}
                             className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex cursor-pointer hover:scale-[1.02]"
                         >
                             {/* Date Badge */}
@@ -136,7 +137,7 @@ const UpcomingEvents: React.FC = () => {
                                 </div>
 
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); navigate(`/public/events/${event.eventId}`); }}
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/public/events/${encodeId(event.eventId)}`); }}
                                     className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:shadow-lg cursor-pointer"
                                 >
                                     Xem chi tiết

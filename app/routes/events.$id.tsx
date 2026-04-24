@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { decodeId, encodeId } from '~/utils/idEncoder';
 import {
     useGetEventByIdQuery,
     useCreateSessionMutation,
@@ -96,7 +97,7 @@ export default function EventDetailPage() {
     const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
     const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', type: 'warning' as 'warning' | 'danger' | 'info', confirmText: 'Xác nhận' });
 
-    const eventId = Number(id);
+    const eventId = decodeId(id!);
 
     const { data: event, isLoading, error } = useGetEventByIdQuery(eventId);
     const { user: currentUser, isAdmin: isGlobalAdmin } = useCurrentUser();
@@ -212,6 +213,20 @@ export default function EventDetailPage() {
             CANCELLED: 'bg-gray-100 text-gray-500',
         };
         return map[s] ?? 'bg-gray-100 text-gray-600';
+    };
+
+    const attendanceStatusLabel = (s: string) => {
+        const map: Record<string, string> = {
+            PENDING: 'Chờ duyệt',
+            WAITLIST: 'Danh sách chờ',
+            REGISTERED: 'Đã đăng ký',
+            PRESENT: 'Có mặt',
+            CHECKED_IN: 'Đã điểm danh',
+            ABSENT: 'Vắng mặt',
+            CANCELLED: 'Đã huỷ',
+            REJECTED: 'Bị từ chối',
+        };
+        return map[s] ?? s;
     };
 
     const fmtDate = (d?: string) => {
@@ -565,7 +580,7 @@ export default function EventDetailPage() {
             <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Chi tiết sự kiện"
-                breadcrumb={`Events / ${event.eventName}`}
+                breadcrumb={`Sự kiện / ${event.eventName}`}
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={toggleSidebar}
             />
@@ -597,7 +612,7 @@ export default function EventDetailPage() {
                                     {(can('editevent') || can('openregistration') || can('startevent') || can('completeevent')) && (
                                         <>
                                             {can('editevent') && !['CANCELED'].includes(event.status ?? '') && (
-                                                <button onClick={() => navigate(`/events/${event.eventId}/edit`)}
+                                                <button onClick={() => navigate(`/events/${encodeId(event.eventId)}/edit`)}
                                                     className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
                                                     Chỉnh sửa
                                                 </button>
@@ -1120,7 +1135,7 @@ export default function EventDetailPage() {
                                                                 <td className={`px-3 py-2.5 ${sub}`}>{new Date(a.registrationDate).toLocaleDateString('vi-VN')}</td>
                                                                 <td className="px-3 py-2.5">
                                                                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${attendanceStatusBadge(a.attendanceStatus)}`}>
-                                                                        {a.attendanceStatus}
+                                                                        {attendanceStatusLabel(a.attendanceStatus)}
                                                                     </span>
                                                                 </td>
                                                                 <td className={`px-3 py-2.5 ${sub}`}>
@@ -1190,10 +1205,10 @@ export default function EventDetailPage() {
                                     {/* ── Slot Warning Banner ── */}
                                     {event?.maxAttendees && (
                                         <div className={`p-4 rounded-xl border-2 ${availableSlots !== null && availableSlots <= 0
-                                                ? 'border-red-400 bg-red-50 dark:bg-red-900/20'
-                                                : availableSlots !== null && availableSlots <= 3
-                                                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20'
-                                                    : `border-green-400 bg-green-50 dark:bg-green-900/20`
+                                            ? 'border-red-400 bg-red-50 dark:bg-red-900/20'
+                                            : availableSlots !== null && availableSlots <= 3
+                                                ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                                                : `border-green-400 bg-green-50 dark:bg-green-900/20`
                                             }`}>
                                             <div className="flex items-center justify-between flex-wrap gap-3">
                                                 <div className="flex items-center gap-4">
@@ -1648,6 +1663,105 @@ export default function EventDetailPage() {
 
                                             {qrError && <p className="text-sm text-red-500 mt-2">{qrError}</p>}
                                             {qrSuccess && <p className="text-sm text-green-600 font-medium mt-2">{qrSuccess}</p>}
+                                        </div>
+                                    )}
+                                    {/* ── Attendance Overview Table (viewattendance permission) ── */}
+                                    {(can('viewattendance') || isManager || isEventAdmin) && (
+                                        <div className={`p-4 rounded-lg border ${border}`}>
+                                            <h3 className={`font-semibold mb-1 ${text} flex items-center gap-2`}>
+                                                <i className="fas fa-clipboard-list text-blue-500" />
+                                                Danh sách điểm danh
+                                            </h3>
+                                            <p className={`text-xs mb-3 ${sub}`}>
+                                                Theo dõi trạng thái điểm danh của tất cả người tham gia.
+                                            </p>
+
+                                            {/* Summary stats */}
+                                            {attendees && attendees.length > 0 && (() => {
+                                                const registered = attendees.filter(a => ['REGISTERED', 'PRESENT', 'CHECKED_IN', 'ABSENT'].includes(a.attendanceStatus));
+                                                const checkedIn = attendees.filter(a => ['PRESENT', 'CHECKED_IN'].includes(a.attendanceStatus));
+                                                const absent = attendees.filter(a => a.attendanceStatus === 'ABSENT');
+                                                const notYet = attendees.filter(a => a.attendanceStatus === 'REGISTERED');
+                                                return (
+                                                    <div className="flex flex-wrap gap-3 mb-4">
+                                                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-blue-900/20 border border-blue-700' : 'bg-blue-50 border border-blue-200'}`}>
+                                                            <i className="fas fa-users text-blue-500 text-sm" />
+                                                            <span className={`text-sm font-medium ${text}`}>{registered.length} đã đăng ký</span>
+                                                        </div>
+                                                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-green-900/20 border border-green-700' : 'bg-green-50 border border-green-200'}`}>
+                                                            <i className="fas fa-check-circle text-green-500 text-sm" />
+                                                            <span className={`text-sm font-medium ${text}`}>{checkedIn.length} đã điểm danh</span>
+                                                        </div>
+                                                        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-amber-900/20 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
+                                                            <i className="fas fa-clock text-amber-500 text-sm" />
+                                                            <span className={`text-sm font-medium ${text}`}>{notYet.length} chưa điểm danh</span>
+                                                        </div>
+                                                        {absent.length > 0 && (
+                                                            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-red-900/20 border border-red-700' : 'bg-red-50 border border-red-200'}`}>
+                                                                <i className="fas fa-times-circle text-red-500 text-sm" />
+                                                                <span className={`text-sm font-medium ${text}`}>{absent.length} vắng mặt</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {isLoadingAttendees ? (
+                                                <div className="animate-pulse space-y-2">
+                                                    {[1, 2, 3].map(i => <div key={i} className="h-10 bg-gray-200 rounded" />)}
+                                                </div>
+                                            ) : !attendees?.length ? (
+                                                <p className={`text-sm ${sub}`}>Chưa có ai đăng ký.</p>
+                                            ) : (() => {
+                                                const relevantAttendees = attendees.filter(a =>
+                                                    ['REGISTERED', 'PRESENT', 'CHECKED_IN', 'ABSENT'].includes(a.attendanceStatus)
+                                                );
+                                                if (!relevantAttendees.length) {
+                                                    return <p className={`text-sm ${sub}`}>Chưa có người tham gia nào được duyệt.</p>;
+                                                }
+                                                return (
+                                                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                                        <table className="w-full text-sm">
+                                                            <thead className={`${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                                                <tr>
+                                                                    {['#', 'Họ tên', 'Email', 'MSSV', 'Trạng thái', 'Thời gian điểm danh'].map(h => (
+                                                                        <th key={h} className={`px-3 py-2 text-left text-xs font-semibold ${sub}`}>{h}</th>
+                                                                    ))}
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {relevantAttendees.map((a, idx) => {
+                                                                    const isChecked = ['PRESENT', 'CHECKED_IN'].includes(a.attendanceStatus);
+                                                                    const isAbsent = a.attendanceStatus === 'ABSENT';
+                                                                    return (
+                                                                        <tr key={a.attendId} className={`border-t ${border} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors`}>
+                                                                            <td className={`px-3 py-2.5 ${sub}`}>{idx + 1}</td>
+                                                                            <td className={`px-3 py-2.5 font-medium ${text}`}>{a.memberName}</td>
+                                                                            <td className={`px-3 py-2.5 ${sub} text-xs`}>{a.email || '—'}</td>
+                                                                            <td className={`px-3 py-2.5 ${sub}`}>{a.studentId || '—'}</td>
+                                                                            <td className="px-3 py-2.5">
+                                                                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isChecked
+                                                                                    ? 'bg-green-100 text-green-700'
+                                                                                    : isAbsent
+                                                                                        ? 'bg-red-100 text-red-700'
+                                                                                        : 'bg-amber-100 text-amber-700'
+                                                                                    }`}>
+                                                                                    {isChecked ? 'Đã điểm danh' : isAbsent ? 'Vắng mặt' : 'Chưa điểm danh'}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className={`px-3 py-2.5 ${sub}`}>
+                                                                                {a.checkInTime
+                                                                                    ? new Date(a.checkInTime).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+                                                                                    : '—'}
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     )}
 

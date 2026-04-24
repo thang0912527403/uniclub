@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { decodeId } from '~/utils/idEncoder';
 import {
     useGetEventByIdQuery,
     useUpdateEventMutation,
@@ -150,7 +151,8 @@ export default function EditEventPage() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { show: showNotification } = useNotification();
 
-    const { data: event, isLoading: isLoadingEvent } = useGetEventByIdQuery(Number(id));
+    const eventNumId = decodeId(id!);
+    const { data: event, isLoading: isLoadingEvent } = useGetEventByIdQuery(eventNumId);
     const [updateEvent, { isLoading: isUpdating }] = useUpdateEventMutation();
     const [createSession] = useCreateSessionMutation();
     const [updateSession] = useUpdateSessionMutation();
@@ -160,7 +162,7 @@ export default function EditEventPage() {
     const [initialized, setInitialized] = useState(false);
 
     // Per-event permission gate
-    const { can, isLoading: isLoadingPerm } = useEventPermission(event?.clubId, Number(id));
+    const { can, isLoading: isLoadingPerm } = useEventPermission(event?.clubId, eventNumId);
     
     // Gating for canceled events
     useEffect(() => {

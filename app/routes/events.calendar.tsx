@@ -21,7 +21,7 @@ export default function EventCalendarPage() {
 
             <HeaderBar
                 title="Event Calendar"
-                breadcrumb="Pages / Events / Calendar"
+                breadcrumb="Sự kiện / Lịch"
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={toggleSidebar}
             />
