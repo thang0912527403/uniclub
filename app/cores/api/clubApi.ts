@@ -308,10 +308,14 @@ export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getClubs: builder.query<
       { data: Club[]; totalPage: number; totalCount: number },
-      { pageIndex: string; searchQuery: string; pageSize: string }
+      { pageIndex: string; searchQuery?: string; pageSize: string; status?: string }
     >({
-      query: ({ pageIndex, searchQuery, pageSize }) =>
-        `/Club?pageSize=${pageSize}&pageIndex=${pageIndex}&searchQuery=${searchQuery}`,
+      query: ({ pageIndex, searchQuery, pageSize, status }) => {
+        const params = new URLSearchParams({ pageSize, pageIndex });
+        if (searchQuery) params.set('searchQuery', searchQuery);
+        if (status) params.set('status', status);
+        return `/Club?${params.toString()}`;
+      },
       transformResponse: (response: ApiResponse<Club[]>) => ({
         data: response.data,
         totalPage: response.totalPages,

@@ -15,8 +15,8 @@ export default function CreateClubModule() {
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const [createClub, { isLoading, error }] = useCreateClubMutation();
-    const [createClubRole] = useCreateClubRoleMutation();
-    const [assignClubRole] = useAssignClubRoleMutation();
+    // const [createClubRole] = useCreateClubRoleMutation();
+    // const [assignClubRole] = useAssignClubRoleMutation();
     const currentUserId = getUserId();
     const { show: showNotification } = useNotification();
 
