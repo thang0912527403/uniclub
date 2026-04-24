@@ -13,6 +13,7 @@ import {
 } from '~/cores/api';
 import { useGetClubStructureRolesQuery } from '~/cores/api/clubRoleApi';
 import type { ClubRole } from '~/cores/api/types';
+import { getMemberRoleIds, getMemberRoleNames } from '~/cores/api/types/clubMember';
 
 
 /* ─── Level Badge ─────────────────────────────────────────────────────────── */
@@ -180,7 +181,7 @@ export default function ClubMemberRoleModule() {
     const [isEditing, setIsEditing] = useState(false);
     const [showAllRoles, setShowAllRoles] = useState(false);
 
-    const currentRoles = member?.roles?.map(r => r.clubRoleId) ?? member?.clubRoleIds ?? (member?.clubRoleId ? [member.clubRoleId] : []);
+    const currentRoles = member ? getMemberRoleIds(member) : [];
     const effectiveSelected = selectedRoleIds === undefined ? currentRoles : selectedRoleIds;
 
     const hasChanged = JSON.stringify([...effectiveSelected].sort()) !== JSON.stringify([...currentRoles].sort());
@@ -273,43 +274,36 @@ export default function ClubMemberRoleModule() {
                                     )}
                                 </div>
                                 <div className="flex flex-col items-end gap-3">
-                                    {member.roles && member.roles.length > 0 ? (
-                                        <div className="flex flex-wrap justify-end gap-1.5 max-w-[320px]">
-                                            {(showAllRoles ? member.roles : member.roles.slice(0, 2)).map(r => (
-                                                <span key={r.clubRoleId} className="inline-flex items-center gap-2 px-3.5 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-xl text-[11px] font-bold whitespace-nowrap animate-in fade-in zoom-in duration-500 border border-blue-100 dark:border-blue-800 shadow-sm shadow-blue-500/5">
-                                                    <i className="fas fa-shield-alt text-[9px] text-blue-500" />
-                                                    {r.roleName}
-                                                </span>
-                                            ))}
-                                            {!showAllRoles && member.roles.length > 2 && (
-                                                <button
-                                                    onClick={() => setShowAllRoles(true)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-[11px] font-bold hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400 transition-all cursor-pointer shadow-sm active:scale-95"
-                                                >
-                                                    +{member.roles.length - 2} nữa
-                                                </button>
-                                            )}
-                                            {showAllRoles && member.roles.length > 2 && (
-                                                <button
-                                                    onClick={() => setShowAllRoles(false)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 rounded-xl text-[10px] font-bold hover:text-gray-600 transition-all cursor-pointer border border-transparent hover:border-gray-200"
-                                                >
-                                                    <i className="fas fa-chevron-up text-[8px]" />
-                                                    Thu gọn
-                                                </button>
-                                            )}
-                                        </div>
-                                    ) : member.roleName ? (
-                                        <span className="inline-flex items-center gap-2 px-3.5 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-xl text-[11px] font-bold border border-blue-100 dark:border-blue-800 shadow-sm shadow-blue-500/5">
-                                            <i className="fas fa-shield-alt text-[9px] text-blue-500" />
-                                            {member.roleName}
-                                        </span>
-                                    ) : (
-                                        <span className="inline-flex items-center gap-2 px-3.5 py-2 bg-gray-50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-500 rounded-xl text-[11px] font-bold italic border border-gray-100 dark:border-gray-800 shadow-inner">
-                                            <i className="fas fa-user-secret text-[10px]" />
-                                            Chưa có vai trò
-                                        </span>
-                                    )}
+                                    {(() => {
+                                        const roleNames = member ? getMemberRoleNames(member) : [];
+                                        if (roleNames.length > 0) return (
+                                            <div className="flex flex-wrap justify-end gap-1.5 max-w-[320px]">
+                                                {(showAllRoles ? roleNames : roleNames.slice(0, 2)).map((name, i) => (
+                                                    <span key={i} className="inline-flex items-center gap-2 px-3.5 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-xl text-[11px] font-bold whitespace-nowrap animate-in fade-in zoom-in duration-500 border border-blue-100 dark:border-blue-800 shadow-sm shadow-blue-500/5">
+                                                        <i className="fas fa-shield-alt text-[9px] text-blue-500" />
+                                                        {name}
+                                                    </span>
+                                                ))}
+                                                {!showAllRoles && roleNames.length > 2 && (
+                                                    <button onClick={() => setShowAllRoles(true)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-[11px] font-bold hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400 transition-all cursor-pointer shadow-sm active:scale-95">
+                                                        +{roleNames.length - 2} nữa
+                                                    </button>
+                                                )}
+                                                {showAllRoles && roleNames.length > 2 && (
+                                                    <button onClick={() => setShowAllRoles(false)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 rounded-xl text-[10px] font-bold hover:text-gray-600 transition-all cursor-pointer border border-transparent hover:border-gray-200">
+                                                        <i className="fas fa-chevron-up text-[8px]" />
+                                                        Thu gọn
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                        return (
+                                            <span className="inline-flex items-center gap-2 px-3.5 py-2 bg-gray-50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-500 rounded-xl text-[11px] font-bold italic border border-gray-100 dark:border-gray-800 shadow-inner">
+                                                <i className="fas fa-user-secret text-[10px]" />
+                                                Chưa có vai trò
+                                            </span>
+                                        );
+                                    })()}
                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase
                                         ${member.status?.toUpperCase() === 'ACTIVE'
                                             ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800'

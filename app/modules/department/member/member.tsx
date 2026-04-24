@@ -38,7 +38,7 @@ function StatusBadge({ status }: { status: string }) {
     return (
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-green-500' : 'bg-gray-400'}`} />
-            {active ? 'Hoạt động' : (status ?? 'N/A')}
+            {active ? 'Hoạt động' : status === 'INACTIVE' ? 'Vô hiệu hóa' : (status ?? 'N/A')}
         </span>
     );
 }
@@ -363,15 +363,23 @@ export default function DepartmentDetailModule() {
                                                         {member.studentId ?? <span className="italic text-gray-300 dark:text-gray-600">—</span>}
                                                     </td>
                                                     <td className="px-5 py-3">
-                                                        {member.departmentRole ? (
-                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
-                                                                {member.departmentRole}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                                                                Thành viên
-                                                            </span>
-                                                        )}
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {member.departmentRoles && member.departmentRoles.length > 0 ? (
+                                                                member.departmentRoles.map((role, idx) => (
+                                                                    <span key={role.clubRoleId || idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+                                                                        {role.roleName}
+                                                                    </span>
+                                                                ))
+                                                            ) : member.departmentRole ? (
+                                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+                                                                    {member.departmentRole}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                                                                    Thành viên
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
                                                         {new Date(member.joinDate).toLocaleDateString('vi-VN')}

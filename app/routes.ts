@@ -58,6 +58,7 @@ export default [
       "routes/clubs/clubmembers.role.tsx",
     ),
     route("club-roles", "routes/club-roles.tsx"),
+    route("club-roles/members", "routes/club-roles.members.tsx"),
     route("manage-clubs", "routes/my-clubs.tsx"),
     route("campaign/:formId?/application-form", "routes/question.tsx"),
 
