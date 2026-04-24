@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
-import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { SettingButton } from '~/components/SettingButton';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 
 // ─── Animated Number ───────────────────────────────────────────────────────
@@ -165,23 +163,17 @@ interface AdminDashboardProps {
   isSidebarOpen?: boolean;
 }
 
-export default function AdminDashboard({ isSidebarOpen: isSidebarOpenProp }: AdminDashboardProps = {}) {
+export default function AdminDashboard() {
   const { user } = useCurrentUser();
-  const { isOpen: isSidebarOpenFromHook } = useSidebarToggle();
-  const isSidebarOpen = isSidebarOpenProp ?? isSidebarOpenFromHook;
   const stats: StatCardProps[] = [
-    { title: 'Tổng Câu lạc bộ', value: 24, change: '+2 tháng này', positive: true, gradient: 'bg-gradient-to-br from-violet-500 to-purple-700', icon: 'fa-layer-group', delay: 0, suffix: '' },
-    { title: 'Thành Viên', value: 1284, change: '+18% so với tháng trước', positive: true, gradient: 'bg-gradient-to-br from-sky-500 to-blue-700', icon: 'fa-users', delay: 100, suffix: '' },
-    { title: 'Đơn ứng tuyển', value: 347, change: '+34% chiến dịch mới', positive: true, gradient: 'bg-gradient-to-br from-emerald-500 to-teal-700', icon: 'fa-file-alt', delay: 200, suffix: '' },
-    { title: 'Cuộc Phỏng Vấn', value: 89, change: '12 hôm nay', positive: true, gradient: 'bg-gradient-to-br from-pink-500 to-rose-700', icon: 'fa-microphone', delay: 300, suffix: '' },
+    { title: 'Tổng Câu lạc bộ', value: 24, change: '+2 CLB mới tháng này', positive: true, gradient: 'bg-gradient-to-br from-violet-500 to-purple-700', icon: 'fa-layer-group', delay: 0, suffix: '' },
+    { title: 'Tổng Người dùng', value: 1284, change: '+18% so với tháng trước', positive: true, gradient: 'bg-gradient-to-br from-sky-500 to-blue-700', icon: 'fa-users', delay: 100, suffix: '' },
+    { title: 'Bài đăng mới', value: 347, change: '+12 bài đăng hôm nay', positive: true, gradient: 'bg-gradient-to-br from-emerald-500 to-teal-700', icon: 'fa-newspaper', delay: 200, suffix: '' },
+    { title: 'Yêu cầu chờ duyệt', value: 8, change: '5 yêu cầu tạo CLB mới', positive: true, gradient: 'bg-gradient-to-br from-pink-500 to-rose-700', icon: 'fa-clipboard-list', delay: 300, suffix: '' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
-      <SettingButton />
-      
-      
-      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
+    <div className="space-y-8 animate-in fade-in duration-700">
 
         {/* Welcome Banner */}
         <div className="relative rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 p-6 mb-8 overflow-hidden shadow-xl">
@@ -194,13 +186,13 @@ export default function AdminDashboard({ isSidebarOpen: isSidebarOpenProp }: Adm
               <p className="text-violet-200 text-sm mt-1">Hôm nay có <strong>12 đơn mới</strong> chờ xét duyệt</p>
             </div>
             <div className="hidden md:flex gap-3">
-              <Link to="/recruitment-campaigns"
+              <Link to="/clubs"
                 className="bg-white/20 hover:bg-white/30 text-white text-sm font-semibold px-5 py-2.5 rounded-xl backdrop-blur-sm transition-all">
-                <i className="fas fa-plus mr-2" />Chiến dịch mới
+                <i className="fas fa-building mr-2" />Quản lý CLB
               </Link>
-              <Link to="/interview-schedule"
+              <Link to="/club/all-requests"
                 className="bg-white text-violet-700 text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-violet-50 transition-all shadow">
-                <i className="fas fa-calendar mr-2" />Lịch phỏng vấn
+                <i className="fas fa-clipboard-check mr-2" />Phê duyệt CLB
               </Link>
             </div>
           </div>
@@ -245,11 +237,11 @@ export default function AdminDashboard({ isSidebarOpen: isSidebarOpenProp }: Adm
             <h3 className="text-base font-bold text-gray-900 dark:text-white mb-5">Truy cập nhanh</h3>
             <div className="grid grid-cols-2 gap-3">
               <QuickAction icon="fa-layer-group" label="Quản lý CLB" to="/clubs" gradient="bg-gradient-to-br from-violet-500 to-purple-700" />
-              <QuickAction icon="fa-bullhorn" label="Chiến dịch" to="/recruitment-campaigns" gradient="bg-gradient-to-br from-sky-500 to-blue-700" />
-              <QuickAction icon="fa-microphone" label="Phỏng vấn" to="/interview-schedule" gradient="bg-gradient-to-br from-emerald-500 to-teal-700" />
-              <QuickAction icon="fa-users" label="Người dùng" to="/users" gradient="bg-gradient-to-br from-pink-500 to-rose-700" />
-              <QuickAction icon="fa-file-alt" label="Đơn nộp" to="/applications" gradient="bg-gradient-to-br from-amber-500 to-orange-600" />
-              <QuickAction icon="fa-calendar-alt" label="Sự kiện" to="/events" gradient="bg-gradient-to-br from-indigo-500 to-indigo-700" />
+              <QuickAction icon="fa-users" label="Người dùng" to="/users" gradient="bg-gradient-to-br from-sky-500 to-blue-700" />
+              <QuickAction icon="fa-clipboard-list" label="Yêu cầu tạo CLB" to="/club/all-requests" gradient="bg-gradient-to-br from-emerald-500 to-teal-700" />
+              <QuickAction icon="fa-chart-pie" label="Báo cáo hệ thống" to="/reports" gradient="bg-gradient-to-br from-pink-500 to-rose-700" />
+              <QuickAction icon="fa-shield-alt" label="Phân quyền" to="/roles" gradient="bg-gradient-to-br from-amber-500 to-orange-600" />
+              <QuickAction icon="fa-cog" label="Cài đặt hệ thống" to="/settings" gradient="bg-gradient-to-br from-indigo-500 to-indigo-700" />
             </div>
           </div>
 
@@ -276,7 +268,6 @@ export default function AdminDashboard({ isSidebarOpen: isSidebarOpenProp }: Adm
           </div>
         </div>
 
-      </main>
     </div>
   );
 }

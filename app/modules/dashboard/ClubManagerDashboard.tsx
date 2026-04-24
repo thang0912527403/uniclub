@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router';
-import { Sidebar } from '~/components/Sidebar';
-import { HeaderBar } from '~/components/HeaderBar';
-import { SettingButton } from '~/components/SettingButton';
-import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { useClubRole } from '~/hooks/useClubRole';
 import { useGetApplicationsByClubQuery } from '~/cores/api/applicationApi';
@@ -96,10 +92,9 @@ function QA({ icon, label, to, g }: { icon: string; label: string; to: string; g
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 export default function ClubManagerDashboard() {
-  const { isOpen, toggle } = useSidebarToggle();
   const { user } = useCurrentUser();
-  const { clubManagerMembership } = useClubRole();
-  const clubId = clubManagerMembership?.clubId;
+  const { currentClub } = useClubRole();
+  const clubId = currentClub?.clubId;
 
   // ── Fetch data scoped to this club only ────────────────────────────────
   const { data: club } = useGetClubByIdQuery(clubId ?? 0, { skip: !clubId });
@@ -158,17 +153,7 @@ export default function ClubManagerDashboard() {
   const dataLoading = appsLoading || campaignsLoading || interviewsLoading || eventsLoading;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
-      <SettingButton />
-      <Sidebar currentPath="/dashboard" isOpen={isOpen} onClose={toggle} />
-      <HeaderBar
-        title={club?.clubName ? club.clubName : 'Quản lý Câu lạc bộ'}
-        breadcrumb="Trang chủ / Dashboard"
-        isSidebarOpen={isOpen}
-        onToggleSidebar={toggle}
-      />
-
-      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isOpen ? 'md:ml-64' : 'ml-0'}`}>
+    <div className="space-y-8 animate-in fade-in duration-700">
 
         {/* Hero */}
         <div className="relative rounded-3xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 p-6 mb-8 overflow-hidden shadow-2xl">
@@ -420,7 +405,6 @@ export default function ClubManagerDashboard() {
           )}
         </div>
 
-      </main>
     </div>
   );
 }
