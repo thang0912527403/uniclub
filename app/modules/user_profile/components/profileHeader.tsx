@@ -12,6 +12,7 @@ export interface ProfileHeaderProps {
   handleAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleAvatarClick: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  isOwnProfile?: boolean;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
@@ -26,6 +27,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   handleAvatarChange,
   handleAvatarClick,
   fileInputRef,
+  isOwnProfile = true,
 }) => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mb-8 mt-6">
@@ -49,17 +51,19 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 alt="Avatar"
                 className="w-full h-full object-cover"
               />
-              <button
-                onClick={handleAvatarClick}
-                disabled={isUploadingAvatar}
-                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
-              >
-                {isUploadingAvatar ? (
-                  <i className="fas fa-spinner fa-spin text-white text-xl" />
-                ) : (
-                  <i className="fas fa-camera text-white text-xl" />
-                )}
-              </button>
+              {isOwnProfile && (
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={isUploadingAvatar}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
+                >
+                  {isUploadingAvatar ? (
+                    <i className="fas fa-spinner fa-spin text-white text-xl" />
+                  ) : (
+                    <i className="fas fa-camera text-white text-xl" />
+                  )}
+                </button>
+              )}
             </div>
             <input
               ref={fileInputRef}
@@ -104,32 +108,34 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 
         {/* Actions (Edit Profile) */}
         <div className="mt-8 md:mt-0 flex flex-wrap justify-center md:justify-end gap-3 self-center md:self-end mb-2 w-full md:w-auto">
-          {isEditing ? (
-            <>
+          {isOwnProfile && (
+            isEditing ? (
+              <>
+                <button
+                  onClick={handleCancel}
+                  className="px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-all border border-transparent"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={() => setShowSaveConfirm(true)}
+                  disabled={isUpdating}
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-orange-500 rounded-full hover:bg-orange-600 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2 border border-transparent"
+                >
+                  {isUpdating && <i className="fas fa-spinner fa-spin text-xs" />}
+                  Lưu
+                </button>
+              </>
+            ) : (
               <button
-                onClick={handleCancel}
-                className="px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-all border border-transparent"
+                onClick={() => setIsEditing(true)}
+                className="h-10 px-4 flex items-center justify-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full transition-all shadow-sm"
+                title="Chỉnh sửa hồ sơ"
               >
-                Hủy
+                <i className="fas fa-pen text-xs" />
+                <span className="hidden md:inline">Sửa hồ sơ</span>
               </button>
-              <button
-                onClick={() => setShowSaveConfirm(true)}
-                disabled={isUpdating}
-                className="px-6 py-2.5 text-sm font-semibold text-white bg-orange-500 rounded-full hover:bg-orange-600 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2 border border-transparent"
-              >
-                {isUpdating && <i className="fas fa-spinner fa-spin text-xs" />}
-                Lưu
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="h-10 px-4 flex items-center justify-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full transition-all shadow-sm"
-              title="Chỉnh sửa hồ sơ"
-            >
-              <i className="fas fa-pen text-xs" />
-              <span className="hidden md:inline">Sửa hồ sơ</span>
-            </button>
+            )
           )}
         </div>
       </div>

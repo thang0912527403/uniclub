@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams, useParams } from "react-router";
 import Navbar from "../../components/Navbar";
 import {
   useGetUserByIdQuery,
@@ -19,12 +19,18 @@ import MyApplications from "~/modules/my-applications/MyApplications";
 
 const UserProfile = () => {
   const navigate = useNavigate();
+  const { userId } = useParams();
   const meId = getUserId();
+
+  // Decide which ID to use for fetching
+  const targetUserId = userId || meId;
+  const isOwnProfile = !userId || userId === meId;
+
   const {
     data: user,
     isLoading,
     refetch,
-  } = useGetUserByIdQuery(meId, { skip: !meId });
+  } = useGetUserByIdQuery(targetUserId, { skip: !targetUserId });
   const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
   const [uploadAvatar, { isLoading: isUploadingAvatar }] =
     useUploadAvatarMutation();
@@ -161,7 +167,7 @@ const UserProfile = () => {
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 py-8 mt-16">
-        <ProfileHeader 
+        <ProfileHeader
           user={user}
           avatarUrl={avatarUrl}
           isEditing={isEditing}
@@ -173,6 +179,7 @@ const UserProfile = () => {
           handleAvatarChange={handleAvatarChange}
           handleAvatarClick={handleAvatarClick}
           fileInputRef={fileInputRef}
+          isOwnProfile={isOwnProfile}
         />
 
         {/* ─── Main Content Layout ─────────────────────────────── */}
@@ -181,89 +188,93 @@ const UserProfile = () => {
 
           {/* Right Area (Tabs & Content) */}
           <div className="flex-1 min-w-0">
-             {/* ─── Tabs Navigation ─────────────────────────────── */}
-             <div className="flex flex-wrap gap-2 mb-6 p-1.5 bg-gray-100/50 dark:bg-gray-800/50 rounded-2xl w-fit border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
-               <button
-                 onClick={() => handleTabChange("info")}
-                 className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
-                   activeTab === "info"
-                     ? "bg-white dark:bg-gray-700 text-orange-500 dark:text-orange-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
-                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
-                 }`}
-               >
-                 <i className="fas fa-user-circle" />
-                 Thông tin chung
-               </button>
+            {/* ─── Tabs Navigation (Only if own profile) ─────────────────────────────── */}
+            {isOwnProfile && (
+              <div className="flex flex-wrap gap-2 mb-6 p-1.5 bg-gray-100/50 dark:bg-gray-800/50 rounded-2xl w-fit border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
+                <button
+                  onClick={() => handleTabChange("info")}
+                  className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                    activeTab === "info"
+                      ? "bg-white dark:bg-gray-700 text-orange-500 dark:text-orange-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                  }`}
+                >
+                  <i className="fas fa-user-circle" />
+                  Thông tin chung
+                </button>
 
-               <button
-                 onClick={() => handleTabChange("candidate")}
-                 className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
-                   activeTab === "candidate"
-                     ? "bg-white dark:bg-gray-700 text-orange-500 dark:text-orange-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
-                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
-                 }`}
-               >
-                 <i className="fas fa-clipboard-list" />
-                 Lịch phỏng vấn
-               </button>
+                <>
+                  <button
+                    onClick={() => handleTabChange("candidate")}
+                    className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                      activeTab === "candidate"
+                        ? "bg-white dark:bg-gray-700 text-orange-500 dark:text-orange-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                    }`}
+                  >
+                    <i className="fas fa-clipboard-list" />
+                    Lịch phỏng vấn
+                  </button>
 
-               <button
-                 onClick={() => handleTabChange("applications")}
-                 className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
-                   activeTab === "applications"
-                     ? "bg-white dark:bg-gray-700 text-orange-500 dark:text-orange-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
-                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
-                 }`}
-               >
-                 <i className="fas fa-file-alt" />
-                 Đơn của tôi
-               </button>
+                  <button
+                    onClick={() => handleTabChange("applications")}
+                    className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                      activeTab === "applications"
+                        ? "bg-white dark:bg-gray-700 text-orange-500 dark:text-orange-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                    }`}
+                  >
+                    <i className="fas fa-file-alt" />
+                    Đơn của tôi
+                  </button>
 
-               <button
-                 onClick={() => handleTabChange("interviewer")}
-                 className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
-                   activeTab === "interviewer"
-                     ? "bg-white dark:bg-gray-700 text-orange-500 dark:text-orange-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
-                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
-                 }`}
-               >
-                 <i className="fas fa-calendar-alt" />
-                 Các cuộc phỏng vấn
-               </button>
-             </div>
+                  <button
+                    onClick={() => handleTabChange("interviewer")}
+                    className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                      activeTab === "interviewer"
+                        ? "bg-white dark:bg-gray-700 text-orange-500 dark:text-orange-400 shadow-sm border border-gray-200/50 dark:border-gray-600/50"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+                    }`}
+                  >
+                    <i className="fas fa-calendar-alt" />
+                    Các cuộc phỏng vấn
+                  </button>
+                </>
+              </div>
+            )}
 
-             {/* ─── Tab Content ─────────────────────────────────── */}
-             {activeTab === "info" && (
-               <ProfileInfoTab 
-                 user={user}
-                 form={form}
-                 setForm={setForm}
-                 isEditing={isEditing}
-               />
-             )}
+            {/* ─── Tab Content ─────────────────────────────────── */}
+            {(activeTab === "info" || !isOwnProfile) && (
+              <ProfileInfoTab
+                user={user}
+                form={form}
+                setForm={setForm}
+                isEditing={isEditing}
+              />
+            )}
 
-             {/* ─── Interview tracker ───────────── */}
-             {activeTab === "candidate" && meId && (
-               <div className="animate-in fade-in zoom-in-95 duration-300 w-full">
-                 <InterviewStatusTracker userId={meId} />
-               </div>
-             )}
+            {/* ─── Interview tracker ───────────── */}
+            {activeTab === "candidate" && targetUserId && (
+              <div className="animate-in fade-in zoom-in-95 duration-300 w-full">
+                <InterviewStatusTracker userId={targetUserId} />
+              </div>
+            )}
 
-             {/* ─── My Applications ───────────── */}
-             {activeTab === "applications" && (
-               <div className="animate-in fade-in zoom-in-95 duration-300 w-full overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700">
-                 <div className="-m-12 sm:-my-12 sm:-mx-4 w-[calc(100%+32px)]">
-                   <MyApplications />
-                 </div>
-               </div>
-             )}
+            {/* ─── My Applications ───────────── */}
+            {activeTab === "applications" && isOwnProfile && (
+              <div className="animate-in fade-in zoom-in-95 duration-300 w-full overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="-m-12 sm:-my-12 sm:-mx-4 w-[calc(100%+32px)]">
+                  <MyApplications />
+                </div>
+              </div>
+            )}
 
-             {/* ─── Interviewer scheduler ───────────── */}
-             {activeTab === "interviewer" && meId && (
-               <div className="animate-in fade-in zoom-in-95 duration-300 w-full">
-                 <InterviewerInterviewsSection userId={meId} />
-               </div>
-             )}
+            {/* ─── Interviewer scheduler ───────────── */}
+            {activeTab === "interviewer" && targetUserId && (
+              <div className="animate-in fade-in zoom-in-95 duration-300 w-full">
+                <InterviewerInterviewsSection userId={targetUserId} />
+              </div>
+            )}
           </div>
         </div>
       </main>
@@ -284,4 +295,3 @@ const UserProfile = () => {
 };
 
 export default UserProfile;
-

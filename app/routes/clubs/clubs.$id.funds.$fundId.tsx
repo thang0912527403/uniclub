@@ -23,6 +23,7 @@ import type { FundHistoryItem, ClubFund, FundHistoryScopeFilter, FundHistoryStat
 import { fundTokens as t } from '../funds.design-tokens';
 import { savePayosPendingContribute } from '~/utils/payosContributeSession';
 import { useFundHistory } from '~/modules/funds/hooks/useFundHistory';
+import { getClubId } from '~/utils/auth';
 import {
   DEFAULT_FUND_HISTORY_PAGE_SIZE,
   FILTER_DEBOUNCE_MS,
@@ -159,7 +160,7 @@ function FundStatusBadge({ fund }: { fund: ClubFund }) {
 
 export default function FundDetailPageByClub() {
   const { id: clubIdParam, fundId: fundIdParam } = useParams<{ id: string; fundId: string }>();
-  const clubId = parseInt(clubIdParam ?? '0', 10);
+  const clubId = parseInt(clubIdParam ?? '0', 10) || getClubId();
   const fundId = parseInt(fundIdParam ?? '0', 10);
 
   const { isDark } = useTheme();
@@ -493,7 +494,7 @@ export default function FundDetailPageByClub() {
 
   return (
     <div className="min-h-screen">
-      <Sidebar currentPath="/funds" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+      <Sidebar currentPath={clubIdParam ? `/clubs/${clubId}/funds` : "/club/funds"} isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
         title={fund ? (fund.fundName || `Quỹ #${fundId}`) : 'Chi tiết quỹ'}
         breadcrumb={`Tài chính / Quản lý quỹ / ${fundBreadcrumbClubPart} / Chi tiết`}

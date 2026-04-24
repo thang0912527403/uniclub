@@ -941,7 +941,7 @@ export default function ClubStructureModule() {
   return (
     <div className="min-h-screen">
       <SettingButton />
-      <Sidebar currentPath={`/clubs/${id}/organization`} isOpen={isSidebarOpen} />
+      <Sidebar currentPath={id ? `/clubs/${id}/organization` : "/club/organization"} isOpen={isSidebarOpen} />
       <HeaderBar
         title="Cấu trúc Câu lạc bộ"
         breadcrumb={`Pages / Clubs / Structure`}
@@ -952,7 +952,7 @@ export default function ClubStructureModule() {
       <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
         {/* Top bar: Back + Add + View Toggle */}
         <div className="flex items-center justify-between mb-8">
-          <button onClick={() => navigate(`/clubs/${id}`)}
+          <button onClick={() => navigate(id ? `/clubs/${id}` : "/club/info")}
             className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white transition-colors">
             <i className="fas fa-arrow-left"></i>
             <span>Quay lại</span>

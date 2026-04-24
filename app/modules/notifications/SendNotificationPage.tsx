@@ -15,6 +15,7 @@ import {
 } from '~/cores/api';
 import { useSendBulkNotificationMutation } from '~/cores/api/notificationApi';
 import { useGetCurrentUserQuery } from '~/cores/api/authApi';
+import { getClubId } from '~/utils/auth';
 
 type SendTarget = 'all' | 'department' | 'select';
 type NotificationType = 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR';
@@ -69,7 +70,7 @@ function MemberCheckbox({
 
 export default function SendNotificationPage() {
     const { id: clubIdParam } = useParams<{ id: string }>();
-    const clubId = Number(clubIdParam) || 0;
+    const clubId = Number(clubIdParam) || getClubId();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { show } = useNotification();
 
@@ -170,7 +171,7 @@ export default function SendNotificationPage() {
     return (
         <div className="min-h-screen">
             <SettingButton />
-            <Sidebar currentPath={`/clubs/${clubId}/notifications/send`} isOpen={isSidebarOpen} onClose={toggleSidebar} />
+            <Sidebar currentPath={clubIdParam ? `/clubs/${clubId}/notifications/send` : "/club/notifications/send"} isOpen={isSidebarOpen} onClose={toggleSidebar} />
             <HeaderBar
                 title="Gửi Thông báo"
                 breadcrumb={`Pages / Clubs / ${club?.clubName ?? club?.shortName ?? ''} / Notifications / Send`}

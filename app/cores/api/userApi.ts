@@ -246,5 +246,6 @@ export const {
   useGetUserRoleQuery,
   useAssignUserRoleMutation,
   useSearchUsersQuery,
+  useLazySearchUsersQuery,
   useGetMyClubsDetailedQuery,
 } = userApi;

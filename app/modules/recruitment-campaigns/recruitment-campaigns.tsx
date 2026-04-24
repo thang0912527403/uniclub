@@ -843,8 +843,8 @@ export default function RecruitmentCampaignsModule() {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isAdmin } = useCurrentUser();
-  const { clubManagerMembership } = useClubRole();
-  const clubId = clubManagerMembership?.clubId ?? 0;
+  const { currentClub } = useClubRole();
+  const clubId = currentClub?.clubId ?? 0;
   const canManage = !isAdmin && clubId !== 0;
   const { show: notify } = useNotification();
 

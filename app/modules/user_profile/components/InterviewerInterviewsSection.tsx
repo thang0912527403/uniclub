@@ -14,6 +14,7 @@ import type {
 import FeedbackForm from "~/modules/interview/components/FeedbackForm";
 import CriteriaFeedbackForm from "~/modules/interview/components/CriteriaFeedbackForm";
 import CriteriaAssignment from "~/modules/interview/components/CriteriaAssignment";
+import { UserProfilePopover } from "~/components/UserProfilePopover";
 import {
   useGetEvaluationSummaryQuery,
   useGetCriteriaScoresQuery,
@@ -466,8 +467,10 @@ const InterviewerInterviewsSection: React.FC<
                     <p className="text-[11px] font-semibold text-violet-500 uppercase mb-1">
                       Ứng viên
                     </p>
-                    <p className="text-sm font-medium text-gray-800">
-                      <UserName userId={interview.candidateUserId} />
+                    <p className="text-sm font-medium text-gray-800 inline-block">
+                      <UserProfilePopover userId={interview.candidateUserId}>
+                        <UserName userId={interview.candidateUserId} />
+                      </UserProfilePopover>
                     </p>
                   </div>
 
@@ -572,78 +575,6 @@ const InterviewerInterviewsSection: React.FC<
                         </div>
                       </div>
                     )}
-
-                  {/* Criteria self-management for interviewer */}
-                  {["Confirmed", "InProgress", "Completed"].includes(
-                    interview.status,
-                  ) &&
-                    !myAssignment.feedbackSubmittedAt && (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCriteriaManageId(
-                              criteriaManageId === interview.id
-                                ? null
-                                : interview.id,
-                            )
-                          }
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-left ${
-                            criteriaManageId === interview.id
-                              ? "border-blue-300 bg-blue-50/50 dark:bg-blue-900/10"
-                              : "border-gray-200 dark:border-gray-600 hover:border-blue-200 hover:bg-blue-50/30"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <i
-                              className={`fa-solid fa-clipboard-list text-sm ${
-                                criteriaManageId === interview.id
-                                  ? "text-blue-500"
-                                  : "text-gray-400"
-                              }`}
-                            />
-                            <div>
-                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Quản lý tiêu chí đánh giá
-                              </p>
-                              <CriteriaBadge
-                                scheduleId={interview.id}
-                                assignmentId={myAssignment.id}
-                              />
-                            </div>
-                          </div>
-                          <svg
-                            className={`w-4 h-4 text-gray-400 transition-transform ${
-                              criteriaManageId === interview.id
-                                ? "rotate-180"
-                                : ""
-                            }`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </button>
-                        {criteriaManageId === interview.id && (
-                          <div className="mt-2 p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800 animate-fadeIn">
-                            <CriteriaAssignment
-                              scheduleId={interview.id}
-                              assignmentId={myAssignment.id}
-                              campaignId={interview.campaignId}
-                              interviewerName="bạn"
-                              onSuccess={() => {}}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                   {/* Feedback info if completed */}
                   {interview.status === "Completed" &&
                     myAssignment.feedbackSubmittedAt && (

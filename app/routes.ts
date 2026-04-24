@@ -37,7 +37,7 @@ export default [
     route("dashboard", "routes/dashboard.tsx"),
     route("dashboard/reports", "routes/dashboard.reports.tsx"),
     route("dashboard/analytics", "routes/dashboard.analytics.tsx"),
-    route("profile", "routes/user_profile.tsx"),
+    route("profile/:userId?", "routes/user_profile.tsx"),
     route("auth/change-password", "routes/auth/change-password.tsx"),
 
     // User management
@@ -46,21 +46,15 @@ export default [
 
     // Club management
     route("clubs", "routes/clubs/clubs.tsx"),
-    route("clubs/:id", "routes/clubs/clubs.$id.tsx"),
+    route("club/info", "routes/clubs/clubs.$id.tsx"),
     route("clubs/create", "routes/clubs/clubs.create.tsx"),
-    route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
-    route("clubs/:id/organization", "routes/clubs/clubs.$id.structure.tsx"),
+    route("club/edit", "routes/clubs/clubs.edit.$id.tsx"),
+    route("club/organization", "routes/clubs/clubs.$id.structure.tsx"),
+    route("club/funds/:fundId", "routes/clubs/clubs.$id.funds.$fundId.tsx"),
+    route("club/members", "routes/clubs/clubmembers.tsx"),
+    route("club/members/:memberId/roles", "routes/clubs/clubmembers.role.tsx"),
     route(
-      "clubs/:id/funds/:fundId",
-      "routes/clubs/clubs.$id.funds.$fundId.tsx",
-    ),
-    route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
-    route(
-      "clubs/:clubId/members/:memberId/roles",
-      "routes/clubs/clubmembers.role.tsx",
-    ),
-    route(
-      "clubs/:id/notifications/send",
+      "club/notifications/send",
       "routes/clubs/clubs.$id.notifications.send.tsx",
     ),
     route("club-roles", "routes/club-roles.tsx"),

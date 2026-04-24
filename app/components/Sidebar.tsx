@@ -84,9 +84,8 @@ export function Sidebar({
     }
   };
 
-  // Lấy clubId hiện tại, nếu không có thì trỏ về trang chọn CLB
-  const activeClubId = getClubId();
-  const clubBaseUrl = activeClubId ? `/clubs/${activeClubId}` : "/manage-clubs";
+  // URLs quản lý CLB không còn dùng ID trên URL mà lấy từ Context/Cookie
+  const clubBaseUrl = "/club";
 
   const allNavItems: NavItem[] = [
     { label: t("sidebar.dashboard"), icon: "fa-th-large", url: "/dashboard" },
@@ -125,7 +124,7 @@ export function Sidebar({
             subItems: [
               {
                 label: t("sidebar.manageClub.yourClubInfo"),
-                url: clubBaseUrl,
+                url: `${clubBaseUrl}/info`,
                 policy: "viewclub",
               },
               {

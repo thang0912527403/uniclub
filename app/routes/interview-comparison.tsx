@@ -10,8 +10,8 @@ import CandidateComparisonPage from "~/modules/interview/components/CandidateCom
 
 const CampaignSelection = () => {
   const navigate = useNavigate();
-  const { clubManagerMembership } = useClubRole();
-  const clubId = clubManagerMembership?.clubId;
+  const { currentClub } = useClubRole();
+  const clubId = currentClub?.clubId;
 
   const { data: myCampaigns = [], isLoading: campaignsLoading } =
     useGetRecruitmentCampaignsByClubIdQuery(clubId || 0, { skip: !clubId });
