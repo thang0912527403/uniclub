@@ -6,7 +6,7 @@ import { HeaderBar } from "~/components/HeaderBar";
 import { useSidebarToggle } from "~/hooks/useSidebarToggle";
 
 export default function DashboardModule() {
-  const { isAdmin, isClubManager, isAnyClubManager, isLoading, currentClub } =
+  const { isAdmin, isClubManager, isLoading, currentClub } =
     useClubRole();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 

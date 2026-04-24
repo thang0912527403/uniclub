@@ -35,6 +35,8 @@ export default [
   // ─── Protected routes (cần đăng nhập) ─────────────────────
   layout("components/ProtectedRoute.tsx", [
     route("dashboard", "routes/dashboard.tsx"),
+    route("dashboard/reports", "routes/dashboard.reports.tsx"),
+    route("dashboard/analytics", "routes/dashboard.analytics.tsx"),
     route("profile", "routes/user_profile.tsx"),
     route("auth/change-password", "routes/auth/change-password.tsx"),
 
