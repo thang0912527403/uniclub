@@ -30,49 +30,64 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
 
   const [options, setOptions] = useState<string[]>(() => {
     if (editing?.questionText) {
-      return editing.questionText.split("|").slice(1);
+      return [...editing.questionText.split("|").slice(1), ""];
     }
     return ["", ""];
   });
+  const [optionError, setOptionError] = useState(false);
 
   const handleOptionChange = (index: number, value: string) => {
     const newOptions = [...options];
     newOptions[index] = value;
-    if (index === newOptions.length - 1 && value.trim() !== "") {
+
+    // Collapse consecutive trailing empty strings down to one
+    while (
+      newOptions.length > 1 &&
+      newOptions[newOptions.length - 1].trim() === "" &&
+      newOptions[newOptions.length - 2].trim() === ""
+    ) {
+      newOptions.pop();
+    }
+
+    // Always keep one trailing empty so user can add more options
+    if (newOptions[newOptions.length - 1].trim() !== "") {
       newOptions.push("");
     }
+
     setOptions(newOptions);
+    setOptionError(false);
   };
 
+  const filledCount = options.filter((o) => o.trim() !== "").length;
+
   const removeOption = (index: number) => {
-    if (options.length > 2) {
+    if (filledCount > 2) {
       setOptions(options.filter((_, i) => i !== index));
+      setOptionError(false);
     }
   };
 
   const handleSave = () => {
     if (!text.trim()) return;
 
-    let optionsString = "";
+    let questionTextToSave = text.trim();
+
     if (type === "radio" || type === "checkbox") {
       const validOptions = options
         .map((o) => o.trim())
         .filter((o) => o !== "");
-      validOptions.unshift(text);
 
       if (validOptions.length < 2) {
-        alert("Vui lòng nhập ít nhất 2 lựa chọn.");
+        setOptionError(true);
         return;
       }
-      optionsString = validOptions.join("|");
+      questionTextToSave = [text.trim(), ...validOptions].join("|");
     }
 
     const payload = {
-      questionText: text,
+      questionText: questionTextToSave,
       questionType: type,
       isRequired: required,
-      questionOptions:
-        type === "radio" || type === "checkbox" ? optionsString : undefined,
     };
 
     if (editing) {
@@ -136,7 +151,7 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
                 <option value="text">Văn bản</option>
                 <option value="textarea">Đoạn văn</option>
                 {/* <option value="number">Số</option> */}
-                <option value="date">Ngày</option>
+                {/* <option value="date">Ngày</option> */}
                 <option value="radio">Lựa chọn(chỉ chọn 1)</option>
                 <option value="checkbox">Lựa chọn(nhiều lựa chọn)</option>
               </select>
@@ -179,13 +194,17 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
                           handleOptionChange(index, e.target.value)
                         }
                         placeholder={`Lựa chọn ${index + 1}...`}
-                        className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:border-orange-500 outline-none text-gray-800 dark:text-white transition-all"
+                        className={`w-full pl-9 pr-4 py-2 rounded-lg border bg-white dark:bg-gray-700 text-sm focus:border-orange-500 outline-none text-gray-800 dark:text-white transition-all ${
+                          optionError && opt.trim() === ""
+                            ? "border-red-400 dark:border-red-500 focus:border-red-500"
+                            : "border-gray-200 dark:border-gray-600"
+                        }`}
                       />
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
                         {index + 1}
                       </span>
                     </div>
-                    {options.length > 2 && (
+                    {filledCount > 2 && (
                       <button
                         onClick={() => removeOption(index)}
                         className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
@@ -197,6 +216,12 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
                   </div>
                 ))}
               </div>
+              {optionError && (
+                <p className="flex items-center gap-1.5 text-xs text-red-500 mt-1">
+                  <i className="fa-solid fa-circle-exclamation" />
+                  Vui lòng nhập ít nhất 2 lựa chọn.
+                </p>
+              )}
             </div>
           )}
 

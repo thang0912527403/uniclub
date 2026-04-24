@@ -59,18 +59,18 @@ export default function CreateClubModule() {
             
             const clubId = club.clubId;
 
-            const role = await createClubRole({
-                clubId: clubId,
-                roleName: "Club Manager",
-                description: "Vai trò chủ nhiệm câu lạc bộ, có toàn quyền quản lý và điều hành các hoạt động của câu lạc bộ.",
-                level: 0
-            }).unwrap();
+            // const role = await createClubRole({
+            //     clubId: clubId,
+            //     roleName: "Club Manager",
+            //     description: "Vai trò chủ nhiệm câu lạc bộ, có toàn quyền quản lý và điều hành các hoạt động của câu lạc bộ.",
+            //     level: 0
+            // }).unwrap();
 
-            await assignClubRole({
-                userId: currentUserId,
-                clubId: clubId,
-                clubRoleId: role.clubRoleId
-            }).unwrap();
+            // await assignClubRole({
+            //     userId: currentUserId,
+            //     clubId: clubId,
+            //     clubRoleId: role.clubRoleId
+            // }).unwrap();
 
             showNotification({
                 type: 'success',

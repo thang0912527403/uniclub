@@ -57,6 +57,10 @@ export default [
       "clubs/:clubId/members/:memberId/roles",
       "routes/clubs/clubmembers.role.tsx",
     ),
+    route(
+      "clubs/:id/notifications/send",
+      "routes/clubs/clubs.$id.notifications.send.tsx",
+    ),
     route("club-roles", "routes/club-roles.tsx"),
     route("club-roles/members", "routes/club-roles.members.tsx"),
     route("manage-clubs", "routes/my-clubs.tsx"),

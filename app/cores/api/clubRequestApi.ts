@@ -11,6 +11,19 @@ export interface ClubCreationRequest {
     createdAt: string;
 }
 
+export interface ClubRequestsParams {
+    pageSize?: number;
+    pageIndex?: string;
+    searchQuery?: string;
+    status?: string;
+}
+
+export interface ClubRequestsPagedResponse {
+    data: ClubCreationRequest[];
+    totalPages: number;
+    totalCount: number;
+}
+
 export interface CreateClubRequestDto {
     userId: string;
     clubName: string;
@@ -28,11 +41,22 @@ export interface UpdateClubRequestDto {
 const clubRequestApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
 
-        // GET ALL REQUESTS
-        getClubRequests: builder.query<ClubCreationRequest[], void>({
-            query: () => "/ClubCreationRequest",
-            transformResponse: (response: ApiResponse<ClubCreationRequest[]>) =>
-                response.data,
+        // GET ALL REQUESTS (paginated)
+        getClubRequests: builder.query<ClubRequestsPagedResponse, ClubRequestsParams>({
+            query: ({ pageSize = 10, pageIndex = "1", searchQuery, status } = {}) => ({
+                url: "/ClubCreationRequest",
+                params: {
+                    pageSize,
+                    pageIndex,
+                    ...(searchQuery ? { searchQuery } : {}),
+                    ...(status ? { status } : {}),
+                },
+            }),
+            transformResponse: (response: any) => ({
+                data: response.data ?? [],
+                totalPages: response.totalPages ?? 1,
+                totalCount: response.totalCount ?? 0,
+            }),
             providesTags: ["ClubRequest"],
         }),
 

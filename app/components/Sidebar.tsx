@@ -3,6 +3,7 @@ import { useExpandedMenu } from "~/hooks/useExpandedMenu";
 import { useEffect, useRef } from "react";
 import { getClubId } from "~/utils/auth";
 import { useTranslation } from "react-i18next";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 interface SubMenuItem {
   label: string;
@@ -71,10 +72,13 @@ export function Sidebar({
   }, []);
 
   const { t } = useTranslation("common");
+  const { isAdmin } = useCurrentUser();
   const handleNavigate = (url?: string) => {
     if (!url) return;
     navigate(url);
-    onClose?.();
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      onClose?.();
+    }
   };
   const navItems: NavItem[] = [
     { label: t("sidebar.dashboard"), icon: "fa-th-large", url: "/dashboard" },
@@ -82,7 +86,9 @@ export function Sidebar({
       label: t("sidebar.manageClub.title"),
       icon: "fa-building",
       subItems: [
-        { label: t("sidebar.manageClub.allClubs"), url: "/clubs" },
+        ...(isAdmin
+          ? [{ label: t("sidebar.manageClub.allClubs"), url: "/clubs" }]
+          : []),
         {
           label: t("sidebar.manageClub.yourClubInfo"),
           url: `/clubs/${getClubId() || 1}`,
@@ -92,10 +98,14 @@ export function Sidebar({
           url: `/clubs/${getClubId() || 1}/organization`,
         },
         { label: t("sidebar.manageClub.clubRoles"), url: "/club-roles" },
-        {
-          label: t("sidebar.manageClub.clubRequests"),
-          url: "/club/all-requests",
-        },
+        ...(isAdmin
+          ? [
+              {
+                label: t("sidebar.manageClub.clubRequests"),
+                url: "/club/all-requests",
+              },
+            ]
+          : []),
         // { label: t("sidebar.manageClub.yourClubInfo"), url: "/club/info" },
         // { label: t("sidebar.manageClub.manageClubName"), url: "/club/name" },
         // {
@@ -210,6 +220,16 @@ export function Sidebar({
         {
           label: "So sánh & Công bố",
           url: "/interview/comparison",
+        },
+      ],
+    },
+    {
+      label: t("sidebar.manageNotifications.title"),
+      icon: "fa-bell",
+      subItems: [
+        {
+          label: t("sidebar.manageNotifications.sendNotification"),
+          url: `/clubs/${getClubId() || 1}/notifications/send`,
         },
       ],
     },

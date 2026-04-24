@@ -52,8 +52,11 @@
     "manageInterview": {
       "title": "Quản lý Phỏng vấn",
       "allInterviews": "Lịch Phỏng vấn"
+    },
+    "manageNotifications": {
+      "title": "Quản lý Thông báo",
+      "sendNotification": "Gửi Thông báo"
     }
-    
   },
   "settings": {
     "title": "Cài đặt",
