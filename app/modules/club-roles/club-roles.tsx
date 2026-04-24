@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
@@ -40,11 +41,13 @@ function PolicyProgressBar({ count, max }: { count: number; max: number }) {
 function RoleCard({
     role,
     maxPolicies,
+    onMembers,
     onView,
     onEdit,
 }: {
     role: ClubRole;
     maxPolicies: number;
+    onMembers: () => void;
     onView: () => void;
     onEdit: () => void;
 }) {
@@ -52,7 +55,10 @@ function RoleCard({
     const policyCount = role.policies.length;
 
     return (
-        <div className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300">
+        <div
+            onClick={onMembers}
+            className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300 cursor-pointer"
+        >
             {/* Color strip */}
             <div className={`h-1.5 bg-gradient-to-r ${config.gradient}`} />
 
@@ -102,12 +108,18 @@ function RoleCard({
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                    <button onClick={onView}
+                    <button onClick={(e) => {
+                        e.stopPropagation();
+                        onView();
+                    }}
                         className="cursor-pointer flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium">
                         <i className="fas fa-eye text-xs text-purple-500"></i>
                         Xem quyền
                     </button>
-                    <button onClick={onEdit}
+                    <button onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit();
+                    }}
                         className="cursor-pointer flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold shadow-sm">
                         <i className="fas fa-key text-xs"></i>
                         Phân quyền
@@ -119,6 +131,7 @@ function RoleCard({
 }
 
 export default function ClubRolesModule() {
+    const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const clubId = getClubId();
     const { data: roles, isLoading, error } = useGetClubStructureRolesQuery(clubId, {
@@ -252,6 +265,7 @@ export default function ClubRolesModule() {
                                 key={role.clubRoleId}
                                 role={role}
                                 maxPolicies={maxPolicies}
+                                onMembers={() => navigate(`/club-roles/members?clubId=${clubId}&roleId=${role.clubRoleId}`)}
                                 onView={() => setPolicyTarget({ role, readOnly: true })}
                                 onEdit={() => setPolicyTarget({ role, readOnly: false })}
                             />

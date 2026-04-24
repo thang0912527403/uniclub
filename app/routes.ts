@@ -35,6 +35,8 @@ export default [
   // ─── Protected routes (cần đăng nhập) ─────────────────────
   layout("components/ProtectedRoute.tsx", [
     route("dashboard", "routes/dashboard.tsx"),
+    route("dashboard/reports", "routes/dashboard.reports.tsx"),
+    route("dashboard/analytics", "routes/dashboard.analytics.tsx"),
     route("profile", "routes/user_profile.tsx"),
     route("auth/change-password", "routes/auth/change-password.tsx"),
     route("my-applications", "routes/my-applications.tsx"),
@@ -51,11 +53,14 @@ export default [
     route("clubs/:id/organization", "routes/clubs/clubs.$id.structure.tsx"),
     route("clubs/:id/payos", "routes/clubs/clubs.$id.payos.tsx"),
     route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
+    route("clubs/:clubId/members/:memberId/roles", "routes/clubs/clubmembers.role.tsx"),
     route("club-roles", "routes/club-roles.tsx"),
+    route("club-roles/members", "routes/club-roles.members.tsx"),
     route("manage-clubs", "routes/my-clubs.tsx"),
     route("application-form/:formId?", "routes/question.tsx"),
     // Department
     route("department", "routes/department.tsx"),
+    route("department/create", "routes/department.create.tsx"),
     route("department/:id", "routes/department.member.tsx"),
 
     // Club content management
@@ -66,8 +71,8 @@ export default [
     // Recruitment & Applications
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
     route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
-    route("club/all-clubs", "routes/clubs-homepage/clubs.tsx"),
-    route("club/all-clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
+    route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
+    route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
     route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
     route("club/all-requests", "routes/clubs/clubrequests.tsx"),
 

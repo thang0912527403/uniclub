@@ -147,11 +147,11 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
                 form={form}
                 isSelected={selectedFormId === form.formId}
                 onSelect={() => setSelectedFormId(form.formId)}
-                onDelete={() => handleDeleteForm(form.formId)}
                 onEdit={() => {
                   setEditingForm(form);
                   setShowFormModal(true);
                 }}
+                onDelete={() => handleDeleteForm(form.formId)}
               />
             ))}
           </div>

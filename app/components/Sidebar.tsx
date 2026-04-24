@@ -76,30 +76,39 @@ export function Sidebar({
     navigate(url);
     onClose?.();
   };
-
   const navItems: NavItem[] = [
-    { label: t("sidebar.dashboard"), icon: "fa-th-large", url: "/dashboard" },
+    {
+      label: t("sidebar.dashboard"),
+      icon: "fa-th-large",
+      subItems: [
+        { label: "Overview", url: "/dashboard" },
+        { label: "Reports", url: "/dashboard/reports" },
+        { label: "Analytics", url: "/dashboard/analytics" },
+      ],
+    },
     {
       label: t("sidebar.manageClub.title"),
       icon: "fa-building",
       subItems: [
         { label: t("sidebar.manageClub.allClubs"), url: "/clubs" },
+        { label: t("sidebar.manageClub.yourClubInfo"), url: `/clubs/${getClubId() || 1}` },
         {
           label: t("sidebar.manageClub.clubStructure"),
           url: `/clubs/${getClubId() || 1}/organization`,
         },
         { label: t("sidebar.manageClub.clubRoles"), url: "/club-roles" },
-        { label: t("sidebar.manageClub.yourClubInfo"), url: "/club/info" },
-        { label: t("sidebar.manageClub.manageClubName"), url: "/club/name" },
-        {
-          label: t("sidebar.manageClub.recruitmentCampaigns"),
-          url: "/club/recruitment-campaigns",
-        },
-        { label: t("sidebar.manageClub.clubMembers"), url: "/club/members" },
-        {
-          label: t("sidebar.manageClub.clubActivities"),
-          url: "/club/activities",
-        },
+        { label: t("sidebar.manageClub.clubRequests"), url: "/club/all-requests" }
+        // { label: t("sidebar.manageClub.yourClubInfo"), url: "/club/info" },
+        // { label: t("sidebar.manageClub.manageClubName"), url: "/club/name" },
+        // {
+        //   label: t("sidebar.manageClub.recruitmentCampaigns"),
+        //   url: "/club/recruitment-campaigns",
+        // },
+        // { label: t("sidebar.manageClub.clubMembers"), url: "/club/members" },
+        // {
+        //   label: t("sidebar.manageClub.clubActivities"),
+        //   url: "/club/activities",
+        // },
       ],
     },
     {
@@ -110,18 +119,18 @@ export function Sidebar({
           label: t("sidebar.manageDepartment.allDepartments"),
           url: "/department",
         },
-        {
-          label: t("sidebar.manageDepartment.createDepartment"),
-          url: "/department/create",
-        },
-        {
-          label: t("sidebar.manageDepartment.departmentRoles"),
-          url: "/department/roles",
-        },
-        {
-          label: t("sidebar.manageDepartment.departmentSettings"),
-          url: "/department/settings",
-        },
+        // {
+        //   label: t("sidebar.manageDepartment.createDepartment"),
+        //   url: "/department/create",
+        // },
+        // {
+        //   label: t("sidebar.manageDepartment.departmentRoles"),
+        //   url: "/department/roles",
+        // },
+        // {
+        //   label: t("sidebar.manageDepartment.departmentSettings"),
+        //   url: "/department/settings",
+        // },
       ],
     },
     {
@@ -142,15 +151,15 @@ export function Sidebar({
           label: t("sidebar.manageMembers.allMembers"),
           url: `/clubs/${getClubId() || 1}/members`,
         },
-        { label: t("sidebar.manageMembers.addMember"), url: "/members/add" },
-        {
-          label: t("sidebar.manageMembers.memberRoles"),
-          url: "/members/roles",
-        },
-        {
-          label: t("sidebar.manageMembers.memberActivity"),
-          url: "/members/activity",
-        },
+        // { label: t("sidebar.manageMembers.addMember"), url: "/members/add" },
+        // {
+        //   label: t("sidebar.manageMembers.memberRoles"),
+        //   url: "/members/roles",
+        // },
+        // {
+        //   label: t("sidebar.manageMembers.memberActivity"),
+        //   url: "/members/activity",
+        // },
       ],
     },
     {
@@ -248,10 +257,10 @@ export function Sidebar({
         {navItems.map((item) => {
           const hasSubItems = item.subItems && item.subItems.length > 0;
           const isActive = currentPath === item.url;
-          const expanded = isExpanded(item.label);
           const isSubItemActive =
             hasSubItems &&
             item.subItems?.some((sub) => sub.url === currentPath);
+          const expanded = isExpanded(item.label) || !!isSubItemActive;
 
           return (
             <div key={item.label}>

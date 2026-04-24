@@ -5,7 +5,7 @@ import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAuth, isLoading } = useCurrentUser();
+  const { user, isAuth, isLoading, isError } = useCurrentUser();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -29,7 +29,7 @@ const Navbar: React.FC = () => {
 
   const navLinks = [
     { name: "Trang chủ", href: "/home" },
-    { name: "Câu lạc bộ", href: "/club/all-clubs" },
+    { name: "Câu lạc bộ", href: "/public/clubs" },
     { name: "Sự kiện", href: "/public/events" },
     { name: "Tin tức", href: "/public/news" },
     { name: "Về chúng tôi", href: "#about" },
@@ -292,13 +292,51 @@ const Navbar: React.FC = () => {
                   </>
                 )}
               </div>
-            ) : !isMounted || (isAuth && (!user || isLoading)) ? (
+            ) : !isMounted || (isAuth && !isError && (!user || isLoading)) ? (
               /* Loading state - show skeleton */
               <div className="flex items-center gap-3 px-3 py-2">
                 <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse"></div>
                 <div className="text-left hidden md:block">
                   <div className="h-3 w-20 bg-gray-200 rounded animate-pulse mb-2"></div>
                   <div className="h-2 w-28 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </div>
+            ) : isAuth && isError ? (
+              /* Server error state - user is logged in but server is unreachable */
+              <div className="relative group flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 cursor-default select-none">
+                <div className="relative flex items-center justify-center w-8 h-8">
+                  {/* Pulsing ring */}
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-30 animate-ping"></span>
+                  <svg
+                    className="w-5 h-5 text-red-500 relative z-10"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                    />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-red-600 hidden md:block">
+                  Mất kết nối server
+                </span>
+                {/* Tooltip */}
+                <div className="absolute right-0 top-full mt-2 w-64 bg-gray-900 text-white text-xs rounded-xl px-4 py-3 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    </svg>
+                    <div>
+                      <p className="font-semibold text-white mb-0.5">Không thể tải thông tin</p>
+                      <p className="text-gray-400 leading-relaxed">Server hiện không phản hồi. Vui lòng thử làm mới trang hoặc quay lại sau.</p>
+                    </div>
+                  </div>
+                  {/* Arrow */}
+                  <div className="absolute -top-1.5 right-6 w-3 h-3 bg-gray-900 rotate-45"></div>
                 </div>
               </div>
             ) : (

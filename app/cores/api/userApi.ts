@@ -149,6 +149,24 @@ export const userApi = baseApi.injectEndpoints({
       transformResponse: (response: ApiResponse<UserDepartment[]>) => response.data ?? [],
       providesTags: ['Department'],
     }),
+
+    // Lấy role hệ thống của user hiện tại
+    getUserRole: builder.query<string[], string>({
+      query: (userId) => `/Users/${userId}/userRole`,
+      transformResponse: (response: { success: boolean; data: string[] }) => response.data ?? [],
+      providesTags: ['User'],
+    }),
+
+    // Gán role hệ thống cho user
+    assignUserRole: builder.mutation<void, { uid: string; roleName: string }>({
+      query: ({ uid, roleName }) => ({
+        url: `/Users/assignUserRole/${uid}`,
+        method: 'POST',
+        body: JSON.stringify(roleName),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      invalidatesTags: (_result, _error, { uid }) => [{ type: 'User', id: uid }, 'User'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -164,4 +182,6 @@ export const {
   useGetUserAllClubsQuery,
   useGetManagedClubsQuery,
   useGetUserDepartmentsQuery,
+  useGetUserRoleQuery,
+  useAssignUserRoleMutation,
 } = userApi;

@@ -31,77 +31,41 @@ export const ApplicationStatusActions: React.FC<{
   currentStatus: string;
   onChangeStatus: (newStatus: string) => void;
 }> = ({ currentStatus, onChangeStatus }) => {
-  if (currentStatus === "PENDING") {
-    return (
-      <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onChangeStatus("SUCCESS");
-          }}
-          className="px-2.5 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 text-xs font-semibold rounded-lg transition-colors border border-green-200 dark:border-green-800"
-          title="Chuyển sang Vào phỏng vấn"
-        >
-          <i className="fa-solid fa-check mr-1.5" />
-          Vào phỏng vấn
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onChangeStatus("REJECTED");
-          }}
-          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 text-xs font-semibold rounded-lg transition-colors border border-red-200 dark:border-red-800"
-          title="Từ chối"
-        >
-          <i className="fa-solid fa-xmark mr-1.5" />
-          Từ chối
-        </button>
-      </div>
-    );
-  }
-
-  if (currentStatus === "SUCCESS") {
-    return (
-      <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onChangeStatus("APPROVED");
-          }}
-          className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 text-xs font-semibold rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
-          title="Đánh giá là Đã duyệt"
-        >
-          <i className="fa-solid fa-medal mr-1.5" />
-          Duyệt qua
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onChangeStatus("REJECTED");
-          }}
-          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 text-xs font-semibold rounded-lg transition-colors border border-red-200 dark:border-red-800"
-          title="Từ chối"
-        >
-          <i className="fa-solid fa-xmark mr-1.5" />
-          Từ chối
-        </button>
-      </div>
-    );
-  }
-
-  // APPROVED or REJECTED
+  const isPending = currentStatus === "PENDING";
+  
   return (
     <div className="flex items-center gap-1.5 border-r border-gray-200 dark:border-gray-700 pr-3 mr-1.5">
       <button
+        disabled={!isPending}
         onClick={(e) => {
           e.stopPropagation();
-          onChangeStatus("PENDING");
+          onChangeStatus("SUCCESS");
         }}
-        className="px-2 py-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs font-medium flex items-center gap-1"
-        title="Hoàn tác về Chờ duyệt"
+        className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors border flex items-center ${
+          !isPending
+            ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-500"
+            : "bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:text-green-400 border-green-200 dark:border-green-800"
+        }`}
+        title="Chuyển sang Vào phỏng vấn"
       >
-        <i className="fa-solid fa-rotate-left mr-1" />
-        Hoàn tác
+        <i className="fa-solid fa-check mr-1.5" />
+        Vào phỏng vấn
+      </button>
+      <button
+        disabled={!isPending}
+        onClick={(e) => {
+          e.stopPropagation();
+          onChangeStatus("REJECTED");
+        }}
+        className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors border flex items-center ${
+          !isPending
+            ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-500"
+            : "bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 border-red-200 dark:border-red-800"
+        }`}
+        title="Từ chối"
+      >
+        <i className="fa-solid fa-xmark mr-1.5" />
+        Từ chối
       </button>
     </div>
   );
