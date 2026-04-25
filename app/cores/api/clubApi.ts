@@ -26,7 +26,7 @@ import {
   type GetClubFundTransactionsParams,
   type GetMyFundsParams,
   type MyFundsPagedResult,
-  type PagedResult
+  type PagedResult,
 } from "./types";
 
 function normalizePagedResult<T>(raw: unknown): PagedResult<T> {
@@ -199,12 +199,12 @@ function normalizeClubFund(raw: unknown): ClubFund {
     description:
       String(
         d.description ??
-        d.Description ??
-        d.fundDescription ??
-        d.FundDescription ??
-        d.purpose ??
-        d.Purpose ??
-        "",
+          d.Description ??
+          d.fundDescription ??
+          d.FundDescription ??
+          d.purpose ??
+          d.Purpose ??
+          "",
       ).trim() || undefined,
     status: (d.status ?? d.Status) as ClubFund["status"],
     createdAt: (d.createdAt ?? d.CreatedAt) as string | undefined,
@@ -308,12 +308,17 @@ export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getClubs: builder.query<
       { data: Club[]; totalPage: number; totalCount: number },
-      { pageIndex: string; searchQuery?: string; pageSize: string; status?: string }
+      {
+        pageIndex: string;
+        searchQuery?: string;
+        pageSize: string;
+        status?: string;
+      }
     >({
       query: ({ pageIndex, searchQuery, pageSize, status }) => {
         const params = new URLSearchParams({ pageSize, pageIndex });
-        if (searchQuery) params.set('searchQuery', searchQuery);
-        if (status) params.set('status', status);
+        if (searchQuery) params.set("searchQuery", searchQuery);
+        if (status) params.set("status", status);
         return `/Club?${params.toString()}`;
       },
       transformResponse: (response: ApiResponse<Club[]>) => ({
@@ -462,10 +467,10 @@ export const clubApi = baseApi.injectEndpoints({
           ),
           financeAccessHintVi: rawCap
             ? pickOptionalViString(
-              rawCap,
-              "financeAccessHintVi",
-              "FinanceAccessHintVi",
-            )
+                rawCap,
+                "financeAccessHintVi",
+                "FinanceAccessHintVi",
+              )
             : null,
         };
       },
@@ -559,8 +564,8 @@ export const clubApi = baseApi.injectEndpoints({
 
         const errStatus =
           myFundsRes.error &&
-            typeof myFundsRes.error === "object" &&
-            "status" in myFundsRes.error
+          typeof myFundsRes.error === "object" &&
+          "status" in myFundsRes.error
             ? (myFundsRes.error as { status: number | string }).status
             : undefined;
         const allowMockFallback = USE_MOCK_MY_FUNDS || errStatus === 404;
@@ -734,11 +739,11 @@ export const clubApi = baseApi.injectEndpoints({
             Action: action,
             ...(action === "REJECT" && reason
               ? {
-                rejectReason: reason,
-                RejectReason: reason,
-                rejectionReason: reason,
-                RejectionReason: reason,
-              }
+                  rejectReason: reason,
+                  RejectReason: reason,
+                  rejectionReason: reason,
+                  RejectionReason: reason,
+                }
               : {}),
           },
         };
@@ -802,28 +807,43 @@ export const clubApi = baseApi.injectEndpoints({
       },
     }),
     // ─── Club Members ────────────────────────────────────────────────────
-    getClubMemberById: builder.query<ClubMember, { clubId: number; memberId: number }>({
+    getClubMemberById: builder.query<
+      ClubMember,
+      { clubId: number; memberId: number }
+    >({
       query: ({ clubId, memberId }) => `/clubs/${clubId}/members/${memberId}`,
       transformResponse: (response: ApiResponse<ClubMember>) => response.data,
-      providesTags: (_result, _error, { memberId }) => [{ type: "Club", id: `member-${memberId}` }],
+      providesTags: (_result, _error, { memberId }) => [
+        { type: "Club", id: `member-${memberId}` },
+      ],
     }),
-    addMember: builder.mutation<ClubMember, { clubId: number; userId: string; clubRoleId?: number | null }>({
+    addMember: builder.mutation<
+      ClubMember,
+      { clubId: number; userId: string; clubRoleId?: number | null }
+    >({
       query: ({ clubId, ...body }) => ({
         url: `/clubs/${clubId}/members`,
         method: "POST",
         body,
       }),
       transformResponse: (response: ApiResponse<ClubMember>) => response.data,
-      invalidatesTags: (_result, _error, { clubId }) => [{ type: "Club", id: `members-${clubId}` }],
+      invalidatesTags: (_result, _error, { clubId }) => [
+        { type: "Club", id: `members-${clubId}` },
+      ],
     }),
     removeMember: builder.mutation<void, { clubId: number; memberId: number }>({
       query: ({ clubId, memberId }) => ({
         url: `/clubs/${clubId}/members/${memberId}`,
         method: "DELETE",
       }),
-      invalidatesTags: (_result, _error, { clubId }) => [{ type: "Club", id: `members-${clubId}` }],
+      invalidatesTags: (_result, _error, { clubId }) => [
+        { type: "Club", id: `members-${clubId}` },
+      ],
     }),
-    toggleMemberStatus: builder.mutation<void, { clubId: number; memberId: number; isActive: boolean }>({
+    toggleMemberStatus: builder.mutation<
+      void,
+      { clubId: number; memberId: number; isActive: boolean }
+    >({
       query: ({ clubId, memberId, isActive }) => ({
         url: `/clubs/${clubId}/members/${memberId}/status`,
         method: "PUT",
@@ -835,14 +855,26 @@ export const clubApi = baseApi.injectEndpoints({
       ],
     }),
     // ─── Member Departments ──────────────────────────────────────────────
-    getMemberJoinedDepartments: builder.query<import('./types/department').Department[], { clubId: number; memberId: number }>({
-      query: ({ clubId, memberId }) => `/clubs/${clubId}/members/${memberId}/departments/joined`,
-      transformResponse: (response: ApiResponse<import('./types/department').Department[]>) => response.data ?? [],
+    getMemberJoinedDepartments: builder.query<
+      import("./types/department").Department[],
+      { clubId: number; memberId: number }
+    >({
+      query: ({ clubId, memberId }) =>
+        `/clubs/${clubId}/members/${memberId}/departments/joined`,
+      transformResponse: (
+        response: ApiResponse<import("./types/department").Department[]>,
+      ) => response.data ?? [],
       providesTags: ["Department"],
     }),
-    getMemberNotJoinedDepartments: builder.query<import('./types/department').Department[], { clubId: number; memberId: number }>({
-      query: ({ clubId, memberId }) => `/clubs/${clubId}/members/${memberId}/departments/not-joined`,
-      transformResponse: (response: ApiResponse<import('./types/department').Department[]>) => response.data ?? [],
+    getMemberNotJoinedDepartments: builder.query<
+      import("./types/department").Department[],
+      { clubId: number; memberId: number }
+    >({
+      query: ({ clubId, memberId }) =>
+        `/clubs/${clubId}/members/${memberId}/departments/not-joined`,
+      transformResponse: (
+        response: ApiResponse<import("./types/department").Department[]>,
+      ) => response.data ?? [],
       providesTags: ["Department"],
     }),
     // ─── Member Roles ───────────────────────────────────────────────────
@@ -855,11 +887,10 @@ export const clubApi = baseApi.injectEndpoints({
         method: "PUT",
         body: { clubRoleIds },
       }),
-      invalidatesTags: (_result, _error, { clubId, memberId }) =>
-        [
-          { type: "Club", id: `members-${clubId}` },
-          { type: "Club", id: `member-${memberId}` },
-        ],
+      invalidatesTags: (_result, _error, { clubId, memberId }) => [
+        { type: "Club", id: `members-${clubId}` },
+        { type: "Club", id: `member-${memberId}` },
+      ],
     }),
     getFundLocation: builder.query<FundLocationResponse, number>({
       query: (fundId) => `/funds/${fundId}/location`,
@@ -882,7 +913,6 @@ export const clubApi = baseApi.injectEndpoints({
     }),
   }),
 });
-
 
 export const {
   useGetClubsQuery,
@@ -918,4 +948,8 @@ export const {
   useGetFundLocationQuery,
   useUpdateMemberRoleMutation,
   useAddClubMemberMutation,
+  useApproveFundMutation,
+  useContributeToFundMutation,
+  useLazyGetContributeTransactionStatusQuery,
+  useLazyGetPayosFundContributionReturnQuery,
 } = clubApi;
