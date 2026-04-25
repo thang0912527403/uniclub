@@ -33,7 +33,7 @@ export function useFundHistory({
   fundId,
   page,
   pageSize,
-  status = 'ALL',
+  status = '',
   scope = '',
 }: UseFundHistoryArgs): UseFundHistoryResult {
   const [items, setItems] = useState<FundHistoryItem[]>([]);

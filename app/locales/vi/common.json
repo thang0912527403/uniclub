@@ -10,7 +10,8 @@
       "manageClubName": "Quản lý Tên CLB",
       "recruitmentCampaigns": "Chiến dịch Tuyển sinh",
       "clubMembers": "Thành viên CLB",
-      "clubActivities": "Hoạt động CLB"
+      "clubActivities": "Hoạt động CLB",
+      "clubRequests": "Yêu cầu tạo CLB"
     },
     "manageDepartment": {
       "title": "Quản lý Bộ phận",
@@ -21,8 +22,7 @@
     },
     "manageRecruitment": {
       "title": "Quản lý Tuyển sinh",
-      "allCampaigns": "Tất cả Chiến dịch",
-      "yourClubCampaigns": "Chiến dịch của CLB"
+      "allCampaigns": "Tất cả Chiến dịch"
     },
     "manageMembers": {
       "title": "Quản lý Thành viên",
@@ -30,6 +30,10 @@
       "addMember": "Thêm Thành viên",
       "memberRoles": "Vai trò Thành viên",
       "memberActivity": "Hoạt động Thành viên"
+    },
+    "managePosts": {
+      "title": "Quản lý Bài viết",
+      "allPosts": "Tất cả Bài viết"
     },
     "manageEvents": {
       "title": "Quản lý Sự kiện",
@@ -41,9 +45,17 @@
     "manageFunds": {
       "title": "Quản lý Quỹ",
       "budgetOverview": "Tổng quan Ngân sách",
+      "myFunds": "Quỹ của tôi",
       "transactions": "Giao dịch",
-      "expenseReports": "Báo cáo Chi tiêu",
-      "fundSettings": "Cài đặt Quỹ"
+      "expenseReports": "Báo cáo Chi tiêu"
+    },
+    "manageInterview": {
+      "title": "Quản lý Phỏng vấn",
+      "allInterviews": "Lịch Phỏng vấn"
+    },
+    "manageNotifications": {
+      "title": "Quản lý Thông báo",
+      "sendNotification": "Gửi Thông báo"
     }
   },
   "settings": {

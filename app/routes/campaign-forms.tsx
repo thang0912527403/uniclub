@@ -1,31 +1,37 @@
-import { useParams } from 'react-router';
-import { Sidebar } from '~/components/Sidebar';
-import { HeaderBar } from '~/components/HeaderBar';
-import { SettingButton } from '~/components/SettingButton';
-import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import CampaignFormManager from '~/modules/campaign-forms/CampaignFormManager';
-import { useGetRecruitmentCampaignsQuery, useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api';
-import { useCurrentUser } from '~/hooks/useCurrentUser';
-import { useClubRole } from '~/hooks/useClubRole';
+import { useParams } from "react-router";
+import { Sidebar } from "~/components/Sidebar";
+import { HeaderBar } from "~/components/HeaderBar";
+import { SettingButton } from "~/components/SettingButton";
+import { useSidebarToggle } from "~/hooks/useSidebarToggle";
+import CampaignFormManager from "~/modules/campaign-forms/CampaignFormManager";
+import {
+  useGetRecruitmentCampaignsQuery,
+  useGetRecruitmentCampaignsByClubIdQuery,
+} from "~/cores/api";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
+import { useClubRole } from "~/hooks/useClubRole";
 
 export default function CampaignFormsPage() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const id = Number(campaignId);
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isAdmin } = useCurrentUser();
-  const { clubManagerMembership } = useClubRole();
-  const clubId = clubManagerMembership?.clubId ?? 0;
+  const { currentClub } = useClubRole();
+  const clubId = currentClub?.clubId ?? 0;
 
   const { data: adminCampaigns } = useGetRecruitmentCampaignsQuery(undefined, {
-    skip: !isAdmin
+    skip: !isAdmin,
   });
 
-  const { data: clubCampaigns } = useGetRecruitmentCampaignsByClubIdQuery(clubId, {
-    skip: isAdmin || clubId === 0
-  });
+  const { data: clubCampaigns } = useGetRecruitmentCampaignsByClubIdQuery(
+    clubId,
+    {
+      skip: isAdmin || clubId === 0,
+    },
+  );
 
   const campaigns = (isAdmin ? adminCampaigns : clubCampaigns) || [];
-  const campaign = campaigns.find(c => c.campaignId === id);
+  const campaign = campaigns.find((c) => c.campaignId === id);
 
   if (!id || isNaN(id)) {
     return (
@@ -41,15 +47,21 @@ export default function CampaignFormsPage() {
   return (
     <div className="min-h-screen">
       <SettingButton />
-      <Sidebar currentPath="/recruitment-campaigns" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+      <Sidebar currentPath="/recruitment-campaigns" isOpen={isSidebarOpen} />
       <HeaderBar
         title="Quản lý Biểu mẫu"
-        breadcrumb={`Recruitment / ${campaign?.campaignName ?? 'Campaign'} / Forms`}
+        breadcrumb={`Recruitment Campaigns / ${campaign?.campaignName ?? "Campaign"} / Forms`}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />
-      <main className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
-        <CampaignFormManager campaignId={id} clubId={clubId} campaignName={campaign?.campaignName} />
+      <main
+        className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? "ml-64" : "ml-0"}`}
+      >
+        <CampaignFormManager
+          campaignId={id}
+          clubId={clubId}
+          campaignName={campaign?.campaignName}
+        />
       </main>
     </div>
   );

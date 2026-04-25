@@ -16,17 +16,14 @@ import {
   useRemoveAssignmentMutation,
   useGetInterviewByIdQuery,
   useCloseRoomMutation,
-  useGetClubMembersQuery,
 } from "~/cores/api";
 import type {
   InterviewScheduleResponse,
   ApplicationResponseDto,
-  ClubMember,
 } from "~/cores/api";
-import { getUserId } from '~/utils/auth';
-import { useCurrentUser } from '~/hooks/useCurrentUser';
-import { useClubRole } from '~/hooks/useClubRole';
-import { useGetClubRolesByClubIdQuery } from '~/cores/api/clubRoleApi';
+import { getUserId } from "~/utils/auth";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
+import { useGetClubRolesByClubIdQuery } from "~/cores/api/clubRoleApi";
 
 import StatusPipelineTabs from "./components/StatusPipelineTabs";
 import type { PipelineTab } from "./components/StatusPipelineTabs";
@@ -35,15 +32,18 @@ import InterviewTable from "./components/InterviewTable";
 import InterviewDetailDrawer from "./components/InterviewDetailDrawer";
 import BulkActionBar from "./components/BulkActionBar";
 import CreateInterviewModal from "./components/CreateInterviewModal";
-
+import BulkAssignInterviewerModal from "./components/BulkAssignInterviewerModal";
+import Cookies from "js-cookie";
 const InterviewSchedulePage: React.FC = () => {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
   // ─── Campaign selector ──────────────────────────────────────
   const { isAdmin } = useCurrentUser();
-  const { clubManagerMembership } = useClubRole();
-  const clubId = clubManagerMembership?.clubId ?? 0;
+  const clubId = Number(Cookies.get("clubId"));
+  const { data: clubRoles = [] } = useGetClubRolesByClubIdQuery(clubId, {
+    skip: !clubId,
+  });
 
   const { data: adminCampaigns, isLoading: adminLoading } =
     useGetRecruitmentCampaignsQuery(undefined, {
@@ -62,14 +62,6 @@ const InterviewSchedulePage: React.FC = () => {
     null,
   );
   const activeCampaignId = selectedCampaignId || campaigns[0]?.campaignId;
-  const activeCampaign = campaigns.find((c) => c.campaignId === activeCampaignId);
-  /** Admin không có club trong JWT: lấy clubId từ chiến dịch đang chọn để gọi API scoped theo club */
-  const effectiveClubId = isAdmin ? (activeCampaign?.clubId ?? 0) : clubId;
-
-  const { data: clubRoles = [] } = useGetClubRolesByClubIdQuery(
-    effectiveClubId,
-    { skip: !effectiveClubId },
-  );
 
   // ─── Current user ────────────────────────────────────────────
   const currentUserId = getUserId();
@@ -82,8 +74,8 @@ const InterviewSchedulePage: React.FC = () => {
     );
   const { data: reviewedApps = [], isLoading: appsLoading } =
     useGetApplicationsByCampaignQuery(
-      { clubId: effectiveClubId, campaignId: activeCampaignId!, status: "SUCCESS" },
-      { skip: !activeCampaignId || !effectiveClubId },
+      { clubId, campaignId: activeCampaignId!, status: "SUCCESS" },
+      { skip: !activeCampaignId },
     );
 
   // ─── Mutations ───────────────────────────────────────────────
@@ -119,6 +111,12 @@ const InterviewSchedulePage: React.FC = () => {
     useState<ApplicationResponseDto | null>(null);
   const [bulkApplications, setBulkApplications] = useState<
     ApplicationResponseDto[]
+  >([]);
+
+  // ─── Bulk assign interviewer modal ─────────────────────────────
+  const [bulkAssignModalOpen, setBulkAssignModalOpen] = useState(false);
+  const [bulkAssignInterviews, setBulkAssignInterviews] = useState<
+    InterviewScheduleResponse[]
   >([]);
 
   // ─── Filter applications not yet interviewed ────────────────
@@ -538,13 +536,11 @@ const InterviewSchedulePage: React.FC = () => {
   };
 
   const bulkCancelReasonRef = useRef("");
-  const bulkAssignUserIdRef = useRef("");
-  const bulkAssignRoleRef = useRef("Interviewer");
 
   const handleBulkCancel = () => {
     bulkCancelReasonRef.current = "";
     Modal.confirm({
-      title: "Hủy lịch hàng loạt",
+      title: "Hủy lịch",
       content: (
         <div>
           <p className="mb-2">
@@ -586,112 +582,16 @@ const InterviewSchedulePage: React.FC = () => {
     });
   };
 
-  // Fetch club members for bulk assign (admin: theo CLB của chiến dịch đang chọn)
-  const { data: bulkClubMembers = [] } = useGetClubMembersQuery(effectiveClubId, {
-    skip: !effectiveClubId,
-  });
-  const interviewerMembers = useMemo(
-    () =>
-      bulkClubMembers.filter(
-        (m) =>
-          m.status === "ACTIVE" &&
-          m.roleName?.toLowerCase().includes("interviewer"),
-      ),
-    [bulkClubMembers],
-  );
-  const otherMembers = useMemo(
-    () =>
-      bulkClubMembers.filter(
-        (m) =>
-          m.status === "ACTIVE" &&
-          !m.roleName?.toLowerCase().includes("interviewer"),
-      ),
-    [bulkClubMembers],
-  );
-
   const handleBulkAssignInterviewers = () => {
-    bulkAssignUserIdRef.current = "";
-    bulkAssignRoleRef.current = "Interviewer";
-    Modal.confirm({
-      title: "Phân interviewer hàng loạt",
-      width: 480,
-      content: (
-        <div className="space-y-3 pt-1">
-          <p className="text-sm text-gray-600">
-            Phân người phỏng vấn cho <strong>{selectedIds.size}</strong> lịch
-            đang chọn.
-          </p>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">
-              Chọn người phỏng vấn
-            </label>
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                bulkAssignUserIdRef.current = e.target.value;
-              }}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:border-orange-400 outline-none"
-            >
-              <option value="" disabled>
-                -- Chọn thành viên --
-              </option>
-              {interviewerMembers.length > 0 && (
-                <optgroup label="⭐ Interviewer">
-                  {interviewerMembers.map((m) => (
-                    <option key={m.clubMemberId} value={m.userId}>
-                      {m.fullName} {m.studentId ? `(${m.studentId})` : ""} —{" "}
-                      {m.roleName}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {otherMembers.length > 0 && (
-                <optgroup label="Thành viên khác">
-                  {otherMembers.map((m) => (
-                    <option key={m.clubMemberId} value={m.userId}>
-                      {m.fullName} {m.studentId ? `(${m.studentId})` : ""}{" "}
-                      {m.roleName ? `— ${m.roleName}` : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
-        </div>
-      ),
-      okText: "Phân công",
-      okButtonProps: {
-        style: { background: "#a855f7", borderColor: "#a855f7" },
-      },
-      cancelText: "Huỷ",
-      async onOk() {
-        const uid = bulkAssignUserIdRef.current.trim();
-        if (!uid) {
-          message.warning("Vui lòng chọn người phỏng vấn");
-          throw new Error("cancel");
-        }
-        let ok = 0;
-        for (const id of selectedIds) {
-          try {
-            await assignInterviewers({
-              scheduleId: id,
-              dto: {
-                interviewers: [{ interviewerUserId: uid, role: "Interviewer" }],
-              },
-            }).unwrap();
-            ok++;
-          } catch {}
-        }
-        if (ok > 0) message.success(`Đã phân công interviewer cho ${ok} lịch`);
-        else message.error("Phân công thất bại");
-        setSelectedIds(new Set());
-      },
-    });
+    const ivs = allInterviews.filter((iv) => selectedIds.has(iv.id));
+    if (ivs.length === 0) return;
+    setBulkAssignInterviews(ivs);
+    setBulkAssignModalOpen(true);
   };
 
   const handleBulkStartInterview = async () => {
     Modal.confirm({
-      title: "Bắt đầu phỏng vấn hàng loạt",
+      title: "Bắt đầu phỏng vấn",
       content: `Bạn chắc chắn muốn bắt đầu ${selectedIds.size} buổi phỏng vấn?`,
       okText: "Bắt đầu",
       okButtonProps: {
@@ -714,7 +614,7 @@ const InterviewSchedulePage: React.FC = () => {
 
   const handleBulkComplete = async () => {
     Modal.confirm({
-      title: "Hoàn thành phỏng vấn hàng loạt",
+      title: "Hoàn thành phỏng vấn",
       content: `Xác nhận hoàn thành ${selectedIds.size} buổi phỏng vấn?`,
       okText: "Hoàn thành",
       okButtonProps: {
@@ -746,7 +646,7 @@ const InterviewSchedulePage: React.FC = () => {
 
   return (
     <div className="min-h-screen">
-      <Sidebar currentPath="/interview/schedule" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+      <Sidebar currentPath="/interview/schedule" isOpen={isSidebarOpen} />
       <HeaderBar
         title="Lịch phỏng vấn"
         breadcrumb="Interview / Schedule"
@@ -756,7 +656,7 @@ const InterviewSchedulePage: React.FC = () => {
 
       <main
         className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${
-          isSidebarOpen ? "md:ml-64" : "ml-0"
+          isSidebarOpen ? "ml-64" : "ml-0"
         }`}
       >
         {/* Header */}
@@ -764,7 +664,6 @@ const InterviewSchedulePage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-clipboard-list text-orange-500" />{" "}
                 Quản lý phỏng vấn
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -890,7 +789,7 @@ const InterviewSchedulePage: React.FC = () => {
         }}
         interview={selectedInterview || null}
         currentUserId={currentUserId}
-        clubId={effectiveClubId || clubId}
+        clubId={clubId}
         clubRoles={clubRoles}
         onUpdateStatus={handleUpdateStatus}
         onAssignInterviewer={handleAssignInterviewer}
@@ -912,6 +811,19 @@ const InterviewSchedulePage: React.FC = () => {
         campaignId={activeCampaignId || 0}
         currentUserId={currentUserId}
         onSubmit={handleCreateInterview}
+      />
+
+      {/* Bulk Assign Interviewer Modal */}
+      <BulkAssignInterviewerModal
+        isOpen={bulkAssignModalOpen}
+        onClose={() => {
+          setBulkAssignModalOpen(false);
+          setBulkAssignInterviews([]);
+          setSelectedIds(new Set());
+        }}
+        interviews={bulkAssignInterviews}
+        clubId={clubId}
+        campaignId={activeCampaignId || 0}
       />
 
       {/* Custom styles */}

@@ -17,6 +17,7 @@ import {
     useDeleteSessionMutation,
     useOpenRegistrationMutation,
 } from '~/cores/api';
+import { useEventPermission } from '~/hooks/useEventPermission';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
@@ -155,6 +156,9 @@ export default function EditEventPage() {
     const [openRegistration] = useOpenRegistrationMutation();
     const [error, setError] = useState<string | null>(null);
     const [initialized, setInitialized] = useState(false);
+
+    // Per-event permission gate
+    const { can, isLoading: isLoadingPerm } = useEventPermission(event?.clubId, Number(id));
     /** IDs của sessions hiện có (id > 0) đã bị xóa khỏi UI — cần gọi DELETE */
     const [deletedSessionIds, setDeletedSessionIds] = useState<number[]>([]);
 
@@ -234,15 +238,15 @@ export default function EditEventPage() {
                 ? prev.sessions.map(s => ({
                     ...s,
                     startTime: dateToLocal(new Date(new Date(s.startTime).getTime() + deltaMs)),
-                    endTime:   dateToLocal(new Date(new Date(s.endTime).getTime()   + deltaMs)),
+                    endTime: dateToLocal(new Date(new Date(s.endTime).getTime() + deltaMs)),
                 }))
                 : prev.sessions;
 
             return {
                 ...prev,
                 startDate: dateToLocal(start),
-                endDate:   dateToLocal(end),
-                sessions:  shiftedSessions,
+                endDate: dateToLocal(end),
+                sessions: shiftedSessions,
             };
         });
     }, []);
@@ -393,7 +397,7 @@ export default function EditEventPage() {
     // ── Thực thi save sau khi user xác nhận trong modal ──
     const handleConfirmSave = async () => {
         if (!event || !pendingSubmitData) return;
-        const clubId  = event.clubId ?? 0;
+        const clubId = event.clubId ?? 0;
         const eventId = event.eventId;
         setIsSaving(true);
         setError(null);
@@ -407,7 +411,7 @@ export default function EditEventPage() {
                     await openRegistration({
                         clubId, eventId,
                         registrationStartDate: toIso(form.regStart),
-                        registrationEndDate:   toIso(form.regEnd),
+                        registrationEndDate: toIso(form.regEnd),
                         ...(form.maxAttendees ? { maxAttendees: Number(form.maxAttendees) } : {}),
                     }).unwrap();
                 } catch (e) { console.warn('[Edit] openRegistration:', e); }
@@ -428,11 +432,11 @@ export default function EditEventPage() {
                 await Promise.allSettled(
                     existingSessions.map(s => updateSession({
                         clubId, eventId,
-                        scheduleId:  s.id,
+                        scheduleId: s.id,
                         sessionName: s.sessionName,
-                        startTime:   toIso(s.startTime),
-                        endTime:     toIso(s.endTime),
-                        location:    s.location    || undefined,
+                        startTime: toIso(s.startTime),
+                        endTime: toIso(s.endTime),
+                        location: s.location || undefined,
                         description: s.description || undefined,
                     }))
                 );
@@ -447,9 +451,9 @@ export default function EditEventPage() {
                     newSessions.map(s => createSession({
                         clubId, eventId,
                         sessionName: s.sessionName,
-                        startTime:   toIso(s.startTime),
-                        endTime:     toIso(s.endTime),
-                        location:    s.location    || undefined,
+                        startTime: toIso(s.startTime),
+                        endTime: toIso(s.endTime),
+                        location: s.location || undefined,
                         description: s.description || undefined,
                     }))
                 );
@@ -483,7 +487,7 @@ export default function EditEventPage() {
     if (isLoadingEvent) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
                 <HeaderBar title="Sửa sự kiện" isSidebarOpen={isSidebarOpen} />
                 <main className={`pt-24 p-6 ${bg} min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
                     <div className="animate-pulse space-y-4 max-w-[1400px] mx-auto">
@@ -504,7 +508,7 @@ export default function EditEventPage() {
     if (!event) {
         return (
             <div className="min-h-screen">
-                <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
                 <HeaderBar title="Sửa sự kiện" isSidebarOpen={isSidebarOpen} />
                 <main className={`pt-24 p-6 ${bg} min-h-screen`}>
                     <div className="bg-red-50 border border-red-200 rounded p-4 max-w-xl mx-auto">
@@ -515,285 +519,291 @@ export default function EditEventPage() {
         );
     }
 
+    // Redirect if user doesn't have editevent permission
+    if (!isLoadingPerm && !can('editevent')) {
+        navigate(`/events/${id}`);
+        return null;
+    }
+
     return (
         <>
-        <div className="min-h-screen">
-            <ApiStatusButton
-                apiStatuses={[
-                    { name: 'Tải dữ liệu', isLoading: isLoadingEvent },
-                    { name: 'Cập nhật', isLoading: isUpdating },
-                ]}
-                isDark={isDark}
-                onThemeToggle={toggleTheme}
-                position="bottom-right"
-            />
-            <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
-            <HeaderBar
-                title="Sửa sự kiện"
-                breadcrumb={`Sự kiện / ${event.eventName} / Sửa`}
-                isSidebarOpen={isSidebarOpen}
-                onToggleSidebar={toggleSidebar}
-            />
+            <div className="min-h-screen">
+                <ApiStatusButton
+                    apiStatuses={[
+                        { name: 'Tải dữ liệu', isLoading: isLoadingEvent },
+                        { name: 'Cập nhật', isLoading: isUpdating },
+                    ]}
+                    isDark={isDark}
+                    onThemeToggle={toggleTheme}
+                    position="bottom-right"
+                />
+                <Sidebar currentPath="/events" isOpen={isSidebarOpen} />
+                <HeaderBar
+                    title="Sửa sự kiện"
+                    breadcrumb={`Sự kiện / ${event.eventName} / Sửa`}
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={toggleSidebar}
+                />
 
-            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
-                <div className="max-w-[1400px] mx-auto">
-                    <div className="flex items-center gap-3 mb-6">
-                        <button onClick={() => navigate(`/events/${id}`)}
-                            className={`p-2 rounded-lg ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}>
-                            <i className={`fas fa-arrow-left ${text}`} />
-                        </button>
-                        <h1 className={`text-2xl font-bold ${text}`}>Sửa sự kiện</h1>
-                    </div>
-
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-5">
-                            <p className="text-red-700 text-sm">{error}</p>
+                <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
+                    <div className="max-w-[1400px] mx-auto">
+                        <div className="flex items-center gap-3 mb-6">
+                            <button onClick={() => navigate(`/events/${id}`)}
+                                className={`p-2 rounded-lg ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}>
+                                <i className={`fas fa-arrow-left ${text}`} />
+                            </button>
+                            <h1 className={`text-2xl font-bold ${text}`}>Sửa sự kiện</h1>
                         </div>
-                    )}
 
-                    {/* ── Tab Switcher ── */}
-                    <div className="flex gap-1 mb-6">
-                        <button
-                            onClick={() => setActiveTab('info')}
-                            className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'info'
-                                ? 'bg-blue-500 text-white shadow-md'
-                                : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
-                            }`}
-                        >
-                            <i className="fas fa-edit mr-2" />Thông tin sự kiện
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('time')}
-                            className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'time'
-                                ? 'bg-blue-500 text-white shadow-md'
-                                : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
-                            }`}
-                        >
-                            <i className="fas fa-calendar-alt mr-2" />Thời gian sự kiện
-                        </button>
-                    </div>
-
-                    {/* ── Tab: Thông tin sự kiện ── */}
-                    {activeTab === 'info' && (
-                        <div className={`${card} rounded-xl shadow-sm p-6`}>
-                            <EventForm
-                                initialData={{
-                                    ...event,
-                                    startDate: form.startDate ? toIso(form.startDate) : event.startDate,
-                                    endDate: form.endDate ? toIso(form.endDate) : event.endDate,
-                                }}
-                                onChange={(data) => setForm(prev => ({ ...prev, ...data }))}
-                                onSubmit={handleSubmit}
-                                onCancel={() => navigate(`/events/${id}`)}
-                                isLoading={isSaving}
-                                isDark={isDark}
-                                mode="edit"
-                                formId="event-edit-form"
-                                hideActions={true}
-                            />
-                        </div>
-                    )}
-
-                    {/* ── Tab: Thời gian sự kiện ── */}
-                    {activeTab === 'time' && (
-                        <div className="space-y-5">
-                            {/* Thời gian đăng ký */}
-                            <div className={`${card} rounded-xl shadow-sm p-5`}>
-                                <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                                    <span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" />
-                                    Thời gian đăng ký
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Bắt đầu đăng ký</label>
-                                        <DTPicker
-                                            value={form.regStart}
-                                            onChange={v => setForm(prev => ({ ...prev, regStart: v }))}
-                                            placeholder="Chọn ngày bắt đầu"
-                                            isDark={isDark}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Kết thúc đăng ký</label>
-                                        <DTPicker
-                                            value={form.regEnd}
-                                            onChange={v => setForm(prev => ({ ...prev, regEnd: v }))}
-                                            placeholder="Chọn ngày kết thúc"
-                                            isDark={isDark}
-                                        />
-                                    </div>
-                                </div>
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-5">
+                                <p className="text-red-700 text-sm">{error}</p>
                             </div>
+                        )}
 
-                            {/* Calendar */}
-                            <div className={`${card} rounded-xl shadow-sm p-4`}>
-                                <EventCalendarPanel
-                                    state={calState}
-                                    onMainEventChange={handleMainEventChange}
-                                    onRegistrationChange={handleRegistrationChange}
-                                    onSessionChange={handleSessionChange}
-                                    onSessionCreate={handleSessionCreate}
-                                    onSessionClick={handleSessionClick}
-                                    onSetEventTime={(start, end) => {
-                                        setForm(prev => ({
-                                            ...prev,
-                                            startDate: dateToLocal(start),
-                                            endDate: dateToLocal(end),
-                                        }));
+                        {/* ── Tab Switcher ── */}
+                        <div className="flex gap-1 mb-6">
+                            <button
+                                onClick={() => setActiveTab('info')}
+                                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'info'
+                                    ? 'bg-blue-500 text-white shadow-md'
+                                    : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+                                    }`}
+                            >
+                                <i className="fas fa-edit mr-2" />Thông tin sự kiện
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('time')}
+                                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'time'
+                                    ? 'bg-blue-500 text-white shadow-md'
+                                    : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+                                    }`}
+                            >
+                                <i className="fas fa-calendar-alt mr-2" />Thời gian sự kiện
+                            </button>
+                        </div>
+
+                        {/* ── Tab: Thông tin sự kiện ── */}
+                        {activeTab === 'info' && (
+                            <div className={`${card} rounded-xl shadow-sm p-6`}>
+                                <EventForm
+                                    initialData={{
+                                        ...event,
+                                        startDate: form.startDate ? toIso(form.startDate) : event.startDate,
+                                        endDate: form.endDate ? toIso(form.endDate) : event.endDate,
                                     }}
-                                    onSetRegistrationTime={(start, end) => {
-                                        setForm(prev => ({
-                                            ...prev,
-                                            regStart: dateToLocal(start),
-                                            regEnd: dateToLocal(end),
-                                        }));
-                                    }}
-                                    eventTimeConstraint={
-                                        form.startDate && form.endDate
-                                            ? { start: toIso(form.startDate), end: toIso(form.endDate) }
-                                            : null
-                                    }
+                                    onChange={(data) => setForm(prev => ({ ...prev, ...data }))}
+                                    onSubmit={handleSubmit}
+                                    onCancel={() => navigate(`/events/${id}`)}
+                                    isLoading={isSaving}
                                     isDark={isDark}
+                                    mode="edit"
+                                    formId="event-edit-form"
+                                    hideActions={true}
                                 />
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* ── Nút Lưu tất cả thay đổi — cuối trang ── */}
-                    <div className={`mt-6 p-5 rounded-xl ${card} shadow-sm border-2 ${isDark ? 'border-blue-500/30' : 'border-blue-200'}`}>
-                        <div className="flex items-center justify-between flex-wrap gap-3">
-                            <div>
-                                <p className={`font-semibold ${text}`}>
-                                    <i className="fas fa-save mr-2 text-blue-500" />
-                                    Lưu tất cả thay đổi
-                                </p>
-                                <p className={`text-xs mt-0.5 ${sub}`}>
-                                    Cập nhật thông tin sự kiện, {form.sessions.filter(s => s.id > 0).length} phiên hiện có, {form.sessions.filter(s => s.id < 0).length} phiên mới
-                                    {deletedSessionIds.length > 0 && ` và xóa ${deletedSessionIds.length} phiên`}
-                                </p>
-                            </div>
-                            <div className="flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => navigate(`/events/${id}`)}
-                                    className={`px-5 py-2.5 rounded-lg text-sm font-medium border transition-colors ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-                                >
-                                    Hủy
-                                </button>
-                                <button
-                                    type="submit"
-                                    form="event-edit-form"
-                                    disabled={isSaving}
-                                    className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 transition-all shadow-md hover:shadow-lg"
-                                >
-                                    {isSaving
-                                        ? <><i className="fas fa-spinner fa-spin mr-2" />Đang lưu...</>
-                                        : <><i className="fas fa-check-circle mr-2" />Lưu tất cả</>}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            {/* ── Confirmation Modal ── */}
-            {confirmModal && pendingSubmitData && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className={`w-full max-w-lg rounded-2xl shadow-2xl ${card} overflow-hidden`}>
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 flex items-center justify-between">
-                            <h3 className="text-white font-bold text-lg flex items-center gap-2">
-                                <i className="fas fa-clipboard-check" />
-                                Xác nhận cập nhật
-                            </h3>
-                            <button
-                                onClick={() => setConfirmModal(false)}
-                                className="text-white/70 hover:text-white transition-colors"
-                            >
-                                <i className="fas fa-times text-lg" />
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
-                            {/* Event info */}
-                            <div className={`rounded-lg p-4 ${isDark ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-100'}`}>
-                                <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-2">
-                                    <i className="fas fa-calendar-alt mr-1.5" />Thông tin sự kiện
-                                </p>
-                                <p className={`font-semibold ${text}`}>{pendingSubmitData.eventName}</p>
-                                <p className={`text-sm mt-1 ${sub}`}>
-                                    {form.startDate ? formatViDate(form.startDate) : '—'} → {form.endDate ? formatViDate(form.endDate) : '—'}
-                                </p>
-                                {form.location && <p className={`text-sm mt-0.5 ${sub}`}><i className="fas fa-map-marker-alt mr-1" />{form.location}</p>}
-                            </div>
-
-                            {/* Registration */}
-                            {(form.regStart || form.regEnd) && (
-                                <div className={`rounded-lg p-4 ${isDark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-100'}`}>
-                                    <p className="text-xs font-semibold text-green-500 uppercase tracking-wide mb-2">
-                                        <i className="fas fa-user-plus mr-1.5" />Đăng ký
-                                    </p>
-                                    <p className={`text-sm ${sub}`}>
-                                        {form.regStart ? formatViDate(form.regStart) : '—'} → {form.regEnd ? formatViDate(form.regEnd) : '—'}
-                                    </p>
-                                    {form.maxAttendees && <p className={`text-sm mt-0.5 ${sub}`}>Tối đa {form.maxAttendees} người</p>}
-                                </div>
-                            )}
-
-                            {/* Sessions */}
-                            {form.sessions.length > 0 && (
-                                <div className={`rounded-lg p-4 ${isDark ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50 border border-purple-100'}`}>
-                                    <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide mb-2">
-                                        <i className="fas fa-layer-group mr-1.5" />Phiên ({form.sessions.length})
-                                    </p>
-                                    <div className="space-y-1">
-                                        {form.sessions.map(s => (
-                                            <div key={s.id} className="flex items-center gap-2">
-                                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${s.id > 0 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                                                    {s.id > 0 ? 'Cập nhật' : 'Mới'}
-                                                </span>
-                                                <span className={`text-sm ${text}`}>{s.sessionName || '(chưa đặt tên)'}</span>
-                                                {s.startTime && <span className={`text-xs ${sub}`}>{formatViDate(s.startTime)}</span>}
-                                            </div>
-                                        ))}
+                        {/* ── Tab: Thời gian sự kiện ── */}
+                        {activeTab === 'time' && (
+                            <div className="space-y-5">
+                                {/* Thời gian đăng ký */}
+                                <div className={`${card} rounded-xl shadow-sm p-5`}>
+                                    <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                                        <span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" />
+                                        Thời gian đăng ký
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Bắt đầu đăng ký</label>
+                                            <DTPicker
+                                                value={form.regStart}
+                                                onChange={v => setForm(prev => ({ ...prev, regStart: v }))}
+                                                placeholder="Chọn ngày bắt đầu"
+                                                isDark={isDark}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Kết thúc đăng ký</label>
+                                            <DTPicker
+                                                value={form.regEnd}
+                                                onChange={v => setForm(prev => ({ ...prev, regEnd: v }))}
+                                                placeholder="Chọn ngày kết thúc"
+                                                isDark={isDark}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Deleted sessions */}
-                            {deletedSessionIds.length > 0 && (
-                                <div className={`rounded-lg p-4 ${isDark ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50 border border-red-100'}`}>
-                                    <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">
-                                        <i className="fas fa-trash mr-1.5" />Xóa {deletedSessionIds.length} phiên
+                                {/* Calendar */}
+                                <div className={`${card} rounded-xl shadow-sm p-4`}>
+                                    <EventCalendarPanel
+                                        state={calState}
+                                        onMainEventChange={handleMainEventChange}
+                                        onRegistrationChange={handleRegistrationChange}
+                                        onSessionChange={handleSessionChange}
+                                        onSessionCreate={handleSessionCreate}
+                                        onSessionClick={handleSessionClick}
+                                        onSetEventTime={(start, end) => {
+                                            setForm(prev => ({
+                                                ...prev,
+                                                startDate: dateToLocal(start),
+                                                endDate: dateToLocal(end),
+                                            }));
+                                        }}
+                                        onSetRegistrationTime={(start, end) => {
+                                            setForm(prev => ({
+                                                ...prev,
+                                                regStart: dateToLocal(start),
+                                                regEnd: dateToLocal(end),
+                                            }));
+                                        }}
+                                        eventTimeConstraint={
+                                            form.startDate && form.endDate
+                                                ? { start: toIso(form.startDate), end: toIso(form.endDate) }
+                                                : null
+                                        }
+                                        isDark={isDark}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Nút Lưu tất cả thay đổi — cuối trang ── */}
+                        <div className={`mt-6 p-5 rounded-xl ${card} shadow-sm border-2 ${isDark ? 'border-blue-500/30' : 'border-blue-200'}`}>
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div>
+                                    <p className={`font-semibold ${text}`}>
+                                        <i className="fas fa-save mr-2 text-blue-500" />
+                                        Lưu tất cả thay đổi
+                                    </p>
+                                    <p className={`text-xs mt-0.5 ${sub}`}>
+                                        Cập nhật thông tin sự kiện, {form.sessions.filter(s => s.id > 0).length} phiên hiện có, {form.sessions.filter(s => s.id < 0).length} phiên mới
+                                        {deletedSessionIds.length > 0 && ` và xóa ${deletedSessionIds.length} phiên`}
                                     </p>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className={`flex justify-end gap-3 px-6 py-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                            <button
-                                onClick={() => setConfirmModal(false)}
-                                disabled={isSaving}
-                                className={`px-5 py-2 rounded-lg text-sm font-medium border transition-colors ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-                            >
-                                <i className="fas fa-arrow-left mr-1.5" />Quay lại sửa
-                            </button>
-                            <button
-                                onClick={handleConfirmSave}
-                                disabled={isSaving}
-                                className="px-6 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 transition-all shadow-md flex items-center gap-2"
-                            >
-                                {isSaving
-                                    ? <><i className="fas fa-spinner fa-spin" />Đang lưu...</>
-                                    : <><i className="fas fa-check-circle" />Xác nhận lưu</>}
-                            </button>
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(`/events/${id}`)}
+                                        className={`px-5 py-2.5 rounded-lg text-sm font-medium border transition-colors ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                                    >
+                                        Hủy
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        form="event-edit-form"
+                                        disabled={isSaving}
+                                        className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 transition-all shadow-md hover:shadow-lg"
+                                    >
+                                        {isSaving
+                                            ? <><i className="fas fa-spinner fa-spin mr-2" />Đang lưu...</>
+                                            : <><i className="fas fa-check-circle mr-2" />Lưu tất cả</>}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                </main>
+
+                {/* ── Confirmation Modal ── */}
+                {confirmModal && pendingSubmitData && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <div className={`w-full max-w-lg rounded-2xl shadow-2xl ${card} overflow-hidden`}>
+                            {/* Header */}
+                            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 flex items-center justify-between">
+                                <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                                    <i className="fas fa-clipboard-check" />
+                                    Xác nhận cập nhật
+                                </h3>
+                                <button
+                                    onClick={() => setConfirmModal(false)}
+                                    className="text-white/70 hover:text-white transition-colors"
+                                >
+                                    <i className="fas fa-times text-lg" />
+                                </button>
+                            </div>
+
+                            {/* Body */}
+                            <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+                                {/* Event info */}
+                                <div className={`rounded-lg p-4 ${isDark ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-100'}`}>
+                                    <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-2">
+                                        <i className="fas fa-calendar-alt mr-1.5" />Thông tin sự kiện
+                                    </p>
+                                    <p className={`font-semibold ${text}`}>{pendingSubmitData.eventName}</p>
+                                    <p className={`text-sm mt-1 ${sub}`}>
+                                        {form.startDate ? formatViDate(form.startDate) : '—'} → {form.endDate ? formatViDate(form.endDate) : '—'}
+                                    </p>
+                                    {form.location && <p className={`text-sm mt-0.5 ${sub}`}><i className="fas fa-map-marker-alt mr-1" />{form.location}</p>}
+                                </div>
+
+                                {/* Registration */}
+                                {(form.regStart || form.regEnd) && (
+                                    <div className={`rounded-lg p-4 ${isDark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-100'}`}>
+                                        <p className="text-xs font-semibold text-green-500 uppercase tracking-wide mb-2">
+                                            <i className="fas fa-user-plus mr-1.5" />Đăng ký
+                                        </p>
+                                        <p className={`text-sm ${sub}`}>
+                                            {form.regStart ? formatViDate(form.regStart) : '—'} → {form.regEnd ? formatViDate(form.regEnd) : '—'}
+                                        </p>
+                                        {form.maxAttendees && <p className={`text-sm mt-0.5 ${sub}`}>Tối đa {form.maxAttendees} người</p>}
+                                    </div>
+                                )}
+
+                                {/* Sessions */}
+                                {form.sessions.length > 0 && (
+                                    <div className={`rounded-lg p-4 ${isDark ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50 border border-purple-100'}`}>
+                                        <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide mb-2">
+                                            <i className="fas fa-layer-group mr-1.5" />Phiên ({form.sessions.length})
+                                        </p>
+                                        <div className="space-y-1">
+                                            {form.sessions.map(s => (
+                                                <div key={s.id} className="flex items-center gap-2">
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${s.id > 0 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                                        {s.id > 0 ? 'Cập nhật' : 'Mới'}
+                                                    </span>
+                                                    <span className={`text-sm ${text}`}>{s.sessionName || '(chưa đặt tên)'}</span>
+                                                    {s.startTime && <span className={`text-xs ${sub}`}>{formatViDate(s.startTime)}</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Deleted sessions */}
+                                {deletedSessionIds.length > 0 && (
+                                    <div className={`rounded-lg p-4 ${isDark ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50 border border-red-100'}`}>
+                                        <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">
+                                            <i className="fas fa-trash mr-1.5" />Xóa {deletedSessionIds.length} phiên
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className={`flex justify-end gap-3 px-6 py-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                                <button
+                                    onClick={() => setConfirmModal(false)}
+                                    disabled={isSaving}
+                                    className={`px-5 py-2 rounded-lg text-sm font-medium border transition-colors ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                    <i className="fas fa-arrow-left mr-1.5" />Quay lại sửa
+                                </button>
+                                <button
+                                    onClick={handleConfirmSave}
+                                    disabled={isSaving}
+                                    className="px-6 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 transition-all shadow-md flex items-center gap-2"
+                                >
+                                    {isSaving
+                                        ? <><i className="fas fa-spinner fa-spin" />Đang lưu...</>
+                                        : <><i className="fas fa-check-circle" />Xác nhận lưu</>}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {/* Session Quick Modal */}
             {sessionModal && (

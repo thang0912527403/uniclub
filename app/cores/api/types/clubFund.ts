@@ -23,11 +23,20 @@ export interface ClubFund {
   updatedAt?: string;
   expiresAt?: string | null;
   canAcceptContributions?: boolean;
+  balanceContextVi?: string | null;
+  cannotContributeReasonVi?: string | null;
+  rejectionReasonVi?: string | null;
+  expiresAtUtcNoteVi?: string | null;
 }
+
+export type MyFundsPagedResult = PagedResult<ClubFund> & {
+  usedMyFundsFallback?: boolean;
+};
 
 export interface ApproveFundDto {
   fundId: number;
   action: 'APPROVE' | 'REJECT';
+  rejectReason?: string;
 }
 
 export type FundTransactionType = 'INCOME' | 'EXPENSE';
@@ -38,6 +47,18 @@ export interface CreateFundRequestDto {
   amount: number;
   description: string;
   purpose?: string;
+}
+
+export type FundSidebarMenuId = 'overview' | 'transactions' | 'reports' | 'settings';
+export type FundListStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
+export type FundListSort = 'NEWEST' | 'OLDEST' | 'NAME_ASC' | 'NAME_DESC';
+export type FundMineType = 'ALL' | 'CREATED' | 'RESPONSIBLE';
+
+export interface FundMenuItemDto {
+  id: FundSidebarMenuId;
+  labelVi: string;
+  labelEn: string;
+  visible: boolean;
 }
 
 export interface ClubFundCapabilities {
@@ -51,6 +72,21 @@ export interface ClubFundCapabilities {
   clubRoleName?: string | null;
   clubRoleLevel?: number | null;
   isActiveClubMember: boolean;
+  menuItems: FundMenuItemDto[];
+  financeAccessHintVi?: string | null;
+}
+
+export interface FundReportSummaryDto {
+  clubId: number;
+  fromUtc?: string | null;
+  toUtc?: string | null;
+  pendingFundCount: number;
+  approvedFundCount: number;
+  rejectedFundCount: number;
+  totalBalanceApprovedFunds: number;
+  totalApprovedIncome: number;
+  totalApprovedExpense: number;
+  dateFilterNoteVi?: string | null;
 }
 
 export interface CreateFundRequestResponse {
@@ -62,13 +98,44 @@ export type FundHistoryScope = 'all' | 'contributions' | 'mine';
 export type FundHistoryStatusFilter = '' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
 export type FundHistoryScopeFilter = '' | 'mine';
 
+export interface FundCategoryResponseDto {
+  categoryId: number;
+  categoryName: string;
+  description?: string | null;
+  clubId?: number | null;
+}
+
+export interface GetClubFundTransactionsParams {
+  clubId: number;
+  page?: number;
+  pageSize?: number;
+  fundId?: number;
+  status?: string;
+  scope?: FundHistoryScopeFilter;
+  fromUtc?: string | null;
+  toUtc?: string | null;
+}
+
+export interface GetMyFundsParams {
+  clubId: number;
+  mineType?: FundMineType;
+  status?: FundListStatus;
+  search?: string;
+  sort?: FundListSort;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface FundHistoryItem {
   transactionId?: number;
   id?: number;
   fundId: number;
+  fundName?: string | null;
   amount: number;
   status: string;
   description?: string;
+  categoryId?: number | null;
+  categoryName?: string | null;
   createdAt?: string;
   updatedAt?: string;
   transactionDate?: string;
@@ -95,7 +162,7 @@ export interface FundHistoryResponse {
 
 export interface CreateFundDto {
   fundName: string;
-  initialAmount: number;
+  description?: string;
   expiresAt?: string;
 }
 

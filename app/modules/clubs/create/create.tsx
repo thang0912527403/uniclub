@@ -8,14 +8,15 @@ import { useCreateClubMutation, useCreateClubRoleMutation, useAssignClubRoleMuta
 import { useNotification } from '~/components/Notification';
 import { validateClubForm, type ClubFormData } from '~/utils/validation';
 import { getUserId } from '~/utils/auth';
+import Cookies from 'js-cookie';
 
 
 export default function CreateClubModule() {
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const [createClub, { isLoading, error }] = useCreateClubMutation();
-    const [createClubRole] = useCreateClubRoleMutation();
-    const [assignClubRole] = useAssignClubRoleMutation();
+    // const [createClubRole] = useCreateClubRoleMutation();
+    // const [assignClubRole] = useAssignClubRoleMutation();
     const currentUserId = getUserId();
     const { show: showNotification } = useNotification();
 
@@ -55,20 +56,21 @@ export default function CreateClubModule() {
 
         try {
             const club = await createClub(formData).unwrap();
+            
             const clubId = club.clubId;
 
-            const role = await createClubRole({
-                clubId: clubId,
-                roleName: "Chủ nhiệm",
-                description: "Vai trò chủ nhiệm câu lạc bộ, có toàn quyền quản lý và điều hành các hoạt động của câu lạc bộ.",
-                level: 0
-            }).unwrap();
+            // const role = await createClubRole({
+            //     clubId: clubId,
+            //     roleName: "Club Manager",
+            //     description: "Vai trò chủ nhiệm câu lạc bộ, có toàn quyền quản lý và điều hành các hoạt động của câu lạc bộ.",
+            //     level: 0
+            // }).unwrap();
 
-            await assignClubRole({
-                userId: currentUserId,
-                clubId: clubId,
-                clubRoleId: role.clubRoleId
-            }).unwrap();
+            // await assignClubRole({
+            //     userId: currentUserId,
+            //     clubId: clubId,
+            //     clubRoleId: role.clubRoleId
+            // }).unwrap();
 
             showNotification({
                 type: 'success',
@@ -77,7 +79,9 @@ export default function CreateClubModule() {
                 duration: 3000,
             });
 
-            setTimeout(() => navigate('/clubs'), 1500);
+            Cookies.set('clubId', clubId.toString(), { expires: 365, path: '/' });
+            setTimeout(() => navigate('/manage-clubs'), 1500);
+            
 
         } catch (err) {
 
@@ -100,7 +104,6 @@ export default function CreateClubModule() {
             <Sidebar
                 currentPath="/clubs/create"
                 isOpen={isSidebarOpen}
-                onClose={toggleSidebar}
             />
 
             <HeaderBar

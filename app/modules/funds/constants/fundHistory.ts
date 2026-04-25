@@ -8,6 +8,7 @@ export const FUND_HISTORY_STATUS_OPTIONS: ReadonlyArray<{
   value: FundHistoryStatusFilter;
   label: string;
 }> = [
+  { value: '', label: 'Đã thanh toán (mặc định)' },
   { value: 'ALL', label: 'Tất cả trạng thái' },
   { value: 'PENDING', label: 'Chờ duyệt' },
   { value: 'APPROVED', label: 'Đã duyệt' },

@@ -1,22 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams } from 'react-router';
-import { Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { FinanceAccessHintBanner, resolveFundBalanceHoverTextVi } from '~/modules/funds/components/FundUxHints';
 import {
   useGetFundByIdQuery,
   useGetFundCapabilitiesQuery,
+  useGetClubByIdQuery,
   useApproveFundMutation,
   useContributeToFundMutation,
   useLazyGetContributeTransactionStatusQuery,
 } from '~/cores/api';
+import { useDialogAccessibility } from '~/hooks/useDialogAccessibility';
+import { parseVndIntegerFromInput } from '../funds.utils';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { useNotification } from '~/components/Notification';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
+import { isManagerRole } from '~/hooks/useClubRole';
 import type { FundHistoryItem, ClubFund, FundHistoryScopeFilter, FundHistoryStatusFilter } from '~/cores/api';
 import { fundTokens as t } from '../funds.design-tokens';
 import { savePayosPendingContribute } from '~/utils/payosContributeSession';
 import { useFundHistory } from '~/modules/funds/hooks/useFundHistory';
+import { getClubId } from '~/utils/auth';
 import {
   DEFAULT_FUND_HISTORY_PAGE_SIZE,
   FILTER_DEBOUNCE_MS,
@@ -66,6 +73,28 @@ function formatFundHistoryDateTime(iso: string | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function fundHistoryCategoryLabel(item: FundHistoryItem): string {
+  const r = item as FundHistoryItem & Record<string, unknown>;
+  const nameRaw = r.categoryName ?? r.CategoryName;
+  const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
+  if (name) return name;
+  const idRaw = r.categoryId ?? r.CategoryId;
+  const id = typeof idRaw === 'number' ? idRaw : Number(idRaw);
+  if (Number.isFinite(id)) return `ID ${id}`;
+  return '—';
+}
+
+function fundHistoryStatusLabelVi(item: FundHistoryItem): string {
+  const r = item as FundHistoryItem & Record<string, unknown>;
+  const raw = r.status ?? r.Status;
+  const s = String(raw ?? '').trim().toUpperCase();
+  if (!s) return '—';
+  if (s === 'PENDING') return 'Chờ xử lý';
+  if (s === 'APPROVED' || s === 'PAID' || s === 'COMPLETED' || s === 'SUCCESS' || s === 'CONFIRMED') return 'Đã xác nhận';
+  if (s === 'REJECTED' || s === 'FAILED' || s === 'CANCELLED' || s === 'CANCELED') return 'Từ chối / lỗi';
+  return String(raw).trim();
 }
 
 function fundHistoryContributionTimeIso(item: FundHistoryItem): string | undefined {
@@ -131,11 +160,12 @@ function FundStatusBadge({ fund }: { fund: ClubFund }) {
 
 export default function FundDetailPageByClub() {
   const { id: clubIdParam, fundId: fundIdParam } = useParams<{ id: string; fundId: string }>();
-  const clubId = parseInt(clubIdParam ?? '0', 10);
+  const clubId = parseInt(clubIdParam ?? '0', 10) || getClubId();
   const fundId = parseInt(fundIdParam ?? '0', 10);
 
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+  const { isAdmin } = useCurrentUser();
   const { show: showNotification } = useNotification();
 
   const [showContribute, setShowContribute] = useState(false);
@@ -161,12 +191,20 @@ export default function FundDetailPageByClub() {
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [historyPage, setHistoryPage] = useState(1);
   const [historyPageSize, setHistoryPageSize] = useState<number>(DEFAULT_FUND_HISTORY_PAGE_SIZE);
-  const [historyStatusFilter, setHistoryStatusFilter] = useState<FundHistoryStatusFilter>('ALL');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<FundHistoryStatusFilter>('');
   const [historyScopeFilter, setHistoryScopeFilter] = useState<FundHistoryScopeFilter>('');
-  const [debouncedStatus, setDebouncedStatus] = useState<FundHistoryStatusFilter>('ALL');
+  const [debouncedStatus, setDebouncedStatus] = useState<FundHistoryStatusFilter>('');
   const [debouncedScope, setDebouncedScope] = useState<FundHistoryScopeFilter>('');
+  const [rejectFundOpen, setRejectFundOpen] = useState(false);
+  const [rejectReasonInput, setRejectReasonInput] = useState('');
 
   const isInvalidParams = !clubIdParam || !fundIdParam || isNaN(clubId) || isNaN(fundId) || clubId < 1 || fundId < 1;
+
+  const { data: breadcrumbClub, isLoading: breadcrumbClubLoading } = useGetClubByIdQuery(clubId, {
+    skip: isInvalidParams || clubId < 1,
+  });
+  const fundBreadcrumbClubPart =
+    breadcrumbClub?.clubName?.trim() || (breadcrumbClubLoading ? 'Đang tải…' : `CLB #${clubId}`);
 
   useEffect(() => {
     setHistoryPage(1);
@@ -196,25 +234,28 @@ export default function FundDetailPageByClub() {
   const canContribute = caps?.canContribute ?? false;
   const canApproveOrRejectFundEntity = caps?.canApproveOrRejectFundEntity ?? false;
 
-  const skipFundQueries =
-    isInvalidParams ||
-    capsLoading ||
-    capsForbidden ||
-    capsOtherError ||
-    (caps !== undefined && !canViewFunds);
+  const canUseFullFundHistoryFilters = isAdmin || isManagerRole(caps?.clubRoleName);
+
+  const capsBlocked =
+    isInvalidParams || capsLoading || capsForbidden || capsOtherError;
+  const skipFundQuery =
+    capsBlocked || (caps !== undefined && !canViewFunds && !canContribute);
+  const skipHistoryQuery =
+    skipFundQuery || (caps !== undefined && !canViewFunds);
 
   const { data: fund, isLoading: isLoadingFund, error: fundError, refetch: refetchFund } = useGetFundByIdQuery(
     { clubId, fundId },
-    { skip: skipFundQueries }
+    { skip: skipFundQuery }
   );
   useEffect(() => {
-    if (!capsLoading && !canApproveOrRejectFundEntity && historyScopeFilter === '') {
+    if (capsLoading || isInvalidParams) return;
+    if (!canUseFullFundHistoryFilters && historyScopeFilter === '') {
       setHistoryScopeFilter('mine');
     }
-  }, [capsLoading, canApproveOrRejectFundEntity, historyScopeFilter]);
+  }, [capsLoading, canUseFullFundHistoryFilters, historyScopeFilter, isInvalidParams]);
 
-  const historyQueryClubId = skipFundQueries ? 0 : clubId;
-  const historyQueryFundId = skipFundQueries ? 0 : fundId;
+  const historyQueryClubId = skipHistoryQuery ? 0 : clubId;
+  const historyQueryFundId = skipHistoryQuery ? 0 : fundId;
 
   const {
     items: history,
@@ -227,8 +268,8 @@ export default function FundDetailPageByClub() {
     fundId: historyQueryFundId,
     page: historyPage,
     pageSize: historyPageSize,
-    status: debouncedStatus,
-    scope: debouncedScope,
+    status: canUseFullFundHistoryFilters ? debouncedStatus : '',
+    scope: canUseFullFundHistoryFilters ? debouncedScope : 'mine',
   });
   const [approveFund, { isLoading: isApprovingFund }] = useApproveFundMutation();
   const [contributeToFund, { isLoading: isContributing }] = useContributeToFundMutation();
@@ -256,6 +297,19 @@ export default function FundDetailPageByClub() {
     setContributePollTimedOut(false);
   }, []);
 
+  const closeContributeModal = useCallback(() => {
+    setShowContribute(false);
+    resetContributeForm();
+  }, [resetContributeForm]);
+
+  const closeRejectFundModal = useCallback(() => {
+    setRejectFundOpen(false);
+    setRejectReasonInput('');
+  }, []);
+
+  const contributeDialogRef = useDialogAccessibility(showContribute, closeContributeModal);
+  const rejectFundDialogRef = useDialogAccessibility(rejectFundOpen, closeRejectFundModal);
+
   const paymentExpiresUtc =
     payStatus?.paymentLinkExpiresAtUtc ?? contributeResult?.paymentLinkExpiresAtUtc;
   const paymentExpiryMs = paymentExpiresUtc ? Date.parse(paymentExpiresUtc) : NaN;
@@ -272,7 +326,6 @@ export default function FundDetailPageByClub() {
     if (!showContribute || !contributeResult?.transactionId || clubId < 1) return;
 
     let cancelled = false;
-    /** DOM timer id (number); tránh dùng ReturnType<typeof setInterval> khi trùng với NodeJS.Timeout */
     let intervalId: number | undefined;
 
     const stop = () => {
@@ -356,8 +409,13 @@ export default function FundDetailPageByClub() {
   const handleContributeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clubId || !fundId) return;
-    const amount = Number(contributeAmount);
-    if (isNaN(amount) || amount < MIN_FUND_TX_AMOUNT) {
+    const parsed = parseVndIntegerFromInput(contributeAmount);
+    if (!parsed.ok) {
+      showNotification({ type: 'error', title: 'Số tiền không hợp lệ', message: parsed.message });
+      return;
+    }
+    const amount = parsed.amount;
+    if (amount < MIN_FUND_TX_AMOUNT) {
       showNotification({
         type: 'error',
         title: 'Số tiền không hợp lệ',
@@ -423,7 +481,7 @@ export default function FundDetailPageByClub() {
     contributePollTimedOut ||
     !!contributePollError;
 
-  const isHistoryControlDisabled = isLoadingHistory || skipFundQueries;
+  const isHistoryControlDisabled = isLoadingHistory || skipHistoryQuery;
 
   if (isInvalidParams) {
     return (
@@ -436,10 +494,10 @@ export default function FundDetailPageByClub() {
 
   return (
     <div className="min-h-screen">
-      <Sidebar currentPath="/funds" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+      <Sidebar currentPath={clubIdParam ? `/clubs/${clubId}/funds` : "/club/funds"} isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
         title={fund ? (fund.fundName || `Quỹ #${fundId}`) : 'Chi tiết quỹ'}
-        breadcrumb="Tài chính / Quản lý quỹ / Chi tiết"
+        breadcrumb={`Tài chính / Quản lý quỹ / ${fundBreadcrumbClubPart} / Chi tiết`}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />
@@ -450,12 +508,19 @@ export default function FundDetailPageByClub() {
         }`}
       >
         <div className="max-w-6xl mx-auto space-y-6">
-          <nav aria-label="Breadcrumb">
-            <Link to="/funds" className={`inline-flex items-center gap-2 ${t.type.body} hover:underline focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 rounded`}>
-              <span aria-hidden className="text-base">←</span>
+          <nav aria-label="Điều hướng quỹ">
+            <Link
+              to="/funds"
+              className={`${t.btn.secondary} inline-flex items-center gap-2 shadow-sm hover:shadow-md transition-shadow duration-200`}
+            >
+              <ChevronLeft className="w-4 h-4 shrink-0" strokeWidth={2.25} aria-hidden />
               Quay lại danh sách quỹ
             </Link>
           </nav>
+
+          {!capsLoading && caps?.financeAccessHintVi?.trim() ? (
+            <FinanceAccessHintBanner message={caps.financeAccessHintVi} />
+          ) : null}
 
           {capsLoading ? (
             <section className={`${t.card.base} p-12 text-center`} aria-busy="true" aria-live="polite">
@@ -471,9 +536,9 @@ export default function FundDetailPageByClub() {
               <p className="text-red-600 dark:text-red-400">Không tải được quyền quỹ (capabilities).</p>
               <Link to="/funds" className={`mt-2 inline-block ${t.btn.secondary} !min-h-0 !py-2`}>Quay lại danh sách quỹ</Link>
             </section>
-          ) : !canViewFunds ? (
+          ) : !canViewFunds && !canContribute ? (
             <section className={`${t.card.base} p-6`} role="alert">
-              <p className={t.type.body}>Bạn không có quyền xem quỹ của CLB này.</p>
+              <p className={t.type.body}>Bạn không có quyền xem quỹ hoặc nộp tiền vào quỹ của CLB này.</p>
               <Link to="/funds" className={`mt-2 inline-block ${t.btn.secondary} !min-h-0 !py-2`}>Quay lại danh sách quỹ</Link>
             </section>
           ) : isLoadingFund ? (
@@ -528,15 +593,7 @@ export default function FundDetailPageByClub() {
                         <button
                           type="button"
                           disabled={isApprovingFund}
-                          onClick={async () => {
-                            try {
-                              await approveFund({ clubId, fundId: fund.fundId, action: 'REJECT' }).unwrap();
-                              showNotification({ type: 'success', title: 'Đã từ chối quỹ', message: `${fund.fundName || `Quỹ #${fundId}`} đã bị từ chối.` });
-                            } catch (err) {
-                              console.error(err);
-                              showNotification({ type: 'error', title: 'Lỗi', message: 'Không thể từ chối quỹ.' });
-                            }
-                          }}
+                          onClick={() => setRejectFundOpen(true)}
                           className={`${t.btn.danger} inline-flex items-center gap-2`}
                         >
                           Từ chối quỹ
@@ -561,15 +618,31 @@ export default function FundDetailPageByClub() {
                         totalRec != null &&
                         Math.abs(totalRec - cur) > 0.01;
                       if (cur == null && totalRec == null) return null;
+                      const balHintCur = cur != null ? resolveFundBalanceHoverTextVi(fund, cur) : undefined;
+                      const balHintTotal = cur == null && totalRec != null ? resolveFundBalanceHoverTextVi(fund, totalRec) : undefined;
                       return (
                         <div className={`mt-2 space-y-1 ${textClass}`}>
                           {cur != null ? (
-                            <p className="text-lg font-semibold">
-                              Số dư quỹ: {cur.toLocaleString('vi-VN')} ₫
+                            <p className="text-lg font-semibold flex flex-wrap items-baseline gap-1.5">
+                              <span title={balHintCur || undefined} className={balHintCur ? 'cursor-help' : undefined}>
+                                Số dư quỹ: {cur.toLocaleString('vi-VN')} ₫
+                              </span>
+                              {balHintCur ? (
+                                <span className="inline-flex text-slate-400 dark:text-slate-500" title={balHintCur} aria-label={balHintCur}>
+                                  <Info className="w-4 h-4" aria-hidden />
+                                </span>
+                              ) : null}
                             </p>
                           ) : totalRec != null ? (
-                            <p className="text-lg font-semibold">
-                              Tổng đã ghi nhận: {totalRec.toLocaleString('vi-VN')} ₫
+                            <p className="text-lg font-semibold flex flex-wrap items-baseline gap-1.5">
+                              <span title={balHintTotal || undefined} className={balHintTotal ? 'cursor-help' : undefined}>
+                                Tổng đã ghi nhận: {totalRec.toLocaleString('vi-VN')} ₫
+                              </span>
+                              {balHintTotal ? (
+                                <span className="inline-flex text-slate-400 dark:text-slate-500" title={balHintTotal} aria-label={balHintTotal}>
+                                  <Info className="w-4 h-4" aria-hidden />
+                                </span>
+                              ) : null}
                             </p>
                           ) : null}
                           {showTotalExtra && totalRec != null ? (
@@ -582,22 +655,38 @@ export default function FundDetailPageByClub() {
                     })()}
                     {fund.expiresAt ? (
                       <p className={`mt-2 text-sm ${t.type.muted}`}>
-                        Hạn nhận nộp tiền (UTC): {new Date(fund.expiresAt).toLocaleDateString('vi-VN')}
+                        Hạn nhận nộp tiền: {new Date(fund.expiresAt).toLocaleDateString('vi-VN')}
                       </p>
                     ) : null}
                     {isFundApproved && canContribute && fund.canAcceptContributions === false ? (
                       <p className={`mt-2 text-sm text-amber-800 dark:text-amber-200/90`}>
-                        Quỹ hiện không nhận nộp tiền (hết hạn hoặc đã đóng nhận nộp).
+                        {fund.cannotContributeReasonVi?.trim() ||
+                          'Quỹ hiện không nhận nộp tiền (hết hạn hoặc đã đóng nhận nộp).'}
+                      </p>
+                    ) : null}
+                    {canContribute && !canViewFunds ? (
+                      <p className={`mt-2 text-sm ${t.type.muted}`}>
+                        Bạn có thể nộp tiền; lịch sử và danh mục nộp chỉ dành cho thành viên có quyền xem tài chính.
                       </p>
                     ) : null}
                   </div>
-                  {isFundApproved && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {canShowContributeBtn && (
+                  {isFundApproved && canContribute && (
+                    <div className="flex flex-col items-stretch sm:items-end gap-2">
+                      {canShowContributeBtn ? (
                         <button
                           type="button"
                           onClick={() => setShowContribute(true)}
                           className={`${t.btn.primary} inline-flex items-center gap-2`}
+                        >
+                          <HandCoins className="w-4 h-4" aria-hidden />
+                          Nộp tiền
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          className={`${t.btn.primary} inline-flex items-center gap-2 opacity-60 cursor-not-allowed`}
+                          title={fund.cannotContributeReasonVi?.trim() || undefined}
                         >
                           <HandCoins className="w-4 h-4" aria-hidden />
                           Nộp tiền
@@ -608,6 +697,7 @@ export default function FundDetailPageByClub() {
                 </div>
               </section>
 
+              {canViewFunds ? (
               <section className={`${t.card.base} overflow-hidden`} aria-labelledby="fund-tabs-heading">
                 <h2 id="fund-tabs-heading" className="sr-only">Lịch sử quỹ</h2>
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 space-y-1">
@@ -620,49 +710,63 @@ export default function FundDetailPageByClub() {
                       </span>
                     ) : null}
                   </div>
-                  <p className={`text-xs ${t.type.muted}`}>
-                    Chỉ hiển thị các khoản đã thanh toán thành công (đã vào quỹ).
-                  </p>
+                  {(() => {
+                    const hint = !canUseFullFundHistoryFilters
+                      ? 'Chỉ hiển thị các lần bạn đã nộp tiền và thanh toán thành công (đã vào quỹ).'
+                      : debouncedStatus === 'ALL'
+                        ? 'Đang hiển thị mọi trạng thái theo bộ lọc.'
+                        : debouncedStatus === 'PENDING' || debouncedStatus === 'REJECTED'
+                          ? 'Theo trạng thái giao dịch đã chọn.'
+                          : null;
+                    return hint ? <p className={`text-xs ${t.type.muted}`}>{hint}</p> : null;
+                  })()}
                 </div>
                 <div className="p-4" aria-labelledby="fund-tabs-heading">
-                  <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className={t.type.muted}>Trạng thái</span>
-                      <select
-                        value={historyStatusFilter}
-                        onChange={(e) => {
-                          setHistoryStatusFilter(e.target.value as FundHistoryStatusFilter);
-                          setHistoryPage(1);
-                        }}
-                        disabled={isHistoryControlDisabled}
-                        className={`${t.input} ${inputClass}`}
-                      >
-                        {FUND_HISTORY_STATUS_OPTIONS.map((opt) => (
-                          <option key={opt.value || 'empty'} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className={t.type.muted}>Phạm vi</span>
-                      <select
-                        value={historyScopeFilter}
-                        onChange={(e) => {
-                          setHistoryScopeFilter(e.target.value as FundHistoryScopeFilter);
-                          setHistoryPage(1);
-                        }}
-                        disabled={isHistoryControlDisabled}
-                        className={`${t.input} ${inputClass}`}
-                      >
-                        {FUND_HISTORY_SCOPE_OPTIONS.map((opt) => (
-                          <option key={opt.value || 'all'} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                  <div
+                    className={`mb-4 grid grid-cols-1 gap-3 ${
+                      canUseFullFundHistoryFilters ? 'md:grid-cols-3' : 'md:grid-cols-1 sm:max-w-xs'
+                    }`}
+                  >
+                    {canUseFullFundHistoryFilters ? (
+                      <>
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className={t.type.muted}>Trạng thái</span>
+                          <select
+                            value={historyStatusFilter}
+                            onChange={(e) => {
+                              setHistoryStatusFilter(e.target.value as FundHistoryStatusFilter);
+                              setHistoryPage(1);
+                            }}
+                            disabled={isHistoryControlDisabled}
+                            className={`${t.input} ${inputClass}`}
+                          >
+                            {FUND_HISTORY_STATUS_OPTIONS.map((opt) => (
+                              <option key={opt.value === '' ? 'default-paid' : opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className={t.type.muted}>Phạm vi</span>
+                          <select
+                            value={historyScopeFilter}
+                            onChange={(e) => {
+                              setHistoryScopeFilter(e.target.value as FundHistoryScopeFilter);
+                              setHistoryPage(1);
+                            }}
+                            disabled={isHistoryControlDisabled}
+                            className={`${t.input} ${inputClass}`}
+                          >
+                            {FUND_HISTORY_SCOPE_OPTIONS.map((opt) => (
+                              <option key={opt.value || 'all'} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </>
+                    ) : null}
 
                     <label className="flex flex-col gap-1 text-sm">
                       <span className={t.type.muted}>Số dòng mỗi trang</span>
@@ -713,11 +817,13 @@ export default function FundDetailPageByClub() {
                   ) : (
                     <>
                       <div className="overflow-x-auto" role="region" aria-label="Bảng lịch sử giao dịch quỹ">
-                        <table className="w-full min-w-[480px]">
+                        <table className="w-full min-w-[900px]">
                           <thead>
                             <tr className="bg-slate-100 dark:bg-slate-800">
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Người gửi</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Số tiền</th>
+                              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Trạng thái</th>
+                              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Danh mục</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Mô tả</th>
                               <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">Thời gian nộp</th>
                             </tr>
@@ -725,7 +831,7 @@ export default function FundDetailPageByClub() {
                           <tbody>
                             {history.length === 0 ? (
                               <tr>
-                                <td colSpan={4} className={`px-4 py-6 text-center ${t.type.muted}`}>
+                                <td colSpan={6} className={`px-4 py-6 text-center ${t.type.muted}`}>
                                   Không có giao dịch trên trang này.
                                 </td>
                               </tr>
@@ -739,6 +845,8 @@ export default function FundDetailPageByClub() {
                                   <td className={`px-4 py-2 ${t.type.body} whitespace-nowrap`}>
                                     {item.amount != null ? `${Number(item.amount).toLocaleString('vi-VN')} ₫` : '—'}
                                   </td>
+                                  <td className={`px-4 py-2 text-sm ${t.type.body} whitespace-nowrap`}>{fundHistoryStatusLabelVi(item)}</td>
+                                  <td className={`px-4 py-2 text-sm ${t.type.muted}`}>{fundHistoryCategoryLabel(item)}</td>
                                   <td className={`px-4 py-2 ${t.type.body}`}>{item.description?.trim() ? item.description : '—'}</td>
                                   <td className={`px-4 py-2 text-sm ${t.type.muted} whitespace-nowrap`}>
                                     {formatFundHistoryDateTime(fundHistoryContributionTimeIso(item))}
@@ -783,17 +891,28 @@ export default function FundDetailPageByClub() {
                   )}
                 </div>
               </section>
+              ) : null}
             </>
           )}
         </div>
       </main>
 
       {showContribute && (
-        <div className="fixed inset-0 bg-black/55 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="contribute-title">
-          <div className={`${t.card.base} w-full max-w-md max-h-[92vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-lg`}>
+        <div
+          className="fixed inset-0 bg-black/55 flex items-center justify-center z-50 p-4"
+          role="presentation"
+          aria-hidden={rejectFundOpen}
+        >
+          <div
+            ref={contributeDialogRef}
+            className={`${t.card.base} w-full max-w-md max-h-[92vh] overflow-y-auto overflow-x-hidden rounded-2xl sm:max-w-lg outline-none`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="contribute-title"
+          >
             <div className="px-6 pt-5 pb-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
               <h2 id="contribute-title" className={t.type.sectionTitle}>Nộp tiền</h2>
-              <button type="button" onClick={() => { setShowContribute(false); resetContributeForm(); }} className={t.btn.ghost} aria-label="Đóng">
+              <button type="button" onClick={closeContributeModal} className={t.btn.ghost} aria-label="Đóng">
                 <X className="w-5 h-5" aria-hidden />
               </button>
             </div>
@@ -900,10 +1019,22 @@ export default function FundDetailPageByClub() {
                       <label htmlFor="contribute-amount" className={`block ${t.type.label} mb-1.5`}>Số tiền</label>
                       <div className="relative">
                         <span className="absolute inset-y-0 left-3 flex items-center text-xs text-slate-400" aria-hidden>VND</span>
-                        <input id="contribute-amount" type="number" step="1" min={MIN_FUND_TX_AMOUNT} value={contributeAmount} onChange={(e) => setContributeAmount(e.target.value)} className={`${t.input} pl-11 ${inputClass}`} required />
+                        <input
+                          id="contribute-amount"
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          value={contributeAmount}
+                          onChange={(e) => setContributeAmount(e.target.value)}
+                          className={`${t.input} pl-11 ${inputClass}`}
+                          placeholder={`Tối thiểu ${MIN_FUND_TX_AMOUNT.toLocaleString('vi-VN')}`}
+                          aria-describedby="contribute-amount-hint"
+                          required
+                        />
                       </div>
-                      <p className={`text-xs mt-1 ${t.type.muted}`}>
-                        Tối thiểu {MIN_FUND_TX_AMOUNT.toLocaleString('vi-VN')} ₫ (phù hợp hạn mức chuyển khoản ngân hàng).
+                      <p id="contribute-amount-hint" className={`text-xs mt-1 ${t.type.muted}`}>
+                        Số nguyên ₫; có thể nhập 50000 hoặc 50.000 / 50,000. Tối thiểu{' '}
+                        {MIN_FUND_TX_AMOUNT.toLocaleString('vi-VN')} ₫.
                       </p>
                     </div>
                     <div>
@@ -920,7 +1051,7 @@ export default function FundDetailPageByClub() {
                     {isContributing ? 'Đang tạo…' : 'Tạo thanh toán'}
                   </button>
                 ) : null}
-                <button type="button" onClick={() => { setShowContribute(false); resetContributeForm(); }} className={t.btn.secondary}>
+                <button type="button" onClick={closeContributeModal} className={t.btn.secondary}>
                   Hủy
                 </button>
                 {contributeResult ? (
@@ -933,6 +1064,80 @@ export default function FundDetailPageByClub() {
           </div>
         </div>
       )}
+
+      {rejectFundOpen && fund ? (
+        <div className="fixed inset-0 bg-black/55 flex items-center justify-center z-[60] p-4" role="presentation">
+          <div
+            ref={rejectFundDialogRef}
+            className={`${t.card.base} w-full max-w-md rounded-2xl shadow-xl outline-none`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reject-fund-heading"
+          >
+            <div className="px-6 pt-5 pb-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
+              <h2 id="reject-fund-heading" className={t.type.sectionTitle}>
+                Từ chối quỹ
+              </h2>
+              <button type="button" onClick={closeRejectFundModal} className={t.btn.ghost} aria-label="Đóng">
+                <X className="w-5 h-5" aria-hidden />
+              </button>
+            </div>
+            <div className={`px-6 py-4 ${textClass} space-y-4`}>
+              <textarea
+                id="reject-reason"
+                value={rejectReasonInput}
+                onChange={(e) => setRejectReasonInput(e.target.value)}
+                rows={4}
+                className={`${t.input} w-full min-h-[100px] ${inputClass}`}
+                placeholder="Lý do từ chối"
+                aria-label="Lý do từ chối"
+              />
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button type="button" onClick={closeRejectFundModal} className={t.btn.secondary} disabled={isApprovingFund}>
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  disabled={isApprovingFund}
+                  className={t.btn.danger}
+                  onClick={async () => {
+                    const reason = rejectReasonInput.trim();
+                    if (reason.length < 5) {
+                      showNotification({
+                        type: 'error',
+                        title: 'Thiếu lý do',
+                        message: 'Vui lòng nhập lý do từ chối ít nhất 5 ký tự.',
+                      });
+                      return;
+                    }
+                    try {
+                      await approveFund({
+                        clubId,
+                        fundId: fund.fundId,
+                        action: 'REJECT',
+                        rejectReason: reason,
+                      }).unwrap();
+                      showNotification({
+                        type: 'success',
+                        title: 'Đã từ chối quỹ',
+                        message: `${fund.fundName || `Quỹ #${fundId}`} đã bị từ chối.`,
+                      });
+                      closeRejectFundModal();
+                    } catch (err) {
+                      console.error(err);
+                      const msg =
+                        (err as { data?: { message?: string } })?.data?.message || 'Không thể từ chối quỹ.';
+                      showNotification({ type: 'error', title: 'Lỗi', message: msg });
+                    }
+                  }}
+                >
+                  {isApprovingFund ? 'Đang xử lý…' : 'Xác nhận từ chối'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

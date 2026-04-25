@@ -1,40 +1,28 @@
-import { useMemo } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router';
+import { useParams, Link } from "react-router";
 import {
   useGetRecruitmentCampaignQuery,
-  useGetRecruitmentCampaignsQuery,
   useGetFormsByCampaignQuery,
-} from '~/cores/api';
-import Navbar from '../components/Navbar';
-import Footer from '~/modules/home/components/Footer';
+} from "~/cores/api";
+import Navbar from "../components/Navbar";
+import Footer from "~/modules/home/components/Footer";
 
 export default function CampaignDetailPage() {
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
   const campaignId = Number(id) || 0;
-  const clubIdFromQuery = Number(searchParams.get('clubId')) || 0;
 
-  const { data: allCampaigns, isLoading: loadingCampaignList } = useGetRecruitmentCampaignsQuery(undefined, {
-    skip: !!clubIdFromQuery || !campaignId,
+  const {
+    data: campaign,
+    isLoading,
+    error,
+  } = useGetRecruitmentCampaignQuery(campaignId, {
+    skip: !campaignId,
   });
 
-  const resolvedClubId = useMemo(() => {
-    if (clubIdFromQuery) return clubIdFromQuery;
-    return allCampaigns?.find((c) => c.campaignId === campaignId)?.clubId ?? 0;
-  }, [clubIdFromQuery, allCampaigns, campaignId]);
-
-  const { data: campaign, isLoading: loadingCampaign, error } = useGetRecruitmentCampaignQuery(
-    { clubId: resolvedClubId, campaignId },
-    { skip: !campaignId || !resolvedClubId },
-  );
-
-  const clubId = campaign?.clubId ?? resolvedClubId;
+  const clubId = campaign?.clubId ?? 0;
   const { data: forms = [] } = useGetFormsByCampaignQuery(
     { clubId, campaignId },
     { skip: !campaignId || !clubId },
   );
-
-  const isLoading = (!!clubIdFromQuery ? false : loadingCampaignList) || loadingCampaign;
 
   if (isLoading) {
     return (
@@ -42,7 +30,9 @@ export default function CampaignDetailPage() {
         <Navbar />
         <main className="max-w-4xl mx-auto px-6 py-20 text-center">
           <i className="fas fa-spinner fa-spin text-4xl text-orange-500 mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Đang tải chiến dịch...</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Đang tải chiến dịch...
+          </p>
         </main>
         <Footer />
       </div>
@@ -55,8 +45,12 @@ export default function CampaignDetailPage() {
         <Navbar />
         <main className="max-w-4xl mx-auto px-6 py-20 text-center">
           <i className="fas fa-exclamation-circle text-5xl text-red-400 mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Không tìm thấy chiến dịch</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Chiến dịch không tồn tại hoặc đã bị ẩn.</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            Không tìm thấy chiến dịch
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Chiến dịch không tồn tại hoặc đã bị ẩn.
+          </p>
           <Link
             to="/"
             className="inline-flex items-center gap-2 text-orange-500 hover:text-orange-600 font-medium"
@@ -69,7 +63,7 @@ export default function CampaignDetailPage() {
     );
   }
 
-  const isActive = campaign.status?.toLowerCase() === 'open';
+  const isActive = campaign.status?.toLowerCase() === "open";
   const firstFormId = forms.length > 0 ? forms[0].formId : null;
 
   return (
@@ -102,18 +96,20 @@ export default function CampaignDetailPage() {
             <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
               <span
                 className={`inline-block px-3 py-1 rounded-full text-sm font-semibold mb-3 ${
-                  isActive ? 'bg-green-500' : 'bg-gray-500'
+                  isActive ? "bg-green-500" : "bg-gray-500"
                 }`}
               >
-                {isActive ? 'OPEN' : campaign.status}
+                {isActive ? "OPEN" : campaign.status}
               </span>
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl sm:text-4xl font-bold">{campaign.campaignName}</h1>
+                  <h1 className="text-3xl sm:text-4xl font-bold">
+                    {campaign.campaignName}
+                  </h1>
                 </div>
                 {isActive && (
                   <Link
-                    to={`/question/${campaignId}?clubId=${clubId}`}
+                    to={`/campaign/${campaignId}/application-form`}
                     className="flex-shrink-0 inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                   >
                     <i className="fas fa-paper-plane" /> Ứng tuyển ngay
@@ -126,8 +122,12 @@ export default function CampaignDetailPage() {
           <div className="p-6 sm:p-8">
             {campaign.description && (
               <div className="mb-6">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Mô tả</h2>
-                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{campaign.description}</p>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  Mô tả
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {campaign.description}
+                </p>
               </div>
             )}
 
@@ -135,20 +135,24 @@ export default function CampaignDetailPage() {
               <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                 <i className="fas fa-calendar-alt text-orange-500 w-5" />
                 <span>
-                  Bắt đầu: {new Date(campaign.startDate).toLocaleDateString('vi-VN')}
+                  Bắt đầu:{" "}
+                  {new Date(campaign.startDate).toLocaleDateString("vi-VN")}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                 <i className="fas fa-calendar-check text-orange-500 w-5" />
                 <span>
-                  Kết thúc: {new Date(campaign.endDate).toLocaleDateString('vi-VN')}
+                  Kết thúc:{" "}
+                  {new Date(campaign.endDate).toLocaleDateString("vi-VN")}
                 </span>
               </div>
             </div>
 
             {campaign.content && (
               <div className="prose prose-gray dark:prose-invert max-w-none mb-8">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Nội dung chi tiết</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  Nội dung chi tiết
+                </h2>
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                   {campaign.content}
                 </p>
@@ -163,7 +167,8 @@ export default function CampaignDetailPage() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-orange-500 hover:text-orange-600 font-medium"
                 >
-                  Liên kết chiến dịch <i className="fas fa-external-link-alt text-sm" />
+                  Liên kết chiến dịch{" "}
+                  <i className="fas fa-external-link-alt text-sm" />
                 </a>
               </div>
             )}
@@ -171,22 +176,26 @@ export default function CampaignDetailPage() {
             {isActive && firstFormId && (
               <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Bấm nút bên dưới để chuyển đến trang trả lời câu hỏi ứng tuyển.
+                  Bấm nút bên dưới để chuyển đến trang trả lời câu hỏi ứng
+                  tuyển.
                 </p>
                 <Link
-                  to={`/question/${firstFormId}?clubId=${clubId}`}
+                  to={`/campaign/${campaignId}/application-form`}
                   className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors shadow-lg hover:shadow-xl"
                 >
-                  <i className="fas fa-file-alt" /> Ứng tuyển
+                  <i className="fas fa-file-alt" /> Ứng tuyển ngay
                 </Link>
               </div>
             )}
-            
+
             {isActive && !firstFormId && (
               <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 flex items-start gap-3">
                   <i className="fas fa-info-circle mt-0.5" />
-                  <p className="font-medium text-sm">Chiến dịch này đang mở nhưng chưa có biểu mẫu ứng tuyển nào. Vui lòng quay lại sau.</p>
+                  <p className="font-medium text-sm">
+                    Chiến dịch này đang mở nhưng chưa có biểu mẫu ứng tuyển nào.
+                    Vui lòng quay lại sau.
+                  </p>
                 </div>
               </div>
             )}

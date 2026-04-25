@@ -60,10 +60,10 @@ export interface CalendarState {
 // ─────────────────────── Constants ─────────────────────────────
 
 const COLORS = {
-    mainEvent:    { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' },
-    mainEventBg:  'rgba(100,116,139,0.12)',   // safe-zone background
+    mainEvent: { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' },
+    mainEventBg: 'rgba(100,116,139,0.12)',   // safe-zone background
     registration: { bg: '#22c55e', border: '#16a34a', text: '#ffffff' },
-    session:      { bg: '#8b5cf6', border: '#7c3aed', text: '#ffffff' }, // main → tím
+    session: { bg: '#8b5cf6', border: '#7c3aed', text: '#ffffff' }, // main → tím
     sessionSetup: { bg: '#f97316', border: '#ea580c', text: '#ffffff' }, // setup → cam
     sessionBreak: { bg: '#eab308', border: '#ca8a04', text: '#111827' }, // break → vàng
 };
@@ -179,7 +179,7 @@ export function EventCalendarPanel({
     if (state.registration?.start && state.registration?.end) {
         events.push({
             id: 'reg',
-            title: `📋 Đăng ký: ${fmtDateTime(state.registration.start)} → ${fmtDateTime(state.registration.end)}`,
+            title: `Đăng ký: ${fmtDateTime(state.registration.start)} → ${fmtDateTime(state.registration.end)}`,
             start: state.registration.start,
             end: state.registration.end,
             backgroundColor: COLORS.registration.bg,
@@ -223,7 +223,7 @@ export function EventCalendarPanel({
     const handleEventDrop = async (info: EventDropArg) => {
         const { type, sessionId } = info.event.extendedProps ?? {};
         const start = info.event.start!;
-        const end   = info.event.end ?? new Date(start.getTime() + 3_600_000);
+        const end = info.event.end ?? new Date(start.getTime() + 3_600_000);
 
         try {
             if (type === 'main') {
@@ -244,7 +244,7 @@ export function EventCalendarPanel({
     const handleEventResize = async (info: EventResizeDoneArg) => {
         const { type, sessionId } = info.event.extendedProps ?? {};
         const start = info.event.start!;
-        const end   = info.event.end!;
+        const end = info.event.end!;
 
         try {
             if (type === 'main') {
@@ -293,14 +293,14 @@ export function EventCalendarPanel({
     };
 
     // ── Styles ────────────────────────────────────────────
-    const calBg   = isDark ? '#1a1d2e' : '#ffffff';
+    const calBg = isDark ? '#1a1d2e' : '#ffffff';
     const calText = isDark ? '#e2e8f0' : '#1a202c';
-    const border  = isDark ? '#374151' : '#e5e7eb';
+    const border = isDark ? '#374151' : '#e5e7eb';
 
     // ── Legend items ──────────────────────────────────────
     const legend = [
-        { color: 'bg-blue-500',   label: 'Sự kiện' },
-        { color: 'bg-green-500',  label: 'Đăng ký' },
+        { color: 'bg-blue-500', label: 'Sự kiện' },
+        { color: 'bg-green-500', label: 'Đăng ký' },
         { color: 'bg-purple-500', label: 'Phiên' },
         { color: 'bg-orange-400', label: 'Setup' },
         { color: 'bg-yellow-400', label: 'Nghỉ' },
@@ -323,11 +323,10 @@ export function EventCalendarPanel({
                             <button
                                 type="button"
                                 onClick={() => setCalMode('event')}
-                                className={`px-3 py-1.5 transition-colors ${
-                                    calMode === 'event'
+                                className={`px-3 py-1.5 transition-colors ${calMode === 'event'
                                         ? 'bg-blue-500 text-white'
                                         : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
-                                }`}
+                                    }`}
                                 title="Kéo đặt thời gian sự kiện hoặc kéo block xanh để di chuyển"
                             >
                                 <i className="fas fa-calendar-alt mr-1" />Sự kiện
@@ -337,11 +336,10 @@ export function EventCalendarPanel({
                             <button
                                 type="button"
                                 onClick={() => setCalMode('session')}
-                                className={`px-3 py-1.5 transition-colors ${
-                                    calMode === 'session'
+                                className={`px-3 py-1.5 transition-colors ${calMode === 'session'
                                         ? 'bg-purple-500 text-white'
                                         : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
-                                }`}
+                                    }`}
                                 title="Kéo chọn vùng thời gian hoặc click để tạo phiên mới"
                             >
                                 <i className="fas fa-plus mr-1" />Tạo phiên
@@ -351,11 +349,10 @@ export function EventCalendarPanel({
                             <button
                                 type="button"
                                 onClick={() => setCalMode('registration')}
-                                className={`px-3 py-1.5 transition-colors ${
-                                    calMode === 'registration'
+                                className={`px-3 py-1.5 transition-colors ${calMode === 'registration'
                                         ? 'bg-green-500 text-white'
                                         : isDark ? 'bg-transparent text-gray-400 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'
-                                }`}
+                                    }`}
                                 title="Kéo đặt thời gian đăng ký hoặc kéo block xanh lá để di chuyển"
                             >
                                 <i className="fas fa-user-plus mr-1" />Đăng ký
@@ -376,11 +373,10 @@ export function EventCalendarPanel({
 
             {/* Registration Alert Banner */}
             {state.registration?.start && state.registration?.end && (
-                <div className={`px-4 py-2 flex items-center gap-2 text-xs border-b ${
-                    isDark
+                <div className={`px-4 py-2 flex items-center gap-2 text-xs border-b ${isDark
                         ? 'bg-emerald-900/30 border-emerald-800/50 text-emerald-300'
                         : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                }`}>
+                    }`}>
                     <i className="fas fa-calendar-check text-sm" />
                     <span>
                         <b>Đăng ký mở:</b>&nbsp;
@@ -477,13 +473,13 @@ export function EventCalendarPanel({
                         buttonText={{
                             today: 'Hôm nay',
                             month: 'Tháng',
-                            week : 'Tuần',
-                            day  : 'Ngày',
+                            week: 'Tuần',
+                            day: 'Ngày',
                         }}
                         headerToolbar={{
-                            left  : 'prev,next today',
+                            left: 'prev,next today',
                             center: 'title',
-                            right : 'dayGridMonth,timeGridWeek,timeGridDay',
+                            right: 'dayGridMonth,timeGridWeek,timeGridDay',
                         }}
                         snapDuration="00:05:00"
                         slotDuration="00:30:00"

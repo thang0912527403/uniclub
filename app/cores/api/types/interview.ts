@@ -34,6 +34,7 @@ export interface CreateInterviewScheduleDto {
   scheduledAt: string; // ISO date
   durationMinutes?: number;
   interviewers?: AssignInterviewerItemDto[];
+  proposedTimeSlots?: ProposedTimeSlotItemDto[];
 }
 
 export interface UpdateInterviewScheduleDto {
@@ -64,6 +65,24 @@ export interface InterviewScheduleResponse {
   updatedAt?: string | null;
   assignments: InterviewAssignmentResponse[];
   meetingRoom?: MeetingRoomResponse | null;
+  proposedTimeSlots?: ProposedTimeSlotResponse[];
+}
+
+export interface ProposedTimeSlotItemDto {
+  date: string;
+  time: string;
+}
+
+export interface ProposedTimeSlotResponse {
+  id: number;
+  interviewScheduleId: number;
+  proposedAt: string;
+  isSelected: boolean;
+  createdAt: string;
+}
+
+export interface ConfirmTimeSlotDto {
+  timeSlotId: number;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -88,7 +107,6 @@ export interface InterviewAssignmentResponse {
   assignedCriteriaIds?: string | null;
   feedbackNotes?: string | null;
   result?: string | null;
-  score?: number | null;
   assignedAt: string;
   feedbackSubmittedAt?: string | null;
 }
@@ -121,8 +139,24 @@ export interface JoinRoomDto {
   role?: string; // "Interviewer" | "Candidate" | "Observer"
 }
 
+export interface CreateMeetingRoomDto {
+  roomType: string; // "General" | "Interview" | "Training" | etc.
+  title: string;
+  description?: string | null;
+  createdByUserId: string;
+  scheduledStartAt?: string | null;
+  scheduledEndAt?: string | null;
+  interviewScheduleId?: number | null;
+  maxParticipants?: number;
+  isWaitingRoomEnabled?: boolean;
+  isRecordingEnabled?: boolean;
+}
+
+
 export interface JoinRoomResponse {
   roomCode: string;
+  /** "Interview" | "General" | "Internal" | "Training" */
+  roomType: string;
   peerId?: string | null;
   stunServerUri?: string | null;
   turnServerUri?: string | null;
@@ -164,7 +198,6 @@ export interface RoomEventResponse {
 export interface SubmitFeedbackDto {
   feedbackNotes?: string | null;
   result: string; // Pass | Fail | OnHold | NoShow
-  score?: number | null; // 0–100
 }
 
 export interface FeedbackSummaryResponse {

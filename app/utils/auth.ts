@@ -18,19 +18,19 @@ export function isLoggedIn(): boolean {
 }
 
 export function loginUser(payload: LoginResponse) {
-  Cookies.set('accessToken', payload.accessToken);
-  Cookies.set('refreshToken', payload.refreshToken ?? '');
+  Cookies.set('accessToken', payload.accessToken, { path: '/' });
+  Cookies.set('refreshToken', payload.refreshToken ?? '', { path: '/' });
   if (payload.user?.userId) {
-    Cookies.set('userId', payload.user.userId);
+    Cookies.set('userId', payload.user.userId, { path: '/' });
   }
   window.dispatchEvent(new Event('authchange'));
 }
 
 export function logoutUser() {
-  Cookies.remove('accessToken');
-  Cookies.remove('refreshToken');
-  Cookies.remove('userId');
-  Cookies.remove('clubId');
+  Cookies.remove('accessToken', { path: '/' });
+  Cookies.remove('refreshToken', { path: '/' });
+  Cookies.remove('userId', { path: '/' });
+  Cookies.remove('clubId', { path: '/' });
   window.dispatchEvent(new Event('authchange'));
 }
 

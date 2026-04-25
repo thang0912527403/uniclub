@@ -28,3 +28,23 @@ export interface ClubStructure {
     standaloneRoles: ClubRole[];
     departments: ClubDepartment[];
 }
+
+export interface ClubRoleUserItem {
+    clubMemberId: number;
+    userId: string;
+    fullName: string;
+    email: string;
+    avatar: string | null;
+    studentId: string | null;
+    clubId: number;
+    roles: {
+        clubRoleId: number;
+        roleName: string;
+        level: number;
+        assignedAt: string;
+    }[];
+    joinDate: string;
+    status: string;
+    assignedBy: string | null;
+    departments: string[];
+}

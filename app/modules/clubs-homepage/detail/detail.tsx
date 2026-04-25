@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
-import Navbar from 'app/components/Navbar';
-import ClubDetail from '../components/ClubDetail';
-import { useGetClubByIdQuery } from '~/cores/api';
+import React, { useEffect } from "react";
+import { useParams, useNavigate } from "react-router";
+import { ChevronLeft } from "lucide-react";
+import Navbar from "app/components/Navbar";
+import ClubDetail from "../components/ClubDetail";
+import { useGetClubByIdQuery } from "~/cores/api";
 
 const NewsDetailPage: React.FC = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const { data: club, isLoading } = useGetClubByIdQuery(Number(id));
 
@@ -21,14 +23,20 @@ const NewsDetailPage: React.FC = () => {
     );
 
   if (!club)
-    return <div className="h-screen flex items-center justify-center">Không tìm thấy câu lạc bộ</div>;
+    return (
+      <div className="h-screen flex items-center justify-center">
+        Không tìm thấy câu lạc bộ
+      </div>
+    );
 
   return (
     <div className="bg-white min-h-screen">
       <Navbar />
 
       <main className="pt-32 pb-24 px-6">
-        <ClubDetail club={club} />
+        <div className="max-w-7xl mx-auto">
+          <ClubDetail club={club} />
+        </div>
       </main>
     </div>
   );

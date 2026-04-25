@@ -1,6 +1,8 @@
 .DS_Store
 .env
 .cursor/
+.claude/
+.agent/
 /node_modules/
 
 # React Router
