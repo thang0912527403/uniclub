@@ -125,21 +125,6 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
 
   return (
     <div className="bg-white dark:bg-gray-800 h-full flex flex-col">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-          <i className="fa-solid fa-clipboard-check text-white text-sm" />
-        </div>
-        <div>
-          <h3 className="text-white font-bold text-base leading-tight">
-            Đánh giá phỏng vấn
-          </h3>
-          <p className="text-orange-100 text-xs mt-0.5">
-            Nhận xét theo tiêu chí
-          </p>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className="flex border-b border-gray-100 dark:border-gray-700">
         <button

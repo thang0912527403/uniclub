@@ -2,6 +2,7 @@ export interface RoomUser {
   connectionId: string;
   userId: string;
   fullName: string;
+  avatar?: string;
 }
 
 export interface UserMediaState {

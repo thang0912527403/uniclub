@@ -25,25 +25,28 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   onToggleChat,
   onLeave
 }) => {
+  // Dummy toggle for Hand
+  const [isHandRaised, setIsHandRaised] = React.useState(false);
+
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl px-6 py-4 rounded-2xl border border-white/10 shadow-2xl">
+      <div className="flex items-center gap-3 bg-white/90 backdrop-blur-xl px-6 py-3 rounded-full border border-gray-200 shadow-xl">
         {/* Mic Toggle */}
         <button
           onClick={onToggleAudio}
-          className={`group relative p-4 rounded-xl transition-all duration-300 ${
+          className={`group relative p-3 rounded-full transition-all duration-300 flex items-center justify-center w-12 h-12 ${
             isAudioEnabled 
-              ? 'bg-white/10 hover:bg-white/20 text-white' 
-              : 'bg-red-500/80 hover:bg-red-600 text-white'
+              ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
           }`}
           title={isAudioEnabled ? 'Tắt micro' : 'Bật micro'}
         >
           {isAudioEnabled ? (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
             </svg>
           ) : (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
             </svg>
@@ -57,19 +60,19 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         {/* Camera Toggle */}
         <button
           onClick={onToggleVideo}
-          className={`group relative p-4 rounded-xl transition-all duration-300 ${
+          className={`group relative p-3 rounded-full transition-all duration-300 flex items-center justify-center w-12 h-12 ${
             isVideoEnabled 
-              ? 'bg-white/10 hover:bg-white/20 text-white' 
-              : 'bg-red-500/80 hover:bg-red-600 text-white'
+              ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
           }`}
           title={isVideoEnabled ? 'Tắt camera' : 'Bật camera'}
         >
           {isVideoEnabled ? (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
             </svg>
           ) : (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
             </svg>
@@ -86,44 +89,55 @@ export const ControlBar: React.FC<ControlBarProps> = ({
         {/* Screen Share Toggle */}
         <button
           onClick={onToggleScreenShare}
-          className={`group relative p-4 rounded-xl transition-all duration-300 ${
+          className={`group relative p-3 rounded-full transition-all duration-300 flex items-center justify-center w-12 h-12 ${
             isScreenSharing 
-              ? 'bg-green-500/80 hover:bg-green-600 text-white' 
-              : 'bg-white/10 hover:bg-white/20 text-white'
+              ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
           }`}
           title={isScreenSharing ? 'Dừng chia sẻ' : 'Chia sẻ màn hình'}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
           </svg>
-          {/* Tooltip */}
           <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
             {isScreenSharing ? 'Dừng chia sẻ' : 'Chia sẻ màn hình'}
           </span>
-          {/* Active indicator */}
-          {isScreenSharing && (
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
-          )}
+        </button>
+
+        {/* Hand Toggle (Dummy) */}
+        <button
+          onClick={() => setIsHandRaised(!isHandRaised)}
+          className={`group relative p-3 rounded-full transition-all duration-300 flex items-center justify-center w-12 h-12 ${
+            isHandRaised 
+              ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
+          }`}
+          title={isHandRaised ? 'Hạ tay xuống' : 'Giơ tay'}
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M9 3a1 1 0 012 0v5.5a.5.5 0 001 0V4a1 1 0 112 0v4.5a.5.5 0 001 0V6a1 1 0 112 0v9a7 7 0 11-14 0V9a1 1 0 112 0v2.5a.5.5 0 001 0V5a1 1 0 112 0v3.5a.5.5 0 001 0V3z" clipRule="evenodd" />
+          </svg>
+          <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            {isHandRaised ? 'Hạ tay xuống' : 'Giơ tay'}
+          </span>
         </button>
 
         {/* Chat Toggle */}
         <button
           onClick={onToggleChat}
-          className={`group relative p-4 rounded-xl transition-all duration-300 ${
+          className={`group relative p-3 rounded-full transition-all duration-300 flex items-center justify-center w-12 h-12 ${
             isChatOpen
-              ? 'bg-orange-500/80 hover:bg-orange-600 text-white'
-              : 'bg-white/10 hover:bg-white/20 text-white'
+              ? 'bg-orange-500 hover:bg-orange-600 text-white'
+              : 'bg-orange-500 hover:bg-orange-600 text-white' // Making chat always orange to match reference image
           }`}
           title="Tin nhắn"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
           </svg>
-          {/* Tooltip */}
           <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
             Tin nhắn
           </span>
-          {/* Unread indicator */}
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 font-semibold">
               {unreadCount > 99 ? '99+' : unreadCount}
@@ -131,17 +145,14 @@ export const ControlBar: React.FC<ControlBarProps> = ({
           )}
         </button>
 
-        {/* Divider */}
-        <div className="w-px h-8 bg-white/20"></div>
-
         {/* Leave Call */}
         <button
           onClick={onLeave}
-          className="group relative p-4 rounded-xl bg-red-500/80 hover:bg-red-600 text-white transition-all duration-300"
+          className="group relative p-3 rounded-full bg-red-500 hover:bg-red-600 text-white transition-all duration-300 flex items-center justify-center w-12 h-12 shadow-md shadow-red-500/20"
           title="Rời cuộc họp"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z" />
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V15a2 2 0 01-2 2h-1C9.716 17 3 10.284 3 2V5z" clipRule="evenodd" />
           </svg>
           {/* Tooltip */}
           <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">

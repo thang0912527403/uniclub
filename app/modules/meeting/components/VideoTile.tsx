@@ -10,6 +10,7 @@ interface VideoTileProps {
   isSpotlight?: boolean;
   isThumbnail?: boolean;
   isScreenSharing?: boolean;
+  avatar?: string | null;
   onClick?: () => void;
 }
 
@@ -23,6 +24,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   isSpotlight = false,
   isThumbnail = false,
   isScreenSharing = false,
+  avatar,
   onClick
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,8 +50,8 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   return (
     <div 
       className={`
-        group relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 
-        shadow-xl transition-all duration-300 hover:shadow-2xl hover:shadow-orange-500/10
+        group relative rounded-2xl overflow-hidden bg-slate-200 
+        shadow-sm border border-slate-300 transition-all duration-300 hover:shadow-md
         ${isSpotlight ? 'h-full' : isThumbnail ? 'aspect-video' : 'aspect-video'}
         ${onClick ? 'cursor-pointer' : ''}
         ${isSpotlight ? 'ring-2 ring-orange-500/50' : ''}
@@ -67,7 +69,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         />
       ) : (
         /* Avatar Placeholder when no video */
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900">
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
           <div className="relative">
             {/* Animated ring */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 blur-md opacity-40 animate-pulse"></div>
@@ -77,14 +79,16 @@ export const VideoTile: React.FC<VideoTileProps> = ({
               flex items-center justify-center text-white font-bold shadow-lg
               ${isSpotlight ? 'w-32 h-32 text-5xl' : isThumbnail ? 'w-12 h-12 text-lg' : 'w-20 h-20 md:w-24 md:h-24 text-2xl md:text-3xl'}
             `}>
-              {getInitials(label)}
+              {avatar ? (
+                <img src={avatar} alt={label} className="w-full h-full object-cover rounded-full" />
+              ) : (
+                getInitials(label)
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
 
       {/* Screen sharing indicator */}
       {isScreenSharing && (
@@ -96,19 +100,25 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         </div>
       )}
 
-      {/* Name Label with glassmorphism */}
+      {/* Name Label with pill shape */}
       <div className={`absolute bottom-3 left-3 right-3 flex items-center justify-between ${isThumbnail ? 'bottom-2 left-2 right-2' : ''}`}>
-        <div className={`flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 ${isThumbnail ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
-          {/* Mic indicator */}
-          {!isAudioEnabled && (
-            <svg className={`text-red-500 ${isThumbnail ? 'w-3 h-3' : 'w-4 h-4'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className={`flex items-center gap-2 bg-gray-900/80 rounded-full ${isThumbnail ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
+          <span className={`text-gray-200 font-medium truncate ${isThumbnail ? 'text-[10px] max-w-[60px]' : 'text-xs max-w-[120px]'}`}>
+            {label}
+          </span>
+          {/* Audio indicator */}
+          {!isAudioEnabled ? (
+            <svg className={`text-red-500 ${isThumbnail ? 'w-3 h-3' : 'w-3.5 h-3.5'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
             </svg>
+          ) : (
+            <div className="flex items-end gap-0.5 h-3">
+              <div className="w-1 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-1 h-3 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-1 h-1.5 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
           )}
-          <span className={`text-white font-medium truncate ${isThumbnail ? 'text-xs max-w-[60px]' : 'text-sm max-w-[120px]'}`}>
-            {isLocal ? 'Bạn' : label}
-          </span>
         </div>
 
         {/* Expand/Pin button (shows on hover) */}
@@ -127,8 +137,8 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 
       {/* Local indicator */}
       {isLocal && !isThumbnail && (
-        <div className="absolute top-3 right-3 bg-orange-500/80 backdrop-blur-md px-2 py-1 rounded-md text-white text-xs font-semibold">
-          YOU
+        <div className="absolute top-3 right-3 bg-gray-900/80 px-3 py-1 rounded-full text-gray-200 text-xs font-semibold">
+          You
         </div>
       )}
 
