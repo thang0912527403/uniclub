@@ -397,7 +397,7 @@ export default function MyClubsModule() {
           )}
 
           {/* ── CTA: Create Club Request ── */}
-          {!hasPendingRequest && managedClubs?.length === 0 && !isClubManager && !isAdmin && (
+          {!hasPendingRequest && !managedClubs?.length && !isClubManager && !isAdmin && (
             <div className="mt-12 flex flex-col items-center">
               {/* Floating plus icon */}
               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 mb-4">

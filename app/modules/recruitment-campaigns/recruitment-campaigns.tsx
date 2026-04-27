@@ -459,9 +459,15 @@ const EMPTY_FORM: CampaignFormData = {
 };
 
 function toISODate(dateStr: string) {
-  // Convert yyyy-MM-dd to ISO string for API
   if (!dateStr) return "";
   return new Date(dateStr).toISOString();
+}
+
+// Map frontend lowercase status to backend expected uppercase values
+function toBackendStatus(status: string): string {
+  if (status === 'close') return 'CLOSED';
+  if (status === 'open')  return 'OPEN';
+  return status.toUpperCase();
 }
 
 function toInputDate(isoStr: string) {
@@ -980,7 +986,7 @@ export default function RecruitmentCampaignsModule() {
             description: data.description,
             startDate: toISODate(data.startDate),
             endDate: toISODate(data.endDate),
-            status: data.status,
+            status: toBackendStatus(data.status),
             imageUrl: data.imageUrl,
             linkCampaign: data.linkCampaign,
             content: data.content,
@@ -999,7 +1005,7 @@ export default function RecruitmentCampaignsModule() {
               description: data.description,
               startDate: toISODate(data.startDate),
               endDate: toISODate(data.endDate),
-              status: data.status,
+              status: toBackendStatus(data.status),
               imageUrl: data.imageUrl,
               linkCampaign: data.linkCampaign,
               content: data.content,
@@ -1034,7 +1040,16 @@ export default function RecruitmentCampaignsModule() {
       try {
         await updateCampaign({
           id: campaign.campaignId,
-          data: { status: nextStatus },
+          data: {
+            campaignName: campaign.campaignName,
+            description: campaign.description,
+            startDate: toISODate(campaign.startDate),
+            endDate: toISODate(campaign.endDate),
+            status: toBackendStatus(nextStatus),
+            imageUrl: campaign.imageUrl,
+            linkCampaign: campaign.linkCampaign,
+            content: campaign.content,
+          },
         }).unwrap();
         notify({
           type: "success",
