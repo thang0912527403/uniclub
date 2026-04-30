@@ -11,10 +11,7 @@ interface FormModalProps {
     formTitle: string;
     description: string;
   }) => void;
-  onUpdate: (
-    id: number,
-    f: ApplicationFormResponseDto
-  ) => void;
+  onUpdate: (id: number, f: ApplicationFormResponseDto) => void;
   isSaving: boolean;
 }
 

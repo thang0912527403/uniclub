@@ -136,7 +136,7 @@ function CampaignCard({
   return (
     <div
       className="group bg-white dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-      onClick={() => onNavigate(campaign.campaignId)}
+      onClick={(e) => onManageForm(campaign.campaignId, e)}
     >
       {/* Image / Fallback */}
       <div className="h-44 relative overflow-hidden">
@@ -237,13 +237,6 @@ function CampaignCard({
                 </span>
               </button>
             )}
-            <button
-              onClick={(e) => onManageForm(campaign.campaignId, e)}
-              className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg transition-colors"
-            >
-              <i className="fa-solid fa-file-lines text-[10px]" />
-              Form
-            </button>
           </div>
         </div>
       </div>
@@ -270,7 +263,7 @@ function CampaignTableRow({
   return (
     <tr
       className="group border-b border-gray-100 dark:border-gray-700/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 cursor-pointer transition-colors duration-150"
-      onClick={() => onNavigate(campaign.campaignId)}
+      onClick={(e) => onManageForm(campaign.campaignId, e)}
     >
       {/* Name + image */}
       <td className="px-4 py-3">
@@ -322,20 +315,6 @@ function CampaignTableRow({
           className="flex items-center gap-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            onClick={(e) => onManageForm(campaign.campaignId, e)}
-            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold rounded-lg transition-colors"
-          >
-            <i className="fa-solid fa-file-lines text-[10px]" />
-            Form
-          </button>
-          <button
-            onClick={() => onNavigate(campaign.campaignId)}
-            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-semibold rounded-lg transition-colors"
-          >
-            Chi tiết
-            <i className="fas fa-arrow-right text-[10px]" />
-          </button>
           {onToggle && (
             <button
               onClick={(e) => onToggle(campaign, e)}
@@ -864,8 +843,8 @@ export default function RecruitmentCampaignsModule() {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isAdmin } = useCurrentUser();
-  const { clubManagerMembership } = useClubRole();
-  const clubId = clubManagerMembership?.clubId ?? 0;
+  const { currentClub } = useClubRole();
+  const clubId = currentClub?.clubId ?? 0;
   const canManage = !isAdmin && clubId !== 0;
   const { show: notify } = useNotification();
 

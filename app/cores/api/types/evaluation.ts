@@ -10,7 +10,6 @@ export interface EvaluationCriterionResponse {
   campaignId: number;
   name: string;
   description?: string | null;
-  weight: number;
   displayOrder: number;
   isDefault: boolean;
 }
@@ -18,14 +17,12 @@ export interface EvaluationCriterionResponse {
 export interface CreateEvaluationCriterionDto {
   name: string;
   description?: string | null;
-  weight: number;
   displayOrder?: number;
 }
 
 export interface UpdateEvaluationCriterionDto {
   name?: string | null;
   description?: string | null;
-  weight?: number | null;
   displayOrder?: number | null;
 }
 
@@ -59,7 +56,6 @@ export interface SubmitCriteriaFeedbackDto {
 export interface CriteriaNoteResult {
   criterionId: number;
   criterionName: string;
-  weight: number;
   note?: string | null;
   interviewerUserId: string;
   interviewerRole: string;
@@ -68,7 +64,6 @@ export interface CriteriaNoteResult {
 export interface CriteriaSummaryItem {
   criterionId: number;
   criterionName: string;
-  weight: number;
   individualNotes: CriteriaNoteResult[];
 }
 
@@ -113,6 +108,7 @@ export interface PublishResultDto {
   mode: 'Now' | 'Schedule';
   scheduledAt?: string | null;
   notificationChannels?: string | null;
+  decisionIds?: number[] | null;
 }
 
 export interface CampaignDecisionResponse {
@@ -144,21 +140,18 @@ export interface PublishStatusResponse {
 //  AI ANALYSIS & SEARCH
 // ═══════════════════════════════════════════════════════════════
 
-export interface AiCriteriaAnalysis {
+export interface AiCriteriaEvaluation {
   criterionId: number;
   criterionName: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
-  summary: string;
+  result: 'Pass' | 'Fail' | 'Hold';
 }
 
 export interface AiCandidateAnalysis {
   interviewScheduleId: number;
   candidateUserId: string;
   candidateName: string;
-  fitLabel: string;
-  suggestedResult: string;
-  summary: string;
-  criteriaAnalysis: AiCriteriaAnalysis[];
+  result: 'Pass' | 'Fail' | 'Hold';
+  criteriaEvaluations: AiCriteriaEvaluation[];
   strengths: string[];
   weaknesses: string[];
 }

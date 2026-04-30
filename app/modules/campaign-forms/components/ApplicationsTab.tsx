@@ -9,8 +9,13 @@ import type {
   ApplicationResponseDto,
   ApplicationFormResponseDto,
 } from "~/cores/api";
+import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { statusConfig, APPS_PER_PAGE } from "./constants";
-import { StatusBadge, ApplicationStatusActions, BulkActionBar } from "./StatusActions";
+import {
+  StatusBadge,
+  ApplicationStatusActions,
+  BulkActionBar,
+} from "./StatusActions";
 import { InlineAnswerRow } from "./InlineAnswerRow";
 import { AnswerPanel } from "./AnswerPanel";
 
@@ -59,9 +64,16 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
     useGetApplicationsByCampaignQuery({
       clubId,
       campaignId,
-      status: statusFilter || undefined,
     });
-  const [updateStatus] = useUpdateApplicationStatusMutation();
+  const [updateStatus, { isLoading: isUpdating }] =
+    useUpdateApplicationStatusMutation();
+
+  const [confirmState, setConfirmState] = useState<{
+    target: "single" | "bulk";
+    app?: ApplicationResponseDto;
+    appId?: number;
+    newStatus: string;
+  } | null>(null);
 
   // ── Derived data ──
   const statusCounts = React.useMemo(() => {
@@ -77,6 +89,9 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
 
   const filteredApps = React.useMemo(() => {
     let result = [...applications];
+    if (statusFilter) {
+      result = result.filter((a) => a.status === statusFilter);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
@@ -90,7 +105,7 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
       );
     }
     return result;
-  }, [applications, searchQuery, forms]);
+  }, [applications, searchQuery, statusFilter, forms]);
 
   const totalPages = Math.max(
     1,
@@ -103,16 +118,26 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
   );
 
   // ── Handlers ──
-  const handleStatusChange = async (
+  const handleStatusChange = (
     app: ApplicationResponseDto,
     newStatus: string,
   ) => {
+    // Chỉ confirm cho SUCCESS và REJECTED như yêu cầu
+    if (newStatus === "SUCCESS" || newStatus === "REJECTED") {
+      setConfirmState({ target: "single", app, newStatus });
+    } else {
+      executeStatusChange(app.applicationId, newStatus);
+    }
+  };
+
+  const executeStatusChange = async (id: number, newStatus: string) => {
     try {
       await updateStatus({
         clubId,
-        id: app.applicationId,
+        id,
         body: { status: newStatus },
       }).unwrap();
+      setConfirmState(null);
     } catch (e) {
       console.error(e);
     }
@@ -142,7 +167,15 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
     }
   };
 
-  const handleBulkStatus = async (newStatus: string) => {
+  const handleBulkStatus = (newStatus: string) => {
+    if (newStatus === "SUCCESS" || newStatus === "REJECTED") {
+      setConfirmState({ target: "bulk", newStatus });
+    } else {
+      executeBulkStatus(newStatus);
+    }
+  };
+
+  const executeBulkStatus = async (newStatus: string) => {
     const promises = Array.from(selectedIds).map((id) =>
       updateStatus({ clubId, id, body: { status: newStatus } })
         .unwrap()
@@ -150,6 +183,7 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
     );
     await Promise.all(promises);
     setSelectedIds(new Set());
+    setConfirmState(null);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,45 +194,44 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
   const statuses = ["", "PENDING", "REJECTED", "SUCCESS"];
   const allSelected =
     pagedApps.length > 0 && selectedIds.size === pagedApps.length;
-  const TABLE_COL_COUNT = 6;
+  const showCheckboxes = statusFilter === "PENDING";
+  const TABLE_COL_COUNT = showCheckboxes ? 6 : 5;
 
   return (
     <div className="space-y-4">
-      {/* ── Stats Summary ── */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {Object.entries(statusConfig).map(([k, v]) => (
-          <div
-            key={k}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${v.cls}`}
-          >
-            {v.label}: <span className="font-bold">{statusCounts[k] ?? 0}</span>
-          </div>
-        ))}
-        <span className="ml-auto text-xs text-gray-500 font-medium">
-          <i className="fa-solid fa-users mr-1" />
-          Tổng: {applications.length} đơn
-        </span>
-      </div>
-
       {/* ── Filter Bar ── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1 overflow-x-auto">
-          {statuses.map((s) => (
-            <button
-              key={s}
-              onClick={() => {
-                setStatusFilter(s);
-                setCurrentPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                statusFilter === s
-                  ? "bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-              }`}
-            >
-              {s ? (statusConfig[s]?.label ?? s) : "Tất cả"}
-            </button>
-          ))}
+          {statuses.map((s) => {
+            const label = s ? (statusConfig[s]?.label ?? s) : "Tất cả";
+            const count = statusCounts[s || "all"] ?? 0;
+            return (
+              <button
+                key={s}
+                onClick={() => {
+                  setStatusFilter(s);
+                  setCurrentPage(1);
+                  setSelectedIds(new Set());
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  statusFilter === s
+                    ? "bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                }`}
+              >
+                {label}
+                <span
+                  className={`px-1.5 py-0.5 rounded-md text-[10px] ${
+                    statusFilter === s
+                      ? "bg-orange-100 text-orange-700 dark:bg-orange-800/30 dark:text-orange-300"
+                      : "bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="relative flex-1 max-w-xs">
@@ -274,14 +307,16 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700">
                 <tr>
-                  <th className="px-3 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                    />
-                  </th>
+                  {showCheckboxes && (
+                    <th className="px-3 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </th>
+                  )}
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     #
                   </th>
@@ -307,17 +342,19 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
                       <tr
                         className={`hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-colors ${isExpanded ? "bg-violet-50/30 dark:bg-violet-900/10" : ""}`}
                       >
-                        <td className="px-3 py-3.5">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(app.applicationId)}
-                            onChange={() => toggleSelect(app.applicationId)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                          />
-                        </td>
+                        {showCheckboxes && (
+                          <td className="px-3 py-3.5">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(app.applicationId)}
+                              onChange={() => toggleSelect(app.applicationId)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                          </td>
+                        )}
                         <td className="px-4 py-3.5 font-mono text-xs text-gray-500">
-                          #{app.applicationId}
+                          {app.applicationId}
                         </td>
                         <td className="px-4 py-3.5 text-gray-700 dark:text-gray-300 text-xs">
                           {forms.find((f) => f.formId === app.formId)
@@ -394,34 +431,31 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
                 >
                   <i className="fas fa-chevron-left" />
                 </button>
-                {Array.from(
-                  { length: Math.min(totalPages, 5) },
-                  (_, i) => {
-                    let page: number;
-                    if (totalPages <= 5) {
-                      page = i + 1;
-                    } else if (safePage <= 3) {
-                      page = i + 1;
-                    } else if (safePage >= totalPages - 2) {
-                      page = totalPages - 4 + i;
-                    } else {
-                      page = safePage - 2 + i;
-                    }
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all ${
-                          safePage === page
-                            ? "bg-orange-500 text-white shadow-sm"
-                            : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  },
-                )}
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let page: number;
+                  if (totalPages <= 5) {
+                    page = i + 1;
+                  } else if (safePage <= 3) {
+                    page = i + 1;
+                  } else if (safePage >= totalPages - 2) {
+                    page = totalPages - 4 + i;
+                  } else {
+                    page = safePage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all ${
+                        safePage === page
+                          ? "bg-orange-500 text-white shadow-sm"
+                          : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
                 <button
                   disabled={safePage === totalPages}
                   onClick={() => setCurrentPage(safePage + 1)}
@@ -444,6 +478,40 @@ export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
           onClose={() => setSelectedApp(null)}
         />
       )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!confirmState}
+        onCancel={() => setConfirmState(null)}
+        onConfirm={() => {
+          if (!confirmState) return;
+          if (confirmState.target === "single" && confirmState.app) {
+            executeStatusChange(
+              confirmState.app.applicationId,
+              confirmState.newStatus,
+            );
+          } else if (confirmState.target === "bulk") {
+            executeBulkStatus(confirmState.newStatus);
+          }
+        }}
+        isLoading={isUpdating}
+        type={confirmState?.newStatus === "REJECTED" ? "danger" : "info"}
+        title={
+          confirmState?.newStatus === "SUCCESS"
+            ? "Duyệt đơn phỏng vấn"
+            : "Từ chối đơn"
+        }
+        message={
+          confirmState?.target === "single"
+            ? `Bạn có chắc chắn muốn chuyển trạng thái đơn #${confirmState?.app?.applicationId} sang "${statusConfig[confirmState?.newStatus ?? ""]?.label}"?`
+            : `Bạn có chắc chắn muốn chuyển trạng thái cho ${selectedIds.size} đơn đã chọn sang "${statusConfig[confirmState?.newStatus ?? ""]?.label}"?`
+        }
+        confirmText={
+          confirmState?.newStatus === "SUCCESS"
+            ? "Xác nhận vào PV"
+            : "Từ chối đơn"
+        }
+      />
     </div>
   );
 };

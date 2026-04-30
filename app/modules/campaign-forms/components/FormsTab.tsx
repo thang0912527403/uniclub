@@ -13,6 +13,7 @@ import type {
   ApplicationFormResponseDto,
   ApplicationQuestionResponseDto,
 } from "~/cores/api";
+import { useNotification } from "~/components/Notification";
 import { FormCard } from "./FormCard";
 import { FormModal } from "./FormModal";
 import { QuestionRow } from "./QuestionRow";
@@ -34,6 +35,8 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
   const [editingQuestion, setEditingQuestion] =
     useState<ApplicationQuestionResponseDto | null>(null);
 
+  const { show } = useNotification();
+
   const [createForm, { isLoading: formCreating }] = useCreateFormMutation();
   const [updateForm, { isLoading: formUpdating }] = useUpdateFormMutation();
   const [deleteForm] = useDeleteFormMutation();
@@ -54,8 +57,10 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
     try {
       await createForm(dto).unwrap();
       setShowFormModal(false);
+      show({ type: "success", title: "Tạo biểu mẫu thành công" });
     } catch (e) {
       console.error(e);
+      show({ type: "error", title: "Tạo biểu mẫu thất bại" });
     }
   };
 
@@ -64,18 +69,21 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
       await updateForm({ clubId, id, body: dto }).unwrap();
       setShowFormModal(false);
       setEditingForm(null);
+      show({ type: "success", title: "Cập nhật biểu mẫu thành công" });
     } catch (e: any) {
       console.error(e);
+      show({ type: "error", title: "Cập nhật biểu mẫu thất bại" });
     }
   };
 
   const handleDeleteForm = async (id: number) => {
-    if (!confirm("Xóa biểu mẫu này? Toàn bộ câu hỏi sẽ bị xóa.")) return;
     try {
       await deleteForm({ clubId, id }).unwrap();
       if (selectedFormId === id) setSelectedFormId(null);
+      show({ type: "success", title: "Đã xóa biểu mẫu" });
     } catch (e) {
       console.error(e);
+      show({ type: "error", title: "Xóa biểu mẫu thất bại" });
     }
   };
 
@@ -83,8 +91,10 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
     try {
       await createQuestion(dto).unwrap();
       setShowQuestionModal(false);
+      show({ type: "success", title: "Thêm câu hỏi thành công" });
     } catch (e) {
       console.error(e);
+      show({ type: "error", title: "Thêm câu hỏi thất bại" });
     }
   };
 
@@ -96,17 +106,20 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
       await updateQuestion({ clubId, id, question: dto }).unwrap();
       setShowQuestionModal(false);
       setEditingQuestion(null);
+      show({ type: "success", title: "Cập nhật câu hỏi thành công" });
     } catch (e) {
       console.error(e);
+      show({ type: "error", title: "Cập nhật câu hỏi thất bại" });
     }
   };
 
   const handleDeleteQuestion = async (id: number) => {
-    if (!confirm("Xóa câu hỏi này?")) return;
     try {
       await deleteQuestion({ clubId, id }).unwrap();
+      show({ type: "success", title: "Đã xóa câu hỏi" });
     } catch (e) {
       console.error(e);
+      show({ type: "error", title: "Xóa câu hỏi thất bại" });
     }
   };
 
@@ -124,7 +137,6 @@ export const FormsTab: React.FC<FormsTabProps> = ({ campaignId, clubId }) => {
           <i className="fa-solid fa-plus" />
           Tạo biểu mẫu mới
         </button>
-
         {formsLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
