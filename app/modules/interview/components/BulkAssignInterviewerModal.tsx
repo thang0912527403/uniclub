@@ -27,9 +27,7 @@ const InterviewRow: React.FC<{
         {index + 1}.
       </span>
       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-        {isLoading
-          ? "…"
-          : (user?.fullName?.charAt(0)?.toUpperCase() ?? "?")}
+        {isLoading ? "…" : (user?.fullName?.charAt(0)?.toUpperCase() ?? "?")}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">
@@ -186,8 +184,7 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
           try {
             // Get the assignment ID from the response or latest assignments
             const newAssignment = (result as any)?.find?.(
-              (a: any) =>
-                a.interviewerUserId === selectedMember.userId,
+              (a: any) => a.interviewerUserId === selectedMember.userId,
             );
             if (newAssignment?.id) {
               await assignCriteriaMut({
@@ -254,7 +251,7 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
                     d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
                   />
                 </svg>
-                Phân interviewer hàng loạt
+                Phân interviewer
               </h2>
               <p className="text-purple-100 text-sm mt-0.5">
                 {interviews.length} lịch phỏng vấn đã chọn
@@ -451,9 +448,7 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
                             </p>
                             <p className="text-[11px] text-gray-400 truncate">
                               {member.email}{" "}
-                              {member.studentId
-                                ? `• ${member.studentId}`
-                                : ""}
+                              {member.studentId ? `• ${member.studentId}` : ""}
                             </p>
                           </div>
                           <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 flex-shrink-0">
@@ -494,9 +489,7 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
                             </p>
                             <p className="text-[11px] text-gray-400 truncate">
                               {member.email}{" "}
-                              {member.studentId
-                                ? `• ${member.studentId}`
-                                : ""}
+                              {member.studentId ? `• ${member.studentId}` : ""}
                             </p>
                           </div>
                           {member.roleName && (
@@ -553,9 +546,7 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
               >
                 <div
                   className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                    assignCriteria
-                      ? "translate-x-[22px]"
-                      : "translate-x-[2px]"
+                    assignCriteria ? "translate-x-[22px]" : "translate-x-[2px]"
                   }`}
                 />
               </div>
@@ -583,7 +574,9 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
                         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                       />
                     </svg>
-                    <p className="text-sm">Chưa có tiêu chí nào trong campaign</p>
+                    <p className="text-sm">
+                      Chưa có tiêu chí nào trong campaign
+                    </p>
                   </div>
                 ) : (
                   criteria.map((c) => (
@@ -632,9 +625,6 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
                           )}
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold flex-shrink-0 ml-2">
-                        {c.weight}%
-                      </span>
                     </button>
                   ))
                 )}
@@ -658,8 +648,8 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              Người được chọn sẽ được phân công cho tất cả{" "}
-              {interviews.length} lịch PV
+              Người được chọn sẽ được phân công cho tất cả {interviews.length}{" "}
+              lịch PV
               {assignCriteria && selectedCriteriaIds.length > 0
                 ? ` với ${selectedCriteriaIds.length} tiêu chí`
                 : ""}

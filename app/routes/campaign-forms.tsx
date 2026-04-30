@@ -16,8 +16,8 @@ export default function CampaignFormsPage() {
   const id = Number(campaignId);
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isAdmin } = useCurrentUser();
-  const { clubManagerMembership } = useClubRole();
-  const clubId = clubManagerMembership?.clubId ?? 0;
+  const { currentClub } = useClubRole();
+  const clubId = currentClub?.clubId ?? 0;
 
   const { data: adminCampaigns } = useGetRecruitmentCampaignsQuery(undefined, {
     skip: !isAdmin,

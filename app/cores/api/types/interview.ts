@@ -139,8 +139,24 @@ export interface JoinRoomDto {
   role?: string; // "Interviewer" | "Candidate" | "Observer"
 }
 
+export interface CreateMeetingRoomDto {
+  roomType: string; // "General" | "Interview" | "Training" | etc.
+  title: string;
+  description?: string | null;
+  createdByUserId: string;
+  scheduledStartAt?: string | null;
+  scheduledEndAt?: string | null;
+  interviewScheduleId?: number | null;
+  maxParticipants?: number;
+  isWaitingRoomEnabled?: boolean;
+  isRecordingEnabled?: boolean;
+}
+
+
 export interface JoinRoomResponse {
   roomCode: string;
+  /** "Interview" | "General" | "Internal" | "Training" */
+  roomType: string;
   peerId?: string | null;
   stunServerUri?: string | null;
   turnServerUri?: string | null;

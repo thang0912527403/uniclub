@@ -16,8 +16,14 @@ import type { ClubRole } from "~/cores/api/types";
 import type { ClubMember } from "~/cores/api/types";
 
 /** Small badge showing assigned criteria count from CriteriaScore API */
-const CriteriaBadge: React.FC<{ scheduleId: number; assignmentId: number }> = ({ scheduleId, assignmentId }) => {
-  const { data: scores } = useGetCriteriaScoresQuery({ scheduleId, assignmentId });
+const CriteriaBadge: React.FC<{ scheduleId: number; assignmentId: number }> = ({
+  scheduleId,
+  assignmentId,
+}) => {
+  const { data: scores } = useGetCriteriaScoresQuery({
+    scheduleId,
+    assignmentId,
+  });
   const count = scores?.length || 0;
   if (count === 0) return null;
   return (
@@ -121,10 +127,11 @@ const statusActions: Record<
 };
 
 // ─── User Display ────────────────────────────────────────────────
-const UserDisplay: React.FC<{ userId: string; showId?: boolean }> = ({
-  userId,
-  showId = false,
-}) => {
+const UserDisplay: React.FC<{
+  userId: string;
+  showId?: boolean;
+  size?: string;
+}> = ({ userId, showId = false, size = "w-6 h-6" }) => {
   const { data: user, isFetching } = useGetUserByIdQuery(userId, {
     skip: !userId,
   });
@@ -133,16 +140,31 @@ const UserDisplay: React.FC<{ userId: string; showId?: boolean }> = ({
       <span className="text-gray-400 text-xs animate-pulse">Đang tải...</span>
     );
   return (
-    <span>
-      {user?.fullName || (
-        <span className="font-mono text-xs">{userId.slice(0, 12)}...</span>
-      )}
-      {showId && user?.fullName && (
-        <span className="text-gray-400 text-xs ml-1">
-          ({userId.slice(0, 8)})
-        </span>
-      )}
-    </span>
+    <div className="flex items-center gap-2">
+      <div
+        className={`${size} rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-[10px] font-bold shadow-sm flex-shrink-0 overflow-hidden`}
+      >
+        {user?.avatar ? (
+          <img
+            src={user.avatar}
+            className="w-full h-full object-cover"
+            alt=""
+          />
+        ) : (
+          (user?.fullName?.[0] || userId.slice(0, 2)).toUpperCase()
+        )}
+      </div>
+      <span className="truncate">
+        {user?.fullName || (
+          <span className="font-mono text-xs">{userId.slice(0, 12)}...</span>
+        )}
+        {showId && user?.fullName && (
+          <span className="text-gray-400 text-[10px] ml-1">
+            ({userId.slice(0, 8)})
+          </span>
+        )}
+      </span>
+    </div>
   );
 };
 
@@ -242,15 +264,15 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
   const unifiedSlots = useMemo(() => {
     if (!interview) return [];
     if (interview.proposedTimeSlots && interview.proposedTimeSlots.length > 0) {
-        return interview.proposedTimeSlots.map(s => {
-          const d = new Date(s.proposedAt);
-          return {
-            id: s.id,
-            date: d.toISOString().split('T')[0],
-            time: d.toTimeString().slice(0, 5),
-            isSelected: s.isSelected
-          };
-        });
+      return interview.proposedTimeSlots.map((s) => {
+        const d = new Date(s.proposedAt);
+        return {
+          id: s.id,
+          date: d.toISOString().split("T")[0],
+          time: d.toTimeString().slice(0, 5),
+          isSelected: s.isSelected,
+        };
+      });
     }
     return [];
   }, [interview]);
@@ -316,16 +338,19 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                     {interview.status}
                   </span>
                   <span className="text-orange-100 text-sm">
-                    {new Date(interview.scheduledAt).toLocaleDateString(
-                      "vi-VN",
-                      {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      },
-                    )}
+                    {interview.scheduledAt &&
+                    new Date(interview.scheduledAt).getFullYear() > 1970
+                      ? new Date(interview.scheduledAt).toLocaleDateString(
+                          "vi-VN",
+                          {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )
+                      : "Chưa xác nhận"}
                   </span>
                 </div>
                 {/* Interviewer confirm banner */}
@@ -384,6 +409,12 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                 key: "assignments" as const,
                 label: `PV viên (${interview.assignments?.length || 0})`,
                 icon: "fa-solid fa-users",
+                visible: [
+                  "Confirmed",
+                  "InProgress",
+                  "Completed",
+                  "Rescheduled",
+                ].includes(interview.status),
               },
               {
                 key: "feedback" as const,
@@ -393,37 +424,41 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                   feedbackTotal > 0
                     ? `${feedbackDone}/${feedbackTotal}`
                     : undefined,
+                visible: ["InProgress", "Completed"].includes(interview.status),
               },
               {
                 key: "evaluation" as const,
                 label: "Tổng hợp",
                 icon: "fa-solid fa-chart-bar",
+                visible: interview.status === "Completed",
               },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
-                  activeTab === tab.key
-                    ? "border-orange-500 text-orange-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                }`}
-              >
-                <i className={tab.icon} />
-                {tab.label}
-                {"badge" in tab && tab.badge && (
-                  <span
-                    className={`ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-                      feedbackDone === feedbackTotal && feedbackTotal > 0
-                        ? "bg-green-100 text-green-700"
-                        : "bg-amber-100 text-amber-700"
-                    }`}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            ))}
+            ]
+              .filter((tab) => !("visible" in tab) || tab.visible)
+              .map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
+                    activeTab === tab.key
+                      ? "border-orange-500 text-orange-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  }`}
+                >
+                  <i className={tab.icon} />
+                  {tab.label}
+                  {"badge" in tab && tab.badge && (
+                    <span
+                      className={`ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                        feedbackDone === feedbackTotal && feedbackTotal > 0
+                          ? "bg-green-100 text-green-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
           </div>
 
           {/* Content */}
@@ -455,17 +490,20 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                     </div>
                     <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 ml-9">
                       <i className="fa-regular fa-calendar text-xs" />
-                      {new Date(interview.scheduledAt).toLocaleDateString(
-                        "vi-VN",
-                        {
-                          weekday: "long",
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
+                      {interview.scheduledAt &&
+                      new Date(interview.scheduledAt).getFullYear() > 1970
+                        ? new Date(interview.scheduledAt).toLocaleDateString(
+                            "vi-VN",
+                            {
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )
+                        : "Chưa xác định thời gian"}
                     </div>
                   </div>
                 )}
@@ -476,8 +514,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                     <div>
                       <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                         <i className="fa-regular fa-calendar text-orange-500" />
-                        Khung giờ đề xuất (
-                        {unifiedSlots.length})
+                        Khung giờ đề xuất ({unifiedSlots.length})
                       </h4>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
                         Candidate sẽ chọn một trong các khung giờ dưới đây.
@@ -556,22 +593,12 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                     value={`${interview.durationMinutes} phút`}
                   />
                   <InfoCard
-                    label="Application"
-                    value={`#${interview.applicationId}`}
-                  />
-                  <InfoCard
                     label="Ứng viên"
-                    value={
-                      candidateInfo?.fullName ||
-                      interview.candidateUserId.slice(0, 12) + "..."
-                    }
+                    value={<UserDisplay userId={interview.candidateUserId} />}
                   />
                   <InfoCard
                     label="Tạo bởi"
-                    value={
-                      creatorInfo?.fullName ||
-                      interview.createdByUserId.slice(0, 12) + "..."
-                    }
+                    value={<UserDisplay userId={interview.createdByUserId} />}
                   />
                 </div>
 
@@ -910,24 +937,14 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                   <div className="space-y-2">
                     {interview.assignments.map((a) => (
                       <div key={a.id} className="space-y-0">
-                        <div
-                          className="flex items-center justify-between bg-white dark:bg-gray-700/50 rounded-xl p-4 border border-gray-100 dark:border-gray-600 hover:border-orange-200 dark:hover:border-orange-800 transition-colors"
-                        >
+                        <div className="flex items-center justify-between bg-white dark:bg-gray-700/50 rounded-xl p-4 border border-gray-100 dark:border-gray-600 hover:border-orange-200 dark:hover:border-orange-800 transition-colors">
                           <div className="flex items-center gap-3">
-                            <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-                                a.hasConfirmed
-                                  ? "bg-gradient-to-br from-emerald-400 to-emerald-600"
-                                  : "bg-gradient-to-br from-blue-400 to-blue-600"
-                              }`}
-                            >
-                              {a.interviewerUserId.slice(0, 2).toUpperCase()}
-                            </div>
+                            <UserDisplay
+                              userId={a.interviewerUserId}
+                              size="w-10 h-10"
+                            />
                             <div>
-                              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                                <UserDisplay userId={a.interviewerUserId} />
-                              </p>
-                              <div className="flex items-center gap-2 mt-0.5">
+                              <div className="flex items-center gap-2">
                                 <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                   <i
                                     className={`${roleOptions.find((r) => r.value === a.role)?.icon} ${roleOptions.find((r) => r.value === a.role)?.color}`}
@@ -936,8 +953,8 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                                 </span>
                                 {a.hasConfirmed ? (
                                   <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                                    <i className="fa-solid fa-check-circle" /> Đã
-                                    xác nhận
+                                    <i className="fa-solid fa-check-circle" />{" "}
+                                    Đã xác nhận
                                   </span>
                                 ) : (
                                   <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
@@ -945,7 +962,10 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                                     nhận
                                   </span>
                                 )}
-                                <CriteriaBadge scheduleId={interview.id} assignmentId={a.id} />
+                                <CriteriaBadge
+                                  scheduleId={interview.id}
+                                  assignmentId={a.id}
+                                />
                               </div>
                             </div>
                           </div>
@@ -1098,22 +1118,16 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                              a.feedbackSubmittedAt
-                                ? "bg-gradient-to-br from-green-400 to-green-600"
-                                : "bg-gradient-to-br from-gray-400 to-gray-500"
-                            }`}
-                          >
-                            {a.interviewerUserId.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                              <UserDisplay userId={a.interviewerUserId} />
-                              <span className="text-gray-400 font-normal ml-1">
+                          <UserDisplay
+                            userId={a.interviewerUserId}
+                            size="w-8 h-8"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-gray-400 text-xs">
                                 ({a.role})
                               </span>
-                            </p>
+                            </div>
                             <p className="text-xs text-gray-400">
                               {a.feedbackSubmittedAt
                                 ? `Đã đánh giá: ${new Date(a.feedbackSubmittedAt).toLocaleString("vi-VN")}`
@@ -1211,7 +1225,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
 };
 
 // ─── Info Card Helper ────────────────────────────────────────────
-const InfoCard: React.FC<{ label: string; value: string }> = ({
+const InfoCard: React.FC<{ label: string; value: React.ReactNode }> = ({
   label,
   value,
 }) => (

@@ -540,7 +540,7 @@ const InterviewSchedulePage: React.FC = () => {
   const handleBulkCancel = () => {
     bulkCancelReasonRef.current = "";
     Modal.confirm({
-      title: "Hủy lịch hàng loạt",
+      title: "Hủy lịch",
       content: (
         <div>
           <p className="mb-2">
@@ -591,7 +591,7 @@ const InterviewSchedulePage: React.FC = () => {
 
   const handleBulkStartInterview = async () => {
     Modal.confirm({
-      title: "Bắt đầu phỏng vấn hàng loạt",
+      title: "Bắt đầu phỏng vấn",
       content: `Bạn chắc chắn muốn bắt đầu ${selectedIds.size} buổi phỏng vấn?`,
       okText: "Bắt đầu",
       okButtonProps: {
@@ -614,7 +614,7 @@ const InterviewSchedulePage: React.FC = () => {
 
   const handleBulkComplete = async () => {
     Modal.confirm({
-      title: "Hoàn thành phỏng vấn hàng loạt",
+      title: "Hoàn thành phỏng vấn",
       content: `Xác nhận hoàn thành ${selectedIds.size} buổi phỏng vấn?`,
       okText: "Hoàn thành",
       okButtonProps: {
@@ -664,7 +664,6 @@ const InterviewSchedulePage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-clipboard-list text-orange-500" />{" "}
                 Quản lý phỏng vấn
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
