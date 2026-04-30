@@ -109,6 +109,10 @@ export function Sidebar({
                 label: "Yêu cầu tạo CLB",
                 url: "/club/all-requests",
               },
+              {
+                label: "Record of Change",
+                url: "/record-of-change",
+              },
             ],
           },
         ]
