@@ -15,7 +15,7 @@ const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({ roomCode }) => {
   const totalParticipants = 1 + users.length;
 
   const handleCopyLink = async () => {
-    const link = `${window.location.origin}/interview/room/${roomCode}`;
+    const link = `${window.location.origin}/meeting-room/${roomCode}`;
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);

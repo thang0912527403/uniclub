@@ -794,7 +794,7 @@ const InterviewSchedulePage: React.FC = () => {
         onUpdateStatus={handleUpdateStatus}
         onAssignInterviewer={handleAssignInterviewer}
         onRemoveAssignment={handleRemoveAssignment}
-        onNavigateToRoom={(roomCode) => navigate(`/interview/room/${roomCode}`)}
+        onNavigateToRoom={(roomCode) => navigate(`/meeting-room/${roomCode}`)}
       />
 
       {/* Create Interview Modal */}
