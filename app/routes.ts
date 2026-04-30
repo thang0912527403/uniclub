@@ -100,5 +100,8 @@ export default [
 
     // Meeting (WebRTC)
     route("meeting/:roomId?", "routes/meeting.tsx"),
+
+    // Record of change
+    route("record-of-change", "routes/record-of-change.tsx"),
   ]),
 ] satisfies RouteConfig;

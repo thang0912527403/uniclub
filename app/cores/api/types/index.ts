@@ -14,3 +14,4 @@ export * from './clubRole';
 export * from './clubRole';
 export * from './clubMember';
 export * from './evaluation';
+export * from './recordOfChange';

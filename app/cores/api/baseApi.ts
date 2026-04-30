@@ -60,5 +60,5 @@ export const createApiWithBaseUrl = (_baseUrl: string, reducerPath: string, tagT
 export const baseApi = createApiWithBaseUrl('', 'api', [
   'RecruitmentCampaign', 'Dashboard', 'Club', 'ClubFund',
   'User', 'Notification', 'Interview', 'Application',
-  'ClubRole', 'Policy', 'Department', 'Member',
+  'ClubRole', 'Policy', 'Department', 'Member', 'RecordOfChange',
 ]);
