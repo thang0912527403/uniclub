@@ -9,6 +9,7 @@ import {
   type ClubPayosSettings,
   type OnlinePaymentProviderOption,
   type PaymentCredentialFieldSchema,
+  type PaymentCredentialFieldName,
 } from "~/cores/api";
 import { fundTokens as t } from "~/routes/funds.design-tokens";
 
@@ -63,15 +64,21 @@ function credentialFieldsForProvider(
 }
 
 function maskedPlaceholder(
-  fieldName: "clientId" | "apiKey" | "checksumKey",
+  fieldName: PaymentCredentialFieldName,
   selectedProvider: string,
   settings: ClubPayosSettings | undefined,
 ): string | undefined {
-  if (!settings || normalizeProviderCode(settings.paymentProvider) !== normalizeProviderCode(selectedProvider)) {
+  if (
+    !settings ||
+    normalizeProviderCode(settings.paymentProvider) !==
+      normalizeProviderCode(selectedProvider)
+  ) {
     return undefined;
   }
-  if (fieldName === "apiKey" && settings.apiKeyMasked?.trim()) return settings.apiKeyMasked;
-  if (fieldName === "checksumKey" && settings.checksumKeyMasked?.trim()) return settings.checksumKeyMasked;
+  if (fieldName === "apiKey" && settings.apiKeyMasked?.trim())
+    return settings.apiKeyMasked;
+  if (fieldName === "checksumKey" && settings.checksumKeyMasked?.trim())
+    return settings.checksumKeyMasked;
   return undefined;
 }
 
@@ -84,7 +91,9 @@ function validateCredentialForm(
 ): string | null {
   if (!isEnabled) return null;
   const sameSavedProvider =
-    !!settings && normalizeProviderCode(settings.paymentProvider) === normalizeProviderCode(selectedProvider);
+    !!settings &&
+    normalizeProviderCode(settings.paymentProvider) ===
+      normalizeProviderCode(selectedProvider);
   for (const f of fields) {
     if (!f.requiredWhenEnabled) continue;
     const v = (values[f.name] ?? "").trim();
@@ -145,7 +154,11 @@ function mergeProviderOptions(
 ): OnlinePaymentProviderOption[] {
   const map = new Map<string, OnlinePaymentProviderOption>();
   for (const p of guideProviders ?? []) {
-    if (p.code) map.set(normalizeProviderCode(p.code), { ...p, code: normalizeProviderCode(p.code) });
+    if (p.code)
+      map.set(normalizeProviderCode(p.code), {
+        ...p,
+        code: normalizeProviderCode(p.code),
+      });
   }
   const extra = normalizeProviderCode(String(settingsCode ?? ""));
   if (extra && !map.has(extra)) {
@@ -170,7 +183,8 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
     error: settingsError,
   } = useGetPayosSettingsQuery(clubId, { skip: !clubId || !canManagePayos });
 
-  const [updateSettings, { isLoading: isSaving }] = useUpdatePayosSettingsMutation();
+  const [updateSettings, { isLoading: isSaving }] =
+    useUpdatePayosSettingsMutation();
 
   const status = useMemo(
     () => resolveStatusLabel(guide, settings, canManagePayos),
@@ -178,12 +192,14 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
   );
 
   const providerOptions = useMemo(
-    () => mergeProviderOptions(guide?.onlinePaymentProviders, settings?.paymentProvider),
+    () =>
+      mergeProviderOptions(guide?.onlinePaymentProviders, settings?.paymentProvider),
     [guide?.onlinePaymentProviders, settings?.paymentProvider],
   );
 
   const schemaVersion = guide?.paymentCredentialSchemaVersion ?? 1;
-  const schemaUnsupported = schemaVersion > FE_SUPPORTED_PAYMENT_CREDENTIAL_SCHEMA_VERSION;
+  const schemaUnsupported =
+    schemaVersion > FE_SUPPORTED_PAYMENT_CREDENTIAL_SCHEMA_VERSION;
 
   const [paymentProvider, setPaymentProvider] = useState("PAYOS");
   const [credentialValues, setCredentialValues] = useState(EMPTY_CREDENTIALS);
@@ -197,7 +213,9 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
 
   useEffect(() => {
     if (!canManagePayos || !settings) return;
-    setPaymentProvider(normalizeProviderCode(String(settings.paymentProvider ?? "PAYOS")));
+    setPaymentProvider(
+      normalizeProviderCode(String(settings.paymentProvider ?? "PAYOS")),
+    );
     setIsEnabled(settings.isEnabled ?? true);
     setCredentialValues({
       clientId: String(settings.clientId ?? "").trim(),
@@ -254,27 +272,33 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
 
   const selectValue = providerOptions.some((p) => p.code === paymentProvider)
     ? paymentProvider
-    : (providerOptions[0]?.code ?? "PAYOS");
+    : providerOptions[0]?.code ?? "PAYOS";
 
   return (
-    <section className={`${t.card.base} overflow-hidden`} aria-labelledby="club-fund-payment-heading">
-      <div className={`px-4 md:px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30`}>
+    <section
+      className={`${t.card.base} overflow-hidden`}
+      aria-labelledby="club-fund-payment-heading"
+    >
+      <div className="px-4 md:px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-11 h-11 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-sm" aria-hidden>
+            <div
+              className="w-11 h-11 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-sm"
+              aria-hidden
+            >
               <PlugZap className="w-5 h-5" />
             </div>
             <div>
               <h2 id="club-fund-payment-heading" className={t.type.sectionTitle}>
                 Thanh toán online
               </h2>
-              <p className={t.type.body}>
-                Chọn cổng thanh toán và cấu hình kết nối.
-              </p>
+              <p className={t.type.body}>Chọn cổng thanh toán và cấu hình kết nối.</p>
             </div>
           </div>
 
-          <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${status.cls}`}>
+          <span
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${status.cls}`}
+          >
             {isLoadingGuide || (canManagePayos && isLoadingSettings) ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />
             ) : null}
@@ -285,7 +309,10 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
 
       <div className={`${t.space.card} ${t.space.section}`}>
         {isGuideError ? (
-          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 text-sm" role="alert">
+          <div
+            className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 text-sm"
+            role="alert"
+          >
             Không tải được hướng dẫn thanh toán online. Vui lòng thử lại.
           </div>
         ) : (
@@ -295,17 +322,23 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
                 className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/25 text-amber-900 dark:text-amber-100 text-sm border border-amber-200 dark:border-amber-800"
                 role="alert"
               >
-                <p className="font-medium">Phiên bản mẫu cấu hình thanh toán mới (v{schemaVersion})</p>
+                <p className="font-medium">
+                  Phiên bản mẫu cấu hình thanh toán mới (v{schemaVersion})
+                </p>
                 <p className="mt-1 opacity-90">
-                  Ứng dụng hiện hỗ trợ tối đa v{FE_SUPPORTED_PAYMENT_CREDENTIAL_SCHEMA_VERSION}. Vui lòng cập nhật UniClub hoặc
-                  liên hệ hỗ trợ để tránh thiếu trường hoặc sai luồng lưu cấu hình.
+                  Ứng dụng hiện hỗ trợ tối đa v
+                  {FE_SUPPORTED_PAYMENT_CREDENTIAL_SCHEMA_VERSION}. Vui lòng cập
+                  nhật UniClub hoặc liên hệ hỗ trợ để tránh thiếu trường hoặc
+                  sai luồng lưu cấu hình.
                 </p>
               </div>
             ) : null}
 
             {(guide?.onlinePaymentProviders?.length ?? 0) > 0 ? (
               <div>
-                <p className={`${t.type.label} mb-2`}>Cổng thanh toán trực tuyến đang được hỗ trợ</p>
+                <p className={`${t.type.label} mb-2`}>
+                  Cổng thanh toán trực tuyến đang được hỗ trợ
+                </p>
                 <ul className="flex flex-wrap gap-2" aria-label="Danh sách cổng thanh toán">
                   {(guide?.onlinePaymentProviders ?? []).map((p) => (
                     <li
@@ -327,7 +360,8 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
               Chỉ Quản lý CLB mới có quyền cấu hình cổng thanh toán.
             </p>
             <p className={t.type.muted}>
-              Nếu bạn cần bật/tắt hoặc cập nhật kết nối, vui lòng liên hệ Quản lý CLB.
+              Nếu bạn cần bật/tắt hoặc cập nhật kết nối, vui lòng liên hệ Quản lý
+              CLB.
             </p>
           </div>
         ) : (
@@ -339,13 +373,20 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
                 showNotification({
                   type: "error",
                   title: "Không thể lưu",
-                  message: "Phiên bản mẫu cấu hình chưa được app hỗ trợ. Vui lòng cập nhật ứng dụng.",
+                  message:
+                    "Phiên bản mẫu cấu hình chưa được app hỗ trợ. Vui lòng cập nhật ứng dụng.",
                 });
                 return;
               }
               const code = normalizeProviderCode(paymentProvider);
               const fields = credentialFieldsForProvider(selectedProvider);
-              const err = validateCredentialForm(fields, credentialValues, isEnabled, settings, code);
+              const err = validateCredentialForm(
+                fields,
+                credentialValues,
+                isEnabled,
+                settings,
+                code,
+              );
               if (err) {
                 showNotification({ type: "error", title: "Thiếu thông tin", message: err });
                 return;
@@ -376,13 +417,16 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
                   showNotification({
                     type: "error",
                     title: "Không có quyền",
-                    message: "Chỉ Club Manager mới có quyền cập nhật cấu hình thanh toán.",
+                    message:
+                      "Chỉ Club Manager mới có quyền cập nhật cấu hình thanh toán.",
                   });
                   return;
                 }
                 const msg =
-                  (err as { data?: { message?: string; error?: string } })?.data?.message ??
-                  (err as { data?: { message?: string; error?: string } })?.data?.error ??
+                  (err as { data?: { message?: string; error?: string } })?.data
+                    ?.message ??
+                  (err as { data?: { message?: string; error?: string } })?.data
+                    ?.error ??
                   (err as Error)?.message ??
                   "Không thể lưu cấu hình thanh toán.";
                 showNotification({ type: "error", title: "Lỗi", message: String(msg) });
@@ -405,14 +449,19 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
                 className={t.input}
                 value={selectValue}
                 onChange={(e) => handleProviderSelectChange(e.target.value)}
-                disabled={isSaving || isLoadingSettings || providerOptions.length === 0 || schemaUnsupported}
+                disabled={
+                  isSaving ||
+                  isLoadingSettings ||
+                  providerOptions.length === 0 ||
+                  schemaUnsupported
+                }
               >
                 {providerOptions.length === 0 ? (
                   <option value="PAYOS">PAYOS</option>
                 ) : (
                   providerOptions.map((p) => (
                     <option key={p.code} value={p.code}>
-                      {p.labelVi} 
+                      {p.labelVi}
                     </option>
                   ))
                 )}
@@ -431,7 +480,10 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
                   <label className={`block ${t.type.label} mb-1.5`} htmlFor={id}>
                     {field.labelVi}
                     {field.requiredWhenEnabled ? (
-                      <span className="text-red-600 dark:text-red-400 font-normal"> *</span>
+                      <span className="text-red-600 dark:text-red-400 font-normal">
+                        {" "}
+                        *
+                      </span>
                     ) : null}
                   </label>
                   <input
@@ -452,7 +504,9 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
                     disabled={isSaving || schemaUnsupported}
                   />
                   {field.helpTextVi?.trim() ? (
-                    <p className={`mt-1 text-xs ${t.type.muted} whitespace-pre-line`}>{field.helpTextVi.trim()}</p>
+                    <p className={`mt-1 text-xs ${t.type.muted} whitespace-pre-line`}>
+                      {field.helpTextVi.trim()}
+                    </p>
                   ) : null}
                 </div>
               );
@@ -477,7 +531,8 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
               <p className={t.type.muted}>
                 {isLoadingSettings ? (
                   <span className="inline-flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Đang tải cấu hình...
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Đang
+                    tải cấu hình...
                   </span>
                 ) : settings?.updatedAtUtc ? (
                   <>Cập nhật lần cuối: {settings.updatedAtUtc}</>
@@ -488,7 +543,11 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
                 className={`${t.btn.cta} inline-flex items-center gap-2`}
                 disabled={isSaving || schemaUnsupported}
               >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Save className="w-4 h-4" aria-hidden />}
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                ) : (
+                  <Save className="w-4 h-4" aria-hidden />
+                )}
                 Lưu
               </button>
             </div>
@@ -498,3 +557,4 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
     </section>
   );
 }
+

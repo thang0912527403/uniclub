@@ -64,7 +64,14 @@ export default function PayosReturnPage() {
   const [phase, setPhase] = useState<PollPhase>('polling');
   const [message, setMessage] = useState<string | null>(null);
 
-  const orderCode = useMemo(() => parsePositiveInt(searchParams.get('orderCode')), [searchParams]);
+  const orderCode = useMemo(() => {
+    return parsePositiveInt(
+      searchParams.get("orderCode") ??
+        searchParams.get("code") ??
+        searchParams.get("order_code") ??
+        searchParams.get("transactionId"),
+    );
+  }, [searchParams]);
   const payosUrlPaid = useMemo(
     () => String(searchParams.get('status') ?? '').toUpperCase() === 'PAID',
     [searchParams],

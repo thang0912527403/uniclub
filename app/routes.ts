@@ -37,36 +37,37 @@ export default [
     route("dashboard", "routes/dashboard.tsx"),
     route("dashboard/reports", "routes/dashboard.reports.tsx"),
     route("dashboard/analytics", "routes/dashboard.analytics.tsx"),
-    route("profile", "routes/user_profile.tsx"),
+    route("profile/:userId?", "routes/user_profile.tsx"),
     route("auth/change-password", "routes/auth/change-password.tsx"),
-    route("my-applications", "routes/my-applications.tsx"),
 
     // User management
     route("users", "routes/users.tsx"),
+    route("members/history", "routes/members-history.tsx"),
 
     // Club management
     route("clubs", "routes/clubs/clubs.tsx"),
-    route("clubs/funds/detail", "routes/clubs/clubs.funds.detail.tsx"),
-    route("clubs/:id", "routes/clubs/clubs.$id.tsx"),
+    route("club/info", "routes/clubs/clubs.$id.tsx"),
     route("clubs/create", "routes/clubs/clubs.create.tsx"),
-    route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
-    route("clubs/:id/organization", "routes/clubs/clubs.$id.structure.tsx"),
-    route("clubs/:id/payos", "routes/clubs/clubs.$id.payos.tsx"),
-    route("clubs/:clubId/members", "routes/clubs/clubmembers.tsx"),
-    route("clubs/:clubId/members/:memberId/roles", "routes/clubs/clubmembers.role.tsx"),
+    route("club/edit", "routes/clubs/clubs.edit.$id.tsx"),
+    route("club/organization", "routes/clubs/clubs.$id.structure.tsx"),
+    route("clubs/:id/funds/:fundId", "routes/clubs/clubs.$id.funds.$fundId.tsx"),
+    route("club/members", "routes/clubs/clubmembers.tsx"),
+    route("club/members/:memberId/roles", "routes/clubs/clubmembers.role.tsx"),
+    route(
+      "club/notifications/send",
+      "routes/clubs/clubs.$id.notifications.send.tsx",
+    ),
     route("club-roles", "routes/club-roles.tsx"),
     route("club-roles/members", "routes/club-roles.members.tsx"),
     route("manage-clubs", "routes/my-clubs.tsx"),
-    route("application-form/:formId?", "routes/question.tsx"),
+    route("campaign/:formId?/application-form", "routes/question.tsx"),
+
+    route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
+    route("club/post", "routes/clubs/clubpost.tsx"),
     // Department
     route("department", "routes/department.tsx"),
     route("department/create", "routes/department.create.tsx"),
     route("department/:id", "routes/department.member.tsx"),
-
-    // Club content management
-    route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
-    route("club/posts", "routes/clubposts/clubpost.tsx"),
-    route("club/posts/:id", "routes/clubposts/clubpost.$id.tsx"),
 
     // Recruitment & Applications
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
@@ -80,6 +81,9 @@ export default [
     route("interview/schedule", "routes/interview-schedule.tsx"),
     route("interview/room/:roomCode?", "routes/interview-room.tsx"),
     route("interview/comparison", "routes/interview-comparison.tsx"),
+
+    // General Meeting Room (WebRTC)
+    route("meeting-room/:roomCode?", "routes/meeting-room.tsx"),
 
     // Events
     route("events", "routes/events.tsx"),
@@ -95,8 +99,6 @@ export default [
     route("funds/transactions", "routes/funds.transactions.tsx"),
     route("funds/reports", "routes/funds.reports.tsx"),
     route("funds/payos", "routes/funds.payos.tsx"),
-
-    // Meeting (WebRTC)
-    route("meeting/:roomId?", "routes/meeting.tsx"),
+    route("funds/:fundId", "routes/funds.$fundId.tsx"),
   ]),
 ] satisfies RouteConfig;

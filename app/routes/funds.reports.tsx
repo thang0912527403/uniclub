@@ -9,6 +9,7 @@ import { useNotification } from '~/components/Notification';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useFundsClubSelection } from '~/hooks/useFundsClubSelection';
+import { useClubRole } from '~/hooks/useClubRole';
 import {
   useGetFundCapabilitiesQuery,
   useGetFundReportSummaryQuery,
@@ -172,6 +173,7 @@ export default function FundsReportsPage() {
     isLoadingUserMemberships,
     currentClubLabel,
   } = useFundsClubSelection();
+  const { can } = useClubRole();
 
   const [draftFrom, setDraftFrom] = useState('');
   const [draftTo, setDraftTo] = useState('');
@@ -208,7 +210,7 @@ export default function FundsReportsPage() {
       : undefined;
   const capsForbidden = capsIsError && capsErrorStatus === 403;
   const capsOtherError = capsIsError && capsErrorStatus !== 403;
-  const hasViewFinancePolicy = caps?.hasViewFinancePolicy ?? false;
+  const hasViewFinancePolicy = isAdmin || can('viewfinance', clubId);
 
   const { fromUtc, toUtc } = useMemo(() => {
     if (!appliedFrom && !appliedTo) return { fromUtc: undefined as string | undefined, toUtc: undefined as string | undefined };

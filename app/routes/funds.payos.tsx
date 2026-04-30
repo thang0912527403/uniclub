@@ -4,52 +4,43 @@ import { Sidebar } from "~/components/Sidebar";
 import { HeaderBar } from "~/components/HeaderBar";
 import { useSidebarToggle } from "~/hooks/useSidebarToggle";
 import { useTheme } from "~/hooks/useTheme";
-import { useCurrentUser } from "~/hooks/useCurrentUser";
-import { useClubRole, isManagerRole } from "~/hooks/useClubRole";
+import { useClubRole } from "~/hooks/useClubRole";
 import { useGetClubByIdQuery, useGetFundCapabilitiesQuery } from "~/cores/api";
-import { PayOSConnectPanel } from "~/modules/funds/components/PayOSConnectPanel";
+import { PayOSConnectPanel } from "../modules/funds/components/PayOSConnectPanel";
 import { fundTokens as t } from "./funds.design-tokens";
 import { getClubId } from "~/utils/auth";
 
 export default function FundsPayosPage() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isDark } = useTheme();
-  const { isAdmin } = useClubRole();
-  const { userId } = useCurrentUser();
+  const { isAdmin, can } = useClubRole();
 
   const bgClass = isDark ? "bg-[#0f1729]" : "bg-slate-50";
   const hasToken = !!Cookies.get("accessToken");
   const clubId = getClubId();
 
-  const { data: club } = useGetClubByIdQuery(clubId, { skip: !hasToken || clubId < 1 });
+  const { data: club } = useGetClubByIdQuery(clubId, {
+    skip: !hasToken || clubId < 1,
+  });
 
-  const { data: caps } = useGetFundCapabilitiesQuery(
-    { clubId, userId: userId || '' },
-    {
-      skip: !hasToken || clubId < 1 || !userId,
-      refetchOnFocus: true,
-      refetchOnMountOrArgChange: true,
-    },
-  );
+  const { data: caps } = useGetFundCapabilitiesQuery(clubId, {
+    skip: !hasToken || clubId < 1,
+    refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
+  });
 
   const canManagePayos = useMemo(() => {
     if (isAdmin) return true;
-    if (caps?.canManageOnlinePaymentSettings === true) return true;
-    return (
-      (caps?.clubRoleLevel === 1 || isManagerRole(caps?.clubRoleName)) &&
-      (caps?.hasEditFinancePolicy ?? false)
-    );
-  }, [
-    isAdmin,
-    caps?.canManageOnlinePaymentSettings,
-    caps?.clubRoleLevel,
-    caps?.clubRoleName,
-    caps?.hasEditFinancePolicy,
-  ]);
+    return can("editfinance", clubId);
+  }, [isAdmin, can, clubId]);
 
   return (
     <div className="min-h-screen">
-      <Sidebar currentPath="/funds/payos" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+      <Sidebar
+        currentPath="/funds/payos"
+        isOpen={isSidebarOpen}
+        onClose={toggleSidebar}
+      />
       <HeaderBar
         title="Thanh toán online"
         breadcrumb="Tài chính / Quản lý quỹ / Thanh toán online"

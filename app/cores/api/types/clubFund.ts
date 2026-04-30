@@ -1,9 +1,5 @@
 export type ClubFundStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
-export type FundClosedReasonCode = 'EXPIRED' | 'MANAGER_CLOSED';
-
-export type FundLifecycleFilter = 'ALL' | 'OPEN' | 'CLOSED' | 'EXPIRED' | 'MANAGER_CLOSED';
-
 export interface PagedResult<T> {
   items: T[];
   pageNumber: number;
@@ -18,9 +14,6 @@ export interface ClubFund {
   fundId: number;
   clubId: number;
   fundName?: string;
-  fundTypeId?: number | null;
-  fundTypeName?: string | null;
-  goalAmount?: number | null;
   currentBalance?: number;
   totalAmount?: number;
   balance?: number;
@@ -34,12 +27,6 @@ export interface ClubFund {
   cannotContributeReasonVi?: string | null;
   rejectionReasonVi?: string | null;
   expiresAtUtcNoteVi?: string | null;
-  /** Quỹ đã “đóng” theo lifecycle (hết hạn nộp hoặc soft-delete). */
-  isClosed?: boolean;
-  /** Quỹ soft-delete; chỉ có trong list/chi tiết khi user đủ quyền (BE). */
-  isDeleted?: boolean;
-  closedReasonCode?: FundClosedReasonCode | null;
-  lifecycleStatusVi?: string | null;
 }
 
 export type MyFundsPagedResult = PagedResult<ClubFund> & {
@@ -63,10 +50,7 @@ export interface CreateFundRequestDto {
 }
 
 export type FundSidebarMenuId = 'overview' | 'transactions' | 'reports' | 'settings';
-/** Trạng thái workflow trên API (không gồm “Đã đóng” lifecycle). */
-export type FundListWorkflowStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
-/** Bộ lọc UI: workflow + “Đã đóng” (map sang query `lifecycle=CLOSED`). */
-export type FundListStatus = FundListWorkflowStatus | 'CLOSED';
+export type FundListStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
 export type FundListSort = 'NEWEST' | 'OLDEST' | 'NAME_ASC' | 'NAME_DESC';
 export type FundMineType = 'ALL' | 'CREATED' | 'RESPONSIBLE';
 
@@ -82,16 +66,9 @@ export interface ClubFundCapabilities {
   canContribute: boolean;
   canCreateFund: boolean;
   canApproveOrRejectFundEntity: boolean;
-  canManageOnlinePaymentSettings: boolean;
-  canRecordCashContributions: boolean;
-  canProcessClubRefunds: boolean;
   hasViewFinancePolicy: boolean;
   hasCreateFinancePolicy: boolean;
   hasEditFinancePolicy: boolean;
-  hasDeleteFinancePolicy: boolean;
-  canSoftDeleteFund: boolean;
-  /** Xem cả quỹ soft-deleted trong list/chi tiết (manager + editfinance / admin). */
-  canViewSoftDeletedFunds: boolean;
   clubRoleName?: string | null;
   clubRoleLevel?: number | null;
   isActiveClubMember: boolean;
@@ -149,64 +126,6 @@ export interface GetMyFundsParams {
   pageSize?: number;
 }
 
-export type FundRefundStatus = 'PENDING' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
-
-export interface FundRefundRequestResponseDto {
-  refundRequestId: number;
-  clubId: number;
-  fundId: number;
-  originalTransactionId: number;
-  requestedBy: string;
-  amount: number;
-  reason?: string | null;
-  bankName: string;
-  bankAccountNumber: string;
-  accountHolderName: string;
-  status: FundRefundStatus | string;
-  createdAtUtc: string;
-  updatedAtUtc: string;
-  completedAtUtc?: string | null;
-  completedBy?: string | null;
-  rejectedAtUtc?: string | null;
-  rejectedBy?: string | null;
-  rejectionReason?: string | null;
-  transferReference?: string | null;
-  managerNote?: string | null;
-  fundName?: string | null;
-}
-
-export interface CreateFundRefundRequestDto {
-  originalTransactionId: number;
-  amount: number;
-  reason?: string;
-  bankName: string;
-  bankAccountNumber: string;
-  accountHolderName: string;
-}
-
-export interface CompleteFundRefundRequestDto {
-  transferReference?: string;
-  managerNote?: string;
-}
-
-export interface RejectFundRefundRequestDto {
-  rejectionReason: string;
-}
-
-export type FundRefundQueueStatusFilter =
-  | 'PENDING'
-  | 'COMPLETED'
-  | 'REJECTED'
-  | 'CANCELLED'
-  | 'ALL';
-
-export interface GetClubFundRefundRequestsParams {
-  clubId: number;
-  page?: number;
-  pageSize?: number;
-  status?: FundRefundQueueStatusFilter;
-}
-
 export interface FundHistoryItem {
   transactionId?: number;
   id?: number;
@@ -229,10 +148,6 @@ export interface FundHistoryItem {
   senderName?: string;
   createdByName?: string;
   isMemberContribution?: boolean;
-  transactionType?: string;
-  refundForTransactionId?: number;
-  contributionSource?: string | null;
-  paymentProvider?: string | null;
 }
 
 export interface FundHistoryResponse {
@@ -245,16 +160,11 @@ export interface FundHistoryResponse {
   hasNextPage: boolean;
 }
 
-/** Phản hồi DELETE `/clubs/{clubId}/funds/{fundId}` (đóng quỹ — xóa mềm phía server). */
-export interface SoftDeleteFundResponse {
-  message?: string;
-}
-
 export interface CreateFundDto {
   fundName: string;
+  fundTypeId: number;
   description?: string;
   expiresAt?: string;
-  fundTypeId: number;
   goalAmount?: number;
 }
 
@@ -275,34 +185,6 @@ export interface ContributeToFundResponse {
   message?: string;
 }
 
-export interface RecordCashContributionRequest {
-  fundId: number;
-  contributorUserId: string;
-  amount: number;
-  note: string;
-  categoryId?: number;
-  contributedAtUtc?: string;
-}
-
-export interface RecordCashContributionResponse {
-  transactionId: number;
-  fundId: number;
-  amount: number;
-  status: string;
-  contributionSource: string;
-  newCurrentBalance: number;
-  contributorUserId: string;
-  recordedByUserId: string;
-}
-
-export interface CreateManagerRefundDto {
-  originalTransactionId: number;
-  amount: number;
-  reason?: string;
-  transferReference?: string;
-  managerNote?: string;
-}
-
 export interface FundContributeTransactionStatus {
   transactionId: number;
   fundId: number;
@@ -321,9 +203,9 @@ export interface PayosFundContributionReturn {
   message?: string;
 }
 
-export type PaymentCredentialInputType = 'text' | 'password';
+export type PaymentCredentialInputType = "text" | "password";
 
-export type PaymentCredentialFieldName = 'clientId' | 'apiKey' | 'checksumKey';
+export type PaymentCredentialFieldName = "clientId" | "apiKey" | "checksumKey";
 
 export interface PaymentCredentialFieldSchema {
   name: PaymentCredentialFieldName;
@@ -374,30 +256,6 @@ export interface UpdateClubPayosSettingsDto {
 export interface FundTypeDto {
   fundTypeId: number;
   name: string;
-  isActive: boolean;
-  sortOrder: number;
-}
-
-export interface FundMemberContributionMemberDto {
-  userId: string;
-  fullName: string;
-  email: string;
-  status: string;
-  paidAmount: number;
-  requiredAmount?: number | null;
-  remainingAmount?: number | null;
-  isPaidEnough?: boolean | null;
-}
-
-export interface FundMemberContributionsDto {
-  clubId: number;
-  fundId: number;
-  fundName: string;
-  fundTypeId?: number | null;
-  fundTypeName?: string | null;
-  goalAmount?: number | null;
-  activeMemberCount: number;
-  requiredPerMember?: number | null;
-  totalApprovedMemberContributions: number;
-  members: FundMemberContributionMemberDto[];
+  description?: string | null;
+  isActive?: boolean;
 }
