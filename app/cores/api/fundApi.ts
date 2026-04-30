@@ -1,5 +1,6 @@
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { baseApi } from "./baseApi";
+import { normalizeClubFundCapabilitiesFromApi } from "~/modules/funds/utils/normalizeClubFundCapabilities";
 import {
   type ApiResponse,
   type Club,
@@ -31,6 +32,16 @@ import {
   type PaymentCredentialFieldSchema,
   type UpdateClubPayosSettingsDto,
   type ApproveFundDto,
+  type CreateFundRefundRequestDto,
+  type CompleteFundRefundRequestDto,
+  type CreateManagerRefundDto,
+  type FundMemberContributionsDto,
+  type FundRefundRequestResponseDto,
+  type GetClubFundRefundRequestsParams,
+  type RecordCashContributionRequest,
+  type RecordCashContributionResponse,
+  type RejectFundRefundRequestDto,
+  type SoftDeleteFundResponse,
 } from "./types";
 
 function normalizePagedResult<T>(raw: unknown): PagedResult<T> {
@@ -94,7 +105,7 @@ function normalizePagedResult<T>(raw: unknown): PagedResult<T> {
 }
 
 type ClubFundScoped = { clubId: number };
-type FundScoped = { clubId: number; fundId: string };
+type FundScoped = { clubId: number; fundId: string | number };
 type FundLocationResponse = { fundId: number; clubId: number };
 
 function isGuidLike(v: string): boolean {
@@ -102,6 +113,101 @@ function isGuidLike(v: string): boolean {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
     s,
   );
+}
+
+function normalizeRecordCashContributionResponse(
+  raw: RecordCashContributionResponse | Record<string, unknown> | null | undefined,
+): RecordCashContributionResponse {
+  const d =
+    (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const n = (a: string, b: string) => {
+    const v = d[a] ?? d[b];
+    const x = typeof v === "number" ? v : Number(v);
+    return Number.isFinite(x) ? x : 0;
+  };
+  const s = (a: string, b: string) => {
+    const v = d[a] ?? d[b];
+    return typeof v === "string" ? v : v != null ? String(v) : "";
+  };
+  return {
+    transactionId: n("transactionId", "TransactionId"),
+    fundId: n("fundId", "FundId"),
+    amount: n("amount", "Amount"),
+    status: s("status", "Status"),
+    contributionSource: s("contributionSource", "ContributionSource"),
+    newCurrentBalance: n("newCurrentBalance", "NewCurrentBalance"),
+    contributorUserId: s("contributorUserId", "ContributorUserId"),
+    recordedByUserId: s("recordedByUserId", "RecordedByUserId"),
+  };
+}
+
+function parseSoftDeleteFundResponse(raw: unknown): SoftDeleteFundResponse {
+  if (!raw || typeof raw !== "object") return {};
+  const r = raw as Record<string, unknown>;
+  const data = r.data ?? r.Data;
+  if (data && typeof data === "object") {
+    const d = data as Record<string, unknown>;
+    const m = d.message ?? d.Message;
+    if (typeof m === "string" && m.trim()) return { message: m.trim() };
+  }
+  const m = r.message ?? r.Message;
+  if (typeof m === "string" && m.trim()) return { message: m.trim() };
+  return {};
+}
+
+function normalizeFundRefundRequest(raw: unknown): FundRefundRequestResponseDto {
+  if (raw == null || typeof raw !== "object") {
+    return {
+      refundRequestId: 0,
+      clubId: 0,
+      fundId: 0,
+      originalTransactionId: 0,
+      requestedBy: "",
+      amount: 0,
+      bankName: "",
+      bankAccountNumber: "",
+      accountHolderName: "",
+      status: "PENDING",
+      createdAtUtc: "",
+      updatedAtUtc: "",
+    };
+  }
+  const d = raw as Record<string, unknown>;
+  const num = (v: unknown): number => {
+    if (v == null || v === "") return 0;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const str = (v: unknown): string => (v == null ? "" : String(v).trim());
+  const optStr = (v: unknown): string | null => {
+    const s = str(v);
+    return s || null;
+  };
+  return {
+    refundRequestId: num(d.refundRequestId ?? d.RefundRequestId),
+    clubId: num(d.clubId ?? d.ClubId),
+    fundId: num(d.fundId ?? d.FundId),
+    originalTransactionId: num(
+      d.originalTransactionId ?? d.OriginalTransactionId,
+    ),
+    requestedBy: str(d.requestedBy ?? d.RequestedBy),
+    amount: num(d.amount ?? d.Amount),
+    reason: optStr(d.reason ?? d.Reason),
+    bankName: str(d.bankName ?? d.BankName),
+    bankAccountNumber: str(d.bankAccountNumber ?? d.BankAccountNumber),
+    accountHolderName: str(d.accountHolderName ?? d.AccountHolderName),
+    status: str(d.status ?? d.Status) || "PENDING",
+    createdAtUtc: str(d.createdAtUtc ?? d.CreatedAtUtc),
+    updatedAtUtc: str(d.updatedAtUtc ?? d.UpdatedAtUtc),
+    completedAtUtc: optStr(d.completedAtUtc ?? d.CompletedAtUtc),
+    completedBy: optStr(d.completedBy ?? d.CompletedBy),
+    rejectedAtUtc: optStr(d.rejectedAtUtc ?? d.RejectedAtUtc),
+    rejectedBy: optStr(d.rejectedBy ?? d.RejectedBy),
+    rejectionReason: optStr(d.rejectionReason ?? d.RejectionReason),
+    transferReference: optStr(d.transferReference ?? d.TransferReference),
+    managerNote: optStr(d.managerNote ?? d.ManagerNote),
+    fundName: optStr(d.fundName ?? d.FundName),
+  };
 }
 
 const FUND_SIDEBAR_MENU_IDS: readonly FundSidebarMenuId[] = [
@@ -349,6 +455,11 @@ function normalizeClubFund(raw: unknown): ClubFund {
       "cannotContributeReasonVi",
       "CannotContributeReasonVi",
     ),
+    lifecycleStatusVi: pickOptionalViString(
+      d,
+      "lifecycleStatusVi",
+      "LifecycleStatusVi",
+    ),
     rejectionReasonVi: pickOptionalViString(d, "rejectionReasonVi", "RejectionReasonVi"),
     expiresAtUtcNoteVi: pickOptionalViString(d, "expiresAtUtcNoteVi", "ExpiresAtUtcNoteVi"),
   };
@@ -420,28 +531,8 @@ export const fundApi = baseApi.injectEndpoints({
 
     getFundCapabilities: builder.query<ClubFundCapabilities, number>({
       query: (clubId) => `/clubs/${clubId}/funds/capabilities`,
-      transformResponse: (response: ApiResponse<ClubFundCapabilities>) => {
-        const d = response.data;
-        const rawCap = d as unknown as Record<string, unknown> | undefined;
-        return {
-          canViewFunds: !!d?.canViewFunds,
-          canContribute: !!d?.canContribute,
-          canCreateFund: !!d?.canCreateFund,
-          canApproveOrRejectFundEntity: !!d?.canApproveOrRejectFundEntity,
-          hasViewFinancePolicy: !!d?.hasViewFinancePolicy,
-          hasCreateFinancePolicy: !!d?.hasCreateFinancePolicy,
-          hasEditFinancePolicy: !!d?.hasEditFinancePolicy,
-          clubRoleName: d?.clubRoleName ?? null,
-          clubRoleLevel: d?.clubRoleLevel ?? null,
-          isActiveClubMember: !!d?.isActiveClubMember,
-          menuItems: normalizeFundMenuItemsFromApi(
-            rawCap ? (rawCap.menuItems ?? rawCap.MenuItems) : undefined,
-          ),
-          financeAccessHintVi: rawCap
-            ? pickOptionalViString(rawCap, "financeAccessHintVi", "FinanceAccessHintVi")
-            : null,
-        };
-      },
+      transformResponse: (response: ApiResponse<ClubFundCapabilities>) =>
+        normalizeClubFundCapabilitiesFromApi(response),
       providesTags: (_result, _error, clubId) => [
         { type: "ClubFund", id: `capabilities-${clubId}` },
       ],
@@ -793,6 +884,199 @@ export const fundApi = baseApi.injectEndpoints({
       ],
     }),
 
+    getFundMemberContributions: builder.query<
+      FundMemberContributionsDto,
+      { clubId: number; fundId: number }
+    >({
+      query: ({ clubId, fundId }) =>
+        `/clubs/${clubId}/funds/${fundId}/member-contributions`,
+      transformResponse: (response: ApiResponse<FundMemberContributionsDto>) =>
+        response.data as FundMemberContributionsDto,
+      providesTags: (_result, _error, { clubId, fundId }) => [
+        { type: "ClubFund", id: `member-contrib-${clubId}-${fundId}` },
+      ],
+    }),
+
+    softDeleteFund: builder.mutation<SoftDeleteFundResponse, FundScoped>({
+      query: ({ clubId, fundId }) => ({
+        url: `/clubs/${clubId}/funds/${fundId}`,
+        method: "DELETE",
+      }),
+      transformResponse: (response: unknown) => parseSoftDeleteFundResponse(response),
+      invalidatesTags: (_result, _error, { clubId, fundId }) => [
+        { type: "ClubFund", id: String(fundId) },
+        { type: "ClubFund", id: `capabilities-${clubId}` },
+        { type: "ClubFund", id: `club-${clubId}` },
+        { type: "ClubFund", id: `my-funds-${clubId}` },
+        { type: "ClubFund", id: `member-contrib-${clubId}-${fundId}` },
+        { type: "ClubFund", id: `report-summary-${clubId}` },
+        "ClubFund",
+      ],
+    }),
+
+    recordCashContribution: builder.mutation<
+      RecordCashContributionResponse,
+      { clubId: number; body: RecordCashContributionRequest }
+    >({
+      query: ({ clubId, body }) => ({
+        url: `/clubs/${clubId}/funds/contributions/cash`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<RecordCashContributionResponse>) =>
+        normalizeRecordCashContributionResponse(response.data),
+      invalidatesTags: (_result, _error, { clubId, body }) => [
+        "ClubFund",
+        { type: "ClubFund", id: String(body.fundId) },
+        { type: "ClubFund", id: `capabilities-${clubId}` },
+        { type: "ClubFund", id: `club-tx-${clubId}` },
+        { type: "ClubFund", id: `my-funds-${clubId}` },
+        { type: "ClubFund", id: `club-${clubId}` },
+        { type: "ClubFund", id: `report-summary-${clubId}` },
+      ],
+    }),
+
+    createFundRefundRequest: builder.mutation<
+      FundRefundRequestResponseDto,
+      ClubFundScoped & CreateFundRefundRequestDto
+    >({
+      query: ({ clubId, ...body }) => ({
+        url: `/clubs/${clubId}/funds/refund-requests`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<FundRefundRequestResponseDto>) =>
+        normalizeFundRefundRequest(response.data),
+      invalidatesTags: (_result, _error, { clubId }) => [
+        { type: "ClubFund", id: `refund-mine-${clubId}` },
+        { type: "ClubFund", id: `refund-club-${clubId}` },
+        { type: "ClubFund", id: `club-tx-${clubId}` },
+      ],
+    }),
+
+    getMyFundRefundRequests: builder.query<
+      PagedResult<FundRefundRequestResponseDto>,
+      { clubId: number; page?: number; pageSize?: number }
+    >({
+      query: ({ clubId, page = 1, pageSize = 20 }) => ({
+        url: `/clubs/${clubId}/funds/refund-requests/mine`,
+        params: { page, pageSize },
+      }),
+      transformResponse: (
+        response: ApiResponse<
+          PagedResult<FundRefundRequestResponseDto> | FundRefundRequestResponseDto[]
+        >,
+      ) => {
+        const paged = normalizePagedResult<FundRefundRequestResponseDto>(response.data);
+        return {
+          ...paged,
+          items: paged.items.map((i) => normalizeFundRefundRequest(i)),
+        };
+      },
+      providesTags: (_result, _error, { clubId }) => [
+        { type: "ClubFund", id: `refund-mine-${clubId}` },
+      ],
+    }),
+
+    cancelFundRefundRequest: builder.mutation<
+      FundRefundRequestResponseDto,
+      { clubId: number; refundRequestId: number }
+    >({
+      query: ({ clubId, refundRequestId }) => ({
+        url: `/clubs/${clubId}/funds/refund-requests/${refundRequestId}/cancel`,
+        method: "POST",
+        body: {},
+      }),
+      transformResponse: (response: ApiResponse<FundRefundRequestResponseDto>) =>
+        normalizeFundRefundRequest(response.data),
+      invalidatesTags: (_result, _error, { clubId }) => [
+        { type: "ClubFund", id: `refund-mine-${clubId}` },
+        { type: "ClubFund", id: `refund-club-${clubId}` },
+      ],
+    }),
+
+    getClubFundRefundRequests: builder.query<
+      PagedResult<FundRefundRequestResponseDto>,
+      GetClubFundRefundRequestsParams
+    >({
+      query: ({ clubId, page = 1, pageSize = 20, status }) => {
+        const params: Record<string, string | number> = { page, pageSize };
+        if (status) params.status = status;
+        return {
+          url: `/clubs/${clubId}/funds/refund-requests`,
+          params,
+        };
+      },
+      transformResponse: (
+        response: ApiResponse<
+          PagedResult<FundRefundRequestResponseDto> | FundRefundRequestResponseDto[]
+        >,
+      ) => {
+        const paged = normalizePagedResult<FundRefundRequestResponseDto>(response.data);
+        return {
+          ...paged,
+          items: paged.items.map((i) => normalizeFundRefundRequest(i)),
+        };
+      },
+      providesTags: (_result, _error, { clubId }) => [
+        { type: "ClubFund", id: `refund-club-${clubId}` },
+      ],
+    }),
+
+    completeFundRefundRequest: builder.mutation<
+      FundRefundRequestResponseDto,
+      { clubId: number; refundRequestId: number; body?: CompleteFundRefundRequestDto }
+    >({
+      query: ({ clubId, refundRequestId, body }) => ({
+        url: `/clubs/${clubId}/funds/refund-requests/${refundRequestId}/complete`,
+        method: "POST",
+        body: body ?? {},
+      }),
+      transformResponse: (response: ApiResponse<FundRefundRequestResponseDto>) =>
+        normalizeFundRefundRequest(response.data),
+      invalidatesTags: (_result, _error, { clubId }) => [
+        { type: "ClubFund", id: `refund-mine-${clubId}` },
+        { type: "ClubFund", id: `refund-club-${clubId}` },
+        { type: "ClubFund", id: `club-tx-${clubId}` },
+        { type: "ClubFund", id: `club-${clubId}` },
+      ],
+    }),
+
+    rejectFundRefundRequest: builder.mutation<
+      FundRefundRequestResponseDto,
+      { clubId: number; refundRequestId: number; body: RejectFundRefundRequestDto }
+    >({
+      query: ({ clubId, refundRequestId, body }) => ({
+        url: `/clubs/${clubId}/funds/refund-requests/${refundRequestId}/reject`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<FundRefundRequestResponseDto>) =>
+        normalizeFundRefundRequest(response.data),
+      invalidatesTags: (_result, _error, { clubId }) => [
+        { type: "ClubFund", id: `refund-mine-${clubId}` },
+        { type: "ClubFund", id: `refund-club-${clubId}` },
+      ],
+    }),
+
+    createManagerRefund: builder.mutation<
+      FundHistoryItem,
+      { clubId: number; fundId: number; body: CreateManagerRefundDto }
+    >({
+      query: ({ clubId, fundId, body }) => ({
+        url: `/clubs/${clubId}/funds/${fundId}/manager-refunds`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<FundHistoryItem>) => response.data,
+      invalidatesTags: (_result, _error, { clubId, fundId }) => [
+        { type: "ClubFund", id: String(fundId) },
+        { type: "ClubFund", id: `club-${clubId}` },
+        { type: "ClubFund", id: `club-tx-${clubId}` },
+        { type: "ClubFund", id: `member-contrib-${clubId}-${fundId}` },
+      ],
+    }),
+
     getFundLocation: builder.query<FundLocationResponse, string>({
       query: (fundIdOrPublicId) => `/funds/${fundIdOrPublicId}/location`,
       transformResponse: (response: ApiResponse<FundLocationResponse>) =>
@@ -810,17 +1094,27 @@ export const {
   useGetFundsByClubQuery,
   useGetMyFundsQuery,
   useCreateFundMutation,
+  useGetFundMemberContributionsQuery,
+  useSoftDeleteFundMutation,
   useGetMyClubsForFundsQuery,
   useGetMyClubsForFundsV2Query,
   useGetFundHistoryQuery,
   useGetClubFundTransactionsQuery,
   useApproveFundMutation,
   useContributeToFundMutation,
+  useRecordCashContributionMutation,
   useLazyGetContributeTransactionStatusQuery,
   useLazyGetPayosFundContributionReturnQuery,
   useGetPayosGuideQuery,
   useGetPayosSettingsQuery,
   useUpdatePayosSettingsMutation,
+  useCreateFundRefundRequestMutation,
+  useGetMyFundRefundRequestsQuery,
+  useCancelFundRefundRequestMutation,
+  useGetClubFundRefundRequestsQuery,
+  useCompleteFundRefundRequestMutation,
+  useRejectFundRefundRequestMutation,
+  useCreateManagerRefundMutation,
   useGetFundLocationQuery,
 } = fundApi;
 

@@ -25,5 +25,13 @@ export function useCurrentUser() {
   const isAdmin = user?.role === 'Admin';
   const role = user?.role ?? null;
 
-  return { user, role, isAdmin, isLoading: userId ? isLoading : false, isError: userId ? isError : false, userId, isAuth };
+  return {
+    user,
+    role,
+    isAdmin,
+    isLoading: userId ? isLoading : false,
+    isError: userId ? isError : false,
+    userId,
+    isAuth,
+  };
 }

@@ -22,7 +22,7 @@ import { useNotification } from '~/components/Notification';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
-import { isManagerRole } from '~/hooks/useClubRole';
+import { useClubRole } from '~/hooks/useClubRole';
 import type { FundHistoryItem, ClubFund, FundHistoryScopeFilter, FundHistoryStatusFilter } from '~/cores/api';
 import { fundTokens as t } from '../funds.design-tokens';
 import { savePayosPendingContribute } from '~/utils/payosContributeSession';
@@ -220,7 +220,7 @@ export default function FundDetailPageByClub() {
     isError: capsIsError,
     error: capsError,
   } = useGetFundCapabilitiesQuery(
-    { clubId, userId: userId || '' },
+    clubId,
     {
       skip: isInvalidParams || !userId,
       refetchOnFocus: true,
@@ -237,8 +237,10 @@ export default function FundDetailPageByClub() {
   const canContribute = caps?.canContribute ?? false;
   const canApproveOrRejectFundEntity = caps?.canApproveOrRejectFundEntity ?? false;
 
-  const canUseFullFundHistoryFilters = isAdmin || isManagerRole(caps?.clubRoleName);
-  const canRecordCashContribution = canShowRecordCashContributionForm(isAdmin, caps);
+  const { can } = useClubRole();
+  const canUseFullFundHistoryFilters = isAdmin || can('viewfinance', clubId) || can('editfinance', clubId);
+  const canEditFinancePolicy = can('editfinance', clubId) || can('deletefinance', clubId);
+  const canRecordCashContribution = canShowRecordCashContributionForm(isAdmin, caps, canEditFinancePolicy);
 
   const capsBlocked =
     isInvalidParams || capsLoading || capsForbidden || capsOtherError;
@@ -254,8 +256,13 @@ export default function FundDetailPageByClub() {
 
   const memberContribSkippedByPolicy = useMemo(() => {
     if (!fund || isLoadingFund) return false;
-    if (fund.isDeleted === true) return true;
-    if (fund.isClosed === true && fund.closedReasonCode === 'MANAGER_CLOSED') return true;
+    const lifecycle = fund as ClubFund & {
+      isDeleted?: boolean;
+      isClosed?: boolean;
+      closedReasonCode?: string | null;
+    };
+    if (lifecycle.isDeleted === true) return true;
+    if (lifecycle.isClosed === true && lifecycle.closedReasonCode === 'MANAGER_CLOSED') return true;
     return false;
   }, [fund, isLoadingFund]);
 
@@ -923,49 +930,7 @@ export default function FundDetailPageByClub() {
                           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
                             <p className={`text-xs ${t.type.muted}`}>Tổng đã đóng</p>
                             <p className="mt-1 text-lg font-semibold">
-                              {memberContrib.totalApprovedMemberContributions.toLocaleString('vi-VN')} ₫
-                            </p>
-                            <div className="mt-2">
-                              <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                <div
-                                  className="h-full bg-violet-600"
-                                  style={{
-                                    width: `${Math.min(
-                                      100,
-                                      Math.round(
-                                        (memberContrib.totalApprovedMemberContributions /
-                                          Math.max(1, memberContrib.goalAmount ?? 0)) *
-                                          100,
-                                      ),
-                                    )}%`,
-                                  }}
-                                />
-                              </div>
-                              <p className={`mt-1 text-xs ${t.type.muted}`}>
-                                {Math.min(
-                                  100,
-                                  Math.round(
-                                    (memberContrib.totalApprovedMemberContributions /
-                                      Math.max(1, memberContrib.goalAmount ?? 0)) *
-                                      100,
-                                  ),
-                                )}
-                                %
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                            <p className={`text-xs ${t.type.muted}`}>Thành viên</p>
-                            <p className="mt-1 text-lg font-semibold">{memberContrib.activeMemberCount}</p>
-                          </div>
-                          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                            <p className={`text-xs ${t.type.muted}`}>Số tiền đã đóng</p>
-                            <p className="mt-1 text-lg font-semibold">
-                              {memberContrib.totalApprovedMemberContributions.toLocaleString('vi-VN')} ₫
-                            </p>
+                              {memberContrib.totalContributions.toLocaleString('vi-VN')} ₫                            </p>
                           </div>
                         </div>
                       )}

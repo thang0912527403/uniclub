@@ -3,6 +3,9 @@ import { useExpandedMenu } from "~/hooks/useExpandedMenu";
 import { useEffect, useRef } from "react";
 import { getClubId } from "~/utils/auth";
 import { useTranslation } from "react-i18next";
+import Cookies from "js-cookie";
+import { useGetFundCapabilitiesQuery } from "~/cores/api";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 interface SubMenuItem {
   label: string;
@@ -31,6 +34,14 @@ export function Sidebar({
   const { toggleExpand, isExpanded } = useExpandedMenu();
   const sidebarRef = useRef<HTMLElement>(null);
   const isRestoringRef = useRef(false);
+  const { isAdmin, userId } = useCurrentUser();
+  const hasToken = !!Cookies.get("accessToken");
+  const clubId = Number(getClubId() || 0);
+  const { data: caps } = useGetFundCapabilitiesQuery(clubId, {
+    skip: !hasToken || !userId || clubId < 1,
+  });
+  const canManageOnlinePaymentSettings =
+    !!(isAdmin || caps?.canManageOnlinePaymentSettings === true);
 
   // Restore scroll position
   useEffect(() => {
@@ -183,12 +194,14 @@ export function Sidebar({
       icon: "fa-wallet",
       subItems: [
         { label: t("sidebar.manageFunds.budgetOverview"), url: "/funds" },
-        { label: t("sidebar.manageFunds.myFunds"), url: "/funds/my" },
+        { label: t("sidebar.manageFunds.myFunds"), url: "/funds/my?tab=created" },
         {
           label: t("sidebar.manageFunds.transactions"),
           url: "/funds/reports?tab=transactions",
         },
-        { label: "Thiết lập thanh toán", url: "/funds/payos" },
+        ...(canManageOnlinePaymentSettings
+          ? [{ label: "Thiết lập thanh toán", url: "/funds/payos" }]
+          : []),
       ],
     },
     {

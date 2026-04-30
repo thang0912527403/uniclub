@@ -13,7 +13,7 @@ import { getClubId } from "~/utils/auth";
 export default function FundsPayosPage() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isDark } = useTheme();
-  const { isAdmin, can } = useClubRole();
+  const { isAdmin } = useClubRole();
 
   const bgClass = isDark ? "bg-[#0f1729]" : "bg-slate-50";
   const hasToken = !!Cookies.get("accessToken");
@@ -31,8 +31,8 @@ export default function FundsPayosPage() {
 
   const canManagePayos = useMemo(() => {
     if (isAdmin) return true;
-    return can("editfinance", clubId);
-  }, [isAdmin, can, clubId]);
+    return caps?.canManageOnlinePaymentSettings === true;
+  }, [isAdmin, caps?.canManageOnlinePaymentSettings]);
 
   return (
     <div className="min-h-screen">
@@ -64,6 +64,10 @@ export default function FundsPayosPage() {
           {clubId < 1 ? (
             <section className={`${t.card.base} p-6`} role="alert">
               <p className={t.type.body}>Bạn chưa chọn câu lạc bộ.</p>
+            </section>
+          ) : !canManagePayos ? (
+            <section className={`${t.card.base} p-6`} role="alert">
+              <p className={t.type.body}>Bạn không có quyền xem cấu hình thanh toán của CLB này.</p>
             </section>
           ) : (
             <PayOSConnectPanel clubId={clubId} canManagePayos={canManagePayos} />

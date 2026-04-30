@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { HandCoins, Plus, X } from 'lucide-react';
 import type { ClubFundCapabilities } from '~/cores/api';
-import { isManagerRole } from '~/hooks/useClubRole';
+import { useClubRole } from '~/hooks/useClubRole';
 import { fundTokens as t } from '~/routes/funds.design-tokens';
 import { MemberRequestForm } from './MemberRequestForm';
 import { MyRefundList } from './MyRefundList';
@@ -10,11 +10,12 @@ import { ManagerRefundQueue } from './ManagerRefundQueue';
 export function showMemberRefundRequestForm(
   caps: ClubFundCapabilities | undefined,
   isAdmin: boolean,
+  canEditFinancePolicy: boolean,
 ): boolean {
   if (isAdmin) return false;
   if (caps?.canProcessClubRefunds === true) return false;
   if (caps?.hasEditFinancePolicy) return false;
-  if (isManagerRole(caps?.clubRoleName)) return false;
+  if (canEditFinancePolicy) return false;
   return true;
 }
 
@@ -26,7 +27,9 @@ type MemberPanelProps = {
 };
 
 export function MemberRefundPanel({ clubId, skip, caps, isAdmin }: MemberPanelProps) {
-  const showForm = showMemberRefundRequestForm(caps, isAdmin);
+  const { can } = useClubRole();
+  const canEditFinancePolicy = can('editfinance', clubId) || can('deletefinance', clubId);
+  const showForm = showMemberRefundRequestForm(caps, isAdmin, canEditFinancePolicy);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -107,6 +110,17 @@ export function MemberRefundPanel({ clubId, skip, caps, isAdmin }: MemberPanelPr
   );
 }
 
+type PersonalProps = {
+  clubId: number;
+  skip: boolean;
+  caps: ClubFundCapabilities | undefined;
+  isAdmin: boolean;
+};
+
+export function PersonalRefundSection({ clubId, skip, caps, isAdmin }: PersonalProps) {
+  return <MemberRefundPanel clubId={clubId} skip={skip} caps={caps} isAdmin={isAdmin} />;
+}
+
 type Props = {
   clubId: number;
   skip: boolean;
@@ -115,11 +129,14 @@ type Props = {
 };
 
 export function FundsRefundSection({ clubId, skip, caps, isAdmin }: Props) {
+  const { can } = useClubRole();
+  const canEditFinancePolicy = can('editfinance', clubId) || can('deletefinance', clubId);
   const showManagerQueue =
     isAdmin ||
     caps?.canProcessClubRefunds === true ||
-    caps?.hasEditFinancePolicy === true;
-  const showForm = showMemberRefundRequestForm(caps, isAdmin);
+    caps?.hasEditFinancePolicy === true ||
+    canEditFinancePolicy;
+  const showForm = showMemberRefundRequestForm(caps, isAdmin, canEditFinancePolicy);
 
   return (
     <div className="space-y-6">

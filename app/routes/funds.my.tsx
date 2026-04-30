@@ -5,9 +5,19 @@ import { Banknote, ChevronLeft, ChevronRight, Loader2, Lock, Plus, Search, Users
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { useFundsClubSelection } from '~/hooks/useFundsClubSelection';
-import { useGetFundCapabilitiesQuery, useGetMyFundsQuery } from '~/cores/api';
-import type { ClubFund, FundListSort, FundListStatus } from '~/cores/api';
+import { useClubRole } from '~/hooks/useClubRole';
+import {
+  useGetClubByIdQuery,
+  useGetClubFundTransactionsQuery,
+  useGetFundCapabilitiesQuery,
+  useGetMyFundsQuery,
+} from '~/cores/api';
+import type {
+  ClubFund,
+  FundHistoryItem,
+  FundListSort,
+  FundListStatus,
+} from '~/cores/api';
 import { fundTokens as t } from './funds.design-tokens';
 import {
   FinanceAccessHintBanner,
@@ -22,6 +32,7 @@ import {
   parseFundSort,
   parseFundStatus,
 } from './funds.utils';
+import { PersonalRefundSection } from '~/modules/funds/components/refunds/FundsRefundSection';
 
 function parsePage(v: string | null): number {
   const n = parseInt(v ?? '1', 10);
@@ -91,16 +102,56 @@ const SORT_OPTIONS: Array<{ value: FundListSort; label: string }> = [
 const SEARCH_DEBOUNCE_MS = 300;
 const USE_MOCK_MY_FUNDS = String(import.meta.env.VITE_MOCK_MY_FUNDS ?? '').toLowerCase() === 'true';
 
+type MyFundsTab = 'created' | 'responsible' | 'transactions' | 'refunds';
+const TAB_OPTIONS: Array<{ id: MyFundsTab; label: string }> = [
+  { id: 'created', label: 'Đã tạo' },
+  { id: 'responsible', label: 'Phụ trách' },
+  { id: 'transactions', label: 'Đã nộp & giao dịch' },
+  { id: 'refunds', label: 'Hoàn tiền' },
+];
+
+function parseTab(v: string | null): MyFundsTab {
+  const x = String(v ?? '').trim();
+  if (x === 'responsible' || x === 'transactions' || x === 'refunds') return x;
+  return 'created';
+}
+
+function txWhenLabel(iso: string | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+}
+
 export default function MyFundsPage() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const hasToken = !!Cookies.get('accessToken');
   const [searchParams, setSearchParams] = useSearchParams();
+  const { selectedClubId: clubIdFromCookie, currentClub, isAdmin } = useClubRole();
+  const clubId = Number(clubIdFromCookie ?? 0);
+  const { data: clubById } = useGetClubByIdQuery(clubId, { skip: clubId < 1 });
+  const clubName =
+    String(currentClub?.clubName ?? '').trim() ||
+    String(clubById?.clubName ?? '').trim();
+  const tab = parseTab(searchParams.get('tab'));
   const page = parsePage(searchParams.get('page'));
   const pageSize = parsePageSize(searchParams.get('pageSize'));
   const status = parseFundStatus(searchParams.get('status'));
   const sort = parseFundSort(searchParams.get('sort'));
   const search = searchParams.get('search') ?? '';
   const [searchInput, setSearchInput] = useState(search);
+
+  useEffect(() => {
+    if (searchParams.has('tab')) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', 'created');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!searchParams.has('mineType')) return;
@@ -114,8 +165,7 @@ export default function MyFundsPage() {
     );
   }, [searchParams, setSearchParams]);
 
-  const { clubId, setSelectedClubId, memberClubOptions, clubs, isAdmin, hasAnyClub, isLoadingUserMemberships } =
-    useFundsClubSelection();
+  const hasAnyClub = clubId > 0;
 
   const { data: caps, isLoading: capsLoading, isError: capsIsError, error: capsError } = useGetFundCapabilitiesQuery(clubId, {
     skip: !hasToken || clubId < 1,
@@ -127,6 +177,9 @@ export default function MyFundsPage() {
   const capsForbidden = capsIsError && capsErrorStatus === 403;
   const capsOtherError = capsIsError && capsErrorStatus !== 403;
   const canViewFunds = caps?.canViewFunds ?? false;
+  // "Quỹ của tôi" -> tab Hoàn tiền là yêu cầu hoàn tiền của bản thân, không phải queue quản lý.
+  // Chỉ cần chọn CLB + không bị forbidden/error khi lấy capabilities.
+  const canUseRefundSection = !!(hasToken && clubId > 0) && !capsForbidden && !capsOtherError;
 
   const skipQuery =
     !hasToken ||
@@ -144,14 +197,14 @@ export default function MyFundsPage() {
   } = useGetMyFundsQuery(
     {
       clubId,
-      mineType: 'CREATED',
+      mineType: tab === 'responsible' ? 'RESPONSIBLE' : 'CREATED',
       status,
       search,
       sort,
       page,
       pageSize,
     },
-    { skip: skipQuery },
+    { skip: skipQuery || tab === 'transactions' || tab === 'refunds' },
   );
 
   useEffect(() => {
@@ -189,6 +242,21 @@ export default function MyFundsPage() {
     return `Trang ${myFundsPaged.pageNumber}${myFundsPaged.totalPages > 0 ? ` / ${myFundsPaged.totalPages}` : ''}`;
   }, [myFundsPaged]);
 
+  // Transactions tab (mine scope) – uses club-level transactions API
+  const txPage = parsePage(searchParams.get('txPage'));
+  const txPageSize = 20;
+  const {
+    data: myTxPaged,
+    isLoading: isLoadingTx,
+    isFetching: isFetchingTx,
+    error: txError,
+  } = useGetClubFundTransactionsQuery(
+    { clubId, page: txPage, pageSize: txPageSize, scope: 'mine' },
+    { skip: skipQuery || tab !== 'transactions' },
+  );
+
+  const myTxItems = (myTxPaged?.items ?? []) as FundHistoryItem[];
+
   return (
     <div className="min-h-screen">
       <Sidebar currentPath="/funds/my" isOpen={isSidebarOpen} onClose={toggleSidebar} />
@@ -205,7 +273,7 @@ export default function MyFundsPage() {
         }`}
       >
         <div className="max-w-6xl mx-auto space-y-6">
-          {!capsLoading && caps?.financeAccessHintVi?.trim() ? (
+          {!capsLoading && !canViewFunds && caps?.financeAccessHintVi?.trim() ? (
             <FinanceAccessHintBanner message={caps.financeAccessHintVi} />
           ) : null}
           {myFundsPaged?.usedMyFundsFallback ? (
@@ -220,36 +288,66 @@ export default function MyFundsPage() {
           ) : null}
           <header className="flex flex-col gap-2">
             <h1 className={t.type.pageTitle}>Quỹ của tôi</h1>
-            <p className={t.type.body}>Các quỹ do bạn tạo trong CLB đang chọn (không gồm quỹ người khác tạo).</p>
+            <p className={t.type.body}>
+              {tab === 'created'
+                ? 'Các quỹ do bạn tạo trong CLB đang chọn.'
+                : tab === 'responsible'
+                  ? 'Các quỹ bạn phụ trách trong CLB đang chọn.'
+                  : tab === 'transactions'
+                    ? 'Các giao dịch bạn đã nộp / liên quan tới bạn trong CLB đang chọn.'
+                    : 'Gửi và theo dõi yêu cầu hoàn tiền trong CLB đang chọn.'}
+            </p>
             {USE_MOCK_MY_FUNDS ? (
               <p className={`text-xs ${t.type.muted}`}>Đang chạy mock adapter cho `/funds/my` (VITE_MOCK_MY_FUNDS=true).</p>
             ) : null}
           </header>
 
+          <nav
+            className="flex flex-wrap items-center gap-2"
+            aria-label="Tabs quỹ của tôi"
+          >
+            {TAB_OPTIONS.map((opt) => {
+              const active = tab === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() =>
+                    setSearchParams(
+                      (prev) => {
+                        const next = new URLSearchParams(prev);
+                        next.set('tab', opt.id);
+                        // reset paging when switching tab
+                        next.delete('page');
+                        next.delete('txPage');
+                        return next;
+                      },
+                      { replace: true },
+                    )}
+                  className={`h-10 px-4 rounded-xl text-sm font-semibold border transition-colors ${
+                    active
+                      ? 'bg-violet-600 text-white border-violet-600'
+                      : 'bg-white dark:bg-slate-900/30 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </nav>
+
           <div className={`${t.card.base} ${t.space.card} flex flex-wrap items-end justify-between gap-4 border-slate-200 dark:border-slate-600`}>
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex flex-col gap-1 min-w-[240px]">
                 <label htmlFor="club-select-my-funds" className={t.type.label}>Câu lạc bộ</label>
-                <select
+                <input
                   id="club-select-my-funds"
-                  value={clubId}
-                  onChange={(e) => setSelectedClubId(Number(e.target.value))}
+                  value={clubName}
+                  readOnly
                   className={`${t.input} h-11`}
-                  disabled={!hasToken || (isAdmin ? clubs.length === 0 : memberClubOptions.length === 0)}
-                >
-                  <option value={0}>-- Chọn CLB --</option>
-                  {isAdmin
-                    ? clubs.map((c) => (
-                      <option key={c.clubId} value={c.clubId}>
-                        {c.clubName}
-                      </option>
-                    ))
-                    : memberClubOptions.map((c) => (
-                      <option key={c.clubId} value={c.clubId}>
-                        {c.label}
-                      </option>
-                    ))}
-                </select>
+                  placeholder="Chưa chọn câu lạc bộ"
+                />
               </div>
 
               <div className="flex flex-col gap-1 min-w-[220px]">
@@ -325,7 +423,140 @@ export default function MyFundsPage() {
             </button>
           </div>
 
-          <section className={`${t.card.base} overflow-hidden border-slate-200 dark:border-slate-600`}>
+          {tab === 'refunds' ? (
+            hasToken && clubId > 0 && canUseRefundSection ? (
+              <section aria-labelledby="my-funds-refunds-title">
+                <h2 id="my-funds-refunds-title" className="sr-only">
+                  Hoàn tiền
+                </h2>
+                {capsLoading ? (
+                  <div className={`${t.card.base} p-10 text-center`} aria-busy="true">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-slate-400" aria-hidden />
+                    <p className={t.type.body}>Đang kiểm tra quyền...</p>
+                  </div>
+                ) : (
+                  <PersonalRefundSection clubId={clubId} skip={skipQuery} caps={caps} isAdmin={!!isAdmin} />
+                )}
+              </section>
+            ) : (
+              <section className={`${t.card.base} p-6`} role="alert">
+                <p className={t.type.body}>Chọn câu lạc bộ và đảm bảo có quyền xem tài chính để sử dụng mục Hoàn tiền.</p>
+              </section>
+            )
+          ) : tab === 'transactions' ? (
+            <section className={`${t.card.base} overflow-hidden border-slate-200 dark:border-slate-600`}>
+              {!hasToken ? (
+                <div className="p-12 text-center">
+                  <Lock className="w-10 h-10 text-slate-400 mx-auto mb-3" aria-hidden />
+                  <p className={t.type.body}>Đăng nhập để xem giao dịch của bạn.</p>
+                </div>
+              ) : !clubId ? (
+                <div className="p-12 text-center">
+                  <p className={t.type.body}>Chọn câu lạc bộ để tiếp tục.</p>
+                </div>
+              ) : capsLoading ? (
+                <div className="p-10 text-center">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-slate-400" aria-hidden />
+                  <p className={t.type.body}>Đang kiểm tra quyền...</p>
+                </div>
+              ) : (txError as any) ? (
+                <div className="p-10 text-center" role="alert">
+                  <p className="text-red-600 dark:text-red-400">Không tải được giao dịch của bạn.</p>
+                </div>
+              ) : isLoadingTx ? (
+                <div className="p-10 text-center">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-slate-400" aria-hidden />
+                  <p className={t.type.body}>Đang tải giao dịch...</p>
+                </div>
+              ) : myTxItems.length === 0 ? (
+                <div className="p-12 text-center">
+                  <p className={`${t.type.sectionTitle} mb-2`}>Chưa có giao dịch</p>
+                  <p className={t.type.body}>Bạn chưa có giao dịch nào trong CLB này.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 flex flex-wrap items-center justify-between gap-2">
+                    <h2 className={t.type.sectionTitle}>Giao dịch của tôi</h2>
+                    <p className={`text-sm ${t.type.muted}`}>
+                      {isFetchingTx ? 'Đang cập nhật...' : ''}
+                    </p>
+                  </div>
+                  <div className="p-4 overflow-x-auto">
+                    <table className="min-w-[900px] w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold">Quỹ</th>
+                          <th className="px-3 py-2 text-right font-semibold">Số tiền</th>
+                          <th className="px-3 py-2 text-left font-semibold">Trạng thái</th>
+                          <th className="px-3 py-2 text-left font-semibold">Thời gian</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {myTxItems.map((row) => (
+                          <tr key={String(row.transactionId ?? row.id ?? `${row.fundId}-${row.createdAt}`)}>
+                            <td className="px-3 py-2">
+                              {row.fundName?.trim() || `Quỹ #${row.fundId}`}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">
+                              {Number(row.amount ?? 0).toLocaleString('vi-VN')} ₫
+                            </td>
+                            <td className="px-3 py-2">{String(row.status ?? '') || '—'}</td>
+                            <td className="px-3 py-2 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                              {txWhenLabel(row.transactionDate ?? row.updatedAt ?? row.createdAt)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {myTxPaged && (myTxPaged.hasPreviousPage || myTxPaged.hasNextPage || myTxPaged.totalPages > 1) ? (
+                    <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-600 flex flex-wrap items-center justify-between gap-3">
+                      <p className={`text-sm ${t.type.muted}`}>
+                        Trang {myTxPaged.pageNumber}/{Math.max(1, myTxPaged.totalPages)}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={!myTxPaged.hasPreviousPage}
+                          onClick={() =>
+                            setSearchParams(
+                              (prev) => {
+                                const next = new URLSearchParams(prev);
+                                next.set('txPage', String(Math.max(1, txPage - 1)));
+                                return next;
+                              },
+                              { replace: true },
+                            )}
+                          className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none`}
+                        >
+                          <ChevronLeft className="w-4 h-4 shrink-0" aria-hidden />
+                          Trước
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!myTxPaged.hasNextPage}
+                          onClick={() =>
+                            setSearchParams(
+                              (prev) => {
+                                const next = new URLSearchParams(prev);
+                                next.set('txPage', String(txPage + 1));
+                                return next;
+                              },
+                              { replace: true },
+                            )}
+                          className={`${t.btn.secondary} !min-h-0 !py-2 !px-3 text-sm inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none`}
+                        >
+                          Sau
+                          <ChevronRight className="w-4 h-4 shrink-0" aria-hidden />
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </section>
+          ) : (
+            <section className={`${t.card.base} overflow-hidden border-slate-200 dark:border-slate-600`}>
             {!hasToken ? (
               <div className="p-12 text-center">
                 <Lock className="w-10 h-10 text-slate-400 mx-auto mb-3" aria-hidden />
@@ -335,9 +566,7 @@ export default function MyFundsPage() {
               <div className="p-12 text-center">
                 <Users className="w-10 h-10 text-slate-400 mx-auto mb-3" aria-hidden />
                 <p className={t.type.body}>
-                  {isLoadingUserMemberships
-                    ? 'Đang tải danh sách CLB...'
-                    : 'Bạn chưa thuộc CLB nào để xem quỹ liên quan.'}
+                  Bạn chưa thuộc CLB nào để xem quỹ liên quan.
                 </p>
               </div>
             ) : !clubId ? (
@@ -380,7 +609,9 @@ export default function MyFundsPage() {
             ) : (
               <>
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-600 flex flex-wrap items-center justify-between gap-2">
-                  <h2 className={t.type.sectionTitle}>Danh sách quỹ của tôi</h2>
+                  <h2 className={t.type.sectionTitle}>
+                    {tab === 'responsible' ? 'Quỹ tôi phụ trách' : 'Quỹ tôi đã tạo'}
+                  </h2>
                   <p className={`text-sm ${t.type.muted}`}>
                     Tổng {totalCount.toLocaleString('vi-VN')} quỹ · {pageLabel}
                     {isFetchingMyFunds ? ' · Đang cập nhật...' : ''}
@@ -472,6 +703,8 @@ export default function MyFundsPage() {
               </>
             )}
           </section>
+          )}
+
         </div>
       </main>
     </div>

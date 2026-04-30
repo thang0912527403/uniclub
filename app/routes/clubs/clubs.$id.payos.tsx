@@ -5,7 +5,6 @@ import { HeaderBar } from "~/components/HeaderBar";
 import { useTheme } from "~/hooks/useTheme";
 import { useSidebarToggle } from "~/hooks/useSidebarToggle";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
-import { isManagerRole } from "~/hooks/useClubRole";
 import { useGetClubByIdQuery, useGetFundCapabilitiesQuery } from "~/cores/api";
 import { PayOSConnectPanel } from "~/modules/funds/components/PayOSConnectPanel";
 import { fundTokens as t } from "../funds.design-tokens";
@@ -25,7 +24,7 @@ export default function ClubPayosSettingsPage() {
   const { data: club } = useGetClubByIdQuery(clubId, { skip: isInvalidParams });
   const { data: caps, isLoading: capsLoading, isError: capsIsError, error: capsError } =
     useGetFundCapabilitiesQuery(
-      { clubId, userId: userId || '' },
+      clubId,
       {
         skip: isInvalidParams || !userId,
         refetchOnFocus: true,
@@ -41,9 +40,7 @@ export default function ClubPayosSettingsPage() {
 
   const canManagePayos =
     isAdmin ||
-    caps?.canManageOnlinePaymentSettings === true ||
-    ((caps?.clubRoleLevel === 1 || isManagerRole(caps?.clubRoleName)) &&
-      (caps?.hasEditFinancePolicy ?? false));
+    caps?.canManageOnlinePaymentSettings === true;
 
   return (
     <div className="min-h-screen">
@@ -82,6 +79,10 @@ export default function ClubPayosSettingsPage() {
           ) : capsLoading ? (
             <section className={`${t.card.base} p-6`} aria-busy="true">
               <p className={t.type.body}>Đang kiểm tra quyền truy cập...</p>
+            </section>
+          ) : !canManagePayos ? (
+            <section className={`${t.card.base} p-6`} role="alert">
+              <p className={t.type.body}>Bạn không có quyền xem cấu hình thanh toán của CLB này.</p>
             </section>
           ) : (
             <PayOSConnectPanel clubId={clubId} canManagePayos={canManagePayos} />
