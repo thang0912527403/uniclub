@@ -6,7 +6,7 @@ import { Loading } from '~/components/Loading';
 import { Error } from '~/components/Error';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useNotification } from '~/components/Notification';
-import { useGetRecordsOfChangeQuery } from '~/cores/api';
+import { useGetRecordsOfChangeQuery, useUndoRecordOfChangeMutation } from '~/cores/api';
 import type { RecordOfChange, RecordOfChangeParams } from '~/cores/api/types/recordOfChange';
 import { useRecordOfChangeSignalR } from './hooks/useRecordOfChangeSignalR';
 
@@ -21,6 +21,7 @@ const CHANGE_TYPE_OPTIONS = [
   { value: 'CREATE', label: 'Tạo mới', color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
   { value: 'UPDATE', label: 'Cập nhật', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
   { value: 'DELETE', label: 'Xóa', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
+  { value: 'SOFT DELETE', label: 'Xóa', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
 ];
 
 function ChangeTypeBadge({ type }: { type: string }) {
@@ -51,11 +52,16 @@ function truncate(str: string | null | undefined, maxLen = 60) {
 function RecordDetailDrawer({
   record,
   onClose,
+  onUndo,
+  isUndoing,
 }: {
   record: RecordOfChange;
   onClose: () => void;
+  onUndo: () => void;
+  isUndoing: boolean;
 }) {
   const changeTypeOpt = CHANGE_TYPE_OPTIONS.find((o) => o.value === record.changeType);
+  const canUndo = (record.changeType === 'UPDATE' || record.changeType === 'SOFT DELETE') && record.isUndo === false;
 
   return (
     <>
@@ -152,11 +158,24 @@ function RecordDetailDrawer({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 flex gap-3">
+          {canUndo && (
+            <button
+              type="button"
+              onClick={onUndo}
+              disabled={isUndoing}
+              className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors cursor-pointer flex items-center justify-center gap-2"
+            >
+              {isUndoing
+                ? <><i className="fas fa-spinner fa-spin" />Đang hoàn tác...</>
+                : <><i className="fas fa-undo" />Hoàn tác</>
+              }
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
           >
             Đóng
           </button>
@@ -211,6 +230,7 @@ export default function RecordOfChangeModule() {
   const { data, isLoading, error, refetch } = useGetRecordsOfChangeQuery(queryParams, {
     pollingInterval: 15000,
   });
+  const [undoRecord, { isLoading: isUndoing }] = useUndoRecordOfChangeMutation();
   const records: RecordOfChange[] = data?.items ?? [];
   const totalCount = data?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -230,6 +250,18 @@ export default function RecordOfChangeModule() {
   useEffect(() => {
     if (currentPage > totalPages && totalPages >= 1) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
+
+  const handleUndo = async () => {
+    if (!selectedRecord) return;
+    try {
+      await undoRecord(selectedRecord.id).unwrap();
+      showNotification({ type: 'success', title: 'Hoàn tác thành công', message: selectedRecord.notification });
+      setSelectedRecord(null);
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string } };
+      showNotification({ type: 'error', title: 'Hoàn tác thất bại', message: err?.data?.message ?? 'Vui lòng thử lại sau.' });
+    }
+  };
 
   const resetFilters = () => {
     setSearch('');
@@ -578,6 +610,8 @@ export default function RecordOfChangeModule() {
         <RecordDetailDrawer
           record={selectedRecord}
           onClose={() => setSelectedRecord(null)}
+          onUndo={handleUndo}
+          isUndoing={isUndoing}
         />
       )}
     </div>

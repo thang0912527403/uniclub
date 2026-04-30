@@ -2,13 +2,14 @@ export interface RecordOfChange {
   id: string;
   entityName: string;
   notification: string;
-  changeType: 'CREATE' | 'UPDATE' | 'DELETE';
+  changeType: 'CREATE' | 'UPDATE' | 'DELETE'|'SOFT DELETE';
   oldValue: string | null;
   newValue: string | null;
   changedBy: string;
   changedByName: string;
   clubId: number | null;
   changedAt: string;
+  isUndo: boolean;
 }
 
 export interface RecordOfChangeParams {

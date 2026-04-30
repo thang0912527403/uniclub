@@ -60,7 +60,15 @@ export const recordOfChangeApi = baseApi.injectEndpoints({
       },
       providesTags: ['RecordOfChange'],
     }),
+
+    undoRecordOfChange: builder.mutation<void, number | string>({
+      query: (id) => ({
+        url: `/recordofchange/${id}/undo`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['RecordOfChange'],
+    }),
   }),
 });
 
-export const { useGetRecordsOfChangeQuery } = recordOfChangeApi;
+export const { useGetRecordsOfChangeQuery, useUndoRecordOfChangeMutation } = recordOfChangeApi;
