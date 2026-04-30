@@ -7,7 +7,7 @@ interface ParticipantsPanelProps {
 }
 
 const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({ roomCode }) => {
-  const { users, userStates, isAudioEnabled, isVideoEnabled } = useMeeting();
+  const { users, userStates, isAudioEnabled, isVideoEnabled, isHandRaised } = useMeeting();
   const { user: authUser } = useCurrentUser();
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -137,8 +137,13 @@ const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({ roomCode }) => {
             {/* Online indicator */}
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
             <p className="text-gray-800 text-sm font-medium truncate">Bạn</p>
+            {isHandRaised && (
+              <div className="w-5 h-5 flex items-center justify-center bg-yellow-100 rounded-full text-yellow-600 animate-bounce">
+                <i className="fa-solid fa-hand text-[10px]" />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1.5">
             <div
@@ -185,6 +190,7 @@ const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({ roomCode }) => {
           const isMuted = state?.isMuted ?? false;
           const isCameraOff = state?.isCameraOff ?? false;
           const isScreenSharing = state?.isScreenSharing ?? false;
+          const isRemoteHandRaised = state?.isHandRaised ?? false;
 
           return (
             <div
@@ -203,11 +209,18 @@ const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({ roomCode }) => {
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-gray-800 text-sm font-medium truncate">
-                  {user.fullName}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-gray-800 text-sm font-medium truncate">
+                    {user.fullName}
+                  </p>
+                  {isRemoteHandRaised && (
+                    <div className="w-5 h-5 flex items-center justify-center bg-yellow-100 rounded-full text-yellow-600 animate-bounce">
+                      <i className="fa-solid fa-hand text-[10px]" />
+                    </div>
+                  )}
+                </div>
                 {isScreenSharing && (
-                  <p className="text-green-500 text-[10px] font-medium flex items-center gap-1">
+                  <p className="text-green-500 text-[10px] font-medium flex items-center gap-1 mt-0.5">
                     <i className="fa-solid fa-display text-[8px]" />
                     Đang chia sẻ màn hình
                   </p>

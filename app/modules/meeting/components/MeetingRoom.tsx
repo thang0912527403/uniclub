@@ -28,6 +28,8 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
     isConnected,
     isScreenSharing,
     screenSharingUser,
+    isHandRaised,
+    toggleHand,
     messages,
     sendMessage,
   } = useMeeting();
@@ -185,6 +187,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
         label: user?.fullName || "Bạn",
         isLocal: true,
         avatar: user?.avatar,
+        isHandRaised: isHandRaised,
       };
     }
 
@@ -199,6 +202,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
       isMuted: state?.isMuted || false,
       isCameraOff: state?.isCameraOff || false,
       isScreenSharing: state?.isScreenSharing || false,
+      isHandRaised: state?.isHandRaised || false,
       avatar: rUser?.avatar,
     };
   };
@@ -231,6 +235,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                 }
                 isSpotlight
                 isScreenSharing={spotlightContent.isScreenSharing}
+                isHandRaised={spotlightContent.isHandRaised}
                 avatar={spotlightContent.avatar}
                 onClick={() => setSpotlightUser(null)}
               />
@@ -249,6 +254,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                     isVideoEnabled={isScreenSharing || isVideoEnabled}
                     isAudioEnabled={isAudioEnabled}
                     isThumbnail
+                    isHandRaised={isHandRaised}
                     avatar={user?.avatar}
                     onClick={() => handleVideoClick("local")}
                   />
@@ -268,6 +274,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                       isVideoEnabled={!state?.isCameraOff}
                       isAudioEnabled={!state?.isMuted}
                       isScreenSharing={state?.isScreenSharing}
+                      isHandRaised={state?.isHandRaised}
                       isThumbnail
                       avatar={rUser.avatar}
                       onClick={() => handleVideoClick(rUser.connectionId)}
@@ -288,6 +295,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
               isLocal
               isVideoEnabled={isScreenSharing || isVideoEnabled}
               isAudioEnabled={isAudioEnabled}
+              isHandRaised={isHandRaised}
               onClick={() => handleVideoClick("local")}
             />
 
@@ -303,6 +311,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                   isVideoEnabled={!state?.isCameraOff}
                   isAudioEnabled={!state?.isMuted}
                   isScreenSharing={state?.isScreenSharing}
+                  isHandRaised={state?.isHandRaised}
                   onClick={() => handleVideoClick(user.connectionId)}
                 />
               );
@@ -330,6 +339,8 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
             lastReadCountRef.current = messages.length;
           }
         }}
+        isHandRaised={isHandRaised}
+        onToggleHand={toggleHand}
         onLeave={handleLeave}
       />
     </div>

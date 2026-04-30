@@ -28,6 +28,8 @@ interface MeetingContextType {
   isVideoEnabled: boolean;
   isScreenSharing: boolean;
   screenSharingUser: string | null;
+  isHandRaised: boolean;
+  toggleHand: () => Promise<void>;
   messages: ChatMessage[];
   sendMessage: (message: string) => void;
 }
@@ -103,6 +105,8 @@ export const MeetingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       isVideoEnabled: media.isVideoEnabled,
       isScreenSharing: media.isScreenSharing,
       screenSharingUser: media.screenSharingUser,
+      isHandRaised: media.isHandRaised,
+      toggleHand: media.toggleHand,
       messages: chat.messages,
       sendMessage: chat.sendMessage
     }}>
