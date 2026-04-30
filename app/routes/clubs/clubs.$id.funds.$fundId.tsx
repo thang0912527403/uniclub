@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import {
   Gavel,
   X,
@@ -16,6 +16,7 @@ import {
 import {
   useGetFundByIdQuery,
   useGetFundCapabilitiesQuery,
+  useGetFundsByClubQuery,
   useGetClubByIdQuery,
   useApproveFundMutation,
   useContributeToFundMutation,
@@ -217,12 +218,19 @@ function FundStatusBadge({ fund }: { fund: ClubFund }) {
 }
 
 export default function FundDetailPageByClub() {
-  const { id: clubIdParam, fundId: fundIdParam } = useParams<{
+  const navigate = useNavigate();
+  const { id: clubIdParam, publicId: publicIdParam } = useParams<{
     id: string;
-    fundId: string;
+    publicId: string;
   }>();
   const clubId = parseInt(clubIdParam ?? "0", 10) || getClubId();
-  const fundId = parseInt(fundIdParam ?? "0", 10);
+  const fundKey = String(publicIdParam ?? "").trim();
+  const fundIdFromParam = parseInt(fundKey, 10);
+  const isGuidLike =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+      fundKey,
+    );
+  const isParamValid = !!fundKey && (isGuidLike || (!isNaN(fundIdFromParam) && fundIdFromParam > 0));
 
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
@@ -270,11 +278,10 @@ export default function FundDetailPageByClub() {
 
   const isInvalidParams =
     !clubIdParam ||
-    !fundIdParam ||
+    !publicIdParam ||
     isNaN(clubId) ||
-    isNaN(fundId) ||
     clubId < 1 ||
-    fundId < 1;
+    !isParamValid;
 
   const { data: breadcrumbClub, isLoading: breadcrumbClubLoading } =
     useGetClubByIdQuery(clubId, {
@@ -282,11 +289,11 @@ export default function FundDetailPageByClub() {
     });
   const fundBreadcrumbClubPart =
     breadcrumbClub?.clubName?.trim() ||
-    (breadcrumbClubLoading ? "Đang tải…" : `CLB #${clubId}`);
+    (breadcrumbClubLoading ? "Đang tải…" : "Câu lạc bộ");
 
   useEffect(() => {
     setHistoryPage(1);
-  }, [clubId, fundId]);
+  }, [clubId, fundKey]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -327,7 +334,40 @@ export default function FundDetailPageByClub() {
     isLoading: isLoadingFund,
     error: fundError,
     refetch: refetchFund,
-  } = useGetFundByIdQuery({ clubId, fundId }, { skip: skipFundQuery });
+  } = useGetFundByIdQuery({ clubId, fundId: fundKey }, { skip: skipFundQuery });
+
+  const shouldResolveLegacyToGuid = !isGuidLike && Number.isFinite(fundIdFromParam) && fundIdFromParam > 0;
+  const { data: fundListForLegacyResolve } = useGetFundsByClubQuery(
+    {
+      clubId,
+      page: 1,
+      pageSize: 50,
+    },
+    { skip: skipFundQuery || !shouldResolveLegacyToGuid },
+  );
+
+  useEffect(() => {
+    if (!fund || isGuidLike) return;
+    const next = String(fund.publicId ?? "").trim();
+    if (!next) return;
+    void navigate(`/clubs/${clubId}/funds/${next}`, { replace: true });
+  }, [clubId, fund, isGuidLike, navigate]);
+
+  useEffect(() => {
+    if (!shouldResolveLegacyToGuid || isGuidLike) return;
+    const items = fundListForLegacyResolve?.items ?? [];
+    const match = items.find((x) => x.fundId === fundIdFromParam);
+    const next = String(match?.publicId ?? "").trim();
+    if (!next) return;
+    void navigate(`/clubs/${clubId}/funds/${next}`, { replace: true });
+  }, [
+    clubId,
+    fundIdFromParam,
+    fundListForLegacyResolve,
+    isGuidLike,
+    navigate,
+    shouldResolveLegacyToGuid,
+  ]);
   useEffect(() => {
     if (capsLoading || isInvalidParams) return;
     if (!canUseFullFundHistoryFilters && historyScopeFilter === "") {
@@ -341,7 +381,10 @@ export default function FundDetailPageByClub() {
   ]);
 
   const historyQueryClubId = skipHistoryQuery ? 0 : clubId;
-  const historyQueryFundId = skipHistoryQuery ? 0 : fundId;
+  const resolvedFundId =
+    fund?.fundId ??
+    (!isNaN(fundIdFromParam) && fundIdFromParam > 0 ? fundIdFromParam : 0);
+  const historyQueryFundId = skipHistoryQuery ? 0 : resolvedFundId;
 
   const {
     items: history,
@@ -517,7 +560,7 @@ export default function FundDetailPageByClub() {
 
   const handleContributeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clubId || !fundId) return;
+    if (!clubId || !resolvedFundId) return;
     const parsed = parseVndIntegerFromInput(contributeAmount);
     if (!parsed.ok) {
       showNotification({
@@ -540,7 +583,7 @@ export default function FundDetailPageByClub() {
     try {
       const res = await contributeToFund({
         clubId,
-        fundId,
+        fundId: resolvedFundId,
         amount,
         description: contributeDescription.trim() || undefined,
       }).unwrap();
@@ -548,7 +591,8 @@ export default function FundDetailPageByClub() {
       savePayosPendingContribute({
         clubId,
         transactionId: res.transactionId,
-        fundId,
+        fundId: resolvedFundId,
+        publicId: fund?.publicId ?? fundKey,
       });
 
       setPayStatus(null);
@@ -616,7 +660,7 @@ export default function FundDetailPageByClub() {
         onClose={toggleSidebar}
       />
       <HeaderBar
-        title={fund ? fund.fundName || `Quỹ #${fundId}` : "Chi tiết quỹ"}
+        title={fund?.fundName?.trim() || "Chi tiết quỹ"}
         breadcrumb={`Tài chính / Quản lý quỹ / ${fundBreadcrumbClubPart} / Chi tiết`}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
@@ -767,7 +811,7 @@ export default function FundDetailPageByClub() {
                               showNotification({
                                 type: "success",
                                 title: "Đã duyệt quỹ",
-                                message: `${fund.fundName || `Quỹ #${fundId}`} đã được duyệt.`,
+                                message: `${fund.fundName?.trim() || "Quỹ"} đã được duyệt.`,
                               });
                             } catch (err) {
                               console.error(err);
@@ -803,7 +847,7 @@ export default function FundDetailPageByClub() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <h1 id="fund-info-heading" className={t.type.pageTitle}>
-                      {fund.fundName || `Quỹ #${fund.fundId}`}
+                      {fund.fundName?.trim() || "Quỹ"}
                     </h1>
                     <p className={`mt-1 ${t.type.muted}`}>
                       {fund.description || "Không có mô tả"}
@@ -1568,7 +1612,7 @@ export default function FundDetailPageByClub() {
                       showNotification({
                         type: "success",
                         title: "Đã từ chối quỹ",
-                        message: `${fund.fundName || `Quỹ #${fundId}`} đã bị từ chối.`,
+                        message: `${fund.fundName?.trim() || "Quỹ"} đã bị từ chối.`,
                       });
                       closeRejectFundModal();
                     } catch (err) {

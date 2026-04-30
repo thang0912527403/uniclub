@@ -57,7 +57,7 @@ export default function FundsPayosPage() {
           <section className={`${t.card.base} ${t.space.card}`}>
             <p className={t.type.label}>Câu lạc bộ</p>
             <p className={`${t.type.body} mt-1`}>
-              {club?.clubName?.trim() || (clubId > 0 ? `CLB #${clubId}` : "—")}
+              {club?.clubName?.trim() || "—"}
             </p>
           </section>
 

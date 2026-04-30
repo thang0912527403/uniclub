@@ -13,6 +13,7 @@ export interface PagedResult<T> {
 export interface ClubFund {
   fundId: number;
   clubId: number;
+  publicId?: string;
   fundName?: string;
   currentBalance?: number;
   totalAmount?: number;
@@ -199,6 +200,7 @@ export interface FundContributeTransactionStatus {
 export interface PayosFundContributionReturn {
   clubId: number;
   fundId: number;
+  publicId?: string;
   isPaid: boolean;
   message?: string;
 }

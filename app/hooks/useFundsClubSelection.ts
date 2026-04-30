@@ -33,7 +33,9 @@ export function useFundsClubSelection() {
         .filter((m) => String((m as { status?: string }).status ?? '').toUpperCase() === 'ACTIVE')
         .map((m) => ({
           clubId: (m as { clubId: number }).clubId,
-          label: `CLB #${(m as { clubId: number }).clubId} • ${(m as { roleName?: string }).roleName || `RoleId ${(m as { clubRoleId?: number }).clubRoleId}`}`,
+          label: `${String((m as { clubName?: string }).clubName ?? '').trim() || 'Câu lạc bộ'} • ${
+            (m as { roleName?: string }).roleName || `RoleId ${(m as { clubRoleId?: number }).clubRoleId}`
+          }`,
         })),
     [memberships],
   );

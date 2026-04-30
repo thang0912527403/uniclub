@@ -94,8 +94,15 @@ function normalizePagedResult<T>(raw: unknown): PagedResult<T> {
 }
 
 type ClubFundScoped = { clubId: number };
-type FundScoped = { clubId: number; fundId: number };
+type FundScoped = { clubId: number; fundId: string };
 type FundLocationResponse = { fundId: number; clubId: number };
+
+function isGuidLike(v: string): boolean {
+  const s = v.trim();
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    s,
+  );
+}
 
 const FUND_SIDEBAR_MENU_IDS: readonly FundSidebarMenuId[] = [
   "overview",
@@ -306,6 +313,13 @@ function normalizeClubFund(raw: unknown): ClubFund {
   return {
     fundId: num(d.fundId ?? d.FundId) ?? 0,
     clubId: num(d.clubId ?? d.ClubId) ?? 0,
+    publicId: optStr(
+      d.publicId ??
+        d.PublicId ??
+        (d as any).PublicID ??
+        (d as any).fundPublicId ??
+        (d as any).FundPublicId,
+    ),
     fundName: String(d.fundName ?? d.FundName ?? "").trim() || undefined,
     currentBalance: num(d.currentBalance ?? d.CurrentBalance),
     totalAmount: num(d.totalAmount ?? d.TotalAmount),
@@ -779,8 +793,8 @@ export const fundApi = baseApi.injectEndpoints({
       ],
     }),
 
-    getFundLocation: builder.query<FundLocationResponse, number>({
-      query: (fundId) => `/funds/${fundId}/location`,
+    getFundLocation: builder.query<FundLocationResponse, string>({
+      query: (fundIdOrPublicId) => `/funds/${fundIdOrPublicId}/location`,
       transformResponse: (response: ApiResponse<FundLocationResponse>) =>
         response.data,
     }),

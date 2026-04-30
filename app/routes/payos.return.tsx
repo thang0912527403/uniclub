@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Loader2 } from 'lucide-react';
 import {
@@ -12,8 +12,6 @@ import {
   type PayosPendingContribute,
 } from '~/utils/payosContributeSession';
 import { isLoggedIn } from '~/utils/auth';
-import { openClubFundDetail } from '~/modules/funds/utils/openClubFundDetail';
-import { ClubFundDetailLink } from '~/modules/funds/components/ClubFundDetailLink';
 
 type PollPhase =
   | 'polling'
@@ -29,29 +27,6 @@ function parsePositiveInt(v: string | null): number | undefined {
   if (v == null || v === '') return undefined;
   const n = parseInt(v, 10);
   return Number.isFinite(n) && n > 0 ? n : undefined;
-}
-
-function PayosFundDetailOrFundsListLink({
-  resolved,
-  className,
-  children,
-}: {
-  resolved: PayosPendingContribute | null;
-  className: string;
-  children: ReactNode;
-}) {
-  if (resolved && resolved.clubId > 0 && resolved.fundId != null && resolved.fundId > 0) {
-    return (
-      <ClubFundDetailLink clubId={resolved.clubId} fundId={resolved.fundId} className={className}>
-        {children}
-      </ClubFundDetailLink>
-    );
-  }
-  return (
-    <Link to="/funds" className={className}>
-      {children}
-    </Link>
-  );
 }
 
 export default function PayosReturnPage() {
@@ -99,9 +74,10 @@ export default function PayosReturnPage() {
       }
     };
 
-    const goFund = (clubId: number, fundId: number) => {
-      if (clubId > 0 && fundId > 0) {
-        openClubFundDetail(navigate, { clubId, fundId }, { replace: true });
+    const goFund = (clubId: number, fundKey: string | number | undefined) => {
+      const key = String(fundKey ?? '').trim();
+      if (clubId > 0 && key) {
+        void navigate(`/clubs/${clubId}/funds/${key}`, { replace: true });
       } else {
         void navigate('/funds', { replace: true });
       }
@@ -114,13 +90,14 @@ export default function PayosReturnPage() {
           clubId: data.clubId,
           transactionId: orderCode,
           ...(data.fundId > 0 ? { fundId: data.fundId } : {}),
+          ...(data.publicId?.trim() ? { publicId: data.publicId.trim() } : {}),
           savedAt: new Date().toISOString(),
         });
       }
       if (data.isPaid) {
         clearPayosPendingContribute();
         setPhase('paid');
-        goFund(data.clubId, data.fundId);
+        goFund(data.clubId, data.publicId ?? data.fundId);
         return true;
       }
       return false;
@@ -222,7 +199,7 @@ export default function PayosReturnPage() {
     let pollCount = 0;
     const maxPolls = 48;
     const intervalMs = 2500;
-    const { clubId, transactionId, fundId } = resolved;
+    const { clubId, transactionId, fundId, publicId } = resolved;
 
     const stop = () => {
       if (intervalId !== undefined) {
@@ -232,8 +209,9 @@ export default function PayosReturnPage() {
     };
 
     const goFund = () => {
-      if (fundId != null && fundId > 0) {
-        openClubFundDetail(navigate, { clubId, fundId }, { replace: true });
+      const key = String(publicId ?? fundId ?? '').trim();
+      if (key) {
+        void navigate(`/clubs/${clubId}/funds/${key}`, { replace: true });
       } else {
         void navigate('/funds', { replace: true });
       }
@@ -295,6 +273,11 @@ export default function PayosReturnPage() {
       stop();
     };
   }, [orderCode, resolved, fetchPayStatus, navigate, phase]);
+
+  const fundHref =
+    resolved?.clubId && resolved?.fundId
+      ? `/clubs/${resolved.clubId}/funds/${resolved.fundId}`
+      : '/funds';
 
   if (phase === 'unauthorized') {
     const redirect = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
@@ -374,12 +357,12 @@ export default function PayosReturnPage() {
               Nếu bạn đã hủy hoặc chưa chuyển khoản, hãy tạo giao dịch mới từ quỹ.
             </p>
             {message ? <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{message}</p> : null}
-            <PayosFundDetailOrFundsListLink
-              resolved={resolved}
+            <Link
+              to={fundHref}
               className="mt-6 inline-flex justify-center items-center rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2.5 text-sm font-medium"
             >
               Về quỹ
-            </PayosFundDetailOrFundsListLink>
+            </Link>
           </>
         )}
 
@@ -389,12 +372,12 @@ export default function PayosReturnPage() {
             <p className="mt-3 text-slate-600 dark:text-slate-300 text-sm">
               Giao dịch chưa được thanh toán và link có thể đã hết hạn. Tạo yêu cầu nộp quỹ mới từ màn chi tiết quỹ.
             </p>
-            <PayosFundDetailOrFundsListLink
-              resolved={resolved}
+            <Link
+              to={fundHref}
               className="mt-6 inline-flex justify-center items-center rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2.5 text-sm font-medium"
             >
               Về quỹ
-            </PayosFundDetailOrFundsListLink>
+            </Link>
           </>
         )}
 
@@ -413,12 +396,12 @@ export default function PayosReturnPage() {
               >
                 Làm mới trang
               </button>
-              <PayosFundDetailOrFundsListLink
-                resolved={resolved}
+              <Link
+                to={fundHref}
                 className="inline-flex justify-center items-center rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-200"
               >
                 Xem quỹ / lịch sử
-              </PayosFundDetailOrFundsListLink>
+              </Link>
             </div>
           </>
         )}
@@ -428,12 +411,12 @@ export default function PayosReturnPage() {
             <h1 className="text-xl font-semibold text-red-700 dark:text-red-400">Không kiểm tra được trạng thái</h1>
             <p className="mt-3 text-slate-600 dark:text-slate-300 text-sm">{message}</p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-              <PayosFundDetailOrFundsListLink
-                resolved={resolved}
+              <Link
+                to={fundHref}
                 className="inline-flex justify-center items-center rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2.5 text-sm font-medium"
               >
                 Về quỹ
-              </PayosFundDetailOrFundsListLink>
+              </Link>
             </div>
           </>
         )}

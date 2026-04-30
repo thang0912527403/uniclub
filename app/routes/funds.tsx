@@ -184,7 +184,7 @@ export default function FundsPage() {
     label:
       m.clubName?.trim() ||
       userClubNameById.get(m.clubId)?.trim() ||
-      `CLB #${m.clubId}`,
+      "Câu lạc bộ",
   }));
 
   const [selectedClubId, setSelectedClubId] = useState<number>(0);
@@ -758,7 +758,7 @@ export default function FundsPage() {
                   {isAdmin
                     ? clubs.map((c) => (
                         <option key={c.clubId} value={c.clubId}>
-                          {c.clubName} (ID: {c.clubId})
+                          {c.clubName}
                         </option>
                       ))
                     : memberClubOptions.map((c) => (
@@ -1110,7 +1110,7 @@ export default function FundsPage() {
                           className={`${t.card.fundCard} flex flex-col`}
                         >
                           <Link
-                            to={`/clubs/${clubId}/funds/${f.fundId}`}
+                            to={`/clubs/${clubId}/funds/${f.publicId ?? f.fundId}`}
                             className="flex-1 flex flex-col p-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 rounded-xl"
                           >
                             <div className="flex items-start justify-between gap-2 mb-3">
@@ -1120,7 +1120,7 @@ export default function FundsPage() {
                               <FundStatusBadge fund={f} />
                             </div>
                             <h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">
-                              {f.fundName || `Quỹ #${f.fundId}`}
+                              {f.fundName?.trim() || "Quỹ"}
                             </h3>
                             <FundCardBalanceHint
                               amountFormatted={listBalance.toLocaleString(
@@ -1172,7 +1172,7 @@ export default function FundsPage() {
                                         showNotification({
                                           type: "success",
                                           title: "Đã duyệt quỹ",
-                                          message: `${f.fundName || `Quỹ #${f.fundId}`} đã được duyệt.`,
+                                          message: `${f.fundName?.trim() || "Quỹ"} đã được duyệt.`,
                                         });
                                       } catch (err) {
                                         console.error(err);
@@ -1213,7 +1213,7 @@ export default function FundsPage() {
                                 </>
                               )}
                             <Link
-                              to={`/clubs/${clubId}/funds/${f.fundId}`}
+                              to={`/clubs/${clubId}/funds/${f.publicId ?? f.fundId}`}
                               onClick={(e) => e.stopPropagation()}
                               className={`${t.btn.secondary} !min-h-0 !py-1.5 !px-3 text-xs inline-flex items-center gap-1 ml-auto`}
                             >
@@ -1343,7 +1343,7 @@ export default function FundsPage() {
                       showNotification({
                         type: "success",
                         title: "Đã từ chối quỹ",
-                        message: `${rejectTargetFund.fundName || `Quỹ #${rejectTargetFund.fundId}`} đã bị từ chối.`,
+                        message: `${rejectTargetFund.fundName?.trim() || "Quỹ"} đã bị từ chối.`,
                       });
                       closeListRejectModal();
                     } catch (err) {

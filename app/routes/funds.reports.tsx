@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import Cookies from 'js-cookie';
-import { useCurrentUser } from '~/hooks/useCurrentUser';
+import { setClubId } from '~/utils/auth';
 import { BarChart3, Loader2, Lock, RefreshCw, ArrowRightLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
@@ -25,8 +25,6 @@ import {
   FUND_HISTORY_STATUS_OPTIONS,
 } from '~/modules/funds/constants/fundHistory';
 import { FinanceAccessHintBanner, ReportDateFilterNote } from '~/modules/funds/components/FundUxHints';
-import { ClubFundDetailLink } from '~/modules/funds/components/ClubFundDetailLink';
-import { fundTransactionPaymentProviderLabel } from '~/modules/funds/utils/fundTransactionPaymentProvider';
 
 function ymdToUtcStartIso(ymd: string): string | undefined {
   const [y, m, d] = ymd.split('-').map(Number);
@@ -95,7 +93,7 @@ function txFundLabel(item: FundHistoryItem): string {
   const r = item as FundHistoryItem & Record<string, unknown>;
   const n = r.fundName ?? r.FundName;
   if (typeof n === 'string' && n.trim()) return n.trim();
-  return `Quỹ #${item.fundId}`;
+  return 'Quỹ';
 }
 
 function txSenderLabel(item: FundHistoryItem): string {
@@ -141,7 +139,6 @@ function formatTxDateTime(iso: string | undefined): string {
 type FundsReportTab = 'summary' | 'transactions';
 
 export default function FundsReportsPage() {
-  const { userId } = useCurrentUser();
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { show: showNotification } = useNotification();
@@ -167,11 +164,13 @@ export default function FundsReportsPage() {
 
   const {
     clubId,
+    setSelectedClubId,
+    memberClubOptions,
+    clubs,
     hasToken: selHasToken,
     isAdmin,
     hasAnyClub,
     isLoadingUserMemberships,
-    currentClubLabel,
   } = useFundsClubSelection();
   const { can } = useClubRole();
 
@@ -195,14 +194,7 @@ export default function FundsReportsPage() {
     isLoading: capsLoading,
     isError: capsIsError,
     error: capsError,
-  } = useGetFundCapabilitiesQuery(
-    { clubId, userId: userId || '' },
-    {
-      skip: !selHasToken || clubId < 1 || !userId,
-      refetchOnFocus: true,
-      refetchOnMountOrArgChange: true,
-    },
-  );
+  } = useGetFundCapabilitiesQuery(clubId, { skip: !selHasToken || clubId < 1 });
 
   const capsErrorStatus =
     capsError && typeof capsError === 'object' && 'status' in capsError
@@ -447,13 +439,33 @@ export default function FundsReportsPage() {
 
           <div className={`${t.card.base} ${t.space.card} flex flex-wrap items-end gap-4 border-slate-200 dark:border-slate-600`}>
             <div className="flex flex-col gap-1 min-w-[200px]">
-              <p className={t.type.label}>Câu lạc bộ</p>
-              <div
-                className={`${t.input} ${inputClass} h-11 flex items-center px-3 cursor-default bg-slate-50/90 dark:bg-slate-900/50 text-slate-800 dark:text-slate-100`}
-                aria-live="polite"
+              <label htmlFor="report-club" className={t.type.label}>
+                Câu lạc bộ
+              </label>
+              <select
+                id="report-club"
+                value={clubId}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setSelectedClubId(v);
+                  if (v > 0) setClubId(v);
+                }}
+                className={`${t.input} ${inputClass}`}
+                disabled={!selHasToken || (isAdmin ? clubs.length === 0 : memberClubOptions.length === 0)}
               >
-                {currentClubLabel}
-              </div>
+                <option value={0}>-- Chọn CLB --</option>
+                {isAdmin
+                  ? clubs.map((c) => (
+                      <option key={c.clubId} value={c.clubId}>
+                        {c.clubName}
+                      </option>
+                    ))
+                  : memberClubOptions.map((c) => (
+                      <option key={c.clubId} value={c.clubId}>
+                        {c.label}
+                      </option>
+                    ))}
+              </select>
             </div>
             {activeTab === 'summary' ? (
               <>
@@ -558,7 +570,7 @@ export default function FundsReportsPage() {
                     <option value={0}>Tất cả quỹ</option>
                     {(fundsPaged?.items ?? []).map((f) => (
                       <option key={f.fundId} value={f.fundId}>
-                        {f.fundName?.trim() ? f.fundName : `Quỹ #${f.fundId}`}
+                        {f.fundName?.trim() ? f.fundName : 'Quỹ'}
                       </option>
                     ))}
                   </select>
@@ -708,7 +720,7 @@ export default function FundsReportsPage() {
               ) : (
                 <>
                   <div className="overflow-x-auto" role="region" aria-label="Bảng giao dịch quỹ theo CLB">
-                    <table className="w-full min-w-[940px]">
+                    <table className="w-full min-w-[860px]">
                       <thead>
                         <tr className="bg-slate-100 dark:bg-slate-800">
                           <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200">
@@ -731,7 +743,7 @@ export default function FundsReportsPage() {
                       <tbody>
                         {txItems.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className={`px-4 py-6 text-center ${t.type.muted}`}>
+                            <td colSpan={7} className={`px-4 py-6 text-center ${t.type.muted}`}>
                               Không có giao dịch trên trang này.
                             </td>
                           </tr>
@@ -744,17 +756,12 @@ export default function FundsReportsPage() {
                                 className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-200"
                               >
                                 <td className={`px-4 py-2 ${t.type.body}`}>
-                                  {item.fundId != null && item.fundId > 0 ? (
-                                    <ClubFundDetailLink
-                                      clubId={clubId}
-                                      fundId={item.fundId}
-                                      className="text-amber-700 dark:text-amber-300 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
-                                    >
-                                      {txFundLabel(item)}
-                                    </ClubFundDetailLink>
-                                  ) : (
-                                    <span>{txFundLabel(item)}</span>
-                                  )}
+                                  <Link
+                                    to={`/clubs/${clubId}/funds/${(item as any).publicId ?? item.fundId}`}
+                                    className="text-amber-700 dark:text-amber-300 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
+                                  >
+                                    {txFundLabel(item)}
+                                  </Link>
                                 </td>
                                 <td className={`px-4 py-2 ${t.type.body}`}>{txSenderLabel(item)}</td>
                                 <td className={`px-4 py-2 ${t.type.body} whitespace-nowrap`}>
@@ -863,13 +870,13 @@ export default function FundsReportsPage() {
                   </p>
                 </div>
                 <div className={`${t.card.base} ${t.space.card} border-slate-200 dark:border-slate-600`}>
-                  <p className={`text-sm ${t.type.muted}`}>Tổng thu giao dịch</p>
+                  <p className={`text-sm ${t.type.muted}`}>Tổng thu (giao dịch APPROVED, INCOME)</p>
                   <p className="text-xl font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
                     {formatVnd(summary.totalApprovedIncome)}
                   </p>
                 </div>
                 <div className={`${t.card.base} ${t.space.card} border-slate-200 dark:border-slate-600`}>
-                  <p className={`text-sm ${t.type.muted}`}>Tổng chi giao dịch</p>
+                  <p className={`text-sm ${t.type.muted}`}>Tổng chi (giao dịch APPROVED, EXPENSE)</p>
                   <p className="text-xl font-semibold text-amber-700 dark:text-amber-300 mt-1">
                     {formatVnd(summary.totalApprovedExpense)}
                   </p>
