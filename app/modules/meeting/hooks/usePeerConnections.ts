@@ -72,11 +72,13 @@ export function usePeerConnections(
 
       // Incoming remote track
       pc.ontrack = (event) => {
-        console.log(`[Peer] Remote stream from ${targetConnectionId}`);
+        console.log(`[Peer] Remote track from ${targetConnectionId}`);
         if (event.streams?.[0]) {
-          setRemoteStreams(prev => ({
+          // Clone the stream object to ensure React detects the reference change
+          const incomingStream = event.streams[0];
+          setRemoteStreams((prev) => ({
             ...prev,
-            [targetConnectionId]: event.streams[0]
+            [targetConnectionId]: new MediaStream(incomingStream.getTracks()),
           }));
         }
       };
@@ -114,44 +116,66 @@ export function usePeerConnections(
   useEffect(() => {
     if (!connection) return;
 
-    const handleSignal = async (fromUser: RoomUser, signal: any) => {
-      const { type, sdp, candidate } = signal;
-      const { connectionId } = fromUser;
+    const handleSignal = async (fromUser: any, signal: any) => {
+      // Handle both camelCase and PascalCase from server
+      const connectionId = fromUser.connectionId || fromUser.ConnectionId;
+      const type = signal.type || signal.Type;
+      const sdp = signal.sdp || signal.Sdp;
+      const candidate = signal.candidate || signal.Candidate;
+
+      if (!connectionId) return;
 
       let pc = peers.current.get(connectionId);
 
       // If we don't have a peer and this is an offer, create one as receiver
       if (!pc) {
-        if (type === 'offer') {
+        if (type === "offer") {
           await createPeerConnection(connectionId, false, roomIdRef.current!);
           pc = peers.current.get(connectionId);
         } else {
-          console.warn('[Peer] Signal for unknown peer (not an offer):', connectionId, type);
+          console.warn(
+            "[Peer] Signal for unknown peer (not an offer):",
+            connectionId,
+            type,
+          );
           return;
         }
       }
 
       try {
-        if (type === 'offer' && sdp) {
-          await pc!.setRemoteDescription(new RTCSessionDescription({ type, sdp }));
+        if (type === "offer" && sdp) {
+          await pc!.setRemoteDescription(
+            new RTCSessionDescription({ type: "offer", sdp }),
+          );
           const answer = await pc!.createAnswer();
           await pc!.setLocalDescription(answer);
-          await connection.invoke('SendSignal', roomIdRef.current!, connectionId, {
-            type: 'answer',
-            sdp: answer.sdp
-          });
-        } else if (type === 'answer' && sdp) {
-          await pc!.setRemoteDescription(new RTCSessionDescription({ type, sdp }));
-        } else if (type === 'candidate' && candidate) {
+          await connection.invoke(
+            "SendSignal",
+            roomIdRef.current!,
+            connectionId,
+            {
+              type: "answer",
+              sdp: answer.sdp,
+            },
+          );
+        } else if (type === "answer" && sdp) {
+          await pc!.setRemoteDescription(
+            new RTCSessionDescription({ type: "answer", sdp }),
+          );
+        } else if (type === "candidate" && candidate) {
           await pc!.addIceCandidate(new RTCIceCandidate(candidate));
         }
       } catch (err) {
-        console.error('[Peer] Error handling signal:', err);
+        console.error("[Peer] Error handling signal:", err);
       }
     };
 
     connection.on('ReceiveSignal', handleSignal);
-    return () => { connection.off('ReceiveSignal', handleSignal); };
+    connection.on('receivesignal', handleSignal);
+    return () => { 
+      connection.off('ReceiveSignal', handleSignal); 
+      connection.off('receivesignal', handleSignal); 
+    };
   }, [connection, createPeerConnection, roomIdRef]);
 
   return { peers, remoteStreams, createPeerConnection, cleanupPeers, setRemoteStreams };

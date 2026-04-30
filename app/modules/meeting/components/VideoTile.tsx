@@ -38,7 +38,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
     }
-  }, [stream, hasVideo]);
+  }, [stream, hasVideo, isScreenSharing]);
 
   // Get initials for avatar
   const getInitials = (name: string) => {
