@@ -31,8 +31,11 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Show video when camera is on OR when screen sharing is active
   const hasVideo =
-    stream && isVideoEnabled && stream.getVideoTracks().length > 0;
+    stream &&
+    (isVideoEnabled || isScreenSharing) &&
+    stream.getVideoTracks().length > 0;
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -61,14 +64,14 @@ export const VideoTile: React.FC<VideoTileProps> = ({
       `}
       onClick={onClick}
     >
-      {/* Video Element */}
+      {/* Video Element — show when camera is on OR screen is being shared */}
       {hasVideo ? (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={muted}
-          className="w-full h-full object-cover"
+          className={`w-full h-full ${isScreenSharing ? "object-contain bg-black" : "object-cover"}`}
         />
       ) : (
         /* Avatar Placeholder when no video */

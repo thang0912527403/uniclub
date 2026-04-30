@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import type { HubConnection } from '@microsoft/signalr';
-import type { RoomUser } from '../types';
-import { rtcConfig } from '../config/rtcConfig';
+import { useState, useRef, useCallback, useEffect } from "react";
+import type { HubConnection } from "@microsoft/signalr";
+import type { RoomUser } from "../types";
+import { rtcConfig } from "../config/rtcConfig";
 
 /**
  * Manages WebRTC peer connections and remote media streams.
@@ -18,10 +18,12 @@ export function usePeerConnections(
   localStreamRef: React.MutableRefObject<MediaStream | null>,
   screenStreamRef: React.MutableRefObject<MediaStream | null>,
   isScreenSharingRef: React.MutableRefObject<boolean>,
-  roomIdRef: React.MutableRefObject<string | null>
+  roomIdRef: React.MutableRefObject<string | null>,
 ) {
   const peers = useRef<Map<string, RTCPeerConnection>>(new Map());
-  const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const [remoteStreams, setRemoteStreams] = useState<
+    Record<string, MediaStream>
+  >({});
 
   // Keep a ref to connection so callbacks stay stable
   const connectionRef = useRef(connection);
@@ -30,10 +32,16 @@ export function usePeerConnections(
   // ── Create Peer Connection ────────────────────────────────────────
 
   const createPeerConnection = useCallback(
-    async (targetConnectionId: string, isInitiator: boolean, roomId: string) => {
+    async (
+      targetConnectionId: string,
+      isInitiator: boolean,
+      roomId: string,
+    ) => {
       if (peers.current.has(targetConnectionId)) return;
 
-      console.log(`[Peer] Creating for ${targetConnectionId}, initiator: ${isInitiator}`);
+      console.log(
+        `[Peer] Creating for ${targetConnectionId}, initiator: ${isInitiator}`,
+      );
       const pc = new RTCPeerConnection(rtcConfig);
 
       // Determine which stream to send (screen or camera)
@@ -47,7 +55,7 @@ export function usePeerConnections(
           : currentLocalStream;
 
       if (streamToShare) {
-        streamToShare.getTracks().forEach(track => {
+        streamToShare.getTracks().forEach((track) => {
           pc.addTrack(track, streamToShare);
         });
       }
@@ -60,25 +68,49 @@ export function usePeerConnections(
         }
       }
 
+      // CRITICAL: Ensure both audio and video transceivers exist in the SDP.
+      // Without this, a user who joins with audio-only would create an offer
+      // with no video m-line, making it impossible for the remote peer
+      // (who may be screen sharing or have camera on) to send video back.
+      const senders = pc.getSenders();
+      const hasAudioSender = senders.some((s) => s.track?.kind === "audio");
+      const hasVideoSender = senders.some((s) => s.track?.kind === "video");
+
+      if (!hasAudioSender) {
+        pc.addTransceiver("audio", { direction: "recvonly" });
+      }
+      if (!hasVideoSender) {
+        pc.addTransceiver("video", { direction: "recvonly" });
+      }
+
       // ICE candidate → send via SignalR
       pc.onicecandidate = (event) => {
         if (event.candidate && connectionRef.current) {
-          connectionRef.current.invoke('SendSignal', roomId, targetConnectionId, {
-            type: 'candidate',
-            candidate: event.candidate.toJSON()
-          });
+          connectionRef.current.invoke(
+            "SendSignal",
+            roomId,
+            targetConnectionId,
+            {
+              type: "candidate",
+              candidate: event.candidate.toJSON(),
+            },
+          );
         }
       };
 
       // Incoming remote track
       pc.ontrack = (event) => {
-        console.log(`[Peer] Remote track from ${targetConnectionId}`);
+        console.log(
+          `[Peer] Remote track from ${targetConnectionId}`,
+          event.track.kind,
+        );
         if (event.streams?.[0]) {
-          // Clone the stream object to ensure React detects the reference change
-          const incomingStream = event.streams[0];
+          // Use the stream directly from the peer connection.
+          // Do NOT clone it — cloning creates a detached copy that won't reflect
+          // future replaceTrack() calls (e.g. camera ↔ screen sharing swap).
           setRemoteStreams((prev) => ({
             ...prev,
-            [targetConnectionId]: new MediaStream(incomingStream.getTracks()),
+            [targetConnectionId]: event.streams[0],
           }));
         }
       };
@@ -90,23 +122,28 @@ export function usePeerConnections(
         try {
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
-          await connectionRef.current!.invoke('SendSignal', roomId, targetConnectionId, {
-            type: 'offer',
-            sdp: offer.sdp
-          });
+          await connectionRef.current!.invoke(
+            "SendSignal",
+            roomId,
+            targetConnectionId,
+            {
+              type: "offer",
+              sdp: offer.sdp,
+            },
+          );
         } catch (err) {
-          console.error('[Peer] Error creating offer:', err);
+          console.error("[Peer] Error creating offer:", err);
         }
       }
     },
     // All external values accessed via refs → stable callback
-    [localStreamRef, screenStreamRef, isScreenSharingRef]
+    [localStreamRef, screenStreamRef, isScreenSharingRef],
   );
 
   // ── Cleanup ───────────────────────────────────────────────────────
 
   const cleanupPeers = useCallback(() => {
-    peers.current.forEach(pc => pc.close());
+    peers.current.forEach((pc) => pc.close());
     peers.current.clear();
     setRemoteStreams({});
   }, []);
@@ -170,13 +207,19 @@ export function usePeerConnections(
       }
     };
 
-    connection.on('ReceiveSignal', handleSignal);
-    connection.on('receivesignal', handleSignal);
-    return () => { 
-      connection.off('ReceiveSignal', handleSignal); 
-      connection.off('receivesignal', handleSignal); 
+    connection.on("ReceiveSignal", handleSignal);
+    connection.on("receivesignal", handleSignal);
+    return () => {
+      connection.off("ReceiveSignal", handleSignal);
+      connection.off("receivesignal", handleSignal);
     };
   }, [connection, createPeerConnection, roomIdRef]);
 
-  return { peers, remoteStreams, createPeerConnection, cleanupPeers, setRemoteStreams };
+  return {
+    peers,
+    remoteStreams,
+    createPeerConnection,
+    cleanupPeers,
+    setRemoteStreams,
+  };
 }

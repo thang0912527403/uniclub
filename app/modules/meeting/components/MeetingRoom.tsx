@@ -239,7 +239,8 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                 isVideoEnabled={
                   spotlightContent.isLocal
                     ? isScreenSharing || isVideoEnabled
-                    : !spotlightContent.isCameraOff
+                    : !spotlightContent.isCameraOff ||
+                      spotlightContent.isScreenSharing
                 }
                 isAudioEnabled={
                   spotlightContent.isLocal
@@ -284,7 +285,9 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                     <VideoTile
                       stream={stream}
                       label={rUser.fullName}
-                      isVideoEnabled={!state?.isCameraOff}
+                      isVideoEnabled={
+                        !state?.isCameraOff || state?.isScreenSharing
+                      }
                       isAudioEnabled={!state?.isMuted}
                       isScreenSharing={state?.isScreenSharing}
                       isHandRaised={state?.isHandRaised}
@@ -321,7 +324,9 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                   key={user.connectionId}
                   stream={stream}
                   label={user.fullName}
-                  isVideoEnabled={!state?.isCameraOff}
+                  isVideoEnabled={
+                    !state?.isCameraOff || state?.isScreenSharing
+                  }
                   isAudioEnabled={!state?.isMuted}
                   isScreenSharing={state?.isScreenSharing}
                   isHandRaised={state?.isHandRaised}
