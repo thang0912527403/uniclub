@@ -14,14 +14,16 @@ import {
   resolveFundBalanceHoverTextVi,
 } from "~/modules/funds/components/FundUxHints";
 import {
-  useGetFundByIdQuery,
-  useGetFundCapabilitiesQuery,
-  useGetFundsByClubQuery,
   useGetClubByIdQuery,
   useApproveFundMutation,
   useContributeToFundMutation,
   useLazyGetContributeTransactionStatusQuery,
 } from "~/cores/api";
+import {
+  useGetFundByIdQuery,
+  useGetFundCapabilitiesQuery,
+  useGetFundsByClubQuery,
+} from "~/cores/api/fundApi";
 import { useDialogAccessibility } from "~/hooks/useDialogAccessibility";
 import { parseVndIntegerFromInput } from "../funds.utils";
 import { Sidebar } from "~/components/Sidebar";
