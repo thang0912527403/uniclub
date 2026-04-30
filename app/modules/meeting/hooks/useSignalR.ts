@@ -1,6 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { HubConnectionBuilder, HubConnection, LogLevel } from '@microsoft/signalr';
-import Cookies from 'js-cookie';
+import { useState, useEffect, useRef } from "react";
+import {
+  HubConnectionBuilder,
+  HubConnection,
+  LogLevel,
+} from "@microsoft/signalr";
+import Cookies from "js-cookie";
 
 /**
  * Manages the SignalR hub connection lifecycle.
@@ -16,30 +20,31 @@ export function useSignalR() {
 
   useEffect(() => {
     const init = async () => {
-      const accessToken = Cookies.get('accessToken');
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://localhost:7237';
+      const accessToken = Cookies.get("accessToken");
+      const backendUrl =
+        import.meta.env.VITE_BACKEND_URL || "https://chuyencongnhan.io.vn";
 
       const conn = new HubConnectionBuilder()
         .withUrl(`${backendUrl}/webrtc`, {
-          accessTokenFactory: () => accessToken || ''
+          accessTokenFactory: () => accessToken || "",
         })
         .withAutomaticReconnect()
         .configureLogging(LogLevel.Information)
         .build();
 
       conn.onclose(() => {
-        console.log('[SignalR] Connection closed');
+        console.log("[SignalR] Connection closed");
         setIsConnected(false);
       });
 
       try {
         await conn.start();
-        console.log('[SignalR] Connected');
+        console.log("[SignalR] Connected");
         connectionRef.current = conn;
         setConnection(conn);
         setIsConnected(true);
       } catch (err) {
-        console.error('[SignalR] Connection failed:', err);
+        console.error("[SignalR] Connection failed:", err);
       }
     };
 
