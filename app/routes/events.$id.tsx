@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { setClubId, getClubId } from "~/utils/auth";
 import { useNavigate, useParams } from "react-router";
 import {
   useGetEventByIdQuery,
@@ -15,6 +16,10 @@ import {
   useRejectRegistrationMutation,
   useBulkApproveRegistrationsMutation,
   useCancelRegistrationMutation,
+  useCancelEventMutation,
+  useMakeupCheckInMutation,
+  useBulkMakeupCheckInMutation,
+  useAddAttendeesMutation,
 } from "~/cores/api";
 import { useGetCurrentUserQuery } from "~/cores/api/authApi";
 import { ApiStatusButton } from "~/components/ApiStatusButton";
@@ -87,6 +92,8 @@ export default function EventDetailPage() {
     expiresAt: string;
   } | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeCountdown, setCodeCountdown] = useState<number>(0); // seconds remaining
+  const codeAutoRefreshRef = useRef<boolean>(false);
 
   // QR check-in (organizer scans → paste token)
   const [qrToken, setQrToken] = useState("");
@@ -113,6 +120,28 @@ export default function EventDetailPage() {
 
   const { data: event, isLoading, error } = useGetEventByIdQuery(eventId);
   const { user: currentUser, isAdmin: isGlobalAdmin } = useCurrentUser();
+  // Auto-set clubId cookie khi vào event detail (để không cần phải vào dashboard trước)
+  useEffect(() => {
+    if (event?.clubId && event.clubId !== getClubId()) {
+      setClubId(event.clubId);
+      // Force re-render để hooks nhận clubId mới
+      window.dispatchEvent(new Event('authchange'));
+    }
+  }, [event?.clubId]);
+
+  // Sync check-in code from backend when page loads or event data refreshes
+  useEffect(() => {
+    if (event?.checkInCode && event?.codeExpiresAt) {
+      setGeneratedCode(prev => {
+        // Only update if the code or expiry actually changed to avoid infinite re-renders
+        if (prev?.code !== event.checkInCode || prev?.expiresAt !== event.codeExpiresAt) {
+          return { code: event.checkInCode, expiresAt: event.codeExpiresAt! };
+        }
+        return prev;
+      });
+    }
+  }, [event?.checkInCode, event?.codeExpiresAt]);
+
   const eventPerm = useEventPermission(event?.clubId ?? 0, eventId);
   const clubPolicy = useClubPolicy();
 
@@ -128,15 +157,13 @@ export default function EventDetailPage() {
     eventPerm.canStartComplete || clubPolicy.canStartComplete;
   const canApprove = eventPerm.canApprove || clubPolicy.canApproveAttendance;
   const canCheckIn = eventPerm.canCheckIn || clubPolicy.canCheckIn;
-  const canEvaluate = eventPerm.canEvaluate || clubPolicy.canEvaluate;
   const canManageTeam =
     eventPerm.canManageTeam || clubPolicy.canManageCollaborator;
   const hasAnyPermission =
     eventPerm.hasAnyPermission ||
     clubPolicy.canEditEvent ||
     clubPolicy.canApproveAttendance ||
-    clubPolicy.canCheckIn ||
-    clubPolicy.canEvaluate;
+    clubPolicy.canCheckIn;
 
   const {
     data: attendees,
@@ -178,12 +205,28 @@ export default function EventDetailPage() {
     useStartEventMutation();
   const [completeEvent, { isLoading: isCompleting, error: completeError }] =
     useCompleteEventMutation();
+  const [cancelEvent, { isLoading: isCancelingEvent }] =
+    useCancelEventMutation();
+  const [makeupCheckIn, { isLoading: isMakeupCheckingIn }] =
+    useMakeupCheckInMutation();
+  const [bulkMakeupCheckIn, { isLoading: isBulkMakeupCheckingIn }] =
+    useBulkMakeupCheckInMutation();
+  const [addAttendees, { isLoading: isAddingAttendees }] =
+    useAddAttendeesMutation();
 
   // Collaborator (Team) hooks
   // All Role & Member hooks have been moved to EventRolesTab and EventMembersTab components.
 
   // State cho panel Chờ duyệt
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
+
+  // State for Manager add attendee
+  const [showAddAttendee, setShowAddAttendee] = useState(false);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  const clubMembers = useGetClubMembersQuery(event?.clubId ?? 0, {
+    skip: !event?.clubId || !showAddAttendee,
+  });
 
   const bg = isDark ? "bg-[#1a1d2e]" : "bg-[#f5f7fa]";
   const card = isDark ? "bg-[#242838]" : "bg-white";
@@ -397,10 +440,41 @@ export default function EventDetailPage() {
         eventId,
       }).unwrap();
       setGeneratedCode({ code: res.code, expiresAt: res.expiresAt });
+      codeAutoRefreshRef.current = false;
     } catch (e: any) {
       setCodeError(e?.data?.error ?? "Không thể tạo mã");
     }
   };
+
+  // Countdown timer for check-in code
+  useEffect(() => {
+    if (!generatedCode?.expiresAt) {
+      setCodeCountdown(0);
+      return;
+    }
+    const calcRemaining = () => {
+      // The backend returns a string with 'Z' appended to a local VN time. Strip 'Z' to parse as local time.
+      const localTimeStr = generatedCode.expiresAt.replace("Z", "");
+      const diff = Math.max(0, Math.floor((new Date(localTimeStr).getTime() - Date.now()) / 1000));
+      return diff;
+    };
+    setCodeCountdown(calcRemaining());
+
+    const interval = setInterval(() => {
+      const remaining = calcRemaining();
+      setCodeCountdown(remaining);
+      if (remaining <= 0) {
+        clearInterval(interval);
+        // Auto-refresh code
+        if (!codeAutoRefreshRef.current) {
+          codeAutoRefreshRef.current = true;
+          handleGenerateCode();
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [generatedCode?.expiresAt]);
 
   const handleCheckInByQr = async (token?: string) => {
     let t = (token ?? qrToken)
@@ -477,7 +551,7 @@ export default function EventDetailPage() {
         }).unwrap();
         setGeneratedCode({
           code: res.checkInCode,
-          expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+          expiresAt: res.expiresAt ?? new Date(Date.now() + 15 * 60 * 1000).toISOString(),
         });
         setActiveTab("checkin");
         showNotification({
@@ -520,6 +594,35 @@ export default function EventDetailPage() {
           type: "error",
           title: "Lỗi",
           message: e?.data?.error ?? "Có lỗi khi kết thúc sự kiện.",
+        });
+      } finally {
+        setConfirmOpen(false);
+      }
+    });
+    setConfirmOpen(true);
+  };
+
+  const handleCancelEvent = () => {
+    setConfirmConfig({
+      title: 'Hủy sự kiện',
+      message:
+        'Bạn có chắc chắn muốn hủy sự kiện này? Tất cả đăng ký sẽ bị hủy.',
+      type: 'danger',
+      confirmText: 'Hủy sự kiện',
+    });
+    setConfirmAction(() => async () => {
+      try {
+        await cancelEvent({ clubId: event?.clubId ?? 0, eventId }).unwrap();
+        showNotification({
+          type: 'success',
+          title: 'Đã hủy sự kiện',
+          message: 'Sự kiện đã được hủy thành công.',
+        });
+      } catch (e: any) {
+        showNotification({
+          type: 'error',
+          title: 'Lỗi',
+          message: e?.data?.error ?? 'Hủy sự kiện thất bại.',
         });
       } finally {
         setConfirmOpen(false);
@@ -579,49 +682,51 @@ export default function EventDetailPage() {
 
   const pendingCount =
     attendees?.filter((a) => a.attendanceStatus === "PENDING").length ?? 0;
+  const waitlistCount =
+    attendees?.filter((a) => a.attendanceStatus === "WAITLIST").length ?? 0;
 
   const tabs: { key: Tab; label: React.ReactNode }[] = [
     { key: "sessions", label: "Lịch trình" },
     { key: "registration", label: "Đăng ký" },
     ...(canApprove && event.requiresApproval
       ? [
-          {
-            key: "pending" as Tab,
-            label: (
-              <span className="flex items-center gap-1.5">
-                Chờ duyệt
-                {pendingCount > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full">
-                    {pendingCount}
-                  </span>
-                )}
-              </span>
-            ),
-          },
-        ]
+        {
+          key: "pending" as Tab,
+          label: (
+            <span className="flex items-center gap-1.5">
+              Chờ duyệt
+              {(pendingCount + waitlistCount) > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full">
+                  {pendingCount + waitlistCount}
+                </span>
+              )}
+            </span>
+          ),
+        },
+      ]
       : []),
     { key: "checkin", label: "Điểm danh" },
     ...(canManageTeam
       ? [
-          {
-            key: "roles" as Tab,
-            label: (
-              <span className="flex items-center gap-1.5">
-                <i className="fas fa-shield-alt" />
-                Chức vụ
-              </span>
-            ),
-          },
-          {
-            key: "members" as Tab,
-            label: (
-              <span className="flex items-center gap-1.5">
-                <i className="fas fa-users-cog" />
-                Thành viên
-              </span>
-            ),
-          },
-        ]
+        {
+          key: "roles" as Tab,
+          label: (
+            <span className="flex items-center gap-1.5">
+              <i className="fas fa-shield-alt" />
+              Chức vụ
+            </span>
+          ),
+        },
+        {
+          key: "members" as Tab,
+          label: (
+            <span className="flex items-center gap-1.5">
+              <i className="fas fa-users-cog" />
+              Thành viên
+            </span>
+          ),
+        },
+      ]
       : []),
   ];
 
@@ -684,7 +789,7 @@ export default function EventDetailPage() {
                 <div className="flex gap-2 flex-wrap">
                   {(canEdit || canOpenRegistration || canStartComplete) && (
                     <>
-                      {canEdit && (
+                      {canEdit && !['CANCELED', 'ENDED'].includes(event.status ?? '') && (
                         <button
                           onClick={() =>
                             navigate(`/events/${event.eventId}/edit`)
@@ -722,6 +827,15 @@ export default function EventDetailPage() {
                           className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors"
                         >
                           {isCompleting ? "Đang chốt..." : "Kết thúc sự kiện"}
+                        </button>
+                      )}
+                      {canEdit && !['CANCELED', 'CLOSED', 'ENDED'].includes(event.status ?? '') && (
+                        <button
+                          onClick={handleCancelEvent}
+                          disabled={isCancelingEvent}
+                          className="px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors shadow-sm"
+                        >
+                          {isCancelingEvent ? 'Đang hủy...' : 'Hủy sự kiện'}
                         </button>
                       )}
                     </>
@@ -763,11 +877,10 @@ export default function EventDetailPage() {
                 <button
                   key={t.key}
                   onClick={() => setActiveTab(t.key)}
-                  className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === t.key
+                  className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === t.key
                       ? "border-blue-500 text-blue-600"
                       : `border-transparent ${sub} hover:text-blue-500`
-                  }`}
+                    }`}
                 >
                   {t.label}
                 </button>
@@ -871,13 +984,13 @@ export default function EventDetailPage() {
                               setRegForm({
                                 startDate: event.registrationStartDate
                                   ? new Date(event.registrationStartDate)
-                                      .toISOString()
-                                      .slice(0, 16)
+                                    .toISOString()
+                                    .slice(0, 16)
                                   : "",
                                 endDate: event.registrationEndDate
                                   ? new Date(event.registrationEndDate)
-                                      .toISOString()
-                                      .slice(0, 16)
+                                    .toISOString()
+                                    .slice(0, 16)
                                   : "",
                                 maxAttendees:
                                   event.maxAttendees?.toString() ?? "",
@@ -1001,23 +1114,160 @@ export default function EventDetailPage() {
 
                   {/* attendee table */}
                   <div>
-                    <h3 className={`font-semibold mb-3 ${text}`}>
-                      Danh sách đăng ký{" "}
-                      {attendees ? `(${attendees.length})` : ""}
-                    </h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className={`font-semibold ${text}`}>
+                        Danh sách đăng ký{" "}
+                        {attendees ? `(${attendees.length})` : ""}
+                      </h3>
+                      {hasAnyPermission && !['COMPLETED', 'ENDED', 'CANCELED'].includes(event.status) && (
+                        <button
+                          onClick={() => setShowAddAttendee(!showAddAttendee)}
+                          className="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
+                        >
+                          <i className="fas fa-user-plus" />
+                          {showAddAttendee ? 'Đóng' : 'Thêm thành viên'}
+                        </button>
+                      )}
+                    </div>
+
+
+                    {/* Add attendee panel */}
+                    {showAddAttendee && (() => {
+                      // Compute filtered members once
+                      const filteredMembers = (clubMembers.data ?? []).filter((m: any) => {
+                        if (attendees?.some((a: any) => a.userId === m.userId)) return false;
+                        if (!memberSearch.trim()) return true;
+                        const q = memberSearch.toLowerCase();
+                        return (m.fullName || '').toLowerCase().includes(q)
+                          || (m.email || '').toLowerCase().includes(q)
+                          || (m.studentId || '').toLowerCase().includes(q)
+                          || (m.userName || '').toLowerCase().includes(q);
+                      });
+                      const allFilteredIds = filteredMembers.map((m: any) => m.userId);
+                      const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id: string) => selectedMemberIds.includes(id));
+
+                      return (
+                        <div className={`mb-4 p-4 rounded-lg border ${border} ${isDark ? 'bg-gray-800/50' : 'bg-blue-50'}`}>
+                          <p className={`text-sm font-medium mb-2 ${text}`}>Chọn thành viên CLB để thêm vào sự kiện:</p>
+                          {clubMembers.isLoading ? (
+                            <p className={`text-sm ${sub}`}>Đang tải danh sách...</p>
+                          ) : (
+                            <>
+                              <input
+                                type="text"
+                                placeholder="Tìm theo tên, email, MSSV..."
+                                value={memberSearch}
+                                onChange={(e) => setMemberSearch(e.target.value)}
+                                className={`w-full px-3 py-2 mb-3 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${inputCls}`}
+                              />
+                              {/* Select All */}
+                              {filteredMembers.length > 0 && (
+                                <label className={`flex items-center gap-2 px-2 py-1.5 mb-1 rounded cursor-pointer text-sm font-semibold ${text} border-b ${border}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={allSelected}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedMemberIds(prev => [...new Set([...prev, ...allFilteredIds])]);
+                                      } else {
+                                        setSelectedMemberIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded text-blue-500"
+                                  />
+                                  Chọn tất cả ({filteredMembers.length})
+                                </label>
+                              )}
+                              <div className="max-h-40 overflow-y-auto space-y-1 mb-3">
+                                {filteredMembers.map((m: any) => (
+                                  <label key={m.userId} className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 text-sm ${text}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedMemberIds.includes(m.userId)}
+                                      onChange={(e) => {
+                                        setSelectedMemberIds(prev =>
+                                          e.target.checked ? [...prev, m.userId] : prev.filter(id => id !== m.userId)
+                                        );
+                                      }}
+                                      className="w-4 h-4 rounded text-blue-500"
+                                    />
+                                    {m.fullName || m.userName} {m.studentId ? `(${m.studentId})` : ''} <span className="text-gray-400 text-xs ml-1">— {m.email}</span>
+                                  </label>
+                                ))}
+                                {filteredMembers.length === 0 && (
+                                  <p className={`text-sm ${sub}`}>Không tìm thấy thành viên phù hợp.</p>
+                                )}
+                              </div>
+                              <button
+                                disabled={selectedMemberIds.length === 0 || isAddingAttendees}
+                                onClick={async () => {
+                                  try {
+                                    const res = await addAttendees({
+                                      clubId: event.clubId ?? 0,
+                                      eventId,
+                                      userIds: selectedMemberIds,
+                                    }).unwrap();
+                                    showNotification({ type: 'success', title: 'Thành công', message: res.message });
+                                    setSelectedMemberIds([]);
+                                    setMemberSearch("");
+                                    setShowAddAttendee(false);
+                                    refetchAttendees();
+                                  } catch (e: any) {
+                                    const code = e?.data?.code;
+                                    if (code === 'CAPACITY_EXCEEDED') {
+                                      const msg = e?.data?.error || 'Vượt quá số lượng cho phép.';
+                                      const suggestedMax = e?.data?.suggestedMax;
+                                      setConfirmConfig({
+                                        title: 'Vượt quá số lượng tối đa',
+                                        message: `${msg}\n\nBạn có muốn tăng số lượng tối đa lên ${suggestedMax} và tiếp tục thêm?`,
+                                        type: 'warning',
+                                        confirmText: `Tăng lên ${suggestedMax} và thêm`,
+                                      });
+                                      setConfirmAction(() => async () => {
+                                        try {
+                                          const res2 = await addAttendees({
+                                            clubId: event.clubId ?? 0,
+                                            eventId,
+                                            userIds: selectedMemberIds,
+                                            force: true,
+                                          }).unwrap();
+                                          showNotification({ type: 'success', title: 'Thành công', message: res2.message });
+                                          setSelectedMemberIds([]);
+                                          setMemberSearch("");
+                                          setShowAddAttendee(false);
+                                          refetchAttendees();
+                                        } catch (e2: any) {
+                                          showNotification({ type: 'error', title: 'Lỗi', message: e2?.data?.error ?? 'Không thể thêm thành viên.' });
+                                        }
+                                        setConfirmOpen(false);
+                                      });
+                                      setConfirmOpen(true);
+                                    } else {
+                                      showNotification({ type: 'error', title: 'Lỗi', message: e?.data?.error ?? 'Không thể thêm thành viên.' });
+                                    }
+                                  }
+                                }}
+                                className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                              >
+                                {isAddingAttendees ? 'Đang thêm...' : `Thêm ${selectedMemberIds.length} thành viên`}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Countdown / deadline banner */}
                     {event.status === "REGISTRATION_OPEN" && regDeadline && (
                       <div
-                        className={`mb-4 px-4 py-3 rounded-lg border flex flex-wrap items-center justify-between gap-2 ${
-                          isRegDeadlinePassed
+                        className={`mb-4 px-4 py-3 rounded-lg border flex flex-wrap items-center justify-between gap-2 ${isRegDeadlinePassed
                             ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
                             : isRegNotStarted
                               ? "bg-amber-50 border-amber-200"
                               : regDeadline - now < 30 * 60 * 1000
                                 ? "bg-orange-50 border-orange-200"
                                 : "bg-green-50 border-green-200"
-                        }`}
+                          }`}
                       >
                         {isRegDeadlinePassed ? (
                           <span className="text-sm font-medium text-red-600">
@@ -1037,21 +1287,19 @@ export default function EventDetailPage() {
                         ) : (
                           <>
                             <span
-                              className={`text-sm font-medium ${
-                                regDeadline - now < 30 * 60 * 1000
+                              className={`text-sm font-medium ${regDeadline - now < 30 * 60 * 1000
                                   ? "text-orange-600"
                                   : "text-green-700"
-                              }`}
+                                }`}
                             >
                               🟢 Đăng ký đang mở — đóng lúc{" "}
                               {fmtDate(event.registrationEndDate)}
                             </span>
                             <span
-                              className={`text-sm font-mono font-bold ${
-                                regDeadline - now < 30 * 60 * 1000
+                              className={`text-sm font-mono font-bold ${regDeadline - now < 30 * 60 * 1000
                                   ? "text-orange-600"
                                   : "text-green-700"
-                              }`}
+                                }`}
                             >
                               Còn {fmtCountdown(regDeadline)}
                             </span>
@@ -1129,14 +1377,14 @@ export default function EventDetailPage() {
                               {["PENDING", "REGISTERED", "WAITLIST"].includes(
                                 myRow.attendanceStatus,
                               ) && (
-                                <button
-                                  onClick={handleCancelRegistration}
-                                  disabled={isCancelling}
-                                  className="px-3 py-1.5 text-sm bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
-                                >
-                                  {isCancelling ? "Đang huỷ..." : "Huỷ đăng ký"}
-                                </button>
-                              )}
+                                  <button
+                                    onClick={handleCancelRegistration}
+                                    disabled={isCancelling}
+                                    className="px-3 py-1.5 text-sm bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+                                  >
+                                    {isCancelling ? "Đang huỷ..." : "Huỷ đăng ký"}
+                                  </button>
+                                )}
                             </div>
                           );
                         })()}
@@ -1192,7 +1440,7 @@ export default function EventDetailPage() {
                                 </td>
                                 <td className={`px-3 py-2.5 ${sub}`}>
                                   {new Date(
-                                    a.registrationDate,
+                                    a.registrationDate.replace("Z", ""),
                                   ).toLocaleDateString("vi-VN")}
                                 </td>
                                 <td className="px-3 py-2.5">
@@ -1205,8 +1453,8 @@ export default function EventDetailPage() {
                                 <td className={`px-3 py-2.5 ${sub}`}>
                                   {a.checkInTime
                                     ? new Date(
-                                        a.checkInTime,
-                                      ).toLocaleTimeString("vi-VN")
+                                      a.checkInTime.replace("Z", ""),
+                                    ).toLocaleTimeString("vi-VN")
                                     : "—"}
                                 </td>
                                 <td
@@ -1255,15 +1503,58 @@ export default function EventDetailPage() {
                                         "REGISTERED",
                                         "WAITLIST",
                                       ].includes(a.attendanceStatus) && (
-                                        <button
-                                          onClick={() => handleReject(a.userId)}
-                                          disabled={isRejecting}
-                                          title="Huỷ đăng ký của thành viên này"
-                                          className={`px-2.5 py-1 text-xs border ${border} ${sub} rounded hover:opacity-70 transition-colors ${a.attendanceStatus === "PENDING" ? "hidden" : ""}`}
-                                        >
-                                          Huỷ
-                                        </button>
-                                      )}
+                                          <button
+                                            onClick={() => handleReject(a.userId)}
+                                            disabled={isRejecting}
+                                            title="Huỷ đăng ký của thành viên này"
+                                            className={`px-2.5 py-1 text-xs border ${border} ${sub} rounded hover:opacity-70 transition-colors ${a.attendanceStatus === "PENDING" ? "hidden" : ""}`}
+                                          >
+                                            Huỷ
+                                          </button>
+                                        )}
+                                      {/* Nút điểm danh bù */}
+                                      {["COMPLETED", "ENDED"].includes(event.status) &&
+                                        ["REGISTERED", "ABSENT"].includes(a.attendanceStatus) &&
+                                        (canCheckIn || canApprove) && (
+                                          <button
+                                            onClick={() => {
+                                              setConfirmConfig({
+                                                title: 'Xác nhận điểm danh bù',
+                                                message: `Bạn có chắc muốn điểm danh bù cho "${a.memberName}"?`,
+                                                type: 'warning',
+                                                confirmText: 'Điểm danh bù',
+                                              });
+                                              setConfirmAction(() => async () => {
+                                                try {
+                                                  const res = await makeupCheckIn({
+                                                    clubId: event.clubId ?? 0,
+                                                    eventId,
+                                                    userId: a.userId,
+                                                  }).unwrap();
+                                                  showNotification({
+                                                    type: "success",
+                                                    title: "Điểm danh bù",
+                                                    message: res.message,
+                                                  });
+                                                  refetchAttendees();
+                                                } catch (e: any) {
+                                                  showNotification({
+                                                    type: "error",
+                                                    title: "Lỗi điểm danh bù",
+                                                    message: e?.data?.error ?? "Không thể điểm danh bù.",
+                                                  });
+                                                }
+                                                setConfirmOpen(false);
+                                              });
+                                              setConfirmOpen(true);
+                                            }}
+                                            disabled={isMakeupCheckingIn}
+                                            className="px-2.5 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 disabled:opacity-50 transition-colors"
+                                            title="Điểm danh bù cho thành viên này"
+                                          >
+                                            {isMakeupCheckingIn ? "Đang xử lý..." : "Điểm danh bù"}
+                                          </button>
+                                        )}
                                     </div>
                                   </td>
                                 )}
@@ -1320,7 +1611,7 @@ export default function EventDetailPage() {
                     </div>
                   )}
 
-                  {!isLoadingAttendees && pendingCount === 0 && (
+                  {!isLoadingAttendees && pendingCount === 0 && waitlistCount === 0 && (
                     <div
                       className={`flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed ${isDark ? "border-gray-600" : "border-gray-200"}`}
                     >
@@ -1422,7 +1713,7 @@ export default function EventDetailPage() {
                                   </td>
                                   <td className={`px-3 py-3 ${sub}`}>
                                     {new Date(
-                                      a.registrationDate,
+                                      a.registrationDate.replace("Z", ""),
                                     ).toLocaleString("vi-VN", {
                                       day: "2-digit",
                                       month: "2-digit",
@@ -1457,6 +1748,72 @@ export default function EventDetailPage() {
                         </div>
                       );
                     })()}
+
+                  {/* ── WAITLIST ── */}
+                  {!isLoadingAttendees && waitlistCount > 0 && (
+                    <div className="mt-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <h3 className={`font-semibold ${text}`}>
+                          <i className="fas fa-hourglass-half mr-2 text-purple-500" />
+                          Danh sách chờ (Waitlist)
+                        </h3>
+                        <span className="px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700 rounded-full">
+                          {waitlistCount}
+                        </span>
+                      </div>
+                      <div className={`rounded-xl border ${border} overflow-hidden`}>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className={isDark ? "bg-gray-700/50" : "bg-gray-50"}>
+                              <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thành viên</th>
+                              <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>MSSV</th>
+                              <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Đăng ký lúc</th>
+                              <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Trạng thái</th>
+                              <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thao tác</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(attendees?.filter((a) => a.attendanceStatus === "WAITLIST") ?? []).map((a) => (
+                              <tr key={a.attendId} className={`border-t ${border} ${isDark ? "hover:bg-gray-700" : "hover:bg-gray-50"} transition-colors`}>
+                                <td className={`px-3 py-3 font-medium ${text}`}>{a.memberName}</td>
+                                <td className={`px-3 py-3 ${sub}`}>{a.studentId || "—"}</td>
+                                <td className={`px-3 py-3 ${sub}`}>
+                                  {new Date(a.registrationDate.replace("Z", "")).toLocaleString("vi-VN", {
+                                    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                                  })}
+                                </td>
+                                <td className="px-3 py-3">
+                                  <span className="px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700 rounded-full">
+                                    Chờ slot
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleApprove(a.userId)}
+                                      disabled={isApproving}
+                                      className="px-3 py-1 text-xs font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
+                                    >
+                                      <i className="fas fa-check mr-1" />
+                                      Duyệt
+                                    </button>
+                                    <button
+                                      onClick={() => handleReject(a.userId)}
+                                      disabled={isRejecting}
+                                      className="px-3 py-1 text-xs font-semibold border border-red-300 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                                    >
+                                      <i className="fas fa-times mr-1" />
+                                      Từ chối
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1489,12 +1846,18 @@ export default function EventDetailPage() {
                             <p className="text-4xl font-black tracking-widest text-orange-600 font-mono">
                               {generatedCode.code}
                             </p>
-                            <p className={`text-xs mt-1 ${sub}`}>
-                              Hết hạn lúc{" "}
-                              {new Date(
-                                generatedCode.expiresAt,
-                              ).toLocaleTimeString("vi-VN")}
-                            </p>
+                            <div className="flex items-center justify-center gap-2 mt-2">
+                              <i className={`fas fa-clock text-sm ${codeCountdown <= 60 ? 'text-red-500' : 'text-orange-400'}`} />
+                              {codeCountdown > 0 ? (
+                                <p className={`text-sm font-semibold font-mono ${codeCountdown <= 60 ? 'text-red-500 animate-pulse' : codeCountdown <= 180 ? 'text-orange-500' : sub}`}>
+                                  {String(Math.floor(codeCountdown / 60)).padStart(2, '0')}:{String(codeCountdown % 60).padStart(2, '0')}
+                                </p>
+                              ) : (
+                                <p className="text-sm font-semibold text-red-500">
+                                  <i className="fas fa-sync fa-spin mr-1" />Đang tạo mã mới...
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1532,23 +1895,9 @@ export default function EventDetailPage() {
                             <p className={`text-xs ${sub}`}>
                               Hết hạn lúc{" "}
                               {new Date(
-                                myCheckInQr.expiresAt,
+                                myCheckInQr.expiresAt.replace("Z", ""),
                               ).toLocaleTimeString("vi-VN")}
                             </p>
-                          )}
-                          {/* Dev: copy token để test điểm danh QR khi không có máy quét */}
-                          {import.meta.env.DEV && (
-                            <details className={`mt-2 text-xs ${sub}`}>
-                              <summary className="cursor-pointer hover:underline">
-                                Copy mã để test (chỉ hiện khi dev)
-                              </summary>
-                              <code
-                                className="block mt-1 p-2 bg-black/10 rounded break-all select-all"
-                                title="Copy để dán vào ô Điểm danh bằng QR"
-                              >
-                                {myCheckInQr.token ?? myCheckInQr.qrContent}
-                              </code>
-                            </details>
                           )}
                         </div>
                       ) : (

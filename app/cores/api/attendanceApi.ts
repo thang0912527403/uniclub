@@ -15,7 +15,7 @@ export const attendanceApi = baseApi.injectEndpoints({
         // ===== USER-FACING endpoints (api/events) =====
 
         // đăng ký tham gia event
-        registerForEvent: builder.mutation<{ message: string }, number>({
+        registerForEvent: builder.mutation<{ message: string; attendanceStatus: string }, number>({
             query: (eventId) => ({
                 url: `/events/${eventId}/register`,
                 method: 'POST',
@@ -33,7 +33,7 @@ export const attendanceApi = baseApi.injectEndpoints({
         }),
 
         // điểm danh bằng mã 6 ký tự
-        checkIn: builder.mutation<{ message: string }, CheckInRequest>({
+        checkIn: builder.mutation<{ success: boolean; message: string; alreadyCheckedIn: boolean }, CheckInRequest>({
             query: (request) => ({
                 url: `/events/${request.eventId}/checkin`,
                 method: 'POST',
@@ -45,6 +45,12 @@ export const attendanceApi = baseApi.injectEndpoints({
         // QR: lấy mã QR điểm danh của user hiện tại (participant mở để cho BTC quét)
         getMyCheckInQr: builder.query<CheckInQrResponse, number>({
             query: (eventId) => `/events/${eventId}/my-checkin-qr`,
+            providesTags: (result, error, eventId) => [{ type: 'Event', id: eventId }],
+        }),
+
+        // Lấy trạng thái đăng ký của user hiện tại cho event
+        getMyRegistration: builder.query<{ attendanceStatus: string; registrationDate: string; checkInTime?: string }, number>({
+            query: (eventId) => `/events/${eventId}/my-registration`,
             providesTags: (result, error, eventId) => [{ type: 'Event', id: eventId }],
         }),
 
@@ -110,6 +116,16 @@ export const attendanceApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
         }),
+
+        // Manager: thêm thành viên CLB trực tiếp vào event
+        addAttendees: builder.mutation<{ message: string; addedCount: number }, { clubId: number; eventId: number; userIds: string[]; force?: boolean }>({
+            query: ({ clubId, eventId, userIds, force }) => ({
+                url: `/club/${clubId}/events/${eventId}/add-attendees${force ? '?force=true' : ''}`,
+                method: 'POST',
+                body: userIds,
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+        }),
     }),
 });
 
@@ -125,4 +141,6 @@ export const {
     useGetEventAttendeesQuery,
     useGetMyCheckInQrQuery,
     useCheckInByQrMutation,
+    useAddAttendeesMutation,
+    useGetMyRegistrationQuery,
 } = attendanceApi;

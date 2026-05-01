@@ -158,7 +158,7 @@ export default function EditEventPage() {
     const [initialized, setInitialized] = useState(false);
 
     // Per-event permission gate
-    const { can, isLoading: isLoadingPerm } = useEventPermission(event?.clubId, Number(id));
+    const { canEdit, isLoading: isLoadingPerm } = useEventPermission(event?.clubId ?? 0, Number(id));
     /** IDs của sessions hiện có (id > 0) đã bị xóa khỏi UI — cần gọi DELETE */
     const [deletedSessionIds, setDeletedSessionIds] = useState<number[]>([]);
 
@@ -222,6 +222,14 @@ export default function EditEventPage() {
             setInitialized(true);
         }
     }, [event, initialized]);
+
+    // Redirect if user doesn't have editevent permission
+    // Wait for event data to load first — otherwise clubId=0 causes false negative
+    useEffect(() => {
+        if (!isLoadingEvent && event && !isLoadingPerm && !canEdit) {
+            navigate(`/events/${id}`, { replace: true });
+        }
+    }, [isLoadingEvent, event, isLoadingPerm, canEdit, navigate, id]);
 
     // Derive calendar state
     const calState: CalendarState = deriveCalendarState(form, event?.eventName ?? '');
@@ -311,82 +319,43 @@ export default function EditEventPage() {
     const handleSessionModalConfirm = useCallback(async (data: SessionQuickModalData) => {
         if (!sessionModal) return;
         if (sessionModal.mode === 'create') {
-            // Edit page: event đã có ID → call API ngay
-            if (event?.eventId && event?.clubId) {
-                try {
-                    await createSession({
-                        clubId: event.clubId,
-                        eventId: event.eventId,
-                        sessionName: data.sessionName,
-                        startTime: new Date(data.start).toISOString(),
-                        endTime: new Date(data.end).toISOString(),
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    }).unwrap();
-                } catch { return; }   // lỗi API → đóng modal
-            } else {
-                // Draft mode (chưa có eventId)
-                setForm(prev => ({
-                    ...prev,
-                    sessions: [...prev.sessions, {
-                        id: nextTempId(),
-                        sessionName: data.sessionName,
-                        startTime: data.start,
-                        endTime: data.end,
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    }],
-                }));
-            }
+            // Always add to local state — API call deferred to Save button
+            setForm(prev => ({
+                ...prev,
+                sessions: [...prev.sessions, {
+                    id: nextTempId(),
+                    sessionName: data.sessionName,
+                    startTime: data.start,
+                    endTime: data.end,
+                    location: data.location,
+                    description: data.description,
+                    sessionType: data.sessionType,
+                }],
+            }));
         } else if (sessionModal.mode === 'edit' && sessionModal.sessionId != null) {
             const sid = sessionModal.sessionId;
-            if (sid > 0 && event?.clubId) {
-                // Session đã lưu → call updateSession API
-                try {
-                    await updateSession({
-                        clubId: event.clubId,
-                        eventId: event!.eventId,
-                        scheduleId: sid,
-                        sessionName: data.sessionName,
-                        startTime: new Date(data.start).toISOString(),
-                        endTime: new Date(data.end).toISOString(),
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    }).unwrap();
-                } catch { return; }
-            } else {
-                // Draft → update state
-                setForm(prev => ({
-                    ...prev,
-                    sessions: prev.sessions.map(s => s.id === sid ? {
-                        ...s,
-                        sessionName: data.sessionName,
-                        startTime: data.start,
-                        endTime: data.end,
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    } : s),
-                }));
-            }
+            // Always update local state — API call deferred to Save button
+            setForm(prev => ({
+                ...prev,
+                sessions: prev.sessions.map(s => s.id === sid ? {
+                    ...s,
+                    sessionName: data.sessionName,
+                    startTime: data.start,
+                    endTime: data.end,
+                    location: data.location,
+                    description: data.description,
+                    sessionType: data.sessionType,
+                } : s),
+            }));
         }
         setSessionModal(null);
-    }, [sessionModal, event, createSession, updateSession]);
+    }, [sessionModal]);
 
     const handleSessionModalDelete = useCallback(async () => {
         if (!sessionModal?.sessionId) return;
-        const sid = sessionModal.sessionId;
-        if (sid > 0 && event?.clubId) {
-            try { await deleteSession({ clubId: event.clubId, eventId: event!.eventId, scheduleId: sid }).unwrap(); }
-            catch { return; }
-        } else {
-            removeSession(sid);
-        }
+        removeSession(sessionModal.sessionId);
         setSessionModal(null);
-    }, [sessionModal, event, deleteSession]);
+    }, [sessionModal]);
 
     // ── Submit: nhận data từ EventForm, lưu vào pending rồi mở modal xác nhận ──
     const handleSubmit = (submitData: any) => {
@@ -519,9 +488,7 @@ export default function EditEventPage() {
         );
     }
 
-    // Redirect if user doesn't have editevent permission
-    if (!isLoadingPerm && !can('editevent')) {
-        navigate(`/events/${id}`);
+    if (!isLoadingPerm && !canEdit) {
         return null;
     }
 

@@ -11,7 +11,6 @@ const POLICY_MAP = {
     canStartComplete: 'startevent',
     canApprove: 'approveattendance',
     canCheckIn: 'checkin',
-    canEvaluate: 'evaluatemember',
     canManageTeam: 'managecollaborator',
 } as const;
 
@@ -28,10 +27,14 @@ export function useEventPermission(clubId: number, eventId: number) {
     const { isAdmin } = useCurrentUser();
     const { memberships } = useClubRole();
 
-    // Club Manager check (from JWT claim)
+    // Club Manager check — memberships is UserClubDetailedInfo[]
+    // Each membership has clubRoles: { roleName, level }[]
     const isClubManager = !isAdmin && memberships.some(
         m => m.clubId === clubId &&
-            (m.roleName ?? '').toLowerCase().match(/^(manager|admin|club\s?manager|quản lý|chủ nhiệm)$/i)
+            m.clubRoles?.some(r =>
+                Number(r.level) === 0 ||
+                (r.roleName ?? '').toLowerCase().match(/^(manager|admin|club\s?manager|quản lý|chủ nhiệm)$/i)
+            )
     );
 
     const { data: myRole, isLoading } = useGetMyEventRoleQuery(

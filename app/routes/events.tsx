@@ -18,20 +18,22 @@ export default function EventsPage() {
     const { isDark, toggleTheme } = useTheme();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { isAdmin } = useCurrentUser();
-    const { isClubManager } = useClubRole();
+    const { isClubManager, currentClub } = useClubRole();
     const { canCreateEvent } = useClubPolicy();
     const cookieClubId = getClubId();
 
     const [pageNumber, setPageNumber] = useState(1);
-    const pageSize = 12;
+    const [pageSize, setPageSize] = useState(12);
+    const pageSizeOptions = [6, 12, 24, 48];
     const [selectedClubId, setSelectedClubId] = useState<number | 'all'>('all');
 
-    const { data: allEvents, isLoading, error } = useGetAllEventsQuery({ pageNumber, pageSize: 100 });
+    const { data: rawEvents, isLoading, error } = useGetAllEventsQuery({ pageNumber: 1, pageSize: 100 });
     const { data: clubs } = useGetClubsQuery(undefined, { skip: !isAdmin });
+    const allEvents = Array.isArray(rawEvents) ? rawEvents : (rawEvents?.items ?? []);
 
     // Filter events based on role
     const filteredEvents = useMemo(() => {
-        if (!allEvents) return [];
+        if (!allEvents.length) return [];
 
         // Club Manager → only their club's events (clubId from cookie set by /manage-clubs)
         if (isClubManager && !isAdmin && cookieClubId) {
@@ -94,7 +96,7 @@ export default function EventsPage() {
                 <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
                     <div className="flex items-center gap-4 flex-wrap">
                         <h1 className={`text-3xl font-bold ${textClass}`}>
-                            {isClubManager && !isAdmin ? 'Sự kiện CLB' : 'All Events'}
+                            {isClubManager && !isAdmin ? `Sự kiện ${currentClub?.clubName || 'CLB'}` : 'All Events'}
                         </h1>
 
                         {/* Admin club filter dropdown */}
@@ -120,12 +122,6 @@ export default function EventsPage() {
                             </select>
                         )}
 
-                        {/* Show club badge for manager */}
-                        {isClubManager && !isAdmin && cookieClubId > 0 && (
-                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                                Club ID: {cookieClubId}
-                            </span>
-                        )}
                     </div>
 
                     {canCreateEvent && (
@@ -179,8 +175,23 @@ export default function EventsPage() {
                 ) : (
                     <>
                         {/* Event count badge */}
-                        <div className={`mb-4 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            Hiển thị {paginatedEvents.length} / {filteredEvents.length} sự kiện
+                        <div className={`mb-4 text-sm flex items-center justify-between ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <span>Hiển thị {Math.min((pageNumber - 1) * pageSize + 1, filteredEvents.length)}-{Math.min(pageNumber * pageSize, filteredEvents.length)} / {filteredEvents.length} sự kiện</span>
+                            <div className="flex items-center gap-2">
+                                <span>Hiển thị:</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => { setPageSize(Number(e.target.value)); setPageNumber(1); }}
+                                    className={`px-2 py-1 rounded border text-sm ${isDark
+                                        ? 'bg-[#242838] text-white border-gray-600'
+                                        : 'bg-white text-gray-900 border-gray-300'
+                                    } focus:ring-2 focus:ring-blue-500 outline-none`}
+                                >
+                                    {pageSizeOptions.map(size => (
+                                        <option key={size} value={size}>{size} / trang</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -196,29 +207,72 @@ export default function EventsPage() {
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="flex justify-center gap-2 mt-8 items-center">
+                            <div className="flex justify-center gap-1 mt-8 items-center">
+                                <button
+                                    onClick={() => setPageNumber(1)}
+                                    disabled={pageNumber === 1}
+                                    className={`px-3 py-2 rounded-lg text-sm ${isDark
+                                        ? 'bg-[#242838] text-white hover:bg-[#2c3e50]'
+                                        : 'bg-white text-gray-900 hover:bg-gray-100'
+                                    } disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                                >
+                                    <i className="fas fa-angles-left"></i>
+                                </button>
                                 <button
                                     onClick={() => setPageNumber(prev => Math.max(1, prev - 1))}
                                     disabled={pageNumber === 1}
-                                    className={`px-4 py-2 rounded-lg ${isDark
+                                    className={`px-3 py-2 rounded-lg text-sm ${isDark
                                         ? 'bg-[#242838] text-white hover:bg-[#2c3e50]'
                                         : 'bg-white text-gray-900 hover:bg-gray-100'
-                                        } disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                                    } disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                                 >
                                     <i className="fas fa-chevron-left"></i>
                                 </button>
-                                <span className={`px-4 py-2 ${textClass}`}>
-                                    Trang {pageNumber} / {totalPages}
-                                </span>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                    .filter(p => p === 1 || p === totalPages || Math.abs(p - pageNumber) <= 1)
+                                    .reduce<(number | string)[]>((acc, p, i, arr) => {
+                                        if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('...');
+                                        acc.push(p);
+                                        return acc;
+                                    }, [])
+                                    .map((p, i) =>
+                                        typeof p === 'string' ? (
+                                            <span key={`dots-${i}`} className={`px-2 py-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>...</span>
+                                        ) : (
+                                            <button
+                                                key={p}
+                                                onClick={() => setPageNumber(p)}
+                                                className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                                                    pageNumber === p
+                                                        ? 'bg-blue-500 text-white font-semibold'
+                                                        : isDark
+                                                            ? 'bg-[#242838] text-white hover:bg-[#2c3e50]'
+                                                            : 'bg-white text-gray-900 hover:bg-gray-100'
+                                                }`}
+                                            >
+                                                {p}
+                                            </button>
+                                        )
+                                    )}
                                 <button
                                     onClick={() => setPageNumber(prev => Math.min(totalPages, prev + 1))}
                                     disabled={pageNumber >= totalPages}
-                                    className={`px-4 py-2 rounded-lg ${isDark
+                                    className={`px-3 py-2 rounded-lg text-sm ${isDark
                                         ? 'bg-[#242838] text-white hover:bg-[#2c3e50]'
                                         : 'bg-white text-gray-900 hover:bg-gray-100'
-                                        } disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                                    } disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                                 >
                                     <i className="fas fa-chevron-right"></i>
+                                </button>
+                                <button
+                                    onClick={() => setPageNumber(totalPages)}
+                                    disabled={pageNumber >= totalPages}
+                                    className={`px-3 py-2 rounded-lg text-sm ${isDark
+                                        ? 'bg-[#242838] text-white hover:bg-[#2c3e50]'
+                                        : 'bg-white text-gray-900 hover:bg-gray-100'
+                                    } disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                                >
+                                    <i className="fas fa-angles-right"></i>
                                 </button>
                             </div>
                         )}

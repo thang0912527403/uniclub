@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
-import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation } from '~/cores/api';
+import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyRegistrationQuery } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
 
 function formatDate(dateStr?: string) {
@@ -33,6 +33,19 @@ function getStatusStyle(status: string) {
     }
 }
 
+function getMyStatusLabel(status: string) {
+    switch (status) {
+        case 'PENDING': return { icon: 'fas fa-clock', text: 'Đang chờ duyệt', color: 'bg-amber-100 text-amber-700 border-amber-300' };
+        case 'REGISTERED': return { icon: 'fas fa-check-circle', text: 'Đã đăng ký', color: 'bg-green-100 text-green-700 border-green-300' };
+        case 'WAITLIST': return { icon: 'fas fa-list-alt', text: 'Trong danh sách chờ', color: 'bg-purple-100 text-purple-700 border-purple-300' };
+        case 'PRESENT': case 'CHECKED_IN': return { icon: 'fas fa-check-double', text: 'Đã điểm danh', color: 'bg-green-100 text-green-700 border-green-300' };
+        case 'ABSENT': return { icon: 'fas fa-times-circle', text: 'Vắng mặt', color: 'bg-red-100 text-red-700 border-red-300' };
+        case 'CANCELLED': return { icon: 'fas fa-ban', text: 'Đã huỷ đăng ký', color: 'bg-gray-100 text-gray-500 border-gray-300' };
+        case 'REJECTED': return { icon: 'fas fa-ban', text: 'Đã bị từ chối', color: 'bg-red-100 text-red-600 border-red-300' };
+        default: return { icon: 'fas fa-info-circle', text: status, color: 'bg-gray-100 text-gray-600 border-gray-300' };
+    }
+}
+
 const PublicEventDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -41,11 +54,25 @@ const PublicEventDetailPage: React.FC = () => {
     const { data: event, isLoading, error } = useGetEventByIdQuery(eventId);
     const { data: user } = useGetCurrentUserQuery();
 
+    // Fetch user's existing registration status from BE
+    const { data: myRegistration } = useGetMyRegistrationQuery(eventId, {
+        skip: !user, // only fetch when user is logged in
+    });
+
     const [registerForEvent, { isLoading: isRegistering }] = useRegisterForEventMutation();
     const [checkIn, { isLoading: isCheckingIn }] = useCheckInMutation();
 
     const [showCheckInForm, setShowCheckInForm] = React.useState(false);
     const [checkInCode, setCheckInCode] = React.useState('');
+    // Track user's attendance status locally — initialized from BE query
+    const [myStatus, setMyStatus] = React.useState<string | null>(null);
+
+    // Sync status from BE query on load / after approval
+    React.useEffect(() => {
+        if (myRegistration?.attendanceStatus) {
+            setMyStatus(myRegistration.attendanceStatus);
+        }
+    }, [myRegistration]);
 
     const handleRegister = async () => {
         if (!user) {
@@ -53,8 +80,17 @@ const PublicEventDetailPage: React.FC = () => {
             return;
         }
         try {
-            await registerForEvent(eventId).unwrap();
-            showNotification({ type: 'success', title: 'Thành công', message: 'Đăng ký thành công! Vui lòng kiểm tra email để nhận vé thư mời.' });
+            const res = await registerForEvent(eventId).unwrap();
+            const status = res.attendanceStatus;
+            setMyStatus(status);
+
+            if (status === 'PENDING') {
+                showNotification({ type: 'info', title: 'Chờ duyệt', message: 'Đăng ký của bạn đang chờ ban tổ chức duyệt.' });
+            } else if (status === 'WAITLIST') {
+                showNotification({ type: 'warning', title: 'Danh sách chờ', message: 'Sự kiện đã hết chỗ. Bạn đã được thêm vào danh sách chờ.' });
+            } else {
+                showNotification({ type: 'success', title: 'Thành công', message: 'Đăng ký thành công! Vui lòng kiểm tra email để nhận vé thư mời.' });
+            }
         } catch (err: any) {
             showNotification({ type: 'error', title: 'Đăng ký thất bại', message: err?.data?.error ?? 'Sự kiện có thể đã đầy hoặc chưa mở.' });
         }
@@ -70,14 +106,23 @@ const PublicEventDetailPage: React.FC = () => {
             return;
         }
         try {
-            await checkIn({ eventId, userId: user.userId, code: checkInCode.trim() }).unwrap();
-            showNotification({ type: 'success', title: 'Thành công', message: 'Điểm danh thành công!' });
+            const res = await checkIn({ eventId, userId: user.userId, code: checkInCode.trim() }).unwrap();
+            if (res.alreadyCheckedIn) {
+                showNotification({ type: 'info', title: 'Thông báo', message: 'Bạn đã điểm danh trước đó rồi.' });
+            } else {
+                showNotification({ type: 'success', title: 'Thành công', message: 'Điểm danh thành công!' });
+            }
+            setMyStatus('PRESENT');
             setShowCheckInForm(false);
             setCheckInCode('');
         } catch (err: any) {
             showNotification({ type: 'error', title: 'Điểm danh thất bại', message: err?.data?.error ?? 'Mã không đúng hoặc đã hết hạn.' });
         }
     };
+
+    // Determine if user has already checked in
+    const isCheckedIn = myStatus === 'PRESENT' || myStatus === 'CHECKED_IN';
+    const isRegistered = myStatus != null && !['CANCELLED', 'REJECTED'].includes(myStatus);
 
     return (
         <div className="min-h-screen bg-white flex flex-col">
@@ -106,7 +151,7 @@ const PublicEventDetailPage: React.FC = () => {
                         </div>
                         <h3 className="text-2xl font-bold text-gray-700 mb-3">Không tìm thấy sự kiện</h3>
                         <button
-                            onClick={() => navigate('/public/events')}
+                            onClick={() => navigate(-1)}
                             className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-medium transition"
                         >
                             ← Quay lại danh sách
@@ -139,7 +184,7 @@ const PublicEventDetailPage: React.FC = () => {
                         {/* Back button + Content */}
                         <div className="max-w-5xl mx-auto px-6 py-10">
                             <button
-                                onClick={() => navigate('/public/events')}
+                                onClick={() => navigate(-1)}
                                 className="flex items-center gap-2 text-orange-500 hover:text-orange-600 font-medium mb-8 transition"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,19 +294,39 @@ const PublicEventDetailPage: React.FC = () => {
                                             </div>
                                         )}
 
-                                        {event.status === 'REGISTRATION_OPEN' && (
-                                            <button onClick={handleRegister} disabled={isRegistering || (event.maxAttendees != null && event.currentAttendees >= event.maxAttendees)}
-                                                className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50">
-                                                {isRegistering ? 'Đang đăng ký...' : event.maxAttendees != null && event.currentAttendees >= event.maxAttendees ? 'Đã hết chỗ' : 'Đăng ký nhận vé'}
-                                            </button>
+                                        {/* ── My Registration Status Badge ── */}
+                                        {myStatus && (
+                                            <div className={`mt-3 p-3 rounded-xl border text-center ${getMyStatusLabel(myStatus).color}`}>
+                                                <p className="text-sm font-semibold flex items-center justify-center gap-2">
+                                                    <i className={getMyStatusLabel(myStatus).icon} />
+                                                    {getMyStatusLabel(myStatus).text}
+                                                </p>
+                                            </div>
                                         )}
 
-                                        {event.status === 'ONGOING' && !showCheckInForm && (
+                                        {/* ── Register Button ── */}
+                                        {event.status === 'REGISTRATION_OPEN' && !isRegistered && (() => {
+                                            const isFull = event.maxAttendees != null && event.currentAttendees >= event.maxAttendees;
+                                            return (
+                                                <button onClick={handleRegister} disabled={isRegistering}
+                                                    className={`w-full mt-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50 ${
+                                                        isFull
+                                                            ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                                                            : 'bg-orange-500 hover:bg-orange-600 text-white'
+                                                    }`}>
+                                                    {isRegistering ? 'Đang đăng ký...' : isFull ? 'Đăng ký chờ (Waitlist)' : 'Đăng ký nhận vé'}
+                                                </button>
+                                            );
+                                        })()}
+
+                                        {/* ── Check-in Button (only if ONGOING, registered, and not yet checked in) ── */}
+                                        {event.status === 'ONGOING' && !isCheckedIn && !showCheckInForm && (
                                             <button onClick={() => setShowCheckInForm(true)}
                                                 className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg">
                                                 Điểm danh ngay
                                             </button>
                                         )}
+
 
                                         {showCheckInForm && (
                                             <div className="mt-4 p-4 border border-green-200 bg-green-50 rounded-xl space-y-3">

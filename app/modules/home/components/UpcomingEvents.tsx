@@ -28,7 +28,8 @@ function getStatusLabel(status: string) {
 
 const UpcomingEvents: React.FC = () => {
     const navigate = useNavigate();
-    const { data: allEvents = [], isLoading } = useGetAllEventsQuery({ pageNumber: 1, pageSize: 20 });
+    const { data, isLoading } = useGetAllEventsQuery({ pageNumber: 1, pageSize: 20 });
+    const allEvents = Array.isArray(data) ? data : (data?.items ?? []);
 
     // Show only Upcoming / Active events, max 4
     const events = allEvents
