@@ -19,7 +19,7 @@ export default [
   // PayOS callback routes (public)
   route("payos/return", "routes/payos.return.tsx"),
   route("payos/cancel", "routes/payos.cancel.tsx"),
-  route("fund/contribute/success", "routes/payos.return.tsx"),
+  route("fund/contribute/success", "routes/fund.contribute.success.tsx"),
 
   // Public event routes
   route("public/events", "routes/public.events.tsx"),

@@ -14,8 +14,6 @@ export function showMemberRefundRequestForm(
 ): boolean {
   if (isAdmin) return false;
   if (caps?.canProcessClubRefunds === true) return false;
-  // Members (including finance-policy editors) should still be able to create refund requests
-  // for their own contributions; manager queue is handled separately.
   void canEditFinancePolicy;
   return true;
 }
