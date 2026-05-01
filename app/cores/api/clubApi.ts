@@ -165,7 +165,7 @@ export const clubApi = baseApi.injectEndpoints({
     }),
     addMembers: builder.mutation<void, { clubId: number; emails: string[] }>({
       query: ({ clubId, emails }) => ({
-        url: `/clubs/${clubId}/add-members`,
+        url: `/Club/${clubId}/add-members`,
         method: "POST",
         body: emails,
       }),
@@ -229,15 +229,13 @@ export const clubApi = baseApi.injectEndpoints({
         method: "PUT",
         body: { clubRoleIds },
       }),
-      invalidatesTags: (_result, _error, { clubId, memberId }) =>
-        [
-          { type: "Club", id: `members-${clubId}` },
-          { type: "Club", id: `member-${memberId}` },
-        ],
+      invalidatesTags: (_result, _error, { clubId, memberId }) => [
+        { type: "Club", id: `members-${clubId}` },
+        { type: "Club", id: `member-${memberId}` },
+      ],
     }),
   }),
 });
-
 
 export const {
   useGetClubsQuery,
