@@ -8,8 +8,9 @@ import { HeaderBar } from '~/components/HeaderBar';
 import { useNotification } from '~/components/Notification';
 import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { useFundsClubSelection } from '~/hooks/useFundsClubSelection';
+import { useClubRole } from '~/hooks/useClubRole';
 import {
+  useGetClubByIdQuery,
   useGetFundCapabilitiesQuery,
   useGetFundReportSummaryQuery,
   useGetClubFundTransactionsQuery,
@@ -92,7 +93,7 @@ function txFundLabel(item: FundHistoryItem): string {
   const r = item as FundHistoryItem & Record<string, unknown>;
   const n = r.fundName ?? r.FundName;
   if (typeof n === 'string' && n.trim()) return n.trim();
-  return `Quỹ #${item.fundId}`;
+  return 'Quỹ';
 }
 
 function txSenderLabel(item: FundHistoryItem): string {
@@ -161,16 +162,14 @@ export default function FundsReportsPage() {
     );
   };
 
-  const {
-    clubId,
-    setSelectedClubId,
-    memberClubOptions,
-    clubs,
-    hasToken: selHasToken,
-    isAdmin,
-    hasAnyClub,
-    isLoadingUserMemberships,
-  } = useFundsClubSelection();
+  const selHasToken = !!Cookies.get('accessToken');
+  const { selectedClubId: clubIdFromCookie, currentClub, isAdmin } = useClubRole();
+  const clubId = Number(clubIdFromCookie ?? 0);
+  const { data: clubById } = useGetClubByIdQuery(clubId, { skip: clubId < 1 || !selHasToken });
+  const clubName =
+    String(currentClub?.clubName ?? '').trim() ||
+    String(clubById?.clubName ?? '').trim();
+  const hasAnyClub = clubId > 0;
 
   const [draftFrom, setDraftFrom] = useState('');
   const [draftTo, setDraftTo] = useState('');
@@ -200,7 +199,7 @@ export default function FundsReportsPage() {
       : undefined;
   const capsForbidden = capsIsError && capsErrorStatus === 403;
   const capsOtherError = capsIsError && capsErrorStatus !== 403;
-  const hasViewFinancePolicy = caps?.hasViewFinancePolicy ?? false;
+  const canViewFunds = caps?.canViewFunds === true || isAdmin;
 
   const { fromUtc, toUtc } = useMemo(() => {
     if (!appliedFrom && !appliedTo) return { fromUtc: undefined as string | undefined, toUtc: undefined as string | undefined };
@@ -216,7 +215,7 @@ export default function FundsReportsPage() {
     capsLoading ||
     capsForbidden ||
     capsOtherError ||
-    (caps !== undefined && !hasViewFinancePolicy);
+    (caps !== undefined && !canViewFunds);
 
   const summaryAppliedInvalidDateRange = hasInvalidYmdRange(appliedFrom, appliedTo);
   const skipReport = activeTab !== 'summary' || skipTxBase || summaryAppliedInvalidDateRange;
@@ -431,7 +430,7 @@ export default function FundsReportsPage() {
             </div>
           </div>
 
-          {clubId > 0 && !capsLoading && hasViewFinancePolicy && caps?.financeAccessHintVi?.trim() ? (
+          {clubId > 0 && !capsLoading && !canViewFunds && caps?.financeAccessHintVi?.trim() ? (
             <FinanceAccessHintBanner message={caps.financeAccessHintVi} />
           ) : null}
 
@@ -440,30 +439,13 @@ export default function FundsReportsPage() {
               <label htmlFor="report-club" className={t.type.label}>
                 Câu lạc bộ
               </label>
-              <select
+              <input
                 id="report-club"
-                value={clubId}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setSelectedClubId(v);
-                  if (v > 0) setClubId(v);
-                }}
+                value={clubName}
+                readOnly
                 className={`${t.input} ${inputClass}`}
-                disabled={!selHasToken || (isAdmin ? clubs.length === 0 : memberClubOptions.length === 0)}
-              >
-                <option value={0}>-- Chọn CLB --</option>
-                {isAdmin
-                  ? clubs.map((c) => (
-                      <option key={c.clubId} value={c.clubId}>
-                        {c.clubName} (ID: {c.clubId})
-                      </option>
-                    ))
-                  : memberClubOptions.map((c) => (
-                      <option key={c.clubId} value={c.clubId}>
-                        {c.label}
-                      </option>
-                    ))}
-              </select>
+                placeholder="Chưa chọn câu lạc bộ"
+              />
             </div>
             {activeTab === 'summary' ? (
               <>
@@ -568,7 +550,7 @@ export default function FundsReportsPage() {
                     <option value={0}>Tất cả quỹ</option>
                     {(fundsPaged?.items ?? []).map((f) => (
                       <option key={f.fundId} value={f.fundId}>
-                        {f.fundName?.trim() ? f.fundName : `Quỹ #${f.fundId}`}
+                        {f.fundName?.trim() ? f.fundName : 'Quỹ'}
                       </option>
                     ))}
                   </select>
@@ -653,11 +635,7 @@ export default function FundsReportsPage() {
             </section>
           ) : !isAdmin && !hasAnyClub ? (
             <section className={`${t.card.base} p-12 text-center`}>
-              {isLoadingUserMemberships ? (
-                <p className={t.type.body}>Đang tải danh sách CLB...</p>
-              ) : (
-                <p className={t.type.body}>Bạn chưa thuộc CLB nào (hoạt động).</p>
-              )}
+              <p className={t.type.body}>Bạn chưa chọn câu lạc bộ.</p>
             </section>
           ) : !clubId ? (
             <section className={`${t.card.base} p-12 text-center`}>
@@ -675,7 +653,7 @@ export default function FundsReportsPage() {
             <section className={`${t.card.base} p-6 border-red-200 dark:border-red-800/60`} role="alert">
               <p className="text-red-600 dark:text-red-400">Không tải được quyền quỹ (capabilities).</p>
             </section>
-          ) : !hasViewFinancePolicy ? (
+          ) : !canViewFunds ? (
             <section className={`${t.card.base} p-6`} role="status">
               <p className={t.type.body}>
                 Bạn cần quyền xem tài chính (viewfinance) trong CLB để xem báo cáo tổng hợp.
@@ -755,7 +733,7 @@ export default function FundsReportsPage() {
                               >
                                 <td className={`px-4 py-2 ${t.type.body}`}>
                                   <Link
-                                    to={`/clubs/${clubId}/funds/${item.fundId}`}
+                                    to={`/clubs/${clubId}/funds/${(item as any).publicId ?? item.fundId}`}
                                     className="text-amber-700 dark:text-amber-300 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
                                   >
                                     {txFundLabel(item)}
