@@ -42,7 +42,7 @@ export default [
 
     // User management
     route("users", "routes/users.tsx"),
-    route("members/history", "routes/members-history.tsx"),
+    route("club/members/history", "routes/members-history.tsx"),
 
     // Club management
     route("clubs", "routes/clubs/clubs.tsx"),
@@ -55,6 +55,7 @@ export default [
       "routes/clubs/clubs.$id.funds.$fundId.tsx",
     ),
     route("club/members", "routes/clubs/clubmembers.tsx"),
+    route("club/members/add", "routes/clubs/clubmembers.add.tsx"),
     route("club/members/:memberId/roles", "routes/clubs/clubmembers.role.tsx"),
     route(
       "club/notifications/send",
