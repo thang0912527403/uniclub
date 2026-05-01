@@ -97,6 +97,16 @@ export async function fetchFundHistory({
 
   if (!response.ok) {
     const fallback = 'Không thể tải lịch sử giao dịch quỹ.';
+    if (response.status === 403) {
+      let message =
+        'Bạn không có quyền xem lịch sử giao dịch quỹ (cần viewfinance / canViewFunds).';
+      try {
+        const errData = (await response.json()) as { message?: string };
+        if (errData?.message?.trim()) message = errData.message.trim();
+      } catch {
+      }
+      throw new Error(message);
+    }
     let message = fallback;
     try {
       const errData = (await response.json()) as { message?: string };

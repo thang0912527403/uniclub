@@ -531,7 +531,7 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
                           </div>
                           {interview.status === 'InProgress' ? (
                             <button
-                              onClick={() => navigate(`/interview/room/${interview.meetingRoom!.roomCode}`)}
+                              onClick={() => navigate(`/meeting-room/${interview.meetingRoom!.roomCode}`)}
                               className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#f26522] to-orange-500 text-white font-semibold rounded-xl text-sm hover:shadow-lg transition-all"
                             >
                               <VideoIcon className="w-4 h-4" />

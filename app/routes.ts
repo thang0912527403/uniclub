@@ -42,7 +42,7 @@ export default [
 
     // User management
     route("users", "routes/users.tsx"),
-    route("members/history", "routes/members-history.tsx"),
+    route("club/members/history", "routes/members-history.tsx"),
 
     // Club management
     route("clubs", "routes/clubs/clubs.tsx"),
@@ -50,8 +50,12 @@ export default [
     route("clubs/create", "routes/clubs/clubs.create.tsx"),
     route("club/edit", "routes/clubs/clubs.edit.$id.tsx"),
     route("club/organization", "routes/clubs/clubs.$id.structure.tsx"),
-    route("club/funds/:fundId", "routes/clubs/clubs.$id.funds.$fundId.tsx"),
+    route(
+      "clubs/:id/funds/:publicId",
+      "routes/clubs/clubs.$id.funds.$fundId.tsx",
+    ),
     route("club/members", "routes/clubs/clubmembers.tsx"),
+    route("club/members/add", "routes/clubs/clubmembers.add.tsx"),
     route("club/members/:memberId/roles", "routes/clubs/clubmembers.role.tsx"),
     route(
       "club/notifications/send",
@@ -99,6 +103,7 @@ export default [
     route("funds/my", "routes/funds.my.tsx"),
     route("funds/transactions", "routes/funds.transactions.tsx"),
     route("funds/reports", "routes/funds.reports.tsx"),
-    route("funds/:fundId", "routes/funds.$fundId.tsx"),
+    route("funds/payos", "routes/funds.payos.tsx"),
+    route("funds/:publicId", "routes/funds.$fundId.tsx"),
   ]),
 ] satisfies RouteConfig;

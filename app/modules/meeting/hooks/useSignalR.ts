@@ -1,6 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { HubConnectionBuilder, HubConnection, LogLevel } from '@microsoft/signalr';
-import Cookies from 'js-cookie';
+import { useState, useEffect, useRef } from "react";
+import {
+  HubConnectionBuilder,
+  HubConnection,
+  LogLevel,
+} from "@microsoft/signalr";
+import Cookies from "js-cookie";
 
 /**
  * Manages the SignalR hub connection lifecycle.
@@ -16,38 +20,56 @@ export function useSignalR() {
 
   useEffect(() => {
     const init = async () => {
-      const accessToken = Cookies.get('accessToken');
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://localhost:7237';
+      const accessToken = Cookies.get("accessToken");
+      const backendUrl =
+        import.meta.env.VITE_BACKEND_URL || "https://chuyencongnhan.io.vn";
 
       const conn = new HubConnectionBuilder()
         .withUrl(`${backendUrl}/webrtc`, {
-          accessTokenFactory: () => accessToken || ''
+          accessTokenFactory: () => accessToken || "",
         })
         .withAutomaticReconnect()
         .configureLogging(LogLevel.Information)
         .build();
 
+      connectionRef.current = conn;
+      setConnection(conn);
+
       conn.onclose(() => {
-        console.log('[SignalR] Connection closed');
+        console.log("[SignalR] Connection closed");
         setIsConnected(false);
       });
 
-      try {
-        await conn.start();
-        console.log('[SignalR] Connected');
-        connectionRef.current = conn;
-        setConnection(conn);
+      conn.onreconnected(() => {
+        console.log("[SignalR] Reconnected");
         setIsConnected(true);
-      } catch (err) {
-        console.error('[SignalR] Connection failed:', err);
-      }
+      });
+
+      conn.onreconnecting(() => {
+        console.log("[SignalR] Reconnecting...");
+        setIsConnected(false);
+      });
+
+      const startConnection = async () => {
+        try {
+          await conn.start();
+          console.log("[SignalR] Connected");
+          setIsConnected(true);
+        } catch (err) {
+          console.error("[SignalR] Connection failed:", err);
+          // Try again in 5s
+          setTimeout(startConnection, 5000);
+        }
+      };
+
+      startConnection();
+
+      return () => {
+        conn.stop();
+      };
     };
 
     init();
-
-    return () => {
-      connectionRef.current?.stop();
-    };
   }, []);
 
   return { connection, isConnected };

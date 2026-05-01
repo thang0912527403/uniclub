@@ -10,6 +10,8 @@ interface ControlBarProps {
   onToggleVideo: () => void;
   onToggleScreenShare: () => void;
   onToggleChat: () => void;
+  isHandRaised: boolean;
+  onToggleHand: () => void;
   onLeave: () => void;
 }
 
@@ -23,10 +25,10 @@ export const ControlBar: React.FC<ControlBarProps> = ({
   onToggleVideo,
   onToggleScreenShare,
   onToggleChat,
+  isHandRaised,
+  onToggleHand,
   onLeave
 }) => {
-  // Dummy toggle for Hand
-  const [isHandRaised, setIsHandRaised] = React.useState(false);
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
@@ -104,9 +106,9 @@ export const ControlBar: React.FC<ControlBarProps> = ({
           </span>
         </button>
 
-        {/* Hand Toggle (Dummy) */}
+        {/* Hand Toggle */}
         <button
-          onClick={() => setIsHandRaised(!isHandRaised)}
+          onClick={onToggleHand}
           className={`group relative p-3 rounded-full transition-all duration-300 flex items-center justify-center w-12 h-12 ${
             isHandRaised 
               ? 'bg-orange-500 hover:bg-orange-600 text-white' 
