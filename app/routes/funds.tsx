@@ -42,6 +42,7 @@ import {
   FundCardBalanceHint,
 } from "~/modules/funds/components/FundUxHints";
 import { FundsRefundSection } from "~/modules/funds/components/refunds/FundsRefundSection";
+import { ClubFundSoftDeleteControl } from "~/modules/funds/components/ClubFundSoftDeleteControl";
 import {
   applyFilterChangeParams,
   buildCreateFundPayload,
@@ -1252,6 +1253,15 @@ export default function FundsPage() {
                                   </button>
                                 </>
                               )}
+                            <ClubFundSoftDeleteControl
+                              clubId={clubId}
+                              fundId={f.fundId}
+                              fundLabel={f.fundName?.trim() || `Quỹ #${f.fundId}`}
+                              canSoftDeleteFund={caps?.canSoftDeleteFund === true}
+                              isFundClosed={f.isClosed === true}
+                              financeAccessHintVi={caps?.financeAccessHintVi}
+                              compact
+                            />
                             <Link
                               to={`/clubs/${clubId}/funds/${f.publicId ?? f.fundId}`}
                               onClick={(e) => e.stopPropagation()}
