@@ -82,17 +82,6 @@ function formatFundHistoryDateTime(iso: string | undefined): string {
   return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function fundHistoryCategoryLabel(item: FundHistoryItem): string {
-  const r = item as FundHistoryItem & Record<string, unknown>;
-  const nameRaw = r.categoryName ?? r.CategoryName;
-  const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
-  if (name) return name;
-  const idRaw = r.categoryId ?? r.CategoryId;
-  const id = typeof idRaw === 'number' ? idRaw : Number(idRaw);
-  if (Number.isFinite(id)) return `ID ${id}`;
-  return '—';
-}
-
 function fundHistoryStatusLabelVi(item: FundHistoryItem): string {
   const r = item as FundHistoryItem & Record<string, unknown>;
   const raw = r.status ?? r.Status;
@@ -930,7 +919,49 @@ export default function FundDetailPageByClub() {
                           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
                             <p className={`text-xs ${t.type.muted}`}>Tổng đã đóng</p>
                             <p className="mt-1 text-lg font-semibold">
-                              {memberContrib.totalContributions.toLocaleString('vi-VN')} ₫                            </p>
+                              {(memberContrib.totalApprovedMemberContributions ?? 0).toLocaleString('vi-VN')} ₫
+                            </p>
+                            <div className="mt-2">
+                              <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                <div
+                                  className="h-full bg-violet-600"
+                                  style={{
+                                    width: `${Math.min(
+                                      100,
+                                      Math.round(
+                                        ((memberContrib.totalApprovedMemberContributions ?? 0) /
+                                          Math.max(1, memberContrib.goalAmount ?? 0)) *
+                                          100,
+                                      ),
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
+                              <p className={`mt-1 text-xs ${t.type.muted}`}>
+                                {Math.min(
+                                  100,
+                                  Math.round(
+                                    ((memberContrib.totalApprovedMemberContributions ?? 0) /
+                                      Math.max(1, memberContrib.goalAmount ?? 0)) *
+                                      100,
+                                  ),
+                                )}
+                                %
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                            <p className={`text-xs ${t.type.muted}`}>Thành viên</p>
+                            <p className="mt-1 text-lg font-semibold">{memberContrib.activeMemberCount}</p>
+                          </div>
+                          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                            <p className={`text-xs ${t.type.muted}`}>Số tiền đã đóng</p>
+                            <p className="mt-1 text-lg font-semibold">
+                              {(memberContrib.totalApprovedMemberContributions ?? 0).toLocaleString('vi-VN')} ₫
+                            </p>
                           </div>
                         </div>
                       )}

@@ -102,17 +102,6 @@ function formatFundHistoryDateTime(iso: string | undefined): string {
   return d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
 }
 
-function fundHistoryCategoryLabel(item: FundHistoryItem): string {
-  const r = item as FundHistoryItem & Record<string, unknown>;
-  const nameRaw = r.categoryName ?? r.CategoryName;
-  const name = typeof nameRaw === "string" ? nameRaw.trim() : "";
-  if (name) return name;
-  const idRaw = r.categoryId ?? r.CategoryId;
-  const id = typeof idRaw === "number" ? idRaw : Number(idRaw);
-  if (Number.isFinite(id)) return `ID ${id}`;
-  return "—";
-}
-
 function fundHistoryStatusLabelVi(item: FundHistoryItem): string {
   const r = item as FundHistoryItem & Record<string, unknown>;
   const raw = r.status ?? r.Status;
@@ -1529,12 +1518,6 @@ export default function FundDetailPageByClub() {
                                   scope="col"
                                   className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200"
                                 >
-                                  Danh mục
-                                </th>
-                                <th
-                                  scope="col"
-                                  className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200"
-                                >
                                   Mô tả
                                 </th>
                                 <th
@@ -1549,7 +1532,7 @@ export default function FundDetailPageByClub() {
                               {history.length === 0 ? (
                                 <tr>
                                   <td
-                                    colSpan={6}
+                                    colSpan={5}
                                     className={`px-4 py-6 text-center ${t.type.muted}`}
                                   >
                                     Không có giao dịch trên trang này.
@@ -1579,11 +1562,6 @@ export default function FundDetailPageByClub() {
                                       className={`px-4 py-2 text-sm ${t.type.body} whitespace-nowrap`}
                                     >
                                       {fundHistoryStatusLabelVi(item)}
-                                    </td>
-                                    <td
-                                      className={`px-4 py-2 text-sm ${t.type.muted}`}
-                                    >
-                                      {fundHistoryCategoryLabel(item)}
                                     </td>
                                     <td className={`px-4 py-2 ${t.type.body}`}>
                                       {item.description?.trim()
