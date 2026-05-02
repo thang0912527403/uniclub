@@ -1497,11 +1497,7 @@ export default function EventDetailPage() {
                 <div className="flex gap-2 flex-wrap">
                   {(canEdit || canOpenRegistration || canStartComplete) && (
                     <>
-<<<<<<< HEAD
                       {canEdit && !['CANCELED', 'ENDED'].includes(event.status ?? '') && (
-=======
-                      {canEdit && (
->>>>>>> origin/kien
                         <button
                           onClick={() =>
                             navigate(`/events/${event.eventId}/edit`)
