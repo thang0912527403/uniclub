@@ -1,21 +1,23 @@
 import { useNavigate } from "react-router";
 import { useExpandedMenu } from "~/hooks/useExpandedMenu";
 import { useEffect, useRef } from "react";
+import Cookies from "js-cookie";
 import { getClubId } from "~/utils/auth";
 import { useTranslation } from "react-i18next";
-import Cookies from "js-cookie";
+import { useClubRole } from "~/hooks/useClubRole";
 import { useGetFundCapabilitiesQuery } from "~/cores/api";
-import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 interface SubMenuItem {
   label: string;
   url: string;
+  policy?: string;
 }
 
 interface NavItem {
   label: string;
   icon: string;
   url?: string;
+  policy?: string;
   subItems?: SubMenuItem[];
 }
 
@@ -34,14 +36,6 @@ export function Sidebar({
   const { toggleExpand, isExpanded } = useExpandedMenu();
   const sidebarRef = useRef<HTMLElement>(null);
   const isRestoringRef = useRef(false);
-  const { isAdmin, userId } = useCurrentUser();
-  const hasToken = !!Cookies.get("accessToken");
-  const clubId = Number(getClubId() || 0);
-  const { data: caps } = useGetFundCapabilitiesQuery(clubId, {
-    skip: !hasToken || !userId || clubId < 1,
-  });
-  const canManageOnlinePaymentSettings =
-    !!(isAdmin || caps?.canManageOnlinePaymentSettings === true);
 
   // Restore scroll position
   useEffect(() => {
@@ -82,139 +76,263 @@ export function Sidebar({
   }, []);
 
   const { t } = useTranslation("common");
+  const { can, isAdmin, memberships } = useClubRole();
+  const hasToken = !!Cookies.get("accessToken");
+  const clubId = Number(getClubId() || 0);
+  const { data: caps } = useGetFundCapabilitiesQuery(clubId, {
+    skip: !hasToken || clubId < 1,
+  });
+  const canManageOnlinePaymentSettings =
+    !!(isAdmin || caps?.canManageOnlinePaymentSettings === true);
+
   const handleNavigate = (url?: string) => {
     if (!url) return;
     navigate(url);
-    onClose?.();
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      onClose?.();
+    }
   };
-  const navItems: NavItem[] = [
-    {
-      label: t("sidebar.dashboard"),
-      icon: "fa-th-large",
-      subItems: [
-        { label: "Overview", url: "/dashboard" },
-        { label: "Reports", url: "/dashboard/reports" },
-        { label: "Analytics", url: "/dashboard/analytics" },
-      ],
-    },
-    {
-      label: t("sidebar.manageClub.title"),
-      icon: "fa-building",
-      subItems: [
-        { label: t("sidebar.manageClub.allClubs"), url: "/clubs" },
-        { label: t("sidebar.manageClub.yourClubInfo"), url: `/clubs/${getClubId() || 1}` },
-        {
-          label: t("sidebar.manageClub.clubStructure"),
-          url: `/clubs/${getClubId() || 1}/organization`,
-        },
-        { label: t("sidebar.manageClub.clubRoles"), url: "/club-roles" },
-        { label: t("sidebar.manageClub.clubRequests"), url: "/club/all-requests" }
-        // { label: t("sidebar.manageClub.yourClubInfo"), url: "/club/info" },
-        // { label: t("sidebar.manageClub.manageClubName"), url: "/club/name" },
-        // {
-        //   label: t("sidebar.manageClub.recruitmentCampaigns"),
-        //   url: "/club/recruitment-campaigns",
-        // },
-        // { label: t("sidebar.manageClub.clubMembers"), url: "/club/members" },
-        // {
-        //   label: t("sidebar.manageClub.clubActivities"),
-        //   url: "/club/activities",
-        // },
-      ],
-    },
-    {
-      label: t("sidebar.manageDepartment.title"),
-      icon: "fa-sitemap",
-      subItems: [
-        {
-          label: t("sidebar.manageDepartment.allDepartments"),
-          url: "/department",
-        },
-        // {
-        //   label: t("sidebar.manageDepartment.createDepartment"),
-        //   url: "/department/create",
-        // },
-        // {
-        //   label: t("sidebar.manageDepartment.departmentRoles"),
-        //   url: "/department/roles",
-        // },
-        // {
-        //   label: t("sidebar.manageDepartment.departmentSettings"),
-        //   url: "/department/settings",
-        // },
-      ],
-    },
-    {
-      label: t("sidebar.manageRecruitment.title"),
-      icon: "fa-solid fa-flag",
-      subItems: [
-        {
-          label: t("sidebar.manageRecruitment.allCampaigns"),
-          url: "/recruitment-campaigns",
-        },
-      ],
-    },
-    {
-      label: t("sidebar.manageMembers.title"),
-      icon: "fa-users",
-      subItems: [
-        {
-          label: t("sidebar.manageMembers.allMembers"),
-          url: `/clubs/${getClubId() || 1}/members`,
-        },
-        // { label: t("sidebar.manageMembers.addMember"), url: "/members/add" },
-        // {
-        //   label: t("sidebar.manageMembers.memberRoles"),
-        //   url: "/members/roles",
-        // },
-        // {
-        //   label: t("sidebar.manageMembers.memberActivity"),
-        //   url: "/members/activity",
-        // },
-      ],
-    },
-    {
-      label: t("sidebar.manageEvents.title"),
-      icon: "fa-calendar",
-      subItems: [
-        { label: t("sidebar.manageEvents.allEvents"), url: "/events" },
-        { label: t("sidebar.manageEvents.createEvent"), url: "/events/create" },
-        {
-          label: t("sidebar.manageEvents.eventCalendar"),
-          url: "/events/calendar",
-        },
-        {
-          label: t("sidebar.manageEvents.eventReports"),
-          url: "/events/reports",
-        },
-      ],
-    },
-    {
-      label: t("sidebar.manageFunds.title"),
-      icon: "fa-wallet",
-      subItems: [
-        { label: t("sidebar.manageFunds.budgetOverview"), url: "/funds" },
-        { label: t("sidebar.manageFunds.myFunds"), url: "/funds/my?tab=created" },
-        {
-          label: t("sidebar.manageFunds.transactions"),
-          url: "/funds/reports?tab=transactions",
-        },
-        ...(canManageOnlinePaymentSettings
-          ? [{ label: "Thiết lập thanh toán", url: "/funds/payos" }]
-          : []),
-      ],
-    },
-    {
-      label: t("sidebar.manageInterview.title"),
-      icon: "fa-solid fa-microphone",
-      subItems: [
-        {
-          label: t("sidebar.manageInterview.allInterviews"),
-          url: "/interview/schedule",
-        },
-      ],
-    },
+
+  // URLs quản lý CLB không còn dùng ID trên URL mà lấy từ Context/Cookie
+  const clubBaseUrl = "/club";
+
+  const allNavItems: NavItem[] = [
+    { label: t("sidebar.dashboard"), icon: "fa-th-large", url: "/dashboard" },
+
+    // --- SECTION: SYSTEM MANAGEMENT (Admin Only) ---
+    ...(isAdmin
+      ? [
+          {
+            label: "Hệ thống",
+            icon: "fa-cogs",
+            subItems: [
+              {
+                label: "Quản lý Câu lạc bộ",
+                url: "/clubs",
+              },
+              {
+                label: "Quản lý Người dùng",
+                url: "/users",
+              },
+              {
+                label: "Yêu cầu tạo CLB",
+                url: "/club/all-requests",
+              },
+              {
+                label: "Record of Change",
+                url: "/record-of-change",
+              },
+            ],
+          },
+        ]
+      : []),
+
+    // --- SECTION: CLUB MANAGEMENT ---
+    ...(!isAdmin
+      ? [
+          {
+            label: t("sidebar.manageClub.title"),
+            icon: "fa-building",
+            policy: "viewclub",
+            subItems: [
+              {
+                label: t("sidebar.manageClub.yourClubInfo"),
+                url: `${clubBaseUrl}/info`,
+                policy: "viewclub",
+              },
+              {
+                label: t("sidebar.manageClub.clubStructure"),
+                url: `${clubBaseUrl}/organization`,
+                policy: "viewdepartment",
+              },
+              {
+                label: t("sidebar.manageClub.clubRoles"),
+                url: "/club-roles",
+                policy: "viewrole",
+              },
+            ],
+          },
+          {
+            label: t("sidebar.manageDepartment.title"),
+            icon: "fa-sitemap",
+            policy: "viewdepartment",
+            subItems: [
+              {
+                label: t("sidebar.manageDepartment.allDepartments"),
+                url: "/department",
+                policy: "viewdepartment",
+              },
+            ],
+          },
+          {
+            label: t("sidebar.manageRecruitment.title"),
+            icon: "fa-solid fa-flag",
+            policy: "viewrecruitment",
+            subItems: [
+              {
+                label: t("sidebar.manageRecruitment.allCampaigns"),
+                url: "/recruitment-campaigns",
+                policy: "viewrecruitment",
+              },
+            ],
+          },
+          {
+            label: t("sidebar.manageMembers.title"),
+            icon: "fa-users",
+            policy: "viewmember",
+            subItems: [
+              {
+                label: t("sidebar.manageMembers.allMembers"),
+                url: `${clubBaseUrl}/members`,
+                policy: "viewmember",
+              },
+              {
+                label: t("sidebar.manageMembers.addMember"),
+                url: `${clubBaseUrl}/members/add`,
+                policy: "createmember",
+              },
+              {
+                label: t("sidebar.manageMembers.memberRoles"),
+                url: `${clubBaseUrl}/members/roles`,
+                policy: "viewrole",
+              },
+              {
+                label: t("sidebar.manageMembers.memberActivity"),
+                url: `${clubBaseUrl}/members/activity`,
+                policy: "viewattendance",
+              },
+              {
+                label: "Lịch sử tham gia",
+                url: `${clubBaseUrl}/members/history`,
+                policy: "viewmember",
+              },
+            ],
+          },
+          {
+            label: t("sidebar.managePosts.title"),
+            icon: "fa-newspaper",
+            policy: "viewpost",
+            subItems: [
+              {
+                label: t("sidebar.managePosts.allPosts"),
+                url: "/club/post",
+                policy: "viewpost",
+              },
+            ],
+          },
+          {
+            label: t("sidebar.manageEvents.title"),
+            icon: "fa-calendar",
+            policy: "viewevent",
+            subItems: [
+              {
+                label: t("sidebar.manageEvents.allEvents"),
+                url: "/events",
+                policy: "viewevent",
+              },
+              {
+                label: t("sidebar.manageEvents.createEvent"),
+                url: "/events/create",
+                policy: "createevent",
+              },
+              {
+                label: t("sidebar.manageEvents.eventCalendar"),
+                url: "/events/calendar",
+                policy: "viewevent",
+              },
+              {
+                label: t("sidebar.manageEvents.eventReports"),
+                url: "/events/reports",
+                policy: "viewevent",
+              },
+            ],
+          },
+          {
+            label: t("sidebar.manageFunds.title"),
+            icon: "fa-wallet",
+            policy: "viewfinance",
+            subItems: [
+              {
+                label: t("sidebar.manageFunds.budgetOverview"),
+                url: "/funds",
+                policy: "viewfinance",
+              },
+              {
+                label: t("sidebar.manageFunds.myFunds"),
+                url: "/funds/my?tab=created",
+                policy: "viewfinance",
+              },
+              {
+                label: t("sidebar.manageFunds.transactions"),
+                url: "/funds/reports?tab=transactions",
+                policy: "viewfinance",
+              },
+              ...(canManageOnlinePaymentSettings
+                ? [
+                    {
+                      label: "Thiết lập thanh toán",
+                      url: "/funds/payos",
+                      policy: "viewfinance",
+                    },
+                  ]
+                : []),
+            ],
+          },
+          {
+            label: t("sidebar.manageInterview.title"),
+            icon: "fa-solid fa-microphone",
+            policy: "viewschedule",
+            subItems: [
+              {
+                label: t("sidebar.manageInterview.allInterviews"),
+                url: "/interview/schedule",
+                policy: "viewschedule",
+              },
+              {
+                label: "So sánh & Công bố",
+                url: "/interview/comparison",
+                policy: "viewrecruitment",
+              },
+            ],
+          },
+          {
+            label: t("sidebar.manageNotifications.title"),
+            icon: "fa-bell",
+            policy: "viewmember",
+            subItems: [
+              {
+                label: t("sidebar.manageNotifications.sendNotification"),
+                url: `${clubBaseUrl}/notifications/send`,
+                policy: "viewmember",
+              },
+            ],
+          },
+        ]
+      : []),
   ];
+
+  // Logic lọc Menu theo CLB hiện tại (Strict Context)
+  const navItems = allNavItems
+    .filter((item) => {
+      // Nếu là Admin hệ thống thì hiện hết
+      if (isAdmin) return true;
+      // Nếu mục không yêu cầu policy thì hiện (như Dashboard)
+      if (!item.policy) return true;
+      // Kiểm tra quyền ở CLB hiện tại
+      return can(item.policy);
+    })
+    .map((item) => ({
+      ...item,
+      subItems: item.subItems?.filter((sub) => {
+        // Admin hệ thống hiện hết sub-items
+        if (isAdmin) return true;
+        // Nếu sub-item không yêu cầu policy thì hiện
+        if (!sub.policy) return true;
+        // Kiểm tra quyền ở CLB hiện tại
+        return can(sub.policy);
+      }),
+    }))
+    .filter((item) => !item.subItems || item.subItems.length > 0 || item.url);
 
   return (
     <aside

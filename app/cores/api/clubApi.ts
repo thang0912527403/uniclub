@@ -163,6 +163,16 @@ export const clubApi = baseApi.injectEndpoints({
         { type: "Club", id: `members-${clubId}` },
       ],
     }),
+    addMembers: builder.mutation<void, { clubId: number; emails: string[] }>({
+      query: ({ clubId, emails }) => ({
+        url: `/Club/${clubId}/add-members`,
+        method: "POST",
+        body: emails,
+      }),
+      invalidatesTags: (_result, _error, { clubId }) => [
+        { type: "Club", id: `members-${clubId}` },
+      ],
+    }),
     removeMember: builder.mutation<void, { clubId: number; memberId: number }>({
       query: ({ clubId, memberId }) => ({
         url: `/clubs/${clubId}/members/${memberId}`,
@@ -219,11 +229,10 @@ export const clubApi = baseApi.injectEndpoints({
         method: "PUT",
         body: { clubRoleIds },
       }),
-      invalidatesTags: (_result, _error, { clubId, memberId }) =>
-        [
-          { type: "Club", id: `members-${clubId}` },
-          { type: "Club", id: `member-${memberId}` },
-        ],
+      invalidatesTags: (_result, _error, { clubId, memberId }) => [
+        { type: "Club", id: `members-${clubId}` },
+        { type: "Club", id: `member-${memberId}` },
+      ],
     }),
   }),
 });
@@ -246,6 +255,7 @@ export const {
   useDeleteClubPostMutation,
   useGetClubMemberByIdQuery,
   useAddMemberMutation,
+  useAddMembersMutation,
   useRemoveMemberMutation,
   useToggleMemberStatusMutation,
   useGetMemberJoinedDepartmentsQuery,

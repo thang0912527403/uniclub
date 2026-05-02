@@ -31,14 +31,17 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Show video when camera is on OR when screen sharing is active
   const hasVideo =
-    stream && isVideoEnabled && stream.getVideoTracks().length > 0;
+    stream &&
+    (isVideoEnabled || isScreenSharing) &&
+    stream.getVideoTracks().length > 0;
 
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
     }
-  }, [stream, hasVideo]);
+  }, [stream, hasVideo, isScreenSharing]);
 
   // Get initials for avatar
   const getInitials = (name: string) => {
@@ -61,41 +64,52 @@ export const VideoTile: React.FC<VideoTileProps> = ({
       `}
       onClick={onClick}
     >
-      {/* Video Element */}
+      {/* Video Element — show when camera is on OR screen is being shared */}
       {hasVideo ? (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={muted}
-          className="w-full h-full object-cover"
+          className={`w-full h-full ${isScreenSharing ? "object-contain bg-black" : "object-cover"}`}
         />
       ) : (
         /* Avatar Placeholder when no video */
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-          <div className="relative">
-            {/* Animated ring */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 blur-md opacity-40 animate-pulse"></div>
-            {/* Avatar circle */}
-            <div
-              className={`
-              relative rounded-full bg-gradient-to-br from-orange-500 to-amber-600 
-              flex items-center justify-center text-white font-bold shadow-lg
-              ${isSpotlight ? "w-32 h-32 text-5xl" : isThumbnail ? "w-12 h-12 text-lg" : "w-20 h-20 md:w-24 md:h-24 text-2xl md:text-3xl"}
-            `}
-            >
-              {avatar ? (
-                <img
-                  src={avatar}
-                  alt={label}
-                  className="w-full h-full object-cover rounded-full"
-                />
-              ) : (
-                getInitials(label)
-              )}
+        <>
+          {/* Hidden audio element to ensure we still hear the user even without video */}
+          {stream && !muted && (
+            <audio
+              autoPlay
+              ref={(el) => {
+                if (el && stream) el.srcObject = stream;
+              }}
+            />
+          )}
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+            <div className="relative">
+              {/* Animated ring */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 blur-md opacity-40 animate-pulse"></div>
+              {/* Avatar circle */}
+              <div
+                className={`
+                relative rounded-full bg-gradient-to-br from-orange-500 to-amber-600 
+                flex items-center justify-center text-white font-bold shadow-lg
+                ${isSpotlight ? "w-32 h-32 text-5xl" : isThumbnail ? "w-12 h-12 text-lg" : "w-20 h-20 md:w-24 md:h-24 text-2xl md:text-3xl"}
+              `}
+              >
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    alt={label}
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  getInitials(label)
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Hand Raised indicator */}

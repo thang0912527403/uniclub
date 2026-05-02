@@ -32,27 +32,44 @@ export function useSignalR() {
         .configureLogging(LogLevel.Information)
         .build();
 
+      connectionRef.current = conn;
+      setConnection(conn);
+
       conn.onclose(() => {
         console.log("[SignalR] Connection closed");
         setIsConnected(false);
       });
 
-      try {
-        await conn.start();
-        console.log("[SignalR] Connected");
-        connectionRef.current = conn;
-        setConnection(conn);
+      conn.onreconnected(() => {
+        console.log("[SignalR] Reconnected");
         setIsConnected(true);
-      } catch (err) {
-        console.error("[SignalR] Connection failed:", err);
-      }
+      });
+
+      conn.onreconnecting(() => {
+        console.log("[SignalR] Reconnecting...");
+        setIsConnected(false);
+      });
+
+      const startConnection = async () => {
+        try {
+          await conn.start();
+          console.log("[SignalR] Connected");
+          setIsConnected(true);
+        } catch (err) {
+          console.error("[SignalR] Connection failed:", err);
+          // Try again in 5s
+          setTimeout(startConnection, 5000);
+        }
+      };
+
+      startConnection();
+
+      return () => {
+        conn.stop();
+      };
     };
 
     init();
-
-    return () => {
-      connectionRef.current?.stop();
-    };
   }, []);
 
   return { connection, isConnected };

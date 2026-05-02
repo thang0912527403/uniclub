@@ -182,6 +182,7 @@ export const userApi = baseApi.injectEndpoints({
     }),
     getManagedClubs: builder.query<Club[], string>({
       query: (userId) => `/Users/${userId}/managed-clubs`,
+      transformResponse: (response: ApiResponse<Club[]>) => response.data ?? [],
       providesTags: ["Club"],
     }),
 

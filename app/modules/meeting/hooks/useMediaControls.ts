@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { HubConnection } from "@microsoft/signalr";
+import { type HubConnection, HubConnectionState } from "@microsoft/signalr";
 import type { RoomUser, UserMediaState } from "../types";
 
 // ── Parameter types ─────────────────────────────────────────────────
@@ -77,7 +77,29 @@ export function useMediaControls(
   const joinRoom = useCallback(
     async (roomId: string) => {
       const conn = connectionRef.current;
-      if (!conn) return;
+      if (!conn) {
+        console.error("[Media] joinRoom: No connection object");
+        return;
+      }
+
+      if (conn.state !== HubConnectionState.Connected) {
+        console.warn(
+          "[Media] joinRoom: Connection not Connected. Current state:",
+          conn.state,
+        );
+        // Wait a tiny bit and retry once or throw better error
+        if (conn.state === HubConnectionState.Connecting) {
+          // Wait up to 2 seconds for it to finish connecting
+          let attempts = 0;
+          while (
+            conn.state === HubConnectionState.Connecting &&
+            attempts < 20
+          ) {
+            await new Promise((r) => setTimeout(r, 100));
+            attempts++;
+          }
+        }
+      }
 
       try {
         // Graceful media device acquisition
@@ -437,7 +459,14 @@ export function useMediaControls(
   useEffect(() => {
     if (!connection) return;
 
-    const onUserJoined = (user: RoomUser) => {
+    const onUserJoined = (rawUser: any) => {
+      const user = {
+        connectionId: rawUser.connectionId || rawUser.ConnectionId,
+        userId: rawUser.userId || rawUser.UserId,
+        fullName: rawUser.fullName || rawUser.FullName,
+        avatar: rawUser.avatar || rawUser.Avatar,
+      };
+
       console.log("[Room] User joined:", user.fullName);
       setUsers((prev) =>
         prev.some((u) => u.connectionId === user.connectionId)
@@ -466,121 +495,167 @@ export function useMediaControls(
         if (isHandRaisedRef.current) {
           conn.invoke("RaiseHand", room).catch(() => {});
         }
-        
+
         const stream = localStreamRef.current;
         if (stream) {
           const hasAudio = stream.getAudioTracks().length > 0;
           const hasVideo = stream.getVideoTracks().length > 0;
           if (!hasAudio) conn.invoke("ToggleMic", room, true).catch(() => {});
-          if (!hasVideo) conn.invoke("ToggleCamera", room, true).catch(() => {});
+          if (!hasVideo)
+            conn.invoke("ToggleCamera", room, true).catch(() => {});
         }
       }
     };
 
-    const onUserLeft = (user: RoomUser) => {
-      if (!user) return;
-      console.log("[Room] User left:", user.fullName);
+    const onUserLeft = (rawUser: any) => {
+      if (!rawUser) return;
+      // Handle both object and string (connectionId)
+      const connectionId =
+        typeof rawUser === "string"
+          ? rawUser
+          : rawUser.connectionId || rawUser.ConnectionId;
 
-      setUsers((prev) =>
-        prev.filter((u) => u.connectionId !== user.connectionId),
-      );
+      const fullName =
+        typeof rawUser === "string"
+          ? "Unknown"
+          : rawUser.fullName || rawUser.FullName;
+
+      console.log("[Room] User left:", fullName);
+
+      setUsers((prev) => prev.filter((u) => u.connectionId !== connectionId));
       setUserStates((prev) => {
         const next = { ...prev };
-        delete next[user.connectionId];
+        delete next[connectionId];
         return next;
       });
       setRemoteStreams((prev) => {
         const next = { ...prev };
-        delete next[user.connectionId];
+        delete next[connectionId];
         return next;
       });
 
       // If leaving user was screen sharing, clear it
-      setScreenSharingUser((prev) =>
-        prev === user.connectionId ? null : prev,
-      );
+      setScreenSharingUser((prev) => (prev === connectionId ? null : prev));
 
       // Close the peer connection
-      const pc = peers.current.get(user.connectionId);
+      const pc = peers.current.get(connectionId);
       if (pc) {
         pc.close();
-        peers.current.delete(user.connectionId);
+        peers.current.delete(connectionId);
       }
     };
 
-    const onExistingUsers = async (existingUsers: RoomUser[]) => {
-      console.log("[Room] Existing users:", existingUsers.length);
-      setUsers(existingUsers);
+    const onExistingUsers = async (rawUsers: any[]) => {
+      console.log("[Room] Existing users raw count:", rawUsers.length);
+
+      const normalizedUsers = rawUsers.map((u) => ({
+        connectionId: u.connectionId || u.ConnectionId,
+        userId: u.userId || u.UserId,
+        fullName: u.fullName || u.FullName,
+        avatar: u.avatar || u.Avatar,
+        isMuted: u.isMuted ?? u.IsMuted ?? false,
+        isCameraOff: u.isCameraOff ?? u.IsCameraOff ?? false,
+        isScreenSharing: u.isScreenSharing ?? u.IsScreenSharing ?? false,
+        isHandRaised: u.isHandRaised ?? u.IsHandRaised ?? false,
+      }));
+
+      const currentConnectionId = connectionRef.current?.connectionId;
+
+      // Filter out only our current connection. 
+      // We allow other connections with the same userId (e.g. multi-tab) to be visible.
+      const validUsers = normalizedUsers.filter(
+        (u) => u.connectionId !== currentConnectionId,
+      );
+
+      setUsers(validUsers);
 
       const states: Record<string, UserMediaState> = {};
-      existingUsers.forEach((u) => {
+      validUsers.forEach((u) => {
         states[u.connectionId] = {
           connectionId: u.connectionId,
-          isMuted: false,
-          isCameraOff: false,
-          isScreenSharing: false,
-          isHandRaised: false,
+          isMuted: u.isMuted,
+          isCameraOff: u.isCameraOff,
+          isScreenSharing: u.isScreenSharing,
+          isHandRaised: u.isHandRaised,
         };
+        // If this user is already screen sharing, update the global state
+        if (u.isScreenSharing) {
+          setScreenSharingUser(u.connectionId);
+        }
       });
       setUserStates(states);
 
-      // Initiate peer connections to all existing users
-      for (const u of existingUsers) {
+      // Initiate peer connections to all valid existing users
+      for (const u of validUsers) {
         await createPeerConnection(u.connectionId, true, roomIdRef.current!);
       }
     };
 
-    const onToggleMic = (data: { connectionId: string; isMuted: boolean }) => {
+    const onToggleMic = (data: any) => {
+      const connId = data.connectionId || data.ConnectionId;
+      const isMuted = data.isMuted !== undefined ? data.isMuted : data.IsMuted;
+
+      if (!connId) return;
       setUserStates((prev) => ({
         ...prev,
-        [data.connectionId]: {
-          ...prev[data.connectionId],
-          isMuted: data.isMuted,
+        [connId]: {
+          ...(prev[connId] || { connectionId: connId }),
+          isMuted: !!isMuted,
         },
       }));
     };
 
-    const onToggleCamera = (data: {
-      connectionId: string;
-      isCameraOff: boolean;
-    }) => {
+    const onToggleCamera = (data: any) => {
+      const connId = data.connectionId || data.ConnectionId;
+      const isCameraOff =
+        data.isCameraOff !== undefined ? data.isCameraOff : data.IsCameraOff;
+
+      if (!connId) return;
       setUserStates((prev) => ({
         ...prev,
-        [data.connectionId]: {
-          ...prev[data.connectionId],
-          isCameraOff: data.isCameraOff,
+        [connId]: {
+          ...(prev[connId] || { connectionId: connId }),
+          isCameraOff: !!isCameraOff,
         },
       }));
     };
 
-    const onScreenShareStart = (data: {
-      connectionId: string;
-      fullName: string;
-    }) => {
-      console.log("[Room] Screen share started by:", data.fullName);
-      setScreenSharingUser(data.connectionId);
+    const onScreenShareStart = (data: any) => {
+      const connId = data.connectionId || data.ConnectionId;
+      const name = data.fullName || data.FullName || "Unknown";
+
+      console.log("[Room] Screen share started by:", name);
+      if (!connId) return;
+
+      setScreenSharingUser(connId);
       setUserStates((prev) => ({
         ...prev,
-        [data.connectionId]: {
-          ...prev[data.connectionId],
+        [connId]: {
+          ...(prev[connId] || { connectionId: connId }),
           isScreenSharing: true,
         },
       }));
     };
 
-    const onScreenShareStop = (data: { connectionId: string }) => {
-      console.log("[Room] Screen share stopped:", data.connectionId);
+    const onScreenShareStop = (data: any) => {
+      const connId = data.connectionId || data.ConnectionId;
+      console.log("[Room] Screen share stopped:", connId);
+      if (!connId) return;
+
       setScreenSharingUser(null);
       setUserStates((prev) => ({
         ...prev,
-        [data.connectionId]: {
-          ...prev[data.connectionId],
+        [connId]: {
+          ...(prev[connId] || { connectionId: connId }),
           isScreenSharing: false,
         },
       }));
     };
 
-    const onUserRaisedHand = (data: { connectionId: string; fullName: string }) => {
+    const onUserRaisedHand = (data: {
+      connectionId: string;
+      fullName: string;
+    }) => {
       console.log("[Room] User raised hand:", data.fullName);
       setUserStates((prev) => ({
         ...prev,
@@ -591,7 +666,10 @@ export function useMediaControls(
       }));
     };
 
-    const onUserLoweredHand = (data: { connectionId: string; fullName: string }) => {
+    const onUserLoweredHand = (data: {
+      connectionId: string;
+      fullName: string;
+    }) => {
       console.log("[Room] User lowered hand:", data.fullName);
       setUserStates((prev) => ({
         ...prev,

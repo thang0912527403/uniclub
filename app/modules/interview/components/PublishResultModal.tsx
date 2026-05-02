@@ -3,7 +3,7 @@ import {
   usePublishResultsMutation,
   useGetPublishStatusQuery,
 } from "~/cores/api/interviewApi";
-import { useAddClubMemberMutation } from "~/cores/api/clubApi";
+import { useAddMemberMutation } from "~/cores/api/clubApi";
 import { useGetUserByIdQuery } from "~/cores/api";
 
 // ─── Inline user name resolver ───────────────────────────────────
@@ -62,7 +62,7 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
   onSuccess,
 }) => {
   const [publishResults, { isLoading }] = usePublishResultsMutation();
-  const [addClubMember] = useAddClubMemberMutation();
+  const [addClubMember] = useAddMemberMutation();
   const { data: publishStatus } = useGetPublishStatusQuery(campaignId);
 
   const [mode, setMode] = useState<"Now" | "Schedule">("Now");
@@ -236,7 +236,9 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
                 <label
                   key={d.id}
                   className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/30 ${
-                    selectedIds.has(d.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""
+                    selectedIds.has(d.id)
+                      ? "bg-blue-50/50 dark:bg-blue-900/10"
+                      : ""
                   }`}
                 >
                   <input
@@ -262,8 +264,8 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
                 <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-xs">
                   <i className="fa-solid fa-user-plus text-[10px]" />
                   <span>
-                    <strong>{selectedAcceptCount}</strong> ứng viên được duyệt sẽ
-                    tự động thêm vào câu lạc bộ.
+                    <strong>{selectedAcceptCount}</strong> ứng viên được duyệt
+                    sẽ tự động thêm vào câu lạc bộ.
                   </span>
                 </div>
               </div>
