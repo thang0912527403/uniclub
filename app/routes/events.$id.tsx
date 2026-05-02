@@ -639,6 +639,14 @@ export default function EventDetailPage() {
     setConfirmOpen(true);
   };
 
+  if (!event) {
+    return (
+      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
         <div className="min-h-screen">
