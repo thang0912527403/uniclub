@@ -237,6 +237,7 @@ export const clubApi = baseApi.injectEndpoints({
   }),
 });
 
+
 export const {
   useGetClubsQuery,
   useGetActiveClubsQuery,

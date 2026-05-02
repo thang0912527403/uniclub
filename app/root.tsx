@@ -9,6 +9,8 @@ import {
 import { Provider } from 'react-redux';
 import { store } from './cores/store';
 import { NotificationProvider } from '~/components/Notification';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '~/utils/i18n';
 import { useNotificationHub } from '~/hooks/useNotificationHub';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import type { Route } from "./+types/root";
@@ -65,12 +67,14 @@ function NotificationHubInit() {
 
 export default function App() {
   return (
-    <Provider store={store}>
-      <NotificationProvider>
-        <NotificationHubInit />
-        <Outlet />
-      </NotificationProvider>
-    </Provider>
+    <I18nextProvider i18n={i18n}>
+      <Provider store={store}>
+        <NotificationProvider>
+          <NotificationHubInit />
+          <Outlet />
+        </NotificationProvider>
+      </Provider>
+    </I18nextProvider>
   );
 }
 

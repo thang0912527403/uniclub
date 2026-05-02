@@ -11,6 +11,7 @@ export type ClubFundSoftDeleteControlProps = {
   fundLabel: string;
   canSoftDeleteFund: boolean;
   isFundClosed?: boolean;
+  softDeleteBlockedReasonVi?: string | null;
   financeAccessHintVi?: string | null;
   compact?: boolean;
   onAfterSuccess?: () => void;
@@ -22,6 +23,7 @@ export function ClubFundSoftDeleteControl({
   fundLabel,
   canSoftDeleteFund,
   isFundClosed,
+  softDeleteBlockedReasonVi,
   financeAccessHintVi,
   compact,
   onAfterSuccess,
@@ -34,6 +36,8 @@ export function ClubFundSoftDeleteControl({
 
   const hint = financeAccessHintVi?.trim() || undefined;
   const closedBlock = isFundClosed === true;
+  const terminalBlock = Boolean(softDeleteBlockedReasonVi?.trim());
+  const terminalReason = softDeleteBlockedReasonVi?.trim() || undefined;
   const disabledReason = !canSoftDeleteFund && hint
     ? hint
     : !canSoftDeleteFund
@@ -80,23 +84,28 @@ export function ClubFundSoftDeleteControl({
     <>
       <button
         type="button"
-        disabled={closedBlock || !canSoftDeleteFund || isLoading}
+        disabled={
+          closedBlock || terminalBlock || !canSoftDeleteFund || isLoading
+        }
         title={
           closedBlock
             ? undefined
-            : !canSoftDeleteFund
-              ? disabledReason
-              : hint
-                ? `Gợi ý: ${hint}`
-                : 'Đóng quỹ — thường dùng khi quỹ không còn nhận nộp; một số loại quỹ sau hạn có thể không đóng được, hệ thống sẽ báo nếu không hợp lệ.'
+            : terminalBlock
+              ? terminalReason
+              : !canSoftDeleteFund
+                ? disabledReason
+                : hint
+                  ? `Gợi ý: ${hint}`
+                  : 'Đóng quỹ — thường dùng khi quỹ không còn nhận nộp; một số loại quỹ sau hạn có thể không đóng được, hệ thống sẽ báo nếu không hợp lệ.'
         }
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (closedBlock || !canSoftDeleteFund || isLoading) return;
+          if (closedBlock || terminalBlock || !canSoftDeleteFund || isLoading)
+            return;
           setConfirmOpen(true);
         }}
-        className={`${btnClass} ${closedBlock || !canSoftDeleteFund ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`${btnClass} ${closedBlock || terminalBlock || !canSoftDeleteFund ? 'opacity-50 cursor-not-allowed' : ''}`}
         aria-label={`Đóng quỹ ${fundLabel}`}
       >
         {isLoading ? 'Đang xử lý…' : 'Đóng quỹ'}

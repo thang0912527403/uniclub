@@ -14,8 +14,7 @@ export function showMemberRefundRequestForm(
 ): boolean {
   if (isAdmin) return false;
   if (caps?.canProcessClubRefunds === true) return false;
-  if (caps?.hasEditFinancePolicy) return false;
-  if (canEditFinancePolicy) return false;
+  void canEditFinancePolicy;
   return true;
 }
 
