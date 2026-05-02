@@ -98,7 +98,7 @@ export const clubApi = baseApi.injectEndpoints({
       providesTags: (result, error, id) => [{ type: "ClubPost", id }],
     }),
     getClubPostsByClubId: builder.query<ClubPostResponseDto[], number>({
-      query: (clubId) => `/api/ClubPost/club/${clubId}`,
+      query: (clubId) => `/ClubPost/club/${clubId}`,
       transformResponse: (response: ApiResponse<ClubPostResponseDto[]>) =>
         response.data,
       providesTags: ["ClubPost"],
