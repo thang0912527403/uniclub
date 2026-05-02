@@ -1,6 +1,13 @@
 {
   "sidebar": {
     "dashboard": "Tổng quan",
+    "system": {
+      "title": "Hệ thống",
+      "manageClubs": "Quản lý Câu lạc bộ",
+      "manageUsers": "Quản lý Người dùng",
+      "creationRequests": "Yêu cầu tạo CLB",
+      "recordOfChange": "Nhật ký thay đổi"
+    },
     "manageClub": {
       "title": "Quản lý CLB",
       "allClubs": "Tất cả CLB",
@@ -29,7 +36,8 @@
       "allMembers": "Tất cả Thành viên",
       "addMember": "Thêm Thành viên",
       "memberRoles": "Vai trò Thành viên",
-      "memberActivity": "Hoạt động Thành viên"
+      "memberActivity": "Hoạt động Thành viên",
+      "participationHistory": "Lịch sử tham gia"
     },
     "managePosts": {
       "title": "Quản lý Bài viết",
@@ -47,11 +55,13 @@
       "budgetOverview": "Tổng quan Ngân sách",
       "myFunds": "Quỹ của tôi",
       "transactions": "Giao dịch",
+      "paymentSettings": "Thiết lập thanh toán",
       "expenseReports": "Báo cáo Chi tiêu"
     },
     "manageInterview": {
       "title": "Quản lý Phỏng vấn",
-      "allInterviews": "Lịch Phỏng vấn"
+      "allInterviews": "Lịch Phỏng vấn",
+      "comparison": "So sánh & Công bố"
     },
     "manageNotifications": {
       "title": "Quản lý Thông báo",
