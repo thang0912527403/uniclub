@@ -33,6 +33,7 @@ const ClubCard: React.FC<{ club: Club }> = ({ club }) => {
             <div className="p-6 flex flex-col flex-1">
                 <div className="flex items-center gap-4 text-[11px] font-semibold text-gray-400 uppercase mb-3">
                     <span className="flex items-center gap-1.5"><Calendar size={14} className="text-orange-500" /> {formatDate(club.createdAt)}</span>
+                    <span className="flex items-center gap-1.5"><User size={14} className="text-orange-500" /> {club.memberCount ?? 0} thành viên</span>
                 </div>
 
                 <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors line-clamp-2 leading-snug flex items-center gap-2">

@@ -27,7 +27,12 @@ export function useNotificationHub() {
 
             const userId = getUserId();
             const rawEnv = import.meta.env.VITE_BACKEND_URL as string | undefined;
-            const backendUrl = rawEnv ?? 'https://localhost:7237';
+            // Khi chạy local mà không có env → dùng localhost; trên production → dùng origin gốc (proxy /api)
+            const origin = window.location.origin;
+            const isLocal =
+                origin.startsWith('http://localhost') ||
+                origin.startsWith('http://127.0.0.1');
+            const backendUrl = rawEnv ?? (isLocal ? 'https://localhost:7237' : 'https://chuyencongnhan.io.vn');
 
             const conn = new HubConnectionBuilder()
                 .withUrl(`${backendUrl}/notifications`, {
