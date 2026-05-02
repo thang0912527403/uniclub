@@ -42,6 +42,7 @@ import {
   FundCardBalanceHint,
 } from "~/modules/funds/components/FundUxHints";
 import { isFundClosedOnList } from "~/modules/funds/utils/isFundClosedOnList";
+import { fundSoftDeleteBlockedReasonVi } from "~/modules/funds/utils/fundSoftDeleteBlockedReasonVi";
 import { FundsRefundSection } from "~/modules/funds/components/refunds/FundsRefundSection";
 import { ClubFundSoftDeleteControl } from "~/modules/funds/components/ClubFundSoftDeleteControl";
 import {
@@ -1279,6 +1280,9 @@ export default function FundsPage() {
                               fundLabel={f.fundName?.trim() || `Quỹ #${f.fundId}`}
                               canSoftDeleteFund={caps?.canSoftDeleteFund === true}
                               isFundClosed={isFundClosedOnList(f)}
+                              softDeleteBlockedReasonVi={fundSoftDeleteBlockedReasonVi(
+                                f,
+                              )}
                               financeAccessHintVi={caps?.financeAccessHintVi}
                               compact
                               onAfterSuccess={() => {

@@ -35,6 +35,7 @@ import { clearClubFundDetailSession } from '~/modules/funds/utils/clubFundDetail
 import { extractClubFundErrorMessage } from '~/modules/funds/utils/fundRefundErrors';
 import { isManagerClosedAmberNoteDuplicateVi } from '~/modules/funds/utils/fundContributeNoteFilter';
 import { isFundClosedOnList } from '~/modules/funds/utils/isFundClosedOnList';
+import { fundSoftDeleteBlockedReasonVi } from '~/modules/funds/utils/fundSoftDeleteBlockedReasonVi';
 import { useFundHistory } from '~/modules/funds/hooks/useFundHistory';
 import {
   DEFAULT_FUND_HISTORY_PAGE_SIZE,
@@ -833,6 +834,9 @@ export default function FundDetailPageByClub() {
                       fundLabel={fund.fundName || `Quỹ #${fund.fundId}`}
                       canSoftDeleteFund={caps?.canSoftDeleteFund === true}
                       isFundClosed={isFundClosedOnList(fund)}
+                      softDeleteBlockedReasonVi={fundSoftDeleteBlockedReasonVi(
+                        fund,
+                      )}
                       financeAccessHintVi={caps?.financeAccessHintVi}
                       onAfterSuccess={() => {
                         clearClubFundDetailSession();
