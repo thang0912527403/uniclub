@@ -13,6 +13,7 @@ export interface PagedResult<T> {
 export interface ClubFund {
   fundId: number;
   clubId: number;
+  publicId?: string;
   fundName?: string;
   currentBalance?: number;
   totalAmount?: number;
@@ -25,8 +26,12 @@ export interface ClubFund {
   canAcceptContributions?: boolean;
   balanceContextVi?: string | null;
   cannotContributeReasonVi?: string | null;
+  lifecycleStatusVi?: string | null;
   rejectionReasonVi?: string | null;
   expiresAtUtcNoteVi?: string | null;
+  isDeleted?: boolean;
+  isClosed?: boolean;
+  closedReasonCode?: string | null;
 }
 
 export type MyFundsPagedResult = PagedResult<ClubFund> & {
@@ -66,9 +71,15 @@ export interface ClubFundCapabilities {
   canContribute: boolean;
   canCreateFund: boolean;
   canApproveOrRejectFundEntity: boolean;
+  canManageOnlinePaymentSettings?: boolean;
+  canRecordCashContributions?: boolean;
+  canProcessClubRefunds?: boolean;
   hasViewFinancePolicy: boolean;
   hasCreateFinancePolicy: boolean;
   hasEditFinancePolicy: boolean;
+  hasDeleteFinancePolicy?: boolean;
+  canSoftDeleteFund?: boolean;
+  canViewSoftDeletedFunds?: boolean;
   clubRoleName?: string | null;
   clubRoleLevel?: number | null;
   isActiveClubMember: boolean;
@@ -131,8 +142,10 @@ export interface FundHistoryItem {
   id?: number;
   fundId: number;
   fundName?: string | null;
+  transactionType?: string | null;
   amount: number;
   status: string;
+  refundForTransactionId?: number | null;
   description?: string;
   categoryId?: number | null;
   categoryName?: string | null;
@@ -162,8 +175,10 @@ export interface FundHistoryResponse {
 
 export interface CreateFundDto {
   fundName: string;
+  fundTypeId: number;
   description?: string;
   expiresAt?: string;
+  goalAmount?: number;
 }
 
 export interface ContributeToFundDto {
@@ -197,6 +212,169 @@ export interface FundContributeTransactionStatus {
 export interface PayosFundContributionReturn {
   clubId: number;
   fundId: number;
+  publicId?: string;
   isPaid: boolean;
   message?: string;
 }
+
+export type PaymentCredentialInputType = "text" | "password";
+
+export type PaymentCredentialFieldName = "clientId" | "apiKey" | "checksumKey";
+
+export interface PaymentCredentialFieldSchema {
+  name: PaymentCredentialFieldName;
+  labelVi: string;
+  requiredWhenEnabled: boolean;
+  maxLength: number;
+  inputType: PaymentCredentialInputType;
+  helpTextVi?: string;
+}
+
+export interface OnlinePaymentProviderOption {
+  code: string;
+  labelVi: string;
+  credentialFields: PaymentCredentialFieldSchema[];
+}
+
+export interface ClubPayosGuide {
+  clubId?: number;
+  paymentCredentialSchemaVersion: number;
+  onlinePaymentProviders: OnlinePaymentProviderOption[];
+  payos: {
+    isConfigured: boolean;
+    isEnabled: boolean;
+    noteVi?: string;
+  };
+  stepsVi: string[];
+}
+
+export interface ClubPayosSettings {
+  clubId?: number;
+  paymentProvider: string;
+  isConfigured: boolean;
+  clientId?: string | null;
+  apiKeyMasked?: string | null;
+  checksumKeyMasked?: string | null;
+  isEnabled: boolean;
+  updatedAtUtc?: string | null;
+}
+
+export interface UpdateClubPayosSettingsDto {
+  paymentProvider?: string | null;
+  clientId: string;
+  apiKey: string;
+  checksumKey: string;
+  isEnabled: boolean;
+}
+
+export interface FundTypeDto {
+  fundTypeId: number;
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+export type SoftDeleteFundResponse = {
+  message?: string;
+};
+
+export type RecordCashContributionRequest = {
+  fundId: number;
+  contributorUserId: string;
+  amount: number;
+  note?: string;
+  categoryId?: number;
+  contributedAtUtc?: string;
+};
+
+export type RecordCashContributionResponse = {
+  transactionId: number;
+  fundId: number;
+  amount: number;
+  status: string;
+  contributionSource: string;
+  newCurrentBalance: number;
+  contributorUserId: string;
+  recordedByUserId: string;
+};
+
+export type FundMemberContributionsDto = {
+  goalAmount?: number | null;
+  requiredPerMember?: number | null;
+  totalApprovedMemberContributions?: number | null;
+  activeMemberCount?: number | null;
+  members?: Array<{
+    userId: string;
+    fullName: string;
+    email: string;
+    studentId?: string | number | null;
+    requiredAmount?: number | null;
+    paidAmount?: number | null;
+    remainingAmount?: number | null;
+    isPaidEnough?: boolean | null;
+  }>;
+};
+
+export type FundRefundRequestStatus =
+  | "PENDING"
+  | "COMPLETED"
+  | "REJECTED"
+  | "CANCELLED";
+
+export type FundRefundRequestResponseDto = {
+  refundRequestId: number;
+  clubId: number;
+  fundId: number;
+  fundName?: string | null;
+  originalTransactionId: number;
+  requestedBy: string;
+  amount: number;
+  reason?: string | null;
+  bankName: string;
+  bankAccountNumber: string;
+  accountHolderName: string;
+  status: FundRefundRequestStatus | string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  completedAtUtc?: string | null;
+  completedBy?: string | null;
+  rejectedAtUtc?: string | null;
+  rejectedBy?: string | null;
+  rejectionReason?: string | null;
+  transferReference?: string | null;
+  managerNote?: string | null;
+};
+
+export type CreateFundRefundRequestDto = {
+  originalTransactionId: number;
+  amount: number;
+  reason?: string;
+  bankName: string;
+  bankAccountNumber: string;
+  accountHolderName: string;
+};
+
+export type CompleteFundRefundRequestDto = {
+  transferReference?: string;
+  managerNote?: string;
+};
+
+export type RejectFundRefundRequestDto = {
+  rejectionReason: string;
+};
+
+export type GetClubFundRefundRequestsParams = {
+  clubId: number;
+  page?: number;
+  pageSize?: number;
+  status?: string;
+};
+
+export type CreateManagerRefundDto = {
+  originalTransactionId: number;
+  amount: number;
+  description?: string;
+  categoryId?: number | null;
+  transferReference?: string;
+  managerNote?: string;
+};

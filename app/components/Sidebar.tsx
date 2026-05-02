@@ -109,6 +109,10 @@ export function Sidebar({
                 label: "Yêu cầu tạo CLB",
                 url: "/club/all-requests",
               },
+              {
+                label: "Record of Change",
+                url: "/record-of-change",
+              },
             ],
           },
         ]
@@ -175,22 +179,22 @@ export function Sidebar({
               },
               {
                 label: t("sidebar.manageMembers.addMember"),
-                url: "/members/add",
+                url: `${clubBaseUrl}/members/add`,
                 policy: "createmember",
               },
               {
                 label: t("sidebar.manageMembers.memberRoles"),
-                url: "/members/roles",
+                url: `${clubBaseUrl}/members/roles`,
                 policy: "viewrole",
               },
               {
                 label: t("sidebar.manageMembers.memberActivity"),
-                url: "/members/activity",
+                url: `${clubBaseUrl}/members/activity`,
                 policy: "viewattendance",
               },
               {
                 label: "Lịch sử tham gia",
-                url: "/members/history",
+                url: `${clubBaseUrl}/members/history`,
                 policy: "viewmember",
               },
             ],
@@ -248,6 +252,11 @@ export function Sidebar({
               {
                 label: t("sidebar.manageFunds.transactions"),
                 url: "/funds/reports?tab=transactions",
+                policy: "viewfinance",
+              },
+              {
+                label: "Thiết lập thanh toán",
+                url: "/funds/payos",
                 policy: "viewfinance",
               },
             ],

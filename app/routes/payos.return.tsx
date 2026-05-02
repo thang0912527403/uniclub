@@ -39,7 +39,14 @@ export default function PayosReturnPage() {
   const [phase, setPhase] = useState<PollPhase>('polling');
   const [message, setMessage] = useState<string | null>(null);
 
-  const orderCode = useMemo(() => parsePositiveInt(searchParams.get('orderCode')), [searchParams]);
+  const orderCode = useMemo(() => {
+    return parsePositiveInt(
+      searchParams.get("orderCode") ??
+        searchParams.get("code") ??
+        searchParams.get("order_code") ??
+        searchParams.get("transactionId"),
+    );
+  }, [searchParams]);
   const payosUrlPaid = useMemo(
     () => String(searchParams.get('status') ?? '').toUpperCase() === 'PAID',
     [searchParams],
@@ -67,9 +74,10 @@ export default function PayosReturnPage() {
       }
     };
 
-    const goFund = (clubId: number, fundId: number) => {
-      if (clubId > 0 && fundId > 0) {
-        void navigate(`/clubs/${clubId}/funds/${fundId}`, { replace: true });
+    const goFund = (clubId: number, fundKey: string | number | undefined) => {
+      const key = String(fundKey ?? '').trim();
+      if (clubId > 0 && key) {
+        void navigate(`/clubs/${clubId}/funds/${key}`, { replace: true });
       } else {
         void navigate('/funds', { replace: true });
       }
@@ -82,13 +90,14 @@ export default function PayosReturnPage() {
           clubId: data.clubId,
           transactionId: orderCode,
           ...(data.fundId > 0 ? { fundId: data.fundId } : {}),
+          ...(data.publicId?.trim() ? { publicId: data.publicId.trim() } : {}),
           savedAt: new Date().toISOString(),
         });
       }
       if (data.isPaid) {
         clearPayosPendingContribute();
         setPhase('paid');
-        goFund(data.clubId, data.fundId);
+        goFund(data.clubId, data.publicId ?? data.fundId);
         return true;
       }
       return false;
@@ -190,7 +199,7 @@ export default function PayosReturnPage() {
     let pollCount = 0;
     const maxPolls = 48;
     const intervalMs = 2500;
-    const { clubId, transactionId, fundId } = resolved;
+    const { clubId, transactionId, fundId, publicId } = resolved;
 
     const stop = () => {
       if (intervalId !== undefined) {
@@ -200,8 +209,9 @@ export default function PayosReturnPage() {
     };
 
     const goFund = () => {
-      if (fundId != null) {
-        void navigate(`/clubs/${clubId}/funds/${fundId}`, { replace: true });
+      const key = String(publicId ?? fundId ?? '').trim();
+      if (key) {
+        void navigate(`/clubs/${clubId}/funds/${key}`, { replace: true });
       } else {
         void navigate('/funds', { replace: true });
       }

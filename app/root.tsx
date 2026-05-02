@@ -11,9 +11,9 @@ import { store } from './cores/store';
 import { NotificationProvider } from '~/components/Notification';
 import { useNotificationHub } from '~/hooks/useNotificationHub';
 import '@fortawesome/fontawesome-free/css/all.min.css';
-import '~/utils/i18n';
 import type { Route } from "./+types/root";
 import "./app.css";
+import "~/modules/funds/utils/clubFundDetailAuthSync";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },

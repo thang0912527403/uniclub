@@ -727,7 +727,7 @@ const InterviewerInterviewsSection: React.FC<
                             <button
                               onClick={() =>
                                 navigate(
-                                  `/interview/room/${interview.meetingRoom!.roomCode}`,
+                                  `/meeting-room/${interview.meetingRoom!.roomCode}`,
                                 )
                               }
                               className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white font-semibold rounded-xl text-sm hover:shadow-lg transition-all"

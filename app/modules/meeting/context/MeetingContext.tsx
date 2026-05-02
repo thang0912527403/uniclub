@@ -1,11 +1,17 @@
-import React, { createContext, useContext, useRef, useEffect } from 'react';
-import type { HubConnection } from '@microsoft/signalr';
-import type { RoomUser, UserMediaState, ChatMessage } from '../types';
-import { useSignalR } from '../hooks/useSignalR';
-import { usePeerConnections } from '../hooks/usePeerConnections';
-import { useMediaControls } from '../hooks/useMediaControls';
-import { useChat } from '../hooks/useChat';
-import { useCurrentUser } from '~/hooks/useCurrentUser';
+import React, {
+  createContext,
+  useContext,
+  useRef,
+  useEffect,
+  useState,
+} from "react";
+import type { HubConnection } from "@microsoft/signalr";
+import type { RoomUser, UserMediaState, ChatMessage } from "../types";
+import { useSignalR } from "../hooks/useSignalR";
+import { usePeerConnections } from "../hooks/usePeerConnections";
+import { useMediaControls } from "../hooks/useMediaControls";
+import { useChat } from "../hooks/useChat";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 // ── Context Type ────────────────────────────────────────────────────
 
@@ -28,8 +34,11 @@ interface MeetingContextType {
   isVideoEnabled: boolean;
   isScreenSharing: boolean;
   screenSharingUser: string | null;
+  isHandRaised: boolean;
+  toggleHand: () => Promise<void>;
   messages: ChatMessage[];
   sendMessage: (message: string) => void;
+  isReady: boolean;
 }
 
 // ── Context ─────────────────────────────────────────────────────────
@@ -38,13 +47,15 @@ const MeetingContext = createContext<MeetingContextType | undefined>(undefined);
 
 export const useMeeting = () => {
   const ctx = useContext(MeetingContext);
-  if (!ctx) throw new Error('useMeeting must be used within a MeetingProvider');
+  if (!ctx) throw new Error("useMeeting must be used within a MeetingProvider");
   return ctx;
 };
 
 // ── Provider ────────────────────────────────────────────────────────
 
-export const MeetingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const MeetingProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { user: authUser } = useCurrentUser();
 
   // Shared mutable refs (passed to hooks to avoid stale closures)
@@ -58,14 +69,19 @@ export const MeetingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // 2. Peer connections (WebRTC signaling)
   const peerConns = usePeerConnections(
-    connection, localStreamRef, screenStreamRef, isScreenSharingRef, roomIdRef
+    connection,
+    localStreamRef,
+    screenStreamRef,
+    isScreenSharingRef,
+    roomIdRef,
   );
 
   // 3. Media controls + user presence
   const media = useMediaControls(
-    connection, peerConns,
+    connection,
+    peerConns,
     { localStreamRef, screenStreamRef, isScreenSharingRef, roomIdRef },
-    authUser
+    authUser,
   );
 
   // 4. Chat
@@ -81,31 +97,48 @@ export const MeetingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     prevConnectedRef.current = isConnected;
   }, [isConnected, media.resetState, peerConns.cleanupPeers]);
 
+  // 6. Ready state
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    if (isConnected) {
+      // Because this useEffect runs AFTER the children's render, but MeetingProvider is the parent,
+      // this means all hook listeners (which run in the same phase) are now bound.
+      setIsReady(true);
+    } else {
+      setIsReady(false);
+    }
+  }, [isConnected]);
+
   // ── Provide ─────────────────────────────────────────────────────
 
   return (
-    <MeetingContext.Provider value={{
-      connection,
-      users: media.users,
-      userStates: media.userStates,
-      localStream: media.localStream,
-      screenStream: media.screenStream,
-      remoteStreams: peerConns.remoteStreams,
-      joinRoom: media.joinRoom,
-      leaveRoom: media.leaveRoom,
-      toggleAudio: media.toggleAudio,
-      toggleVideo: media.toggleVideo,
-      startScreenShare: media.startScreenShare,
-      stopScreenShare: media.stopScreenShare,
-      peers: peerConns.peers,
-      isConnected,
-      isAudioEnabled: media.isAudioEnabled,
-      isVideoEnabled: media.isVideoEnabled,
-      isScreenSharing: media.isScreenSharing,
-      screenSharingUser: media.screenSharingUser,
-      messages: chat.messages,
-      sendMessage: chat.sendMessage
-    }}>
+    <MeetingContext.Provider
+      value={{
+        connection,
+        users: media.users,
+        userStates: media.userStates,
+        localStream: media.localStream,
+        screenStream: media.screenStream,
+        remoteStreams: peerConns.remoteStreams,
+        joinRoom: media.joinRoom,
+        leaveRoom: media.leaveRoom,
+        toggleAudio: media.toggleAudio,
+        toggleVideo: media.toggleVideo,
+        startScreenShare: media.startScreenShare,
+        stopScreenShare: media.stopScreenShare,
+        peers: peerConns.peers,
+        isConnected,
+        isAudioEnabled: media.isAudioEnabled,
+        isVideoEnabled: media.isVideoEnabled,
+        isScreenSharing: media.isScreenSharing,
+        screenSharingUser: media.screenSharingUser,
+        isHandRaised: media.isHandRaised,
+        toggleHand: media.toggleHand,
+        messages: chat.messages,
+        sendMessage: chat.sendMessage,
+        isReady,
+      }}
+    >
       {children}
     </MeetingContext.Provider>
   );

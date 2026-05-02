@@ -26,8 +26,11 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
     isAudioEnabled,
     isVideoEnabled,
     isConnected,
+    isReady,
     isScreenSharing,
     screenSharingUser,
+    isHandRaised,
+    toggleHand,
     messages,
     sendMessage,
   } = useMeeting();
@@ -37,6 +40,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const lastReadCountRef = useRef(0);
   const hasLeftRef = useRef(false);
+  const [hasJoined, setHasJoined] = useState(false);
 
   const { user } = useCurrentUser();
   const currentUserId = getUserId();
@@ -86,21 +90,21 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
 
   // ── Join room on connect ──────────────────────────────────────────
   useEffect(() => {
-    if (isConnected && roomId) {
+    // Only join when the provider has bound all listeners
+    if (isConnected && isReady && roomId) {
       hasLeftRef.current = false;
-      // Small delay ensures parent components (MeetingProvider) have finished
-      // registering their connection.on() event listeners before we invoke JoinRoom
-      const timer = setTimeout(() => {
-        joinRoom(roomId).catch((err) => {
+      joinRoom(roomId)
+        .then(() => setHasJoined(true))
+        .catch((err) => {
           console.error("Failed to join room:", err);
         });
-      }, 50);
+
       return () => {
-        clearTimeout(timer);
         leaveRoom();
+        setHasJoined(false);
       };
     }
-  }, [isConnected, roomId, joinRoom, leaveRoom]);
+  }, [isConnected, isReady, roomId, joinRoom, leaveRoom]);
 
   // ── Handle tab close / navigation away ────────────────────────────
   useEffect(() => {
@@ -144,9 +148,9 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
     }
   }, [messages, isChatOpen]);
 
-  const handleLeave = () => {
+  const handleLeave = async () => {
     callLeaveApi();
-    leaveRoom();
+    await leaveRoom();
     onLeave();
   };
 
@@ -185,6 +189,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
         label: user?.fullName || "Bạn",
         isLocal: true,
         avatar: user?.avatar,
+        isHandRaised: isHandRaised,
       };
     }
 
@@ -199,11 +204,23 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
       isMuted: state?.isMuted || false,
       isCameraOff: state?.isCameraOff || false,
       isScreenSharing: state?.isScreenSharing || false,
+      isHandRaised: state?.isHandRaised || false,
       avatar: rUser?.avatar,
     };
   };
 
   const spotlightContent = getSpotlightContent();
+
+  if (!isReady || !hasJoined) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50 h-full w-full">
+        <div className="text-center text-gray-500">
+          <i className="fa-solid fa-spinner fa-spin text-3xl mb-3 block text-orange-500" />
+          <p className="text-sm">Đang thiết lập kết nối WebRTC...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex flex-col h-full w-full overflow-hidden bg-gray-50">
@@ -222,7 +239,8 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                 isVideoEnabled={
                   spotlightContent.isLocal
                     ? isScreenSharing || isVideoEnabled
-                    : !spotlightContent.isCameraOff
+                    : !spotlightContent.isCameraOff ||
+                      spotlightContent.isScreenSharing
                 }
                 isAudioEnabled={
                   spotlightContent.isLocal
@@ -231,6 +249,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                 }
                 isSpotlight
                 isScreenSharing={spotlightContent.isScreenSharing}
+                isHandRaised={spotlightContent.isHandRaised}
                 avatar={spotlightContent.avatar}
                 onClick={() => setSpotlightUser(null)}
               />
@@ -249,6 +268,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                     isVideoEnabled={isScreenSharing || isVideoEnabled}
                     isAudioEnabled={isAudioEnabled}
                     isThumbnail
+                    isHandRaised={isHandRaised}
                     avatar={user?.avatar}
                     onClick={() => handleVideoClick("local")}
                   />
@@ -265,9 +285,12 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                     <VideoTile
                       stream={stream}
                       label={rUser.fullName}
-                      isVideoEnabled={!state?.isCameraOff}
+                      isVideoEnabled={
+                        !state?.isCameraOff || state?.isScreenSharing
+                      }
                       isAudioEnabled={!state?.isMuted}
                       isScreenSharing={state?.isScreenSharing}
+                      isHandRaised={state?.isHandRaised}
                       isThumbnail
                       avatar={rUser.avatar}
                       onClick={() => handleVideoClick(rUser.connectionId)}
@@ -288,6 +311,7 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
               isLocal
               isVideoEnabled={isScreenSharing || isVideoEnabled}
               isAudioEnabled={isAudioEnabled}
+              isHandRaised={isHandRaised}
               onClick={() => handleVideoClick("local")}
             />
 
@@ -300,9 +324,12 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
                   key={user.connectionId}
                   stream={stream}
                   label={user.fullName}
-                  isVideoEnabled={!state?.isCameraOff}
+                  isVideoEnabled={
+                    !state?.isCameraOff || state?.isScreenSharing
+                  }
                   isAudioEnabled={!state?.isMuted}
                   isScreenSharing={state?.isScreenSharing}
+                  isHandRaised={state?.isHandRaised}
                   onClick={() => handleVideoClick(user.connectionId)}
                 />
               );
@@ -330,6 +357,8 @@ export const MeetingRoom: React.FC<{ roomId: string; onLeave: () => void }> = ({
             lastReadCountRef.current = messages.length;
           }
         }}
+        isHandRaised={isHandRaised}
+        onToggleHand={toggleHand}
         onLeave={handleLeave}
       />
     </div>

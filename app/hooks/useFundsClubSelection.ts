@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Cookies from 'js-cookie';
-import { useGetClubsQuery, useGetUserClubInfoQuery } from '~/cores/api';
+import { useGetClubsQuery, useGetUserClubInfoQuery, type Club } from '~/cores/api';
 import { useClubRole } from '~/hooks/useClubRole';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 
@@ -9,7 +9,11 @@ export function useFundsClubSelection() {
   const { isAdmin } = useClubRole();
   const { userId } = useCurrentUser();
 
-  const { data: clubs = [] } = useGetClubsQuery(undefined, { skip: !hasToken || !isAdmin });
+  const { data: clubsResponse } = useGetClubsQuery(
+    { pageIndex: '1', pageSize: '200', searchQuery: '', status: 'ACTIVE' },
+    { skip: !hasToken || !isAdmin },
+  );
+  const clubs: Club[] = clubsResponse?.data ?? [];
   const { data: rawMemberships, isLoading: isLoadingUserMemberships } = useGetUserClubInfoQuery(userId, {
     skip: !hasToken || isAdmin || !userId,
   });
@@ -29,7 +33,9 @@ export function useFundsClubSelection() {
         .filter((m) => String((m as { status?: string }).status ?? '').toUpperCase() === 'ACTIVE')
         .map((m) => ({
           clubId: (m as { clubId: number }).clubId,
-          label: `CLB #${(m as { clubId: number }).clubId} • ${(m as { roleName?: string }).roleName || `RoleId ${(m as { clubRoleId?: number }).clubRoleId}`}`,
+          label: `${String((m as { clubName?: string }).clubName ?? '').trim() || 'Câu lạc bộ'} • ${
+            (m as { roleName?: string }).roleName || `RoleId ${(m as { clubRoleId?: number }).clubRoleId}`
+          }`,
         })),
     [memberships],
   );

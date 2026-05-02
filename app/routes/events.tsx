@@ -9,6 +9,7 @@ import { useTheme } from '~/hooks/useTheme';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { useClubRole } from '~/hooks/useClubRole';
+import { useClubPolicy } from '~/hooks/useClubPolicy';
 import { getClubId } from '~/utils/auth';
 import { EventCard } from '~/modules/events/components/EventCard';
 
@@ -18,6 +19,7 @@ export default function EventsPage() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { isAdmin } = useCurrentUser();
     const { isClubManager } = useClubRole();
+    const { canCreateEvent } = useClubPolicy();
     const cookieClubId = getClubId();
 
     const [pageNumber, setPageNumber] = useState(1);
@@ -126,13 +128,15 @@ export default function EventsPage() {
                         )}
                     </div>
 
-                    <button
-                        onClick={() => navigate('/events/create')}
-                        className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
-                    >
-                        <i className="fas fa-plus"></i>
-                        Create Event
-                    </button>
+                    {canCreateEvent && (
+                        <button
+                            onClick={() => navigate('/events/create')}
+                            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
+                        >
+                            <i className="fas fa-plus"></i>
+                            Tạo sự kiện
+                        </button>
+                    )}
                 </div>
 
                 {isLoading ? (
@@ -161,14 +165,16 @@ export default function EventsPage() {
                         <p className="text-gray-500 text-lg mb-4">
                             {isAdmin && selectedClubId !== 'all'
                                 ? 'Câu lạc bộ này chưa có sự kiện nào'
-                                : 'No events found'}
+                                : 'Chưa có sự kiện nào'}
                         </p>
-                        <button
-                            onClick={() => navigate('/events/create')}
-                            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                        >
-                            Create Your First Event
-                        </button>
+                        {canCreateEvent && (
+                            <button
+                                onClick={() => navigate('/events/create')}
+                                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                            >
+                                Tạo sự kiện đầu tiên
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <>
