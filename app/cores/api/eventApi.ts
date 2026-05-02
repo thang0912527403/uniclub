@@ -150,7 +150,7 @@ export const eventApi = baseApi.injectEndpoints({
             invalidatesTags: (result, error, id) => [{ type: 'Event', id }, 'Event'],
         }),
 
-        startEvent: builder.mutation<{ checkInCode: string }, { clubId: number; eventId: number }>({
+        startEvent: builder.mutation<{ checkInCode: string; expiresAt?: string }, { clubId: number; eventId: number }>({
             query: ({ clubId, eventId }) => ({
                 url: `/club/${clubId}/events/${eventId}/start`,
                 method: 'PUT',

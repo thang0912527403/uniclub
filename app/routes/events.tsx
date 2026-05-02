@@ -28,7 +28,8 @@ export default function EventsPage() {
     const [selectedClubId, setSelectedClubId] = useState<number | 'all'>('all');
 
     const { data: rawEvents, isLoading, error } = useGetAllEventsQuery({ pageNumber: 1, pageSize: 100 });
-    const { data: clubs } = useGetClubsQuery(undefined, { skip: !isAdmin });
+    const { data: clubsData } = useGetClubsQuery({ pageIndex: '1', searchQuery: '', pageSize: '100' }, { skip: !isAdmin });
+    const clubs = clubsData?.data;
     const allEvents = Array.isArray(rawEvents) ? rawEvents : (rawEvents?.items ?? []);
 
     // Filter events based on role

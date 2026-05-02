@@ -21,6 +21,7 @@ import {
   useBulkMakeupCheckInMutation,
   useAddAttendeesMutation,
 } from "~/cores/api";
+import type { EventDetailDto } from "~/cores/api/types/event";
 import { useGetCurrentUserQuery } from "~/cores/api/authApi";
 import { ApiStatusButton } from "~/components/ApiStatusButton";
 import { Sidebar } from "~/components/Sidebar";
@@ -118,7 +119,7 @@ export default function EventDetailPage() {
 
   const eventId = Number(id);
 
-  const { data: event, isLoading, error } = useGetEventByIdQuery(eventId);
+  const { data: event, isLoading, error } = useGetEventByIdQuery(eventId) as { data: EventDetailDto | undefined; isLoading: boolean; error: any };
   const { user: currentUser, isAdmin: isGlobalAdmin } = useCurrentUser();
   // Auto-set clubId cookie khi vào event detail (để không cần phải vào dashboard trước)
   useEffect(() => {
