@@ -9,6 +9,7 @@ import {
 import { Provider } from 'react-redux';
 import { store } from './cores/store';
 import { NotificationProvider } from '~/components/Notification';
+import { useNotificationHub } from '~/hooks/useNotificationHub';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import '~/utils/i18n';
 import type { Route } from "./+types/root";
@@ -33,7 +34,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* Inline script to avoid FOUC - Tailwind CSS docs pattern */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -57,10 +57,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function NotificationHubInit() {
+  useNotificationHub();
+  return null;
+}
+
 export default function App() {
   return (
     <Provider store={store}>
       <NotificationProvider>
+        <NotificationHubInit />
         <Outlet />
       </NotificationProvider>
     </Provider>

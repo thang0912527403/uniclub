@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
-import { useCreateClubRequestMutation, type CreateClubRequestDto } from '~/cores/api/clubRequestApi';
+import { useNavigate, Navigate } from 'react-router';
+import { useCreateClubRequestMutation, useCheckPendingRequestQuery, type CreateClubRequestDto } from '~/cores/api/clubRequestApi';
+import { useGetManagedClubsQuery, useGetUserRoleQuery } from '~/cores/api/userApi';
 import { getUserId } from '~/utils/auth';
+import { Loading } from '~/components/Loading';
 
 interface ConfirmModalProps {
     clubName: string;
@@ -86,6 +88,14 @@ const CreateClubRequestPage: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [createRequest] = useCreateClubRequestMutation();
     const currentUserId = getUserId();
+
+    const { data: hasPendingRequest, isLoading: pendingLoading } = useCheckPendingRequestQuery(currentUserId, { skip: !currentUserId });
+    const { data: managedClubs, isLoading: managedLoading } = useGetManagedClubsQuery(currentUserId);
+    const { data: userRoles, isLoading: rolesLoading } = useGetUserRoleQuery(currentUserId);
+    const isAdmin = userRoles?.includes('Admin') ?? false;
+
+    if (pendingLoading || managedLoading || rolesLoading) return <Loading />;
+    if (hasPendingRequest || (managedClubs?.length ?? 0) > 0 || isAdmin) return <Navigate to="/403" />;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
