@@ -2,7 +2,7 @@ import React from 'react';
 
 const CallToAction: React.FC = () => {
     return (
-        <section className="relative bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 py-16 px-6 md:px-12 overflow-hidden">
+        <section className="relative bg-gradient-to-r from-orange-500 via-orange-600 to-orange-500 py-10 sm:py-16 px-4 sm:px-6 md:px-12 overflow-hidden">
             {/* Decorative pattern overlay */}
             <div className="absolute inset-0 opacity-10">
                 <div className="absolute inset-0" style={{

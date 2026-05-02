@@ -163,8 +163,8 @@ export default function CampaignsSection() {
     if (active.length === 0) return null;
 
     return (
-        <section className="py-14 bg-white overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6">
+        <section className="py-10 sm:py-14 bg-white overflow-hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
                 {/* ── Header ── */}
                 <div className="flex items-end justify-between mb-7">
