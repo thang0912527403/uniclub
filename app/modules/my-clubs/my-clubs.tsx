@@ -309,13 +309,14 @@ export default function MyClubsModule() {
     skip: !userId,
   });
 
-  const { data: hasPendingRequest } = useCheckPendingRequestQuery(userId, {
+  const { data: hasPendingRequest, isLoading: pendingLoading } = useCheckPendingRequestQuery(userId, {
     skip: !userId,
   });
 
-  const { data: managedClubs } = useGetManagedClubsQuery(getUserId());
-  const { data: userRoles } = useGetUserRoleQuery(userId);
+  const { data: managedClubs, isLoading: managedLoading } = useGetManagedClubsQuery(getUserId());
+  const { data: userRoles, isLoading: rolesLoading } = useGetUserRoleQuery(userId);
   const isAdmin = userRoles?.includes("Admin") ?? false;
+  const ctaLoading = pendingLoading || managedLoading || rolesLoading;
 
   const { data: userRequests, isLoading: requestLoading } =
     useGetClubRequestsByUserIdQuery(userId, {
@@ -606,7 +607,7 @@ export default function MyClubsModule() {
           )}
 
           {/* ── CTA: Create Club Request ── */}
-          {!hasPendingRequest && !isAdmin && (
+          {!ctaLoading && !hasPendingRequest && !managedClubs?.length && !isAdmin && (
             <div className="mt-12 flex flex-col items-center">
               {/* Floating plus icon */}
               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 mb-4">
