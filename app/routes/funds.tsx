@@ -41,6 +41,7 @@ import {
   FinanceAccessHintBanner,
   FundCardBalanceHint,
 } from "~/modules/funds/components/FundUxHints";
+import { isFundClosedOnList } from "~/modules/funds/utils/isFundClosedOnList";
 import { FundsRefundSection } from "~/modules/funds/components/refunds/FundsRefundSection";
 import { ClubFundSoftDeleteControl } from "~/modules/funds/components/ClubFundSoftDeleteControl";
 import {
@@ -58,6 +59,7 @@ import {
 } from "./funds.utils";
 
 function fundStatusLabel(f: ClubFund): string {
+  if (isFundClosedOnList(f)) return "Đã đóng";
   const s = String(f.status ?? "").toUpperCase();
   if (s === "PENDING") return "Chờ duyệt";
   if (s === "APPROVED") return "Đã duyệt";
@@ -66,6 +68,17 @@ function fundStatusLabel(f: ClubFund): string {
 }
 
 function FundStatusBadge({ fund }: { fund: ClubFund }) {
+  if (isFundClosedOnList(fund)) {
+    return (
+      <span className={t.status.closed}>
+        <span
+          className="inline-block w-2.5 h-2.5 rounded-full bg-slate-500 shrink-0"
+          aria-hidden
+        />
+        <span>{fundStatusLabel(fund)}</span>
+      </span>
+    );
+  }
   const s = String(fund.status ?? "").toUpperCase();
   if (s === "APPROVED")
     return (
@@ -289,6 +302,7 @@ export default function FundsPage() {
     data: fundsPaged,
     error: fundsError,
     isLoading: isLoadingFunds,
+    refetch: refetchFundsList,
   } = useGetFundsByClubQuery(
     buildFundsListQueryArgs({
       clubId,
@@ -442,7 +456,7 @@ export default function FundsPage() {
       goalAmount = parsed.amount;
     }
     try {
-      await createFund({
+      const created = await createFund({
         clubId,
         ...buildCreateFundPayload(
           newFundName,
@@ -459,11 +473,17 @@ export default function FundsPage() {
       setNewFundTypeId(0);
       setGoalAmountInput("");
       setCreateFundFormError(null);
-      const hasViewFinance = !!(isAdmin || caps?.canViewFunds === true);
-      const createFundSuccessMessage =
-        hasViewFinance
-          ? "Quỹ đã được tạo."
-          : "Quỹ đã được tạo. Quỹ sẽ chờ Quản lý câu lạc bộ duyệt.";
+      const statusNorm = String(created?.status ?? "").toUpperCase();
+      const fundLabel = created?.fundName?.trim() || "Quỹ mới";
+      let createFundSuccessMessage: string;
+      if (statusNorm === "APPROVED") {
+        createFundSuccessMessage = "Quỹ đã được tạo.";
+      } else if (statusNorm === "PENDING") {
+        createFundSuccessMessage = `«${fundLabel}» đã được tạo. Quỹ đang chờ quản lý câu lạc bộ duyệt.`;
+      } else {
+        createFundSuccessMessage =
+          "Quỹ đã được tạo. Kiểm tra trạng thái trong danh sách quỹ.";
+      }
       showNotification({
         type: "success",
         title: "Đã tạo quỹ",
@@ -476,7 +496,7 @@ export default function FundsPage() {
         ?.message;
       if (isDuplicateFundNameError(backendMessage)) {
         const duplicateNameFriendly =
-          "Tên quỹ này đã tồn tại trong CLB (trừ quỹ đã bị từ chối). Vui lòng chọn tên khác.";
+          "Tên quỹ này đã tồn tại trong CLB. Vui lòng chọn tên khác.";
         setCreateFundFormError(duplicateNameFriendly);
         showNotification({
           type: "error",
@@ -1258,9 +1278,12 @@ export default function FundsPage() {
                               fundId={f.fundId}
                               fundLabel={f.fundName?.trim() || `Quỹ #${f.fundId}`}
                               canSoftDeleteFund={caps?.canSoftDeleteFund === true}
-                              isFundClosed={f.isClosed === true}
+                              isFundClosed={isFundClosedOnList(f)}
                               financeAccessHintVi={caps?.financeAccessHintVi}
                               compact
+                              onAfterSuccess={() => {
+                                void refetchFundsList();
+                              }}
                             />
                             <Link
                               to={`/clubs/${clubId}/funds/${f.publicId ?? f.fundId}`}

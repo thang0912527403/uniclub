@@ -36,6 +36,7 @@ import { useSidebarToggle } from "~/hooks/useSidebarToggle";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
 import { useClubRole } from "~/hooks/useClubRole";
 import { extractClubFundErrorMessage } from "~/modules/funds/utils/fundRefundErrors";
+import { isFundClosedOnList } from "~/modules/funds/utils/isFundClosedOnList";
 import { RecordCashContributionForm } from "~/modules/funds/components/RecordCashContributionForm";
 import { canShowRecordCashContributionForm } from "~/modules/funds/utils/fundCashContributionAccess";
 import type {
@@ -173,6 +174,7 @@ function resolvedFundTotalRecordedVnd(fund: ClubFund): number | null {
 }
 
 function fundStatusLabel(f: ClubFund): string {
+  if (isFundClosedOnList(f)) return "Đã đóng";
   const s = String(f.status ?? "").toUpperCase();
   if (s === "PENDING") return "Chờ duyệt";
   if (s === "APPROVED") return "Đã duyệt";
@@ -181,6 +183,17 @@ function fundStatusLabel(f: ClubFund): string {
 }
 
 function FundStatusBadge({ fund }: { fund: ClubFund }) {
+  if (isFundClosedOnList(fund)) {
+    return (
+      <span className={t.status.closed}>
+        <span
+          className="inline-block w-3 h-3 rounded-full bg-slate-500"
+          aria-hidden
+        />
+        <span>{fundStatusLabel(fund)}</span>
+      </span>
+    );
+  }
   const s = String(fund.status ?? "").toUpperCase();
   if (s === "APPROVED")
     return (
@@ -473,7 +486,10 @@ export default function FundDetailPageByClub() {
   const isFundPending =
     fund && String(fund.status ?? "").toUpperCase() === "PENDING";
   const canShowContributeBtn =
-    !!fund && canContribute && fund.canAcceptContributions === true;
+    !!fund &&
+    canContribute &&
+    fund.canAcceptContributions === true &&
+    !isFundClosedOnList(fund);
   const isUnauthorized =
     fundError && "status" in fundError && fundError.status === 401;
 
@@ -1037,14 +1053,18 @@ export default function FundDetailPageByClub() {
                           disabled
                           className={`${t.btn.primary} inline-flex items-center gap-2 opacity-60 cursor-not-allowed`}
                           title={
-                            fund.cannotContributeReasonVi?.trim() || undefined
+                            isFundClosedOnList(fund)
+                              ? fund.lifecycleStatusVi?.trim() ||
+                                fund.cannotContributeReasonVi?.trim() ||
+                                "Quỹ đã đóng"
+                              : fund.cannotContributeReasonVi?.trim() || undefined
                           }
                         >
                           <HandCoins className="w-4 h-4" aria-hidden />
                           Nộp tiền
                         </button>
                       )}
-                      {canRecordCashContribution && fund.isClosed !== true ? (
+                      {canRecordCashContribution && !isFundClosedOnList(fund) ? (
                         <button
                           type="button"
                           onClick={openRecordCashModal}
@@ -1053,7 +1073,7 @@ export default function FundDetailPageByClub() {
                           <Banknote className="w-4 h-4 shrink-0" aria-hidden />
                           Ghi nhận tiền mặt
                         </button>
-                      ) : canRecordCashContribution && fund.isClosed === true ? (
+                      ) : canRecordCashContribution && isFundClosedOnList(fund) ? (
                         <button
                           type="button"
                           disabled
@@ -1069,7 +1089,7 @@ export default function FundDetailPageByClub() {
                 </div>
               </section>
 
-              {canViewFunds ? (
+              {canViewFunds && !isFundClosedOnList(fund) ? (
                 <section
                   className={`${t.card.base} overflow-hidden`}
                   aria-labelledby="fund-member-contrib-heading"
@@ -1324,7 +1344,7 @@ export default function FundDetailPageByClub() {
                 </section>
               ) : null}
 
-              {canViewFunds ? (
+              {canViewFunds && !isFundClosedOnList(fund) ? (
                 <section
                   className={`${t.card.base} overflow-hidden`}
                   aria-labelledby="fund-tabs-heading"
