@@ -214,8 +214,8 @@ function ClubCard({ club }: { club: Club }) {
       </div>
 
       {/* ── Icon / Logo ── */}
-      <div className="flex items-center justify-center pt-8 pb-4 px-6">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center overflow-hidden shadow-lg shadow-orange-500/20 group-hover:shadow-orange-500/30 transition-shadow duration-300">
+      <div className="flex items-center justify-center pt-5 pb-3 px-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center overflow-hidden shadow-lg shadow-orange-500/20 group-hover:shadow-orange-500/30 transition-shadow duration-300">
           {club.logoUrl ? (
             <img
               src={club.logoUrl}
@@ -228,7 +228,7 @@ function ClubCard({ club }: { club: Club }) {
             />
           ) : null}
           <span
-            className={`text-white font-bold text-2xl ${club.logoUrl ? "hidden" : ""}`}
+            className={`text-white font-bold text-xl ${club.logoUrl ? "hidden" : ""}`}
           >
             {club.clubName[0].toUpperCase()}
           </span>
@@ -236,7 +236,7 @@ function ClubCard({ club }: { club: Club }) {
       </div>
 
       {/* ── Club Info ── */}
-      <div className="flex flex-col items-center text-center px-5 pb-5 flex-1 gap-2">
+      <div className="flex flex-col items-center text-center px-4 pb-4 flex-1 gap-1.5">
         <h3 className="font-bold text-zinc-900 text-base leading-snug group-hover:text-orange-500 transition-colors duration-200 line-clamp-2">
           {club.clubName}
         </h3>
@@ -283,10 +283,10 @@ function ClubCard({ club }: { club: Club }) {
 function ClubCardSkeleton() {
   return (
     <div className="bg-white rounded-2xl border border-zinc-200 shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex flex-col overflow-hidden animate-pulse">
-      <div className="flex items-center justify-center pt-8 pb-4 px-6">
-        <div className="w-20 h-20 rounded-2xl bg-zinc-200" />
+      <div className="flex items-center justify-center pt-5 pb-3 px-4">
+        <div className="w-16 h-16 rounded-2xl bg-zinc-200" />
       </div>
-      <div className="flex flex-col items-center px-5 pb-5 gap-2">
+      <div className="flex flex-col items-center px-4 pb-4 gap-1.5">
         <div className="h-5 bg-zinc-200 rounded-lg w-3/4" />
         <div className="h-4 bg-zinc-100 rounded-full w-1/3" />
         <div className="h-3 bg-zinc-100 rounded w-2/3 mt-1" />
@@ -342,7 +342,7 @@ export default function MyClubsModule() {
         />
       )}
       {/* ── Breadcrumb Nav ── */}
-      <nav className="px-6 md:px-12 pt-6">
+      <nav className="px-6 md:px-12 pt-4">
         <div className="max-w-6xl mx-auto">
           <Link
             to="/home"
@@ -367,24 +367,24 @@ export default function MyClubsModule() {
       </nav>
 
       {/* ── Page Header ── */}
-      <header className="px-6 md:px-12 pt-4 pb-8">
+      <header className="px-6 md:px-12 pt-3 pb-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-black text-zinc-900 tracking-tight">
             Câu lạc bộ của tôi
           </h1>
-          <div className="h-1.5 w-16 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full mt-3" />
-          <p className="text-zinc-500 mt-3 text-base">
+          <div className="h-1.5 w-14 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full mt-2" />
+          <p className="text-zinc-500 mt-2 text-sm">
             Chọn câu lạc bộ bạn muốn quản lý
           </p>
         </div>
       </header>
 
       {/* ── Main Content ── */}
-      <div className="flex-1 px-6 md:px-12 pb-12">
+      <div className="flex-1 px-6 md:px-12 pb-6">
         <div className="max-w-6xl mx-auto">
           {/* Loading Skeleton */}
           {isLoading && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <ClubCardSkeleton key={i} />
               ))}
@@ -393,8 +393,8 @@ export default function MyClubsModule() {
 
           {/* Error State */}
           {!isLoading && error && (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="text-center py-12">
+              <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <svg
                   className="w-8 h-8 text-red-500"
                   fill="none"
@@ -419,7 +419,7 @@ export default function MyClubsModule() {
           {/* Club Cards Grid */}
           {!isLoading && clubs && clubs.length > 0 && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {pagedClubs.map((club) => (
                   <ClubCard key={club.clubId} club={club} />
                 ))}
@@ -427,7 +427,7 @@ export default function MyClubsModule() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-8 pt-6 border-t border-zinc-200">
+                <div className="flex items-center justify-between mt-5 pt-4 border-t border-zinc-200">
                   <p className="text-sm text-zinc-500">
                     Hiển thị{" "}
                     <span className="font-semibold text-zinc-700">
@@ -562,8 +562,8 @@ export default function MyClubsModule() {
 
           {/* Empty State */}
           {!isLoading && clubs && clubs.length === 0 && (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="text-center py-12">
+              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <svg
                   className="w-8 h-8 text-orange-400"
                   fill="none"
@@ -608,11 +608,11 @@ export default function MyClubsModule() {
 
           {/* ── CTA: Create Club Request ── */}
           {!ctaLoading && !hasPendingRequest && !managedClubs?.length && !isAdmin && (
-            <div className="mt-12 flex flex-col items-center">
+            <div className="mt-6 flex flex-col items-center">
               {/* Floating plus icon */}
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 mb-4">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 mb-3">
                 <svg
-                  className="w-7 h-7 text-white"
+                  className="w-5 h-5 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -626,16 +626,16 @@ export default function MyClubsModule() {
                 </svg>
               </div>
 
-              <p className="text-sm text-zinc-500 text-center mb-4 max-w-sm">
+              <p className="text-sm text-zinc-500 text-center mb-3 max-w-sm">
                 Bạn muốn thành lập một cộng đồng mới? Hãy bắt đầu ngay hôm nay!
               </p>
 
               <Link
                 to="/club/request"
-                className="inline-flex items-center gap-3 px-8 py-3.5 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold text-sm shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transition-all duration-300 active:scale-[0.97]"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold text-sm shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transition-all duration-300 active:scale-[0.97]"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -654,8 +654,8 @@ export default function MyClubsModule() {
 
           {/* ── Club Requests Table ── */}
           {userRequests && userRequests.length > 0 && (
-            <div className="mt-12">
-              <h2 className="text-lg font-bold text-zinc-900 mb-4 flex items-center gap-2">
+            <div className="mt-6">
+              <h2 className="text-base font-bold text-zinc-900 mb-3 flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-orange-500 rounded-full" />
                 Yêu cầu mở câu lạc bộ của bạn
               </h2>
@@ -671,19 +671,19 @@ export default function MyClubsModule() {
                   </colgroup>
                   <thead>
                     <tr className="bg-zinc-50 border-b border-zinc-100">
-                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                      <th className="px-4 py-2.5 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
                         Tên câu lạc bộ
                       </th>
-                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                      <th className="px-4 py-2.5 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
                         Mô tả
                       </th>
-                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                      <th className="px-4 py-2.5 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
                         Lý do
                       </th>
-                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                      <th className="px-4 py-2.5 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
                         Trạng thái
                       </th>
-                      <th className="px-5 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                      <th className="px-4 py-2.5 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">
                         Ngày tạo
                       </th>
                     </tr>
@@ -715,13 +715,13 @@ export default function MyClubsModule() {
                           onClick={() => setSelectedRequest(req)}
                           className="hover:bg-orange-50/50 transition-colors duration-150 cursor-pointer"
                         >
-                          <td className="px-5 py-3.5 font-semibold text-zinc-900 truncate">
+                          <td className="px-4 py-2.5font-semibold text-zinc-900 truncate">
                             {req.clubName}
                           </td>
-                          <td className="px-5 py-3.5 text-zinc-500 truncate">
+                          <td className="px-4 py-2.5text-zinc-500 truncate">
                             {req.description || "—"}
                           </td>
-                          <td className="px-5 py-3.5 text-zinc-500 truncate">
+                          <td className="px-4 py-2.5text-zinc-500 truncate">
                             {req.reason || "—"}
                           </td>
                           <td className="px-5 py-3.5">
@@ -734,7 +734,7 @@ export default function MyClubsModule() {
                               {label}
                             </span>
                           </td>
-                          <td className="px-5 py-3.5 text-zinc-500 text-xs">
+                          <td className="px-4 py-2.5text-zinc-500 text-xs">
                             {new Date(req.createdAt).toLocaleDateString(
                               "vi-VN",
                             )}

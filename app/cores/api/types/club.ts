@@ -1,6 +1,6 @@
 export interface Club {
-  address: string;
   clubId: number;
+  address: string;
   clubName: string;
   coverImageUrl: string;
   createdAt: string;
