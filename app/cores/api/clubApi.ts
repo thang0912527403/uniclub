@@ -234,6 +234,16 @@ export const clubApi = baseApi.injectEndpoints({
         { type: "Club", id: `member-${memberId}` },
       ],
     }),
+
+    // ─── Member Count ───────────────────────────────────────────────────
+    getClubMemberCount: builder.query<number, number>({
+      query: (clubId) => `/clubs/${clubId}/members/count`,
+      transformResponse: (response: { success: boolean; data: number }) =>
+        response.data,
+      providesTags: (_result, _error, clubId) => [
+        { type: "Member", id: `count-${clubId}` },
+      ],
+    }),
   }),
 });
 
@@ -261,4 +271,5 @@ export const {
   useGetMemberJoinedDepartmentsQuery,
   useGetMemberNotJoinedDepartmentsQuery,
   useUpdateMemberRoleMutation,
+  useGetClubMemberCountQuery,
 } = clubApi;
