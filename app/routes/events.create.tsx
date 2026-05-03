@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
+import { encodeId } from '~/utils/hashId';
 import { useCreateEventMutation, useCreateSessionMutation } from '~/cores/api';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
@@ -313,7 +314,7 @@ export default function CreateEventPage() {
                 endDate: toIso(form.endDate),
             };
             const result = await createEvent(merged).unwrap();
-            navigate(`/events/${result.eventId}`);
+            navigate(`/events/${encodeId(result.eventId)}`);
         } catch (err: any) {
             setError(err?.data?.error || 'Không thể tạo sự kiện. Vui lòng thử lại.');
         }

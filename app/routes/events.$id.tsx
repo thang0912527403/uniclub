@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { setClubId, getClubId } from "~/utils/auth";
 import { useNavigate, useParams } from "react-router";
+import { decodeId, encodeId } from '~/utils/hashId';
 import {
   useGetEventByIdQuery,
   useCreateSessionMutation,
@@ -118,7 +119,7 @@ export default function EventDetailPage() {
     confirmText: "Xác nhận",
   });
 
-  const eventId = Number(id);
+  const eventId = Number(id) || decodeId(id ?? '');
 
   const { data: event, isLoading, error } = useGetEventByIdQuery(eventId) as { data: EventDetailDto | undefined; isLoading: boolean; error: any };
   const { user: currentUser, isAdmin: isGlobalAdmin } = useCurrentUser();
@@ -721,7 +722,7 @@ export default function EventDetailPage() {
                     {(can('editevent') || can('openregistration') || can('startevent') || can('completeevent')) && (
                       <>
                         {can('editevent') && (
-                          <button onClick={() => navigate(`/events/${event.eventId}/edit`)}
+                          <button onClick={() => navigate(`/events/${encodeId(event.eventId)}/edit`)}
                             className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
                             Chỉnh sửa
                           </button>
@@ -1533,12 +1534,12 @@ export default function EventDetailPage() {
                   </span>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {(canEdit || canOpenRegistration || canStartComplete) && (
+                  {(canEdit || canDelete || canOpenRegistration || canStartComplete) && (
                     <>
                       {canEdit && !['CANCELED', 'ENDED'].includes(event.status ?? '') && (
                         <button
                           onClick={() =>
-                            navigate(`/events/${event.eventId}/edit`)
+                            navigate(`/events/${encodeId(event.eventId)}/edit`)
                           }
                           className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                         >
@@ -1575,7 +1576,7 @@ export default function EventDetailPage() {
                           {isCompleting ? "Đang chốt..." : "Kết thúc sự kiện"}
                         </button>
                       )}
-                      {canEdit && !['CANCELED', 'CLOSED', 'ENDED'].includes(event.status ?? '') && (
+                      {canDelete && !['CANCELED', 'CLOSED', 'ENDED'].includes(event.status ?? '') && (
                         <button
                           onClick={handleCancelEvent}
                           disabled={isCancelingEvent}

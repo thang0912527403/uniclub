@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
+import { encodeId } from '~/utils/hashId';
 import { useGetAllEventsQuery } from '~/cores/api';
 import { useGetClubsQuery } from '~/cores/api/clubApi';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
@@ -201,7 +202,7 @@ export default function EventsPage() {
                                     key={event.eventId}
                                     event={event}
                                     isDark={isDark}
-                                    onClick={() => navigate(`/events/${event.eventId}`)}
+                                    onClick={() => navigate(`/events/${encodeId(event.eventId)}`)}
                                 />
                             ))}
                         </div>
