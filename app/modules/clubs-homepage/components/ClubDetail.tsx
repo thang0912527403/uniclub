@@ -13,9 +13,21 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Club } from '~/cores/api';
+import { useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api';
 
 const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
   const navigate = useNavigate();
+  const { data: campaigns = [] } = useGetRecruitmentCampaignsByClubIdQuery(club.clubId);
+  const openCampaign = campaigns.find(c => {
+    const s = c.status?.toLowerCase();
+    return (s === 'open' || s === 'active') && new Date(c.endDate).setHours(23, 59, 59, 999) >= Date.now();
+  });
+
+  const handleJoin = () => {
+    if (openCampaign) {
+      navigate(`/campaign/${openCampaign.campaignId}`);
+    }
+  };
 
   // Xử lý hiển thị ngày thành lập hoặc ngày tạo
   const displayDate = club.foundedDate || club.createdAt;
@@ -77,7 +89,12 @@ const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
 
             {/* Action Buttons */}
             <div className="flex gap-3 mb-2">
-              <button className="bg-white text-gray-900 px-8 py-3.5 rounded-2xl font-black text-sm hover:bg-orange-500 hover:text-white transition-all shadow-xl active:scale-95">
+              <button
+                className="bg-white text-gray-900 px-8 py-3.5 rounded-2xl font-black text-sm hover:bg-orange-500 hover:text-white transition-all shadow-xl active:scale-95"
+                onClick={handleJoin}
+                disabled={!openCampaign}
+                title={!openCampaign ? 'Hiện không có đợt tuyển thành viên' : undefined}
+              >
                 THAM GIA
               </button>
             </div>

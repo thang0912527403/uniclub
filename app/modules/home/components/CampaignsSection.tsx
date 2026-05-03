@@ -137,7 +137,8 @@ export default function CampaignsSection() {
 
     const active = campaigns.filter(c => {
         const s = c.status?.toLowerCase();
-        return s === 'open' || s === 'active';
+        const notExpired = new Date(c.endDate).setHours(23, 59, 59, 999) >= Date.now();
+        return (s === 'open' || s === 'active') && notExpired;
     });
 
     const checkScroll = () => {
