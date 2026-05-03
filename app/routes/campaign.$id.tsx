@@ -22,7 +22,7 @@ export default function CampaignDetailPage() {
     data: campaign,
     isLoading,
     error,
-  } = useGetRecruitmentCampaignQuery(campaignId, {
+  } = useGetRecruitmentCampaignQuery({ clubId: 0, id: campaignId }, {
     skip: !campaignId,
   });
 

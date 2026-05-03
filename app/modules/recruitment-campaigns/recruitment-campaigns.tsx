@@ -993,6 +993,7 @@ export default function RecruitmentCampaignsModule() {
           });
         } else if (modalMode === "edit" && editTarget) {
           await updateCampaign({
+            clubId: editTarget.clubId,
             id: editTarget.campaignId,
             data: {
               campaignName: data.campaignName,
@@ -1033,6 +1034,7 @@ export default function RecruitmentCampaignsModule() {
       const nextStatus = campaign.status === "open" ? "close" : "open";
       try {
         await updateCampaign({
+          clubId: campaign.clubId,
           id: campaign.campaignId,
           data: { status: nextStatus },
         }).unwrap();
@@ -1059,7 +1061,7 @@ export default function RecruitmentCampaignsModule() {
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
-      await deleteCampaign(deleteTarget.campaignId).unwrap();
+      await deleteCampaign({ clubId: deleteTarget.clubId, id: deleteTarget.campaignId }).unwrap();
       notify({
         type: "success",
         title: "Đã xóa chiến dịch",

@@ -513,7 +513,7 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
     error,
   } = useGetCampaignComparisonQuery(campaignId);
   const { data: criteria } = useGetCampaignCriteriaQuery(campaignId);
-  const { data: campaign } = useGetRecruitmentCampaignQuery(campaignId);
+  const { data: campaign } = useGetRecruitmentCampaignQuery({ clubId: 0, id: campaignId });
   const { data: publishStatus } = useGetPublishStatusQuery(campaignId);
   const {
     data: aiAnalysis,

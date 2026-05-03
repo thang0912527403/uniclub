@@ -27,6 +27,11 @@ export const eventApi = baseApi.injectEndpoints({
         getAllEvents: builder.query<EventDetailDto[], { pageNumber?: number; pageSize?: number }>({
             query: ({ pageNumber = 1, pageSize = 10 } = {}) =>
                 `/events?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+            transformResponse: (raw: unknown) => {
+                if (Array.isArray(raw)) return raw as EventDetailDto[];
+                const paged = raw as { items?: EventDetailDto[]; data?: EventDetailDto[] };
+                return paged.items ?? paged.data ?? [];
+            },
             providesTags: ['Event'],
         }),
 
