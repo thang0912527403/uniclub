@@ -9,10 +9,10 @@ const ClubCategories: React.FC = () => {
     const navigate = useNavigate();
 
     return (
-        <section className="py-20 px-6 md:px-12 bg-gray-50">
+        <section className="py-12 sm:py-20 px-4 sm:px-6 md:px-12 bg-gray-50">
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-4 uppercase tracking-tight">
+                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-gray-900 mb-4 uppercase tracking-tight">
                         Câu lạc bộ <span className="text-orange-500">hàng đầu</span>
                     </h2>
                     <div className="w-20 h-1.5 bg-orange-500 mx-auto rounded-full mb-6"></div>
@@ -53,7 +53,7 @@ const ClubCategories: React.FC = () => {
                             </div>
 
                             {/* Content Body */}
-                            <div className="p-8 flex flex-col flex-grow">
+                            <div className="p-5 sm:p-8 flex flex-col flex-grow">
                                 {/* Title - Cố định 1 dòng để cân đối */}
                                 <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors line-clamp-1 uppercase tracking-tight">
                                     {club.clubName}

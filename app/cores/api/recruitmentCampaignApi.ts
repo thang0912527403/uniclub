@@ -1,6 +1,19 @@
 import { baseApi } from './baseApi';
 import { type RecruitmentCampaign, type ApiResponse } from './types';
 
+// Map backend uppercase status ("OPEN","CLOSED") to frontend lowercase ("open","close")
+function normalizeStatus(status: string): string {
+  switch (status?.toUpperCase()) {
+    case 'OPEN':   return 'open';
+    case 'CLOSED': return 'close';
+    case 'DRAFT':  return 'draft';
+    default:       return status?.toLowerCase() ?? status;
+  }
+}
+function normalizeCampaign(c: RecruitmentCampaign): RecruitmentCampaign {
+  return { ...c, status: normalizeStatus(c.status) };
+}
+
 export const recruitmentCampaignApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // GET /RecruitmentCampaign  (admin: all campaigns)

@@ -11,6 +11,8 @@ export interface ClubPostResponseDto {
   postDate: string;
   updatedAt: string;
   status: string;
+  eventId?: number | null;
+  campaignId?: number | null;
 }
 
 export interface CreateClubPostDto {

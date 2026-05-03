@@ -17,6 +17,8 @@ export interface EventDetailDto {
     currentAttendees: number;
     registrationStartDate?: string;
     registrationEndDate?: string;
+    checkInCode?: string;
+    codeExpiresAt?: string;
     sessions: SessionDto[];
 }
 

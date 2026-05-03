@@ -94,23 +94,23 @@ export function Sidebar({
     ...(isAdmin
       ? [
           {
-            label: "Hệ thống",
+            label: t("sidebar.system.title"),
             icon: "fa-cogs",
             subItems: [
               {
-                label: "Quản lý Câu lạc bộ",
+                label: t("sidebar.system.manageClubs"),
                 url: "/clubs",
               },
               {
-                label: "Quản lý Người dùng",
+                label: t("sidebar.system.manageUsers"),
                 url: "/users",
               },
               {
-                label: "Yêu cầu tạo CLB",
+                label: t("sidebar.system.creationRequests"),
                 url: "/club/all-requests",
               },
               {
-                label: "Record of Change",
+                label: t("sidebar.system.recordOfChange"),
                 url: "/record-of-change",
               },
             ],
@@ -179,22 +179,22 @@ export function Sidebar({
               },
               {
                 label: t("sidebar.manageMembers.addMember"),
-                url: "/members/add",
+                url: `${clubBaseUrl}/members/add`,
                 policy: "createmember",
               },
               {
                 label: t("sidebar.manageMembers.memberRoles"),
-                url: "/members/roles",
+                url: `${clubBaseUrl}/members/roles`,
                 policy: "viewrole",
               },
               {
                 label: t("sidebar.manageMembers.memberActivity"),
-                url: "/members/activity",
+                url: `${clubBaseUrl}/members/activity`,
                 policy: "viewattendance",
               },
               {
-                label: "Lịch sử tham gia",
-                url: "/members/history",
+                label: t("sidebar.manageMembers.participationHistory"),
+                url: `${clubBaseUrl}/members/history`,
                 policy: "viewmember",
               },
             ],
@@ -254,6 +254,11 @@ export function Sidebar({
                 url: "/funds/reports?tab=transactions",
                 policy: "viewfinance",
               },
+              {
+                label: t("sidebar.manageFunds.paymentSettings"),
+                url: "/funds/payos",
+                policy: "viewfinance",
+              },
             ],
           },
           {
@@ -267,7 +272,7 @@ export function Sidebar({
                 policy: "viewschedule",
               },
               {
-                label: "So sánh & Công bố",
+                label: t("sidebar.manageInterview.comparison"),
                 url: "/interview/comparison",
                 policy: "viewrecruitment",
               },

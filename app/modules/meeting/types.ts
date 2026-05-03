@@ -10,6 +10,7 @@ export interface UserMediaState {
   isMuted: boolean;
   isCameraOff: boolean;
   isScreenSharing: boolean;
+  isHandRaised: boolean;
 }
 
 export interface ChatMessage {

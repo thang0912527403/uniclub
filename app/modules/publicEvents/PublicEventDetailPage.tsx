@@ -2,7 +2,8 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
-import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation } from '~/cores/api';
+import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyRegistrationQuery, useCancelRegistrationMutation } from '~/cores/api';
+import { useGetClubPostsByEventIdQuery } from '~/cores/api/clubApi';
 import { useNotification } from '~/components/Notification';
 
 function formatDate(dateStr?: string) {
@@ -33,6 +34,19 @@ function getStatusStyle(status: string) {
     }
 }
 
+function getMyStatusLabel(status: string) {
+    switch (status) {
+        case 'PENDING': return { icon: 'fas fa-clock', text: 'Đang chờ duyệt', color: 'bg-amber-100 text-amber-700 border-amber-300' };
+        case 'REGISTERED': return { icon: 'fas fa-check-circle', text: 'Đã đăng ký', color: 'bg-green-100 text-green-700 border-green-300' };
+        case 'WAITLIST': return { icon: 'fas fa-list-alt', text: 'Trong danh sách chờ', color: 'bg-purple-100 text-purple-700 border-purple-300' };
+        case 'PRESENT': case 'CHECKED_IN': return { icon: 'fas fa-check-double', text: 'Đã điểm danh', color: 'bg-green-100 text-green-700 border-green-300' };
+        case 'ABSENT': return { icon: 'fas fa-times-circle', text: 'Vắng mặt', color: 'bg-red-100 text-red-700 border-red-300' };
+        case 'CANCELLED': return { icon: 'fas fa-ban', text: 'Đã huỷ đăng ký', color: 'bg-gray-100 text-gray-500 border-gray-300' };
+        case 'REJECTED': return { icon: 'fas fa-ban', text: 'Đã bị từ chối', color: 'bg-red-100 text-red-600 border-red-300' };
+        default: return { icon: 'fas fa-info-circle', text: status, color: 'bg-gray-100 text-gray-600 border-gray-300' };
+    }
+}
+
 const PublicEventDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -40,12 +54,29 @@ const PublicEventDetailPage: React.FC = () => {
     const eventId = Number(id);
     const { data: event, isLoading, error } = useGetEventByIdQuery(eventId);
     const { data: user } = useGetCurrentUserQuery();
+    const { data: eventPosts = [] } = useGetClubPostsByEventIdQuery(eventId, { skip: !eventId });
+
+    // Fetch user's existing registration status from BE
+    const { data: myRegistration } = useGetMyRegistrationQuery(eventId, {
+        skip: !user, // only fetch when user is logged in
+    });
 
     const [registerForEvent, { isLoading: isRegistering }] = useRegisterForEventMutation();
     const [checkIn, { isLoading: isCheckingIn }] = useCheckInMutation();
+    const [cancelRegistration, { isLoading: isCancelling }] = useCancelRegistrationMutation();
 
     const [showCheckInForm, setShowCheckInForm] = React.useState(false);
     const [checkInCode, setCheckInCode] = React.useState('');
+    const [showCancelModal, setShowCancelModal] = React.useState(false);
+    // Track user's attendance status locally — initialized from BE query
+    const [myStatus, setMyStatus] = React.useState<string | null>(null);
+
+    // Sync status from BE query on load / after approval
+    React.useEffect(() => {
+        if (myRegistration?.attendanceStatus) {
+            setMyStatus(myRegistration.attendanceStatus);
+        }
+    }, [myRegistration]);
 
     const handleRegister = async () => {
         if (!user) {
@@ -53,8 +84,17 @@ const PublicEventDetailPage: React.FC = () => {
             return;
         }
         try {
-            await registerForEvent(eventId).unwrap();
-            showNotification({ type: 'success', title: 'Thành công', message: 'Đăng ký thành công! Vui lòng kiểm tra email để nhận vé thư mời.' });
+            const res = await registerForEvent(eventId).unwrap();
+            const status = res.attendanceStatus;
+            setMyStatus(status);
+
+            if (status === 'PENDING') {
+                showNotification({ type: 'info', title: 'Chờ duyệt', message: 'Đăng ký của bạn đang chờ ban tổ chức duyệt.' });
+            } else if (status === 'WAITLIST') {
+                showNotification({ type: 'warning', title: 'Danh sách chờ', message: 'Sự kiện đã hết chỗ. Bạn đã được thêm vào danh sách chờ.' });
+            } else {
+                showNotification({ type: 'success', title: 'Thành công', message: 'Đăng ký thành công! Vui lòng kiểm tra email để nhận vé thư mời.' });
+            }
         } catch (err: any) {
             showNotification({ type: 'error', title: 'Đăng ký thất bại', message: err?.data?.error ?? 'Sự kiện có thể đã đầy hoặc chưa mở.' });
         }
@@ -70,14 +110,36 @@ const PublicEventDetailPage: React.FC = () => {
             return;
         }
         try {
-            await checkIn({ eventId, userId: user.userId, code: checkInCode.trim() }).unwrap();
-            showNotification({ type: 'success', title: 'Thành công', message: 'Điểm danh thành công!' });
+            const res = await checkIn({ eventId, userId: user.userId, code: checkInCode.trim() }).unwrap();
+            if (res.alreadyCheckedIn) {
+                showNotification({ type: 'info', title: 'Thông báo', message: 'Bạn đã điểm danh trước đó rồi.' });
+            } else {
+                showNotification({ type: 'success', title: 'Thành công', message: 'Điểm danh thành công!' });
+            }
+            setMyStatus('PRESENT');
             setShowCheckInForm(false);
             setCheckInCode('');
         } catch (err: any) {
             showNotification({ type: 'error', title: 'Điểm danh thất bại', message: err?.data?.error ?? 'Mã không đúng hoặc đã hết hạn.' });
         }
     };
+
+    const handleCancelRegistration = async () => {
+        if (!user) return;
+        try {
+            await cancelRegistration(eventId).unwrap();
+            setMyStatus('CANCELLED');
+            setShowCancelModal(false);
+            showNotification({ type: 'success', title: 'Thành công', message: 'Đã hủy đăng ký sự kiện.' });
+        } catch (err: any) {
+            setShowCancelModal(false);
+            showNotification({ type: 'error', title: 'Lỗi', message: err?.data?.error ?? 'Không thể hủy đăng ký.' });
+        }
+    };
+
+    // Determine if user has already checked in
+    const isCheckedIn = myStatus === 'PRESENT' || myStatus === 'CHECKED_IN';
+    const isRegistered = myStatus != null && !['CANCELLED', 'REJECTED'].includes(myStatus);
 
     return (
         <div className="min-h-screen bg-white flex flex-col">
@@ -106,7 +168,7 @@ const PublicEventDetailPage: React.FC = () => {
                         </div>
                         <h3 className="text-2xl font-bold text-gray-700 mb-3">Không tìm thấy sự kiện</h3>
                         <button
-                            onClick={() => navigate('/public/events')}
+                            onClick={() => navigate(-1)}
                             className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-medium transition"
                         >
                             ← Quay lại danh sách
@@ -139,7 +201,7 @@ const PublicEventDetailPage: React.FC = () => {
                         {/* Back button + Content */}
                         <div className="max-w-5xl mx-auto px-6 py-10">
                             <button
-                                onClick={() => navigate('/public/events')}
+                                onClick={() => navigate(-1)}
                                 className="flex items-center gap-2 text-orange-500 hover:text-orange-600 font-medium mb-8 transition"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,19 +311,57 @@ const PublicEventDetailPage: React.FC = () => {
                                             </div>
                                         )}
 
-                                        {event.status === 'REGISTRATION_OPEN' && (
-                                            <button onClick={handleRegister} disabled={isRegistering || (event.maxAttendees != null && event.currentAttendees >= event.maxAttendees)}
-                                                className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50">
-                                                {isRegistering ? 'Đang đăng ký...' : event.maxAttendees != null && event.currentAttendees >= event.maxAttendees ? 'Đã hết chỗ' : 'Đăng ký nhận vé'}
+                                        {/* ── Linked Post Button ── */}
+                                        {eventPosts.length > 0 && (
+                                            <button
+                                                onClick={() => navigate(`/public/news/${eventPosts[0].postId}`)}
+                                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-sm"
+                                            >
+                                                <i className="fas fa-newspaper" />
+                                                Xem bài đăng sự kiện
                                             </button>
                                         )}
 
-                                        {event.status === 'ONGOING' && !showCheckInForm && (
+                                        {/* ── My Registration Status Badge ── */}
+                                        {myStatus && (
+                                            <div className={`mt-3 p-3 rounded-xl border text-center ${getMyStatusLabel(myStatus).color}`}>
+                                                <p className="text-sm font-semibold flex items-center justify-center gap-2">
+                                                    <i className={getMyStatusLabel(myStatus).icon} />
+                                                    {getMyStatusLabel(myStatus).text}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* ── Register Button ── */}
+                                        {event.status === 'REGISTRATION_OPEN' && !isRegistered && (() => {
+                                            const isFull = event.maxAttendees != null && event.currentAttendees >= event.maxAttendees;
+                                            return (
+                                                <button onClick={handleRegister} disabled={isRegistering}
+                                                    className={`w-full mt-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50 ${isFull
+                                                            ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                                                            : 'bg-orange-500 hover:bg-orange-600 text-white'
+                                                        }`}>
+                                                    {isRegistering ? 'Đang đăng ký...' : isFull ? 'Đăng ký chờ (Waitlist)' : 'Đăng ký nhận vé'}
+                                                </button>
+                                            );
+                                        })()}
+
+                                        {/* ── Check-in Button (only if ONGOING, REGISTERED, and not yet checked in) ── */}
+                                        {event.status === 'ONGOING' && myStatus === 'REGISTERED' && !isCheckedIn && !showCheckInForm && (
                                             <button onClick={() => setShowCheckInForm(true)}
                                                 className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg">
                                                 Điểm danh ngay
                                             </button>
                                         )}
+
+                                        {/* ── Cancel Registration Button ── */}
+                                        {isRegistered && !isCheckedIn && ['REGISTRATION_OPEN', 'PLANNED'].includes(event.status) && (
+                                            <button onClick={() => setShowCancelModal(true)} disabled={isCancelling}
+                                                className="w-full mt-2 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200">
+                                                Hủy đăng ký
+                                            </button>
+                                        )}
+
 
                                         {showCheckInForm && (
                                             <div className="mt-4 p-4 border border-green-200 bg-green-50 rounded-xl space-y-3">
@@ -291,6 +391,39 @@ const PublicEventDetailPage: React.FC = () => {
             </div>
 
             <Footer />
+
+            {/* ── Cancel Registration Modal ── */}
+            {showCancelModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowCancelModal(false)}>
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+                    <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-[fadeIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                                <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-800 mb-2">Xác nhận hủy đăng ký</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Bạn có chắc muốn hủy đăng ký sự kiện <strong className="text-gray-700">{event?.eventName}</strong> không? Hành động này không thể hoàn tác.
+                            </p>
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setShowCancelModal(false)}
+                                    className="flex-1 py-2.5 rounded-xl font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                                    Quay lại
+                                </button>
+                                <button
+                                    onClick={handleCancelRegistration}
+                                    disabled={isCancelling}
+                                    className="flex-1 py-2.5 rounded-xl font-medium bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50">
+                                    {isCancelling ? 'Đang hủy...' : 'Hủy đăng ký'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

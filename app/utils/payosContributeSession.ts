@@ -4,6 +4,7 @@ export type PayosPendingContribute = {
   clubId: number;
   transactionId: number;
   fundId?: number;
+  publicId?: string;
   savedAt: string;
 };
 
@@ -15,13 +16,16 @@ export function savePayosPendingContribute(payload: {
   clubId: number;
   transactionId: number;
   fundId?: number;
+  publicId?: string;
 }): void {
   if (typeof window === 'undefined') return;
   try {
+    const publicId = String(payload.publicId ?? '').trim();
     const data: PayosPendingContribute = {
       clubId: payload.clubId,
       transactionId: payload.transactionId,
       ...(payload.fundId != null && payload.fundId > 0 ? { fundId: payload.fundId } : {}),
+      ...(publicId ? { publicId } : {}),
       savedAt: new Date().toISOString(),
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -47,10 +51,12 @@ export function readPayosPendingContribute(): PayosPendingContribute | null {
       fundIdRaw != null && Number.isFinite(Number(fundIdRaw)) && Number(fundIdRaw) > 0
         ? Number(fundIdRaw)
         : undefined;
+    const publicId = typeof parsed.publicId === 'string' ? parsed.publicId.trim() : '';
     return {
       clubId,
       transactionId,
       ...(fundId != null ? { fundId } : {}),
+      ...(publicId ? { publicId } : {}),
       savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : new Date().toISOString(),
     };
   } catch {
