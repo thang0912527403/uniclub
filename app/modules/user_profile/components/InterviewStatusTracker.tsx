@@ -328,10 +328,10 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
 
                   <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                     {/* Awaiting pick badge */}
-                    {isScheduled && hasMultipleSlots && (
+                    {isScheduled && (
                       <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-semibold rounded-full border border-amber-200 animate-pulse">
                         <CalendarIcon className="w-3 h-3" />
-                        Chờ chọn giờ
+                        {hasMultipleSlots ? 'Chờ chọn giờ' : 'Chờ xác nhận'}
                       </span>
                     )}
                     <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-full border ${cfg.bgColor} ${cfg.color}`}>
@@ -448,8 +448,32 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
                       );
                     })()}
 
+                    {/* Fallback: No proposedTimeSlots in DB (legacy interviews) — confirm using scheduledAt */}
+                    {isScheduled && unifiedSlots.length === 0 && (() => {
+                      const schedDate = new Date(interview.scheduledAt);
+                      const label = schedDate.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 bg-blue-50 rounded-lg p-3 border border-blue-100">
+                            <CalendarIcon className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                            <p className="text-sm text-blue-700 font-medium">
+                              Lịch phỏng vấn: {label}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleConfirmSchedule(interview.id, label)}
+                            disabled={confirmingId === interview.id}
+                            className="w-full py-3 bg-gradient-to-r from-[#f26522] to-orange-500 text-white font-bold rounded-xl text-sm hover:shadow-lg hover:scale-[1.01] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
+                          >
+                            <CheckIcon className="w-4 h-4" />
+                            Xác nhận lịch phỏng vấn
+                          </button>
+                        </div>
+                      );
+                    })()}
+
                     {/* Locked view after confirmed */}
-                    {!isScheduled && unifiedSlots.length >= 1 && (
+                    {!isScheduled && (
                       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-2">
                           <LockIcon className="w-4 h-4 text-emerald-600" />
