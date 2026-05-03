@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, Navigate, useSearchParams } from 'react-router';
 import Cookies from 'js-cookie';
 import { setClubId } from '~/utils/auth';
 import { BarChart3, Loader2, Lock, RefreshCw, ArrowRightLeft, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -398,6 +398,20 @@ export default function FundsReportsPage() {
       {label}
     </button>
   );
+
+  const redirectFund403 =
+    selHasToken &&
+    clubId >= 1 &&
+    !capsLoading &&
+    !capsOtherError &&
+    (capsForbidden ||
+      (caps !== undefined && !canViewFunds) ||
+      (summaryIsError && summaryErrorStatus === 403) ||
+      (activeTab === 'transactions' && txIsError && txErrorStatus === 403));
+
+  if (redirectFund403) {
+    return <Navigate to="/403" replace />;
+  }
 
   return (
     <div className="min-h-screen">

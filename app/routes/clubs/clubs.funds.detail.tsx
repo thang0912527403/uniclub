@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 import { Banknote, Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { FinanceAccessHintBanner, resolveFundBalanceHoverTextVi } from '~/modules/funds/components/FundUxHints';
 import {
@@ -601,6 +601,25 @@ export default function FundDetailPageByClub() {
         </Link>
       </div>
     );
+  }
+
+  const fundForbidden =
+    !skipFundQuery &&
+    !isLoadingFund &&
+    fundError &&
+    typeof fundError === 'object' &&
+    'status' in fundError &&
+    (fundError as { status: number }).status === 403;
+
+  const redirectFund403 =
+    !capsLoading &&
+    !capsOtherError &&
+    (capsForbidden ||
+      (caps !== undefined && !canViewFunds && !canContribute) ||
+      fundForbidden);
+
+  if (redirectFund403) {
+    return <Navigate to="/403" replace />;
   }
 
   return (

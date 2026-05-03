@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Navigate } from "react-router";
 import Cookies from "js-cookie";
 import { Sidebar } from "~/components/Sidebar";
 import { HeaderBar } from "~/components/HeaderBar";
@@ -23,16 +24,39 @@ export default function FundsPayosPage() {
     skip: !hasToken || clubId < 1,
   });
 
-  const { data: caps } = useGetFundCapabilitiesQuery(clubId, {
+  const {
+    data: caps,
+    isLoading: capsLoading,
+    isError: capsIsError,
+    error: capsError,
+  } = useGetFundCapabilitiesQuery(clubId, {
     skip: !hasToken || clubId < 1,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });
 
+  const capsErrorStatus =
+    capsError && typeof capsError === "object" && "status" in capsError
+      ? (capsError as { status: number }).status
+      : undefined;
+  const capsForbidden = capsIsError && capsErrorStatus === 403;
+  const capsOtherError = capsIsError && capsErrorStatus !== 403;
+
   const canManagePayos = useMemo(() => {
     if (isAdmin) return true;
     return caps?.canManageOnlinePaymentSettings === true;
   }, [isAdmin, caps?.canManageOnlinePaymentSettings]);
+
+  const redirectFund403 =
+    hasToken &&
+    clubId >= 1 &&
+    !capsLoading &&
+    !capsOtherError &&
+    (capsForbidden || (!isAdmin && caps !== undefined && !canManagePayos));
+
+  if (redirectFund403) {
+    return <Navigate to="/403" replace />;
+  }
 
   return (
     <div className="min-h-screen">

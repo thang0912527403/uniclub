@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router";
+import { Link, Navigate, useParams } from "react-router";
 import { ChevronLeft } from "lucide-react";
 import { Sidebar } from "~/components/Sidebar";
 import { HeaderBar } from "~/components/HeaderBar";
@@ -37,10 +37,22 @@ export default function ClubPayosSettingsPage() {
       ? (capsError as { status: number }).status
       : undefined;
   const capsForbidden = capsIsError && capsErrorStatus === 403;
+  const capsOtherError = capsIsError && capsErrorStatus !== 403;
 
   const canManagePayos =
     isAdmin ||
     caps?.canManageOnlinePaymentSettings === true;
+
+  const redirectFund403 =
+    !isInvalidParams &&
+    !!userId &&
+    !capsLoading &&
+    !capsOtherError &&
+    (capsForbidden || (!isAdmin && caps !== undefined && !canManagePayos));
+
+  if (redirectFund403) {
+    return <Navigate to="/403" replace />;
+  }
 
   return (
     <div className="min-h-screen">
