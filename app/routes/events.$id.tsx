@@ -33,6 +33,7 @@ import { useNotification } from "~/components/Notification";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { QRScanner } from "~/components/QRScanner";
 import { QRCodeSVG } from "qrcode.react";
+import { CreatePostModal } from "~/modules/clubs/posts/clubpost";
 
 type Tab =
   | "sessions"
@@ -105,7 +106,8 @@ export default function EventDetailPage() {
 
   const { data: event, isLoading, error } = useGetEventByIdQuery(eventId);
   const { user: currentUser, isAdmin: isGlobalAdmin } = useCurrentUser();
-  const { memberships } = useClubRole();
+  const { memberships, can: canClub } = useClubRole();
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
 
   const isManager =
     isGlobalAdmin ||
@@ -661,6 +663,15 @@ export default function EventDetailPage() {
                   </span>
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                  {canClub("viewpost", event?.clubId) && (
+                    <button
+                      onClick={() => setShowCreatePostModal(true)}
+                      className="px-3 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                    >
+                      <i className="fas fa-pen mr-1.5" />
+                      Tạo bài đăng
+                    </button>
+                  )}
                   {(can("editevent") ||
                     can("openregistration") ||
                     can("startevent") ||
@@ -1670,6 +1681,16 @@ export default function EventDetailPage() {
           </div>
         </div>
       </main>
+
+      {/* Create Post Modal */}
+      {showCreatePostModal && event?.clubId && (
+        <CreatePostModal
+          onClose={() => setShowCreatePostModal(false)}
+          clubId={event.clubId}
+          userId={currentUser?.userId ?? ""}
+          eventId={eventId}
+        />
+      )}
 
       {/* Confirm Dialog */}
       <ConfirmDialog

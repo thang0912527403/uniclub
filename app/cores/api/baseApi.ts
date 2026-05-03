@@ -12,14 +12,14 @@ function getMainServiceBaseUrl(): string {
   };
 
   if (typeof window === "undefined")
-    return normalize(rawEnv ?? "https://chuyencongnhan.io.vn");
+    return normalize(rawEnv ?? "https://localhost:7237");
   const origin = window.location.origin;
   // Khi chạy local: ưu tiên VITE_API_URL (hỗ trợ http/https + port tuỳ máy)
   if (
     origin.startsWith("http://localhost") ||
     origin.startsWith("http://127.0.0.1")
   ) {
-    return normalize(rawEnv ?? "https://chuyencongnhan.io.vn");
+    return normalize(rawEnv ?? "https://localhost:7237");
   }
   return "/api";
 }
