@@ -178,14 +178,22 @@ export default function EventDetailPage() {
     { clubId: event?.clubId ?? 0, eventId },
     {
       skip:
-        (activeTab !== "registration" && activeTab !== "pending") ||
+        (activeTab !== "registration" && activeTab !== "pending" && activeTab !== "checkin") ||
         !event?.clubId,
     },
   );
 
+  // Check if current user is registered for this event
+  const isUserRegistered = Boolean(
+    currentUser && attendees?.some(a =>
+      a.userId === currentUser.userId &&
+      ['REGISTERED', 'PRESENT', 'CHECKED_IN', 'ABSENT'].includes(a.attendanceStatus)
+    )
+  );
+
   const { data: myCheckInQr, isLoading: isLoadingMyQr } =
     useGetMyCheckInQrQuery(eventId, {
-      skip: !currentUser || event?.status !== "ONGOING",
+      skip: !currentUser || event?.status !== "ONGOING" || !isUserRegistered,
     });
 
   const [createSession, { isLoading: isCreatingSession }] =
@@ -1231,7 +1239,7 @@ export default function EventDetailPage() {
                                     )}
 
                                     {/* Participant: Mã QR điểm danh của tôi (để BTC quét) */}
-                                    {currentUser && event?.status === 'ONGOING' && (
+                                    {currentUser && event?.status === 'ONGOING' && isUserRegistered && (
                                         <div className={`p-4 rounded-lg border ${border}`}>
                                             <h3 className={`font-semibold mb-2 ${text}`}>Mã QR điểm danh của tôi</h3>
                                             <p className={`text-xs mb-3 ${sub}`}>
@@ -1422,7 +1430,7 @@ export default function EventDetailPage() {
         },
       ]
       : []),
-    { key: "checkin", label: "Điểm danh" },
+    ...((canCheckIn || isUserRegistered) ? [{ key: "checkin" as Tab, label: "Điểm danh" }] : []),
     ...(canManageTeam
       ? [
         {
@@ -2582,7 +2590,7 @@ export default function EventDetailPage() {
                   )}
 
                   {/* Participant: Mã QR điểm danh của tôi (để BTC quét) */}
-                  {currentUser && event?.status === "ONGOING" && (
+                  {currentUser && event?.status === "ONGOING" && isUserRegistered && (
                     <div className={`p-4 rounded-lg border ${border}`}>
                       <h3 className={`font-semibold mb-2 ${text}`}>
                         Mã QR điểm danh của tôi
