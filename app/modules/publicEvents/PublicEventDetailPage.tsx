@@ -38,20 +38,22 @@ function getMyStatusLabel(status: string) {
 }
 
 /* ── Calendar Card ── */
-function CalendarCard({ label, dateStr }: { label: string; dateStr?: string }) {
+function CalendarCard({ label, dateStr, color = 'orange', icon = 'fa-calendar-alt' }: { label: string; dateStr?: string; color?: 'orange' | 'blue'; icon?: string }) {
+    const bg = color === 'blue' ? 'bg-blue-500' : 'bg-orange-500';
+    const accent = color === 'blue' ? 'text-blue-500' : 'text-orange-500';
     return (
-        <div className="text-center">
-            <p className="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1.5">
-                <i className="fas fa-calendar-alt text-orange-500" /> {label}
+        <div className="flex flex-col items-center">
+            <p className={`text-sm font-medium text-gray-500 mb-2 flex items-center gap-1.5`}>
+                <i className={`fas ${icon} ${accent}`} /> {label}
             </p>
-            <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden w-32">
-                <div className="bg-orange-500 text-white text-xs font-bold py-1.5 uppercase tracking-wider">
+            <div className="bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden w-32">
+                <div className={`${bg} text-white text-center text-sm font-bold py-1.5 uppercase`}>
                     {fmtMonth(dateStr)}
                 </div>
-                <div className="py-4">
-                    <span className="text-4xl font-black text-gray-800">{fmtDay(dateStr)}</span>
+                <div className="text-4xl font-black text-slate-800 text-center py-3">
+                    {fmtDay(dateStr)}
                 </div>
-                <div className="pb-3 text-sm text-orange-600 font-medium">
+                <div className={`flex justify-center items-center ${accent} text-sm font-medium pb-3`}>
                     <i className="fas fa-clock mr-1 text-xs" /> {fmtTime(dateStr) || '--:--'}
                 </div>
             </div>
@@ -148,137 +150,149 @@ const PublicEventDetailPage: React.FC = () => {
                 {!isLoading && event && (
                     <>
                         {/* ── HERO BANNER ── */}
-                        <div className="relative w-full h-72 md:h-[400px] bg-gradient-to-br from-orange-600 to-orange-500 overflow-hidden">
-                            {isValidUrl(event.imageUrl) && (
-                                <img src={event.imageUrl} alt={event.eventName} className="w-full h-full object-cover" />
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+                        <div className="relative w-full h-64 md:h-80 rounded-3xl overflow-hidden mb-8 shadow-md group">
+                            {isValidUrl(event.imageUrl) ? (
+                                <img src={event.imageUrl} alt={event.eventName} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                            ) : (
+                                <div className="absolute inset-0 bg-gradient-to-br from-orange-600 to-orange-500" />
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                            {/* Back button overlay */}
-                            <button onClick={() => navigate(-1)} className="absolute top-4 left-6 z-10 flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg">
-                                <i className="fas fa-arrow-left" /> Quay lại
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
+                            <button onClick={() => navigate(-1)} className="absolute top-4 left-4 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-2.5 rounded-full transition-colors">
+                                <i className="fas fa-chevron-left text-lg" />
                             </button>
+                            <div className="absolute bottom-6 left-6 right-6">
+                                <h1 className="text-3xl md:text-4xl font-black text-white leading-tight">{event.eventName}</h1>
+                            </div>
+                        </div>
                         </div>
 
-                        {/* ── EVENT INFO SECTION ── */}
-                        <div className="max-w-5xl mx-auto px-6 pt-8 pb-2">
-                            {/* Event name */}
-                            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 uppercase tracking-wide">
-                                {event.eventName}
-                            </h1>
+                        {/* ── TITLE + ORGANIZER ── */}
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+                            <h1 className="text-3xl font-black text-slate-800 uppercase leading-snug mb-3">{event.eventName}</h1>
                             {event.clubName && (
-                                <p className="mt-2 mb-5 text-sm text-gray-500 flex items-center gap-2">
-                                    <i className="fas fa-users text-orange-500" />
-                                    Tổ chức bởi <span className="font-semibold text-orange-600">{event.clubName}</span>
+                                <p className="flex items-center text-gray-600">
+                                    <i className="fas fa-users mr-2 text-orange-500" />
+                                    Tổ chức bởi <strong className="text-orange-500 ml-1">{event.clubName}</strong>
                                 </p>
                             )}
-                            {!event.clubName && <div className="mb-5" />}
-
                         </div>
 
-                        {/* ── CONTENT: Info + Details + Sidebar ── */}
-                        <div className="max-w-5xl mx-auto px-6 pb-12">
-                            <div className="grid md:grid-cols-3 gap-8">
-                                {/* Left column: Info card + Description + Sessions */}
-                                <div className="md:col-span-2 space-y-6">
-                                    {/* Info card */}
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <div className="flex flex-wrap items-start gap-6 md:gap-8">
-                                            {/* Left info */}
-                                            <div className="space-y-2 flex-shrink-0">
-                                                {event.location && event.location !== 'string' && (
-                                                    <p className="text-sm text-gray-600 flex items-center gap-2">
-                                                        <i className="fas fa-map-marker-alt text-orange-500" />
-                                                        <span className="font-medium">Địa điểm:</span>
-                                                        <span className="text-orange-600 font-medium">{event.location}</span>
-                                                    </p>
-                                                )}
-                                                <p className="text-sm text-gray-600 flex items-center gap-2">
-                                                    <i className="fas fa-info-circle text-orange-500" />
-                                                    <span className="font-medium">Trạng thái sự kiện:</span>
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${st.cls}`}>{st.label}</span>
-                                                </p>
-                                                {event.isOnline && event.meetLink && (
-                                                    <p className="text-sm text-gray-600 flex items-center gap-2">
-                                                        <i className="fas fa-video text-orange-500" />
-                                                        <span className="font-medium">Online:</span>
-                                                        <a href={event.meetLink} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline truncate max-w-[200px]">{event.meetLink}</a>
-                                                    </p>
-                                                )}
-                                            </div>
-                                            {/* Calendar cards */}
-                                            <div className="flex gap-4 ml-auto">
-                                                <CalendarCard label="Ngày bắt đầu" dateStr={event.startDate} />
-                                                <CalendarCard label="Ngày kết thúc" dateStr={event.endDate} />
-                                            </div>
-                                        </div>
-                                        {/* Share */}
-                                        <div className="mt-4 pt-4 border-t border-gray-100">
-                                            <button
-                                                onClick={() => { navigator.clipboard.writeText(window.location.href); showNotification({ type: 'success', title: 'Đã sao chép', message: 'Link sự kiện đã được sao chép!' }); }}
-                                                className="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-semibold transition-all hover:shadow-lg flex items-center gap-2"
-                                            >
-                                                <i className="fas fa-share-alt" /> Chia sẻ
-                                            </button>
-                                        </div>
+                        {/* ── FULL-WIDTH INFO CARD ── */}
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+                            <div className="space-y-3 border-b border-gray-100 pb-6 mb-6">
+                                {event.location && event.location !== 'string' && (
+                                    <div className="flex items-start">
+                                        <i className="fas fa-map-marker-alt text-orange-500 mt-0.5 mr-3" />
+                                        <div><span className="text-gray-500 mr-2">Địa điểm:</span><span className="text-orange-500 font-medium">{event.location}</span></div>
                                     </div>
-                                    {/* Description */}
-                                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-                                        <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                            <i className="fas fa-align-left text-orange-500" /> Chi tiết sự kiện
-                                        </h2>
-                                        <p className="text-gray-600 leading-relaxed whitespace-pre-line">
-                                            {event.description && event.description !== 'string' ? event.description : 'Chưa có mô tả cho sự kiện này.'}
-                                        </p>
+                                )}
+                                <div className="flex items-center">
+                                    <i className="fas fa-info-circle text-orange-500 mr-3" />
+                                    <span className="text-gray-500 mr-2">Trạng thái sự kiện:</span>
+                                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${st.cls}`}>{st.label}</span>
+                                </div>
+                                {event.isOnline && event.meetLink && (
+                                    <div className="flex items-center">
+                                        <i className="fas fa-video text-orange-500 mr-3" />
+                                        <span className="text-gray-500 mr-2">Online:</span>
+                                        <a href={event.meetLink} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline truncate max-w-[250px]">{event.meetLink}</a>
                                     </div>
+                                )}
+                            </div>
+                            {/* 4 Calendar Cards (centered) */}
+                            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 mb-8">
+                                {event.registrationStartDate && <CalendarCard label="Mở đăng ký" dateStr={event.registrationStartDate} color="blue" icon="fa-ticket-alt" />}
+                                {event.registrationEndDate && <CalendarCard label="Đóng đăng ký" dateStr={event.registrationEndDate} color="blue" icon="fa-ticket-alt" />}
+                                <CalendarCard label="Ngày bắt đầu" dateStr={event.startDate} />
+                                <CalendarCard label="Ngày kết thúc" dateStr={event.endDate} />
+                            </div>
+                            <div>
+                                <button onClick={() => { navigator.clipboard.writeText(window.location.href); showNotification({ type: 'success', title: 'Đã sao chép', message: 'Link sự kiện đã được sao chép!' }); }}
+                                    className="bg-orange-500 hover:bg-orange-600 transition-colors text-white font-semibold py-2 px-6 rounded-lg flex items-center shadow-md shadow-orange-500/20">
+                                    <i className="fas fa-share-alt mr-2" /> Chia sẻ
+                                </button>
+                            </div>
+                        </div>
+                        </div>
+                        {/* ── MAIN GRID ── */}
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* LEFT (2/3) */}
+                            <div className="lg:col-span-2 space-y-6">
+                                {/* Description */}
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+                                    <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                                        <i className="fas fa-align-left mr-2 text-orange-500" /> Chi tiết sự kiện
+                                    </h2>
+                                    <div className="text-gray-600 leading-relaxed whitespace-pre-line">
+                                        {event.description && event.description !== 'string' ? event.description : 'Chưa có mô tả cho sự kiện này.'}
+                                    </div>
+                                </div>
 
-                                    {/* Sessions */}
-                                    {event.sessions && event.sessions.length > 0 && (
-                                        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-                                            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                                <i className="fas fa-list-ol text-orange-500" /> Lịch trình ({event.sessions.length} buổi)
-                                            </h2>
-                                            <div className="space-y-3">
-                                                {event.sessions.map((s, idx) => (
-                                                    <div key={s.scheduleId} className="flex gap-4 p-4 rounded-xl bg-orange-50 border border-orange-100">
-                                                        <div className="w-10 h-10 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">{idx + 1}</div>
+                                {/* Sessions — Timeline */}
+                                {event.sessions && event.sessions.length > 0 && (
+                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+                                        <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
+                                            <i className="fas fa-list-ol mr-2 text-orange-500" /> Lịch trình ({event.sessions.length} buổi)
+                                        </h2>
+                                        <div>
+                                            {event.sessions.map((s) => (
+                                                <div key={s.scheduleId} className="flex relative pl-8 py-4 border-b border-gray-50 last:border-0">
+                                                    <div className="absolute left-0 top-0 bottom-0 flex flex-col items-center">
+                                                        <div className="w-px h-5 bg-gray-200" />
+                                                        <div className="w-3 h-3 rounded-full bg-orange-500 border-2 border-white ring-2 ring-orange-100 z-10" />
+                                                        <div className="w-px flex-1 bg-gray-200" />
+                                                    </div>
+                                                    <div className="flex flex-col sm:flex-row sm:items-start w-full gap-1">
+                                                        <div className="text-orange-500 font-bold w-40 shrink-0 font-mono text-sm">
+                                                            {fmtTime(s.startTime)}{s.endTime ? ` – ${fmtTime(s.endTime)}` : ''}
+                                                        </div>
                                                         <div>
-                                                            <p className="font-semibold text-gray-800">{s.scheduleName}</p>
-                                                            {s.startTime && <p className="text-sm text-gray-500">{fmtFullDate(s.startTime)} · {fmtTime(s.startTime)} – {fmtTime(s.endTime)}</p>}
+                                                            <p className="text-gray-700 font-medium">{s.scheduleName}</p>
+                                                            {s.startTime && <p className="text-xs text-gray-400">{fmtFullDate(s.startTime)}</p>}
                                                             {s.location && s.location !== 'string' && (
                                                                 <p className="text-sm text-orange-600 flex items-center gap-1 mt-1"><i className="fas fa-map-marker-alt text-xs" /> {s.location}</p>
                                                             )}
                                                             {s.description && s.description !== 'string' && <p className="text-sm text-gray-500 mt-1">{s.description}</p>}
                                                         </div>
                                                     </div>
-                                                ))}
-                                            </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
+                            </div>
 
-                                {/* Right: Sidebar card */}
-                                <div className="space-y-4">
-                                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 sticky top-24 space-y-5">
-                                        <h3 className="text-lg font-bold text-gray-800 border-b pb-3 flex items-center gap-2">
-                                            <i className="fas fa-ticket-alt text-orange-500" /> Đăng ký tham gia
-                                        </h3>
-
+                            {/* RIGHT SIDEBAR (1/3) */}
+                            <div className="lg:col-span-1">
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8 sticky top-24">
+                                    <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center border-b border-gray-100 pb-4">
+                                        <i className="fas fa-ticket-alt mr-2 text-orange-500" /> Đăng ký tham gia
+                                    </h2>
+                                    {/* Sidebar content */}
+                                    <div className="space-y-5">
                                         {/* Attendee count */}
                                         {(event.status === 'REGISTRATION_OPEN' || event.status === 'ONGOING' || event.status === 'COMPLETED') && (
                                             <div>
-                                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-2">
-                                                    <i className="fas fa-users mr-1 text-orange-500" /> Người tham gia
-                                                </p>
+                                                <div className="flex justify-between items-end mb-2">
+                                                    <span className="text-xs font-bold text-gray-400 flex items-center uppercase tracking-wider">
+                                                        <i className="fas fa-users mr-1" /> NGƯỜI THAM GIA
+                                                    </span>
+                                                </div>
                                                 {event.maxAttendees ? (
                                                     <>
-                                                        <div className="flex items-center justify-between text-sm mb-1">
-                                                            <span className="font-bold text-gray-800">{event.currentAttendees} / {event.maxAttendees}</span>
-                                                            <span className={`text-xs font-semibold ${event.currentAttendees >= event.maxAttendees ? 'text-red-500' : 'text-green-600'}`}>
+                                                        <div className="flex items-baseline justify-between mb-2">
+                                                            <span className="text-xl font-black text-slate-800">
+                                                                {event.currentAttendees} <span className="text-sm font-medium text-gray-500">/ {event.maxAttendees}</span>
+                                                            </span>
+                                                            <span className={`text-sm font-medium ${event.currentAttendees >= event.maxAttendees ? 'text-red-500' : 'text-green-600'}`}>
                                                                 {event.currentAttendees >= event.maxAttendees ? 'Đã đầy' : `Còn ${event.maxAttendees - event.currentAttendees} chỗ`}
                                                             </span>
                                                         </div>
-                                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                                            <div className={`h-2 rounded-full transition-all ${event.currentAttendees / event.maxAttendees >= 0.9 ? 'bg-red-500' : 'bg-green-500'}`}
+                                                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                            <div className={`h-full rounded-full transition-all ${event.currentAttendees / event.maxAttendees >= 0.9 ? 'bg-red-500' : 'bg-orange-500'}`}
                                                                 style={{ width: `${Math.min(100, (event.currentAttendees / event.maxAttendees) * 100)}%` }} />
                                                         </div>
                                                     </>
@@ -302,25 +316,39 @@ const PublicEventDetailPage: React.FC = () => {
                                             const isFull = event.maxAttendees != null && event.currentAttendees >= event.maxAttendees;
                                             return (
                                                 <button onClick={handleRegister} disabled={isRegistering}
-                                                    className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50 ${isFull ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'}`}>
-                                                    {isRegistering ? 'Đang đăng ký...' : isFull ? 'Đăng ký chờ (Waitlist)' : 'Đăng ký nhận vé'}
+                                                    className={`w-full py-3 rounded-xl font-bold transition-all disabled:opacity-50 ${isFull ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30'}`}>
+                                                    {isRegistering ? 'Đang đăng ký...' : isFull ? 'Danh sách đã đầy' : 'Đăng Ký Ngay'}
                                                 </button>
                                             );
                                         })()}
 
-                                        {/* Check-in */}
-                                        {event.status === 'ONGOING' && myStatus === 'REGISTERED' && !isCheckedIn && !showCheckInForm && (
-                                            <button onClick={() => setShowCheckInForm(true)} className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-all hover:shadow-lg">
-                                                <i className="fas fa-qrcode mr-2" /> Điểm danh ngay
-                                            </button>
+                                        {/* Registered status + actions */}
+                                        {isRegistered && !isCheckedIn && (
+                                            <>
+                                                <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-center">
+                                                    <p className="text-orange-600 font-medium text-sm">Bạn đã đăng ký thành công!</p>
+                                                </div>
+                                                {event.status === 'ONGOING' && myStatus === 'REGISTERED' && !showCheckInForm && (
+                                                    <button onClick={() => setShowCheckInForm(true)} className="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-all shadow-lg">
+                                                        <i className="fas fa-qrcode mr-2" /> Điểm danh (Check-in)
+                                                    </button>
+                                                )}
+                                                {['REGISTRATION_OPEN', 'PLANNED'].includes(event.status) && (
+                                                    <button onClick={() => setShowCancelModal(true)} disabled={isCancelling}
+                                                        className="w-full py-3 bg-white border-2 border-gray-200 text-gray-600 hover:border-red-500 hover:text-red-500 rounded-xl font-bold transition-all">
+                                                        <i className="fas fa-times-circle mr-2" /> Hủy đăng ký
+                                                    </button>
+                                                )}
+                                            </>
                                         )}
 
-                                        {/* Cancel */}
-                                        {isRegistered && !isCheckedIn && ['REGISTRATION_OPEN', 'PLANNED'].includes(event.status) && (
-                                            <button onClick={() => setShowCancelModal(true)} disabled={isCancelling}
-                                                className="w-full py-3 rounded-xl font-semibold transition-all hover:shadow-lg disabled:opacity-50 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200">
-                                                <i className="fas fa-times-circle mr-2" /> Hủy đăng ký
-                                            </button>
+                                        {/* Checked-in state */}
+                                        {isCheckedIn && (
+                                            <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                                                <i className="fas fa-check-double text-green-500 text-3xl mb-3" />
+                                                <h3 className="text-green-800 font-bold text-lg mb-1">Đã điểm danh</h3>
+                                                <p className="text-green-600 text-sm">Chúc bạn có một buổi trải nghiệm thú vị!</p>
+                                            </div>
                                         )}
 
                                         {/* Check-in form */}
@@ -340,6 +368,7 @@ const PublicEventDetailPage: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
                         </div>
 
                     </>
