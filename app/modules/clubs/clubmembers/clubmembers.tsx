@@ -15,6 +15,7 @@ import {
   useGetMemberJoinedDepartmentsQuery,
   useGetMemberNotJoinedDepartmentsQuery,
   useLazySearchUsersQuery,
+  useTransferClubMutation,
   type ClubMember,
 } from "~/cores/api";
 import { getMemberRoleNames } from "~/cores/api/types/clubMember";
@@ -799,10 +800,129 @@ function KickFromClubModal({
   );
 }
 
+/* ─── Transfer Club Modal ─────────────────────────────────────────────────── */
+function TransferClubModal({
+  member,
+  clubId,
+  onClose,
+  onSuccess,
+}: {
+  member: ClubMember;
+  clubId: number;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const { show } = useNotification();
+  const [transferClub, { isLoading }] = useTransferClubMutation();
+  const [confirmed, setConfirmed] = useState(false);
+
+  const handleTransfer = async () => {
+    try {
+      await transferClub({
+        clubId,
+        newManagerMemberId: member.clubMemberId,
+      }).unwrap();
+      show({
+        type: "success",
+        title: "Chuyển giao thành công!",
+        message: `${member.fullName} hiện là Club Manager mới.`,
+        duration: 4000,
+      });
+      onSuccess();
+    } catch (err: any) {
+      show({
+        type: "error",
+        title: "Chuyển giao thất bại",
+        message: err?.data?.message ?? "Không thể chuyển giao câu lạc bộ.",
+        duration: 4000,
+      });
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <i className="fas fa-exchange-alt text-xl" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Chuyển giao câu lạc bộ
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Trao quyền Club Manager cho thành viên này
+            </p>
+          </div>
+        </div>
+
+        {/* Target member preview */}
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 mb-4">
+          <MemberAvatar member={member} size="sm" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+              {member.fullName}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {member.email}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 mb-5">
+          <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+            <i className="fas fa-exclamation-triangle mr-1.5" />
+            Hành động này sẽ trao toàn quyền quản lý câu lạc bộ cho{" "}
+            <span className="font-semibold">{member.fullName}</span>.
+            Bạn sẽ mất vai trò Club Manager sau khi xác nhận.
+          </p>
+        </div>
+
+        <label className="flex items-center gap-2.5 mb-5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+          />
+          <span className="text-sm text-gray-700 dark:text-gray-300">
+            Tôi hiểu và xác nhận chuyển giao
+          </span>
+        </label>
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={handleTransfer}
+            disabled={!confirmed || isLoading}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-all cursor-pointer"
+          >
+            {isLoading && <i className="fas fa-spinner fa-spin" />}
+            <i className="fas fa-exchange-alt text-[13px]" />
+            Xác nhận chuyển giao
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN
    ═══════════════════════════════════════════════════════════════════════════ */
-type ModalType = "addMember" | "addDept" | "kickDept" | "kickClub";
+type ModalType = "addMember" | "addDept" | "kickDept" | "kickClub" | "transfer";
 
 export default function ClubMembersModule() {
   const navigate = useNavigate();
@@ -1043,17 +1163,32 @@ export default function ClubMembersModule() {
                               <i className="fas fa-folder-minus text-[11px]" />
                               Xóa ban
                             </button>
-                            {/* Xóa khỏi CLB */}
-                            <button
-                              onClick={() =>
-                                setActiveModal({ type: "kickClub", member })
-                              }
-                              title="Xóa khỏi câu lạc bộ"
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-all cursor-pointer"
-                            >
-                              <i className="fas fa-user-slash text-[11px]" />
-                              Xóa CLB
-                            </button>
+                            {/* Xóa khỏi CLB — ẩn nếu là Club Manager */}
+                            {!member.roles?.some((r) => r.level === 0) && (
+                              <button
+                                onClick={() =>
+                                  setActiveModal({ type: "kickClub", member })
+                                }
+                                title="Xóa khỏi câu lạc bộ"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-all cursor-pointer"
+                              >
+                                <i className="fas fa-user-slash text-[11px]" />
+                                Xóa CLB
+                              </button>
+                            )}
+                            {/* Chuyển giao — ẩn nếu thành viên đã là Club Manager */}
+                            {!member.roles?.some((r) => r.level === 0) && (
+                              <button
+                                onClick={() =>
+                                  setActiveModal({ type: "transfer", member })
+                                }
+                                title="Chuyển giao câu lạc bộ cho thành viên này"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all cursor-pointer"
+                              >
+                                <i className="fas fa-exchange-alt text-[11px]" />
+                                Chuyển giao
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1096,6 +1231,14 @@ export default function ClubMembersModule() {
       )}
       {activeModal?.type === "kickClub" && (
         <KickFromClubModal
+          member={activeModal.member}
+          clubId={clubId}
+          onClose={closeModal}
+          onSuccess={closeModal}
+        />
+      )}
+      {activeModal?.type === "transfer" && (
+        <TransferClubModal
           member={activeModal.member}
           clubId={clubId}
           onClose={closeModal}
