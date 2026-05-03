@@ -162,7 +162,7 @@ const InterviewRoom: React.FC = () => {
 
       setActiveRoomCode(roomCode);
       setHasJoined(true);
-      navigate(`/interview/room/${roomCode}`);
+      navigate(`/meeting-room/${roomCode}`);
     } catch (err: any) {
       setJoinError(
         err?.data?.message ||

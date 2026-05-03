@@ -88,7 +88,7 @@ const Navbar: React.FC = () => {
           : "bg-white/95 backdrop-blur-md py-4"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12">
         <div className="flex items-center justify-between">
           {/* Logo */}
           <a
@@ -247,6 +247,27 @@ const Navbar: React.FC = () => {
                       </Link>
 
                       <Link
+                        to="/my-events"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                        Sự kiện của tôi
+                      </Link>
+
+                      <Link
                         to="/auth/change-password"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
@@ -377,6 +398,112 @@ const Navbar: React.FC = () => {
                 </Link>
               </>
             )}
+          </div>
+
+          {/* Mobile Hamburger Button */}
+          <button
+            className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle mobile menu"
+          >
+            {isMobileMenuOpen ? (
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* Mobile Menu Panel */}
+        <div
+          className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+            isMobileMenuOpen ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="bg-white rounded-xl border border-gray-100 shadow-lg p-4 space-y-1">
+            {navLinks.map((link) =>
+              link.href.startsWith('#') ? (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={(e) => handleSmoothScroll(e, link.href)}
+                  className="block px-4 py-3 text-gray-700 hover:text-orange-500 hover:bg-orange-50 font-medium rounded-lg transition-colors duration-200"
+                >
+                  {link.name}
+                </a>
+              ) : (
+                <Link
+                  key={link.name}
+                  to={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block px-4 py-3 text-gray-700 hover:text-orange-500 hover:bg-orange-50 font-medium rounded-lg transition-colors duration-200"
+                >
+                  {link.name}
+                </Link>
+              )
+            )}
+
+            <div className="border-t border-gray-100 pt-3 mt-2 space-y-2">
+              {user ? (
+                <>
+                  <div className="flex items-center gap-3 px-4 py-2">
+                    <UserAvatar size="sm" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{user.fullName}</p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
+                  </div>
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm"
+                  >
+                    Hồ sơ cá nhân
+                  </Link>
+                  <Link
+                    to="/manage-clubs"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm"
+                  >
+                    Câu lạc bộ của tôi
+                  </Link>
+                  <Link
+                    to="/meeting-room"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm"
+                  >
+                    Phòng họp
+                  </Link>
+                  <button
+                    onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Đăng xuất
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col gap-2 px-2">
+                  <Link
+                    to="/auth/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-center py-2.5 text-gray-700 hover:text-orange-500 font-medium rounded-lg border border-gray-200 transition-colors"
+                  >
+                    Đăng nhập
+                  </Link>
+                  <Link
+                    to="/auth/register"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block text-center py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors shadow-md"
+                  >
+                    Đăng ký
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

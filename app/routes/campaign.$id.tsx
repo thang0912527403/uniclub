@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router";
+import { useParams, Link, useNavigate } from "react-router";
 import {
   useGetRecruitmentCampaignQuery,
   useGetFormsByCampaignQuery,
@@ -9,20 +9,23 @@ import Footer from "~/modules/home/components/Footer";
 import { useClubRole } from "~/hooks/useClubRole";
 import { getUserId } from "~/utils/auth";
 import { CreatePostModal } from "~/modules/clubs/posts/clubpost";
+import { useGetClubPostsByCampaignIdQuery } from "~/cores/api/clubApi";
 
 export default function CampaignDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const campaignId = Number(id) || 0;
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
 
   const { can: canClub } = useClubRole();
   const userId = getUserId() ?? "";
+  const { data: campaignPosts = [] } = useGetClubPostsByCampaignIdQuery(campaignId, { skip: !campaignId });
 
   const {
     data: campaign,
     isLoading,
     error,
-  } = useGetRecruitmentCampaignQuery(campaignId, {
+  } = useGetRecruitmentCampaignQuery({ clubId: 0, id: campaignId }, {
     skip: !campaignId,
   });
 
@@ -115,14 +118,24 @@ export default function CampaignDetailPage() {
                     {campaign.campaignName}
                   </h1>
                 </div>
-                {isActive && (
-                  <Link
-                    to={`/campaign/${campaignId}/application-form`}
-                    className="flex-shrink-0 inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                  >
-                    <i className="fas fa-paper-plane" /> Ứng tuyển ngay
-                  </Link>
-                )}
+                <div className="flex flex-wrap gap-2 flex-shrink-0">
+                  {campaignPosts.length > 0 && (
+                    <button
+                      onClick={() => navigate(`/public/news/${campaignPosts[0].postId}`)}
+                      className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                      <i className="fas fa-newspaper" /> Xem bài đăng
+                    </button>
+                  )}
+                  {isActive && (
+                    <Link
+                      to={`/campaign/${campaignId}/application-form`}
+                      className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                      <i className="fas fa-paper-plane" /> Ứng tuyển ngay
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
           </div>

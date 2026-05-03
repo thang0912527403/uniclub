@@ -16,7 +16,6 @@ const POLICY_MAP = {
     canViewAttendance:     'viewattendance',
     canApproveAttendance:  'approveattendance',
     canCheckIn:            'checkin',
-    canEvaluate:           'evaluatemember',
 } as const;
 
 type PolicyKey = keyof typeof POLICY_MAP;

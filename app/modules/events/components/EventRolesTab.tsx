@@ -27,7 +27,6 @@ const ALL_EVENT_POLICIES = [
   { name: "viewattendance", label: "Xem điểm danh" },
   { name: "approveattendance", label: "Duyệt đăng ký" },
   { name: "checkin", label: "Điểm danh (Check-in)" },
-  { name: "evaluatemember", label: "Đánh giá thành viên" },
 ];
 
 export function EventRolesTab({ eventId, clubId, isDark }: Props) {
@@ -205,7 +204,7 @@ export function EventRolesTab({ eventId, clubId, isDark }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {roles.map((role) => {
-          const isCreator = role.level === 1;
+          const isCreator = role.level === 0;
           const isEditingPolicies = editingPoliciesFor === role.eventRoleId;
 
           return (

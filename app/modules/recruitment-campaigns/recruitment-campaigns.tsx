@@ -459,9 +459,15 @@ const EMPTY_FORM: CampaignFormData = {
 };
 
 function toISODate(dateStr: string) {
-  // Convert yyyy-MM-dd to ISO string for API
   if (!dateStr) return "";
   return new Date(dateStr).toISOString();
+}
+
+// Map frontend lowercase status to backend expected uppercase values
+function toBackendStatus(status: string): string {
+  if (status === 'close') return 'CLOSED';
+  if (status === 'open')  return 'OPEN';
+  return status.toUpperCase();
 }
 
 function toInputDate(isoStr: string) {
@@ -980,7 +986,7 @@ export default function RecruitmentCampaignsModule() {
             description: data.description,
             startDate: toISODate(data.startDate),
             endDate: toISODate(data.endDate),
-            status: data.status,
+            status: toBackendStatus(data.status),
             imageUrl: data.imageUrl,
             linkCampaign: data.linkCampaign,
             content: data.content,
@@ -993,13 +999,14 @@ export default function RecruitmentCampaignsModule() {
           });
         } else if (modalMode === "edit" && editTarget) {
           await updateCampaign({
+            clubId: editTarget.clubId,
             id: editTarget.campaignId,
             data: {
               campaignName: data.campaignName,
               description: data.description,
               startDate: toISODate(data.startDate),
               endDate: toISODate(data.endDate),
-              status: data.status,
+              status: toBackendStatus(data.status),
               imageUrl: data.imageUrl,
               linkCampaign: data.linkCampaign,
               content: data.content,
@@ -1033,8 +1040,18 @@ export default function RecruitmentCampaignsModule() {
       const nextStatus = campaign.status === "open" ? "close" : "open";
       try {
         await updateCampaign({
+          clubId: campaign.clubId,
           id: campaign.campaignId,
-          data: { status: nextStatus },
+          data: {
+            campaignName: campaign.campaignName,
+            description: campaign.description,
+            startDate: toISODate(campaign.startDate),
+            endDate: toISODate(campaign.endDate),
+            status: toBackendStatus(nextStatus),
+            imageUrl: campaign.imageUrl,
+            linkCampaign: campaign.linkCampaign,
+            content: campaign.content,
+          },
         }).unwrap();
         notify({
           type: "success",
@@ -1059,7 +1076,7 @@ export default function RecruitmentCampaignsModule() {
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
-      await deleteCampaign(deleteTarget.campaignId).unwrap();
+      await deleteCampaign({ clubId: deleteTarget.clubId, id: deleteTarget.campaignId }).unwrap();
       notify({
         type: "success",
         title: "Đã xóa chiến dịch",

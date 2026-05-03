@@ -29,7 +29,7 @@ const QuestionPage: React.FC = () => {
   const idFromUrl = idParam ? Number(idParam) : NaN;
 
   // 1. Fetch campaign first to get clubId (treat idFromUrl as campaignId)
-  const { data: campaign } = useGetRecruitmentCampaignQuery(idFromUrl, {
+  const { data: campaign } = useGetRecruitmentCampaignQuery({ clubId: 0, id: idFromUrl }, {
     skip: !idFromUrl || isNaN(idFromUrl),
   });
   const clubId = campaign?.clubId ?? 0;

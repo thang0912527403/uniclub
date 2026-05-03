@@ -7,19 +7,19 @@ import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { fundTokens as t } from './funds.design-tokens';
 
 export default function FundDetailPage() {
-  const { fundId: fundIdParam } = useParams<{ fundId: string }>();
-  const fundId = parseInt(fundIdParam ?? '0', 10);
+  const { publicId: publicIdParam } = useParams<{ publicId: string }>();
+  const publicId = String(publicIdParam ?? '').trim();
   const { isDark } = useTheme();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
   const bgClass = isDark ? 'bg-[#0f1729]' : 'bg-slate-50';
-  const isValidFundId = !!fundIdParam && !isNaN(fundId) && fundId > 0;
-  const { data: location, isLoading, isError } = useGetFundLocationQuery(fundId, {
-    skip: !isValidFundId,
+  const isValidParam = !!publicId;
+  const { data: location, isLoading, isError } = useGetFundLocationQuery(publicId, {
+    skip: !isValidParam,
   });
 
   if (location && location.clubId && location.fundId) {
-    return <Navigate to={`/clubs/${location.clubId}/funds/${location.fundId}`} replace />;
+    return <Navigate to={`/clubs/${location.clubId}/funds/${publicId}`} replace />;
   }
 
   return (
@@ -38,7 +38,7 @@ export default function FundDetailPage() {
         }`}
       >
         <div className="max-w-6xl mx-auto space-y-6">
-          {!isValidFundId || isError ? (
+          {!isValidParam || isError ? (
             <section className={`${t.card.base} ${t.space.card}`} role="alert">
               <h2 className={t.type.sectionTitle}>Mã quỹ không hợp lệ</h2>
               <p className={`mt-1 ${t.type.body}`}>Không tìm được thông tin quỹ từ đường dẫn hiện tại.</p>
@@ -52,7 +52,7 @@ export default function FundDetailPage() {
             <section className={`${t.card.base} ${t.space.card}`} role="status" aria-busy={isLoading}>
               <h2 className={t.type.sectionTitle}>Đang chuyển đến trang quỹ mới</h2>
               <p className={`mt-1 ${t.type.body}`}>
-                Đang tìm câu lạc bộ của quỹ <strong>#{fundId}</strong>...
+                Đang tìm câu lạc bộ của quỹ...
               </p>
               <p className={t.type.muted}>Nếu bị kẹt lâu, hãy quay lại danh sách quỹ và mở lại quỹ này.</p>
               <div className="mt-4">
