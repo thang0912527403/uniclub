@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
 import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyRegistrationQuery, useCancelRegistrationMutation } from '~/cores/api';
-import { useGetClubPostsByEventIdQuery } from '~/cores/api/clubApi';
 import { useNotification } from '~/components/Notification';
 
 function formatDate(dateStr?: string) {
@@ -55,6 +54,11 @@ const PublicEventDetailPage: React.FC = () => {
     const { data: event, isLoading, error } = useGetEventByIdQuery(eventId);
     const { data: user } = useGetCurrentUserQuery();
     const { data: eventPosts = [] } = useGetClubPostsByEventIdQuery(eventId, { skip: !eventId });
+
+    // Fetch user's existing registration status from BE
+    const { data: myRegistration } = useGetMyRegistrationQuery(eventId, {
+        skip: !user, // only fetch when user is logged in
+    });
 
     // Fetch user's existing registration status from BE
     const { data: myRegistration } = useGetMyRegistrationQuery(eventId, {
@@ -311,17 +315,6 @@ const PublicEventDetailPage: React.FC = () => {
                                             </div>
                                         )}
 
-                                        {/* ── Linked Post Button ── */}
-                                        {eventPosts.length > 0 && (
-                                            <button
-                                                onClick={() => navigate(`/public/news/${eventPosts[0].postId}`)}
-                                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-sm"
-                                            >
-                                                <i className="fas fa-newspaper" />
-                                                Xem bài đăng sự kiện
-                                            </button>
-                                        )}
-
                                         {/* ── My Registration Status Badge ── */}
                                         {myStatus && (
                                             <div className={`mt-3 p-3 rounded-xl border text-center ${getMyStatusLabel(myStatus).color}`}>
@@ -338,8 +331,8 @@ const PublicEventDetailPage: React.FC = () => {
                                             return (
                                                 <button onClick={handleRegister} disabled={isRegistering}
                                                     className={`w-full mt-4 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50 ${isFull
-                                                            ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                                                            : 'bg-orange-500 hover:bg-orange-600 text-white'
+                                                        ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                                                        : 'bg-orange-500 hover:bg-orange-600 text-white'
                                                         }`}>
                                                     {isRegistering ? 'Đang đăng ký...' : isFull ? 'Đăng ký chờ (Waitlist)' : 'Đăng ký nhận vé'}
                                                 </button>

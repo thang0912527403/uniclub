@@ -4,10 +4,10 @@ import { type RecruitmentCampaign, type ApiResponse } from './types';
 // Map backend uppercase status ("OPEN","CLOSED") to frontend lowercase ("open","close")
 function normalizeStatus(status: string): string {
   switch (status?.toUpperCase()) {
-    case 'OPEN':   return 'open';
+    case 'OPEN': return 'open';
     case 'CLOSED': return 'close';
-    case 'DRAFT':  return 'draft';
-    default:       return status?.toLowerCase() ?? status;
+    case 'DRAFT': return 'draft';
+    default: return status?.toLowerCase() ?? status;
   }
 }
 function normalizeCampaign(c: RecruitmentCampaign): RecruitmentCampaign {
@@ -19,25 +19,20 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
     // GET /RecruitmentCampaign  (admin: all campaigns)
     getRecruitmentCampaigns: builder.query<RecruitmentCampaign[], void>({
       query: () => '/RecruitmentCampaign',
-      transformResponse: (response: ApiResponse<RecruitmentCampaign[]> | RecruitmentCampaign[]) =>
-        Array.isArray(response) ? response : response.data,
+      transformResponse: (response: ApiResponse<RecruitmentCampaign[]>) => response.data.map(normalizeCampaign),
       providesTags: ['RecruitmentCampaign'],
     }),
 
-    // GET /club/{clubId}/RecruitmentCampaign
     getRecruitmentCampaignsByClubId: builder.query<RecruitmentCampaign[], number>({
-      query: (clubId) => `/club/${clubId}/RecruitmentCampaign`,
-      transformResponse: (response: ApiResponse<RecruitmentCampaign[]> | RecruitmentCampaign[]) =>
-        Array.isArray(response) ? response : response.data,
+      query: (clubId) => `/RecruitmentCampaign/club/${clubId}`,
+      transformResponse: (response: ApiResponse<RecruitmentCampaign[]>) => response.data.map(normalizeCampaign),
       providesTags: (result, error, clubId) => [{ type: 'RecruitmentCampaign', id: `club-${clubId}` }],
     }),
 
-    // GET /club/{clubId}/RecruitmentCampaign/{id}
-    getRecruitmentCampaign: builder.query<RecruitmentCampaign, { clubId: number; id: number }>({
-      query: ({ clubId, id }) => `/club/${clubId}/RecruitmentCampaign/${id}`,
-      transformResponse: (response: ApiResponse<RecruitmentCampaign> | RecruitmentCampaign) =>
-        'data' in response ? response.data : response,
-      providesTags: (result, error, { id }) => [{ type: 'RecruitmentCampaign', id }],
+    getRecruitmentCampaign: builder.query<RecruitmentCampaign, number>({
+      query: (id) => `/RecruitmentCampaign/${id}`,
+      transformResponse: (response: ApiResponse<RecruitmentCampaign>) => normalizeCampaign(response.data),
+      providesTags: ['RecruitmentCampaign'],
     }),
 
     // POST /club/{clubId}/RecruitmentCampaign
