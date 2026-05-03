@@ -10,7 +10,7 @@ import {
   clearPayosPendingContribute,
   readPayosPendingContribute,
   type PayosPendingContribute,
-} from '~/utils/payosContributeSession';
+} from "~/modules/funds/utils/payosContributeSession";
 import { isLoggedIn } from '~/utils/auth';
 
 type PollPhase =
@@ -39,14 +39,19 @@ export default function PayosReturnPage() {
   const [phase, setPhase] = useState<PollPhase>('polling');
   const [message, setMessage] = useState<string | null>(null);
 
-  const orderCode = useMemo(() => {
-    return parsePositiveInt(
-      searchParams.get("orderCode") ??
-        searchParams.get("code") ??
-        searchParams.get("order_code") ??
-        searchParams.get("transactionId"),
-    );
+  const payosReturnOrderCodeFromUrl = useMemo(() => {
+    const keys = ['externalOrderCode', 'orderCode', 'code', 'order_code'] as const;
+    for (const k of keys) {
+      const v = searchParams.get(k);
+      if (v != null && String(v).trim() !== '') return String(v).trim();
+    }
+    return undefined;
   }, [searchParams]);
+
+  const pendingSession = readPayosPendingContribute();
+  const effectiveReturnOrderCode =
+    payosReturnOrderCodeFromUrl ?? (pendingSession?.externalOrderCode?.trim() || undefined);
+
   const payosUrlPaid = useMemo(
     () => String(searchParams.get('status') ?? '').toUpperCase() === 'PAID',
     [searchParams],
@@ -56,13 +61,15 @@ export default function PayosReturnPage() {
   const queryTxId = useMemo(() => parsePositiveInt(searchParams.get('transactionId')), [searchParams]);
   const queryFundId = useMemo(() => parsePositiveInt(searchParams.get('fundId')), [searchParams]);
 
-  /** PayOS redirect: GET fund-contributions/payos-return/{orderCode} (orderCode = transactionId). */
+  /** PayOS redirect: GET fund-contributions/payos-return/{orderCode} với orderCode = externalOrderCode (string). */
   useEffect(() => {
-    if (!orderCode) return;
+    if (!effectiveReturnOrderCode) return;
     if (!isLoggedIn()) {
       setPhase('unauthorized');
       return;
     }
+
+    const returnOrderCode = effectiveReturnOrderCode;
 
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -85,10 +92,19 @@ export default function PayosReturnPage() {
 
     const applyPayload = (data: PayosFundContributionReturn): boolean => {
       setMessage(data.message ?? null);
-      if (data.clubId > 0) {
+      const pendingNow = readPayosPendingContribute();
+      const tidFromData =
+        data.transactionId != null &&
+        Number.isFinite(Number(data.transactionId)) &&
+        Number(data.transactionId) > 0
+          ? Number(data.transactionId)
+          : 0;
+      const tid = tidFromData || pendingNow?.transactionId || queryTxId || 0;
+      if (data.clubId > 0 && tid > 0) {
         setResolved({
           clubId: data.clubId,
-          transactionId: orderCode,
+          transactionId: tid,
+          externalOrderCode: returnOrderCode,
           ...(data.fundId > 0 ? { fundId: data.fundId } : {}),
           ...(data.publicId?.trim() ? { publicId: data.publicId.trim() } : {}),
           savedAt: new Date().toISOString(),
@@ -117,7 +133,7 @@ export default function PayosReturnPage() {
 
     void (async () => {
       try {
-        const data = await fetchPayosReturn(orderCode).unwrap();
+        const data = await fetchPayosReturn(returnOrderCode).unwrap();
         if (cancelled) return;
         if (applyPayload(data)) return;
 
@@ -130,7 +146,7 @@ export default function PayosReturnPage() {
             if (cancelled) return;
             pollCount += 1;
             try {
-              const d = await fetchPayosReturn(orderCode).unwrap();
+              const d = await fetchPayosReturn(returnOrderCode).unwrap();
               if (cancelled) return;
               if (applyPayload(d)) return;
               if (pollCount >= maxPolls) {
@@ -163,10 +179,10 @@ export default function PayosReturnPage() {
       cancelled = true;
       clearTimer();
     };
-  }, [orderCode, payosUrlPaid, fetchPayosReturn, navigate]);
+  }, [effectiveReturnOrderCode, payosUrlPaid, fetchPayosReturn, navigate, queryTxId]);
 
   useEffect(() => {
-    if (orderCode) return;
+    if (effectiveReturnOrderCode) return;
     if (!isLoggedIn()) {
       setPhase('unauthorized');
       return;
@@ -185,12 +201,16 @@ export default function PayosReturnPage() {
       clubId,
       transactionId,
       ...(fundId != null ? { fundId } : {}),
+      ...(stored?.publicId?.trim() ? { publicId: stored.publicId.trim() } : {}),
+      ...(stored?.externalOrderCode?.trim()
+        ? { externalOrderCode: stored.externalOrderCode.trim() }
+        : {}),
       savedAt: stored?.savedAt ?? new Date().toISOString(),
     });
-  }, [orderCode, queryClubId, queryFundId, queryTxId]);
+  }, [effectiveReturnOrderCode, queryClubId, queryFundId, queryTxId]);
 
   useEffect(() => {
-    if (orderCode) return;
+    if (effectiveReturnOrderCode) return;
     if (!resolved || phase !== 'polling') return;
 
     let cancelled = false;
@@ -272,7 +292,7 @@ export default function PayosReturnPage() {
       cancelled = true;
       stop();
     };
-  }, [orderCode, resolved, fetchPayStatus, navigate, phase]);
+  }, [effectiveReturnOrderCode, resolved, fetchPayStatus, navigate, phase]);
 
   const fundHref =
     resolved?.clubId && resolved?.fundId
@@ -305,11 +325,12 @@ export default function PayosReturnPage() {
         <div className="max-w-md w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/80 p-8 shadow-sm">
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">Thiếu thông tin giao dịch</h1>
           <p className="mt-3 text-slate-600 dark:text-slate-300 text-sm">
-            URL PayOS cần có <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 rounded">orderCode</code> (mã giao
-            dịch), hoặc phiên cần có{' '}
+            URL PayOS cần có <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 rounded">externalOrderCode</code>{' '}
+            hoặc <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 rounded">orderCode</code> (mã đơn PayOS,
+            dạng chuỗi số), hoặc phiên cần có{' '}
             <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 rounded">clubId</code> /{' '}
-            <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 rounded">transactionId</code> từ lần mở nộp quỹ.
-            Hãy tạo lại thanh toán từ màn quỹ nếu cần.
+            <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 rounded">transactionId</code> từ lần mở nộp quỹ
+            để hệ thống poll trạng thái. Hãy tạo lại thanh toán từ màn quỹ nếu cần.
           </p>
           <Link
             to="/funds"
@@ -333,7 +354,7 @@ export default function PayosReturnPage() {
               PayOS đã chuyển bạn về ứng dụng. Số dư và lịch sử quỹ chỉ cập nhật sau khi webhook PayOS tới server backend
               (môi trường thật, không chỉ localhost).
             </p>
-            {payosUrlPaid && orderCode ? (
+            {payosUrlPaid && effectiveReturnOrderCode ? (
               <p className="mt-2 text-slate-600 dark:text-slate-300 text-sm">
                 PayOS báo <span className="font-medium">PAID</span> — đang chờ server ghi nhận (có thể vài giây).
               </p>

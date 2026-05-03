@@ -451,7 +451,7 @@ export default function FundsReportsPage() {
               <>
                 <div className="flex flex-col gap-1 min-w-[140px]">
                   <label htmlFor="report-from" className={t.type.label}>
-                    Từ ngày (UTC)
+                    Từ ngày
                   </label>
                   <input
                     id="report-from"
@@ -464,7 +464,7 @@ export default function FundsReportsPage() {
                 </div>
                 <div className="flex flex-col gap-1 min-w-[140px]">
                   <label htmlFor="report-to" className={t.type.label}>
-                    Đến ngày (UTC)
+                    Đến ngày
                   </label>
                   <input
                     id="report-to"
@@ -575,7 +575,7 @@ export default function FundsReportsPage() {
                 </div>
                 <div className="flex flex-col gap-1 min-w-[140px]">
                   <label htmlFor="tx-from" className={t.type.label}>
-                    Từ ngày (UTC)
+                    Từ ngày 
                   </label>
                   <input
                     id="tx-from"
@@ -588,7 +588,7 @@ export default function FundsReportsPage() {
                 </div>
                 <div className="flex flex-col gap-1 min-w-[140px]">
                   <label htmlFor="tx-to" className={t.type.label}>
-                    Đến ngày (UTC)
+                    Đến ngày
                   </label>
                   <input
                     id="tx-to"
@@ -846,13 +846,13 @@ export default function FundsReportsPage() {
                   </p>
                 </div>
                 <div className={`${t.card.base} ${t.space.card} border-slate-200 dark:border-slate-600`}>
-                  <p className={`text-sm ${t.type.muted}`}>Tổng thu (giao dịch APPROVED, INCOME)</p>
+                  <p className={`text-sm ${t.type.muted}`}>Tổng thu</p>
                   <p className="text-xl font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
                     {formatVnd(summary.totalApprovedIncome)}
                   </p>
                 </div>
                 <div className={`${t.card.base} ${t.space.card} border-slate-200 dark:border-slate-600`}>
-                  <p className={`text-sm ${t.type.muted}`}>Tổng chi (giao dịch APPROVED, EXPENSE)</p>
+                  <p className={`text-sm ${t.type.muted}`}>Tổng chi</p>
                   <p className="text-xl font-semibold text-amber-700 dark:text-amber-300 mt-1">
                     {formatVnd(summary.totalApprovedExpense)}
                   </p>

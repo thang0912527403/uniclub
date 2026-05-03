@@ -1,5 +1,6 @@
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { baseApi } from "./baseApi";
+import { normalizeExternalOrderCodeFromApi } from "~/modules/funds/utils/externalOrderCode";
 import { normalizeClubFundCapabilitiesFromApi } from "~/modules/funds/utils/normalizeClubFundCapabilities";
 import {
   type ApiResponse,
@@ -43,6 +44,25 @@ import {
   type RejectFundRefundRequestDto,
   type SoftDeleteFundResponse,
 } from "./types";
+
+function normalizeContributeToFundResponse(
+  data: ContributeToFundResponse | null | undefined,
+): ContributeToFundResponse {
+  if (data == null || typeof data !== "object") {
+    return { transactionId: 0 };
+  }
+  const d = data as unknown as Record<string, unknown>;
+  const tid = Number(d.transactionId ?? d.TransactionId);
+  const ext = normalizeExternalOrderCodeFromApi(
+    d.externalOrderCode ?? d.ExternalOrderCode,
+  );
+  const base = data as unknown as ContributeToFundResponse;
+  return {
+    ...base,
+    transactionId: Number.isFinite(tid) ? tid : 0,
+    ...(ext != null ? { externalOrderCode: ext } : {}),
+  };
+}
 
 function normalizePagedResult<T>(raw: unknown): PagedResult<T> {
   const empty = (): PagedResult<T> => ({
@@ -141,6 +161,15 @@ function normalizeRecordCashContributionResponse(
   };
 }
 
+function stripSoftDeleteParenFromFundCloseMessageVi(msg: string): string {
+  const s = msg.trim();
+  if (!s) return s;
+  return s
+    .replace(/\s*[\(\[]\s*(?:xoá|xóa)\s+mềm\s*[\)\]]/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function parseSoftDeleteFundResponse(raw: unknown): SoftDeleteFundResponse {
   if (!raw || typeof raw !== "object") return {};
   const r = raw as Record<string, unknown>;
@@ -148,10 +177,14 @@ function parseSoftDeleteFundResponse(raw: unknown): SoftDeleteFundResponse {
   if (data && typeof data === "object") {
     const d = data as Record<string, unknown>;
     const m = d.message ?? d.Message;
-    if (typeof m === "string" && m.trim()) return { message: m.trim() };
+    if (typeof m === "string" && m.trim()) {
+      return { message: stripSoftDeleteParenFromFundCloseMessageVi(m) };
+    }
   }
   const m = r.message ?? r.Message;
-  if (typeof m === "string" && m.trim()) return { message: m.trim() };
+  if (typeof m === "string" && m.trim()) {
+    return { message: stripSoftDeleteParenFromFundCloseMessageVi(m) };
+  }
   return {};
 }
 
@@ -803,7 +836,7 @@ export const fundApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (response: ApiResponse<ContributeToFundResponse>) =>
-        response.data,
+        normalizeContributeToFundResponse(response.data),
       invalidatesTags: ["ClubFund"],
     }),
 
@@ -817,9 +850,15 @@ export const fundApi = baseApi.injectEndpoints({
         response: ApiResponse<FundContributeTransactionStatus>,
       ) => {
         const d = response.data;
+        const dr = (d ?? {}) as unknown as Record<string, unknown>;
+        const tid = Number(d?.transactionId ?? dr.TransactionId);
+        const ext = normalizeExternalOrderCodeFromApi(
+          dr.externalOrderCode ?? dr.ExternalOrderCode,
+        );
         return {
-          transactionId: d?.transactionId ?? 0,
+          transactionId: Number.isFinite(tid) ? tid : 0,
           fundId: d?.fundId ?? 0,
+          ...(ext != null ? { externalOrderCode: ext } : {}),
           status: d?.status,
           amount: d?.amount,
           isPaid: !!d?.isPaid,
@@ -830,21 +869,39 @@ export const fundApi = baseApi.injectEndpoints({
       },
     }),
 
-    /** PayOS redirect: Bearer JWT. orderCode trên URL = transactionId. */
     getPayosFundContributionReturn: builder.query<
       PayosFundContributionReturn,
-      number
+      string
     >({
-      query: (orderCode) => `/fund-contributions/payos-return/${orderCode}`,
+      query: (orderCode) =>
+        `/fund-contributions/payos-return/${encodeURIComponent(String(orderCode))}`,
       transformResponse: (
         response: ApiResponse<PayosFundContributionReturn>,
       ) => {
-        const d = response.data;
+        const dr = (response.data ?? {}) as unknown as Record<string, unknown>;
+        const clubId = Number(dr.clubId ?? dr.ClubId) || 0;
+        const fundId = Number(dr.fundId ?? dr.FundId) || 0;
+        const tid = Number(dr.transactionId ?? dr.TransactionId);
+        const pub =
+          typeof dr.publicId === "string"
+            ? dr.publicId.trim()
+            : typeof dr.PublicId === "string"
+              ? String(dr.PublicId).trim()
+              : undefined;
+        const ext = normalizeExternalOrderCodeFromApi(
+          dr.externalOrderCode ?? dr.ExternalOrderCode,
+        );
+        const msgRaw = dr.message ?? dr.Message;
+        const message = typeof msgRaw === "string" ? msgRaw : undefined;
+        const paidRaw = dr.isPaid ?? dr.IsPaid;
         return {
-          clubId: Number(d?.clubId) || 0,
-          fundId: Number(d?.fundId) || 0,
-          isPaid: !!d?.isPaid,
-          message: d?.message,
+          clubId,
+          fundId,
+          ...(pub ? { publicId: pub } : {}),
+          ...(Number.isFinite(tid) && tid > 0 ? { transactionId: tid } : {}),
+          ...(ext != null ? { externalOrderCode: ext } : {}),
+          isPaid: !!paidRaw,
+          message,
         };
       },
     }),
