@@ -1,6 +1,7 @@
 export interface EventDetailDto {
     eventId: number;
     clubId?: number;
+    clubName?: string;
     eventName: string;
     description: string;
     imageUrl?: string;

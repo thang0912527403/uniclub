@@ -267,15 +267,27 @@ export default function EditEventPage() {
         }));
     }, []);
 
-    const handleSessionChange = useCallback((id: number, start: Date, end: Date, _revert: () => void) => {
-        setForm(prev => ({
-            ...prev,
-            sessions: prev.sessions.map(s =>
-                s.id === id
-                    ? { ...s, startTime: dateToLocal(start), endTime: dateToLocal(end) }
-                    : s
-            ),
-        }));
+    const handleSessionChange = useCallback((id: number, start: Date, end: Date, revert: () => void) => {
+        setForm(prev => {
+            const session = prev.sessions.find(s => s.id === id);
+            // Validate: main/break sessions must stay within event bounds
+            if (session && session.sessionType !== 'setup' && prev.startDate && prev.endDate) {
+                const eStart = new Date(prev.startDate);
+                const eEnd = new Date(prev.endDate);
+                if (start < eStart || end > eEnd) {
+                    revert();
+                    return prev;
+                }
+            }
+            return {
+                ...prev,
+                sessions: prev.sessions.map(s =>
+                    s.id === id
+                        ? { ...s, startTime: dateToLocal(start), endTime: dateToLocal(end) }
+                        : s
+                ),
+            };
+        });
     }, []);
 
     const updateSessionLocal = (id: number, patch: Partial<EditSession>) => {
@@ -407,6 +419,7 @@ export default function EditEventPage() {
                         endTime: toIso(s.endTime),
                         location: s.location || undefined,
                         description: s.description || undefined,
+                        sessionType: s.sessionType || undefined,
                     }))
                 );
             }
@@ -424,6 +437,7 @@ export default function EditEventPage() {
                         endTime: toIso(s.endTime),
                         location: s.location || undefined,
                         description: s.description || undefined,
+                        sessionType: s.sessionType || undefined,
                     }))
                 );
                 const failed = results
@@ -550,26 +564,24 @@ export default function EditEventPage() {
                             </button>
                         </div>
 
-                        {/* ── Tab: Thông tin sự kiện ── */}
-                        {activeTab === 'info' && (
-                            <div className={`${card} rounded-xl shadow-sm p-6`}>
-                                <EventForm
-                                    initialData={{
-                                        ...event,
-                                        startDate: form.startDate ? toIso(form.startDate) : event.startDate,
-                                        endDate: form.endDate ? toIso(form.endDate) : event.endDate,
-                                    }}
-                                    onChange={(data) => setForm(prev => ({ ...prev, ...data }))}
-                                    onSubmit={handleSubmit}
-                                    onCancel={() => navigate(`/events/${id}`)}
-                                    isLoading={isSaving}
-                                    isDark={isDark}
-                                    mode="edit"
-                                    formId="event-edit-form"
-                                    hideActions={true}
-                                />
-                            </div>
-                        )}
+                        {/* ── Tab: Thông tin sự kiện (always mounted, hidden when inactive) ── */}
+                        <div className={`${card} rounded-xl shadow-sm p-6 ${activeTab === 'info' ? '' : 'hidden'}`}>
+                            <EventForm
+                                initialData={{
+                                    ...event,
+                                    startDate: form.startDate ? toIso(form.startDate) : event.startDate,
+                                    endDate: form.endDate ? toIso(form.endDate) : event.endDate,
+                                }}
+                                onChange={(data) => setForm(prev => ({ ...prev, ...data }))}
+                                onSubmit={handleSubmit}
+                                onCancel={() => navigate(`/events/${id}`)}
+                                isLoading={isSaving}
+                                isDark={isDark}
+                                mode="edit"
+                                formId="event-edit-form"
+                                hideActions={true}
+                            />
+                        </div>
 
                         {/* ── Tab: Thời gian sự kiện ── */}
                         {activeTab === 'time' && (
