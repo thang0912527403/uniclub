@@ -27,6 +27,8 @@ export const eventApi = baseApi.injectEndpoints({
         getAllEvents: builder.query<EventDetailDto[], { pageNumber?: number; pageSize?: number }>({
             query: ({ pageNumber = 1, pageSize = 10 } = {}) =>
                 `/events?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+            transformResponse: (response: { data: EventDetailDto[] } | EventDetailDto[]) =>
+                Array.isArray(response) ? response : (response.data ?? []),
             providesTags: ['Event'],
         }),
 
