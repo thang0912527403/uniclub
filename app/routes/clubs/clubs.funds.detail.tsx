@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 import { Banknote, Gavel, X, HandCoins, Loader2, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { FinanceAccessHintBanner, resolveFundBalanceHoverTextVi } from '~/modules/funds/components/FundUxHints';
 import {
@@ -25,7 +25,7 @@ import { useCurrentUser } from '~/hooks/useCurrentUser';
 import { useClubRole } from '~/hooks/useClubRole';
 import type { FundHistoryItem, ClubFund, FundHistoryScopeFilter, FundHistoryStatusFilter } from '~/cores/api';
 import { fundTokens as t } from '../funds.design-tokens';
-import { savePayosPendingContribute } from '~/utils/payosContributeSession';
+import { savePayosPendingContribute } from "~/modules/funds/utils/payosContributeSession";
 import { fundTransactionPaymentProviderLabel } from '~/modules/funds/utils/fundTransactionPaymentProvider';
 import { setClubId } from '~/utils/auth';
 import { useClubFundDetailSelection } from '~/modules/funds/hooks/useClubFundDetailSelection';
@@ -157,6 +157,7 @@ export default function FundDetailPageByClub() {
   const [contributeDescription, setContributeDescription] = useState('');
   const [contributeResult, setContributeResult] = useState<{
     transactionId: number;
+    externalOrderCode?: string;
     checkoutUrl?: string;
     paymentLinkId?: string;
     amount?: number;
@@ -440,6 +441,12 @@ export default function FundDetailPageByClub() {
           message: s.message,
           paymentLinkExpiresAtUtc: s.paymentLinkExpiresAtUtc,
         });
+        const extPoll = s.externalOrderCode?.trim();
+        if (extPoll) {
+          setContributeResult((prev) =>
+            prev && !prev.externalOrderCode ? { ...prev, externalOrderCode: extPoll } : prev,
+          );
+        }
         if (s.isPaid) {
           stop();
           void refetchFund();
@@ -529,6 +536,7 @@ export default function FundDetailPageByClub() {
         clubId,
         transactionId: res.transactionId,
         fundId,
+        externalOrderCode: res.externalOrderCode ?? undefined,
       });
 
       setPayStatus(null);
@@ -536,6 +544,9 @@ export default function FundDetailPageByClub() {
       setContributePollTimedOut(false);
       setContributeResult({
         transactionId: res.transactionId,
+        ...(res.externalOrderCode?.trim()
+          ? { externalOrderCode: res.externalOrderCode.trim() }
+          : {}),
         checkoutUrl: res.checkoutUrl,
         paymentLinkId: res.paymentLinkId,
         amount: res.amount,
@@ -590,6 +601,25 @@ export default function FundDetailPageByClub() {
         </Link>
       </div>
     );
+  }
+
+  const fundForbidden =
+    !skipFundQuery &&
+    !isLoadingFund &&
+    fundError &&
+    typeof fundError === 'object' &&
+    'status' in fundError &&
+    (fundError as { status: number }).status === 403;
+
+  const redirectFund403 =
+    !capsLoading &&
+    !capsOtherError &&
+    (capsForbidden ||
+      (caps !== undefined && !canViewFunds && !canContribute) ||
+      fundForbidden);
+
+  if (redirectFund403) {
+    return <Navigate to="/403" replace />;
   }
 
   return (
@@ -1341,6 +1371,11 @@ export default function FundDetailPageByClub() {
                 >
                   <div className={`text-sm ${textClass}`}>
                     <span className="font-semibold">Giao dịch</span> #{contributeResult.transactionId}
+                    {contributeResult.externalOrderCode ? (
+                      <span className="ml-2 block sm:inline text-xs font-mono text-slate-600 dark:text-slate-400 break-all">
+                        Mã đơn PayOS: {contributeResult.externalOrderCode}
+                      </span>
+                    ) : null}
                     {typeof contributeResult.amount === 'number' ? (
                       <span className="ml-2 text-slate-600 dark:text-slate-300">
                         — {contributeResult.amount.toLocaleString('vi-VN')} ₫
