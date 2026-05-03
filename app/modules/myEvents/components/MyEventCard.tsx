@@ -58,12 +58,12 @@ export function MyEventCard({ event, onCheckIn, onShowQr }: Props) {
                 <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
                     {event.isAttendee && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 text-orange-600 backdrop-blur-sm">
-                            🎟️ Người tham gia
+                            <i className="fas fa-ticket-alt mr-1" /> Người tham gia
                         </span>
                     )}
                     {event.isCollaborator && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 text-purple-600 backdrop-blur-sm">
-                            👥 {event.roleName || 'Ban tổ chức'}
+                            <i className="fas fa-users mr-1" /> {event.roleName || 'Ban tổ chức'}
                         </span>
                     )}
                 </div>

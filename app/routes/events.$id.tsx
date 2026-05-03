@@ -362,7 +362,7 @@ export default function EventDetailPage() {
     }
   };
 
- 
+
   const handleApprove = async (userId: string) => {
     try {
       await approveRegistration({
@@ -385,26 +385,36 @@ export default function EventDetailPage() {
     }
   };
 
-  const handleReject = async (userId: string) => {
-    try {
-      await rejectRegistration({
-        eventId,
-        clubId: event?.clubId ?? 0,
-        userId,
-      }).unwrap();
-      showNotification({
-        type: "success",
-        title: "Đã từ chối",
-        message: "Đã từ chối đăng ký.",
-      });
-      refetchAttendees();
-    } catch (e: any) {
-      showNotification({
-        type: "error",
-        title: "Lỗi",
-        message: e?.data?.error ?? "Không thể từ chối.",
-      });
-    }
+  const handleReject = (userId: string, memberName?: string) => {
+    setConfirmConfig({
+      title: 'Xác nhận từ chối / huỷ đăng ký',
+      message: `Bạn có chắc muốn huỷ đăng ký của "${memberName || 'thành viên này'}"?`,
+      type: 'danger' as const,
+      confirmText: 'Xác nhận huỷ',
+    });
+    setConfirmAction(() => async () => {
+      try {
+        await rejectRegistration({
+          eventId,
+          clubId: event?.clubId ?? 0,
+          userId,
+        }).unwrap();
+        showNotification({
+          type: "success",
+          title: "Đã từ chối",
+          message: "Đã từ chối đăng ký.",
+        });
+        refetchAttendees();
+      } catch (e: any) {
+        showNotification({
+          type: "error",
+          title: "Lỗi",
+          message: e?.data?.error ?? "Không thể từ chối.",
+        });
+      }
+      setConfirmOpen(false);
+    });
+    setConfirmOpen(true);
   };
 
   const handleBulkApprove = async () => {
@@ -431,22 +441,32 @@ export default function EventDetailPage() {
     }
   };
 
-  const handleCancelRegistration = async () => {
-    try {
-      await cancelRegistration(eventId).unwrap();
-      showNotification({
-        type: "success",
-        title: "Đã huỷ",
-        message: "Đã huỷ đăng ký tham gia sự kiện.",
-      });
-      refetchAttendees();
-    } catch (e: any) {
-      showNotification({
-        type: "error",
-        title: "Lỗi",
-        message: e?.data?.error ?? "Không thể huỷ đăng ký.",
-      });
-    }
+  const handleCancelRegistration = () => {
+    setConfirmConfig({
+      title: 'Xác nhận hủy đăng ký',
+      message: `Bạn có chắc muốn hủy đăng ký sự kiện "${event?.eventName}"? Hành động này không thể hoàn tác.`,
+      type: 'danger' as const,
+      confirmText: 'Hủy đăng ký',
+    });
+    setConfirmAction(() => async () => {
+      try {
+        await cancelRegistration(eventId).unwrap();
+        showNotification({
+          type: "success",
+          title: "Đã huỷ",
+          message: "Đã huỷ đăng ký tham gia sự kiện.",
+        });
+        refetchAttendees();
+      } catch (e: any) {
+        showNotification({
+          type: "error",
+          title: "Lỗi",
+          message: e?.data?.error ?? "Không thể huỷ đăng ký.",
+        });
+      }
+      setConfirmOpen(false);
+    });
+    setConfirmOpen(true);
   };
 
   const handleGenerateCode = async () => {
@@ -658,726 +678,726 @@ export default function EventDetailPage() {
 
   if (isLoading) {
     return (
-        <div className="min-h-screen">
-            <ApiStatusButton
-                apiStatuses={[{ name: 'Event', isLoading }]}
-                isDark={isDark}
-                onThemeToggle={toggleTheme}
-                position="bottom-right"
-            />
-            <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
-            <HeaderBar
-                title="Chi tiết sự kiện"
-                breadcrumb={`Events / ${event.eventName}`}
-                isSidebarOpen={isSidebarOpen}
-                onToggleSidebar={toggleSidebar}
-            />
+      <div className="min-h-screen">
+        <ApiStatusButton
+          apiStatuses={[{ name: 'Event', isLoading }]}
+          isDark={isDark}
+          onThemeToggle={toggleTheme}
+          position="bottom-right"
+        />
+        <Sidebar currentPath="/events" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+        <HeaderBar
+          title="Chi tiết sự kiện"
+          breadcrumb={`Events / ${event.eventName}`}
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={toggleSidebar}
+        />
 
-            <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
-                <div className="max-w-5xl mx-auto space-y-5">
-                    {/* back */}
-                    <button onClick={() => navigate('/events')}
-                        className={`flex items-center gap-2 text-sm ${sub} hover:${text} transition-colors`}>
-                        <i className="fas fa-arrow-left" /> Quay lại danh sách
-                    </button>
+        <main className={`pt-24 p-6 ${bg} min-h-screen transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
+          <div className="max-w-5xl mx-auto space-y-5">
+            {/* back */}
+            <button onClick={() => navigate('/events')}
+              className={`flex items-center gap-2 text-sm ${sub} hover:${text} transition-colors`}>
+              <i className="fas fa-arrow-left" /> Quay lại danh sách
+            </button>
 
-                    {/* header card */}
-                    <div className={`${card} rounded-xl shadow-sm overflow-hidden`}>
-                        {event.imageUrl && event.imageUrl !== 'string' && (
-                            <img src={event.imageUrl} alt={event.eventName}
-                                className="w-full h-52 object-cover"
-                                onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            {/* header card */}
+            <div className={`${card} rounded-xl shadow-sm overflow-hidden`}>
+              {event.imageUrl && event.imageUrl !== 'string' && (
+                <img src={event.imageUrl} alt={event.eventName}
+                  className="w-full h-52 object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              )}
+              <div className="p-6">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <h1 className={`text-2xl font-bold ${text} mb-2`}>{event.eventName}</h1>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(event.status)}`}>
+                      {event.status}
+                    </span>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {(can('editevent') || can('openregistration') || can('startevent') || can('completeevent')) && (
+                      <>
+                        {can('editevent') && (
+                          <button onClick={() => navigate(`/events/${event.eventId}/edit`)}
+                            className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                            Chỉnh sửa
+                          </button>
                         )}
-                        <div className="p-6">
-                            <div className="flex items-start justify-between gap-4 flex-wrap">
-                                <div>
-                                    <h1 className={`text-2xl font-bold ${text} mb-2`}>{event.eventName}</h1>
-                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(event.status)}`}>
-                                        {event.status}
-                                    </span>
-                                </div>
-                                <div className="flex gap-2 flex-wrap">
-                                    {(can('editevent') || can('openregistration') || can('startevent') || can('completeevent')) && (
-                                        <>
-                                            {can('editevent') && (
-                                            <button onClick={() => navigate(`/events/${event.eventId}/edit`)}
-                                                className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                                                Chỉnh sửa
-                                            </button>
-                                            )}
-                                            {can('openregistration') && event.status === 'PLANNED' && (
-                                                <button onClick={() => { setShowRegForm(true); setActiveTab('registration'); }}
-                                                    className="px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
-                                                    Mở đăng ký
-                                                </button>
-                                            )}
-                                            {can('startevent') && event.status === 'REGISTRATION_OPEN' && (
-                                                <button onClick={handleStartEvent} disabled={isStarting}
-                                                    className="px-3 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 transition-colors">
-                                                    {isStarting ? 'Đang bật...' : 'Bắt đầu sự kiện'}
-                                                </button>
-                                            )}
-                                            {can('completeevent') && event.status === 'ONGOING' && (
-                                                <button onClick={handleCompleteEvent} disabled={isCompleting}
-                                                    className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors">
-                                                    {isCompleting ? 'Đang chốt...' : 'Kết thúc sự kiện'}
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-
-                            <p className={`mt-3 text-sm ${sub}`}>{event.description}</p>
-
-                            <div className={`mt-4 pt-4 border-t ${border} grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm`}>
-                                <div>
-                                    <span className={sub}>Địa điểm</span>
-                                    <p className={`${text} font-medium mt-0.5`}>{event.location || '—'}</p>
-                                </div>
-                                <div>
-                                    <span className={sub}>Bắt đầu</span>
-                                    <p className={`${text} font-medium mt-0.5`}>{fmtDate(event.startDate)}</p>
-                                </div>
-                                <div>
-                                    <span className={sub}>Kết thúc</span>
-                                    <p className={`${text} font-medium mt-0.5`}>{fmtDate(event.endDate)}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* tabs */}
-                    <div className={`${card} rounded-xl shadow-sm overflow-hidden`}>
-                        <div className={`flex border-b ${border}`}>
-                            {tabs.map(t => (
-                                <button key={t.key} onClick={() => setActiveTab(t.key)}
-                                    className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === t.key
-                                        ? 'border-blue-500 text-blue-600'
-                                        : `border-transparent ${sub} hover:text-blue-500`}`}>
-                                    {t.label}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="p-6">
-
-                            {/* ── SESSIONS ── */}
-                            {activeTab === 'sessions' && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className={`font-semibold ${text}`}>
-                                            Sessions ({event.sessions?.length ?? 0})
-                                        </h2>
-                                        {can('managesession') && (
-                                            <button onClick={() => setShowSessionForm(v => !v)}
-                                                className="px-3 py-1.5 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors">
-                                                {showSessionForm ? 'Hủy' : 'Thêm session'}
-                                            </button>
-                                        )}
-                                    </div>
-                                    {showSessionForm && can('managesession') && (
-                                        <div className={`mb-4 p-4 border ${border} rounded-lg`}>
-                                            <SessionForm eventId={event.eventId}
-                                        clubId={event.clubId ?? 0}
-                                        onSubmit={handleCreateSession}
-                                        onCancel={() => setShowSessionForm(false)}
-                                        isLoading={isCreatingSession}
-                                        isDark={isDark} />
-                                        </div>
-                                    )}
-                                    <SessionList sessions={event.sessions ?? []} isDark={isDark} />
-                                </div>
-                            )}
-
-                            {/* ── REGISTRATION ── */}
-                            {activeTab === 'registration' && (
-                                <div className="space-y-6">
-
-                                    {/* Registration management */}
-                                    {can('viewattendance') && (
-                                        <div className={`p-4 rounded-lg border ${border}`}>
-                                            <div className="flex items-center justify-between mb-3">
-                                                <h3 className={`font-semibold ${text}`}>Quản lý đăng ký</h3>
-                                                <span className={`text-xs px-2 py-0.5 rounded-full ${statusBadge(event.status)}`}>
-                                                    {event.status}
-                                                </span>
-                                            </div>
-
-                                            {/* Current registration info when REGISTRATION_OPEN */}
-                                            {event.status === 'REGISTRATION_OPEN' && !showRegForm && (
-                                                <div className="space-y-3">
-                                                    <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg ${isDark ? 'bg-green-900/20' : 'bg-green-50'}`}>
-                                                        <div>
-                                                            <p className={`text-xs ${sub}`}>Bắt đầu đăng ký</p>
-                                                            <p className={`text-sm font-medium ${text}`}>
-                                                                {event.registrationStartDate ? fmtDate(event.registrationStartDate) : 'Chưa đặt'}
-                                                            </p>
-                                                        </div>
-                                                        <div>
-                                                            <p className={`text-xs ${sub}`}>Kết thúc đăng ký</p>
-                                                            <p className={`text-sm font-medium ${text}`}>
-                                                                {event.registrationEndDate ? fmtDate(event.registrationEndDate) : 'Chưa đặt'}
-                                                            </p>
-                                                        </div>
-                                                        <div>
-                                                            <p className={`text-xs ${sub}`}>Số lượng tối đa</p>
-                                                            <p className={`text-sm font-medium ${text}`}>
-                                                                {event.maxAttendees ? `${event.currentAttendees}/${event.maxAttendees}` : 'Không giới hạn'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <button onClick={() => {
-                                                        setShowRegForm(true);
-                                                        // Pre-fill with current values
-                                                        setRegForm({
-                                                            startDate: event.registrationStartDate ? new Date(event.registrationStartDate).toISOString().slice(0, 16) : '',
-                                                            endDate: event.registrationEndDate ? new Date(event.registrationEndDate).toISOString().slice(0, 16) : '',
-                                                            maxAttendees: event.maxAttendees?.toString() ?? '',
-                                                        });
-                                                    }}
-                                                        className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                                                        Chỉnh sửa thời gian đăng ký
-                                                    </button>
-                                                </div>
-                                            )}
-
-                                            {/* Non-editable states */}
-                                            {event.status !== 'PLANNED' && event.status !== 'REGISTRATION_OPEN' && (
-                                                <p className={`text-sm ${sub}`}>
-                                                    Không thể chỉnh sửa đăng ký khi event ở trạng thái {event.status}.
-                                                </p>
-                                            )}
-
-                                            {/* Open registration form (PLANNED) or Edit form (REGISTRATION_OPEN) */}
-                                            {(event.status === 'PLANNED' && !showRegForm) && (
-                                                <button onClick={() => setShowRegForm(true)}
-                                                    className="mt-2 px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
-                                                    Mở đăng ký sự kiện
-                                                </button>
-                                            )}
-
-                                            {showRegForm && (event.status === 'PLANNED' || event.status === 'REGISTRATION_OPEN') && (
-                                                <div className="mt-3 space-y-3">
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                        <div>
-                                                            <label className={`block text-xs mb-1 ${sub}`}>
-                                                                Ngày bắt đầu đăng ký <span className="text-red-500">*</span>
-                                                            </label>
-                                                            <input type="datetime-local"
-                                                                value={regForm.startDate}
-                                                                onChange={e => setRegForm(f => ({ ...f, startDate: e.target.value }))}
-                                                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
-                                                        </div>
-                                                        <div>
-                                                            <label className={`block text-xs mb-1 ${sub}`}>
-                                                                Ngày kết thúc đăng ký <span className="text-red-500">*</span>
-                                                            </label>
-                                                            <input type="datetime-local"
-                                                                value={regForm.endDate}
-                                                                onChange={e => setRegForm(f => ({ ...f, endDate: e.target.value }))}
-                                                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
-                                                        </div>
-                                                    </div>
-                                                    <div className="max-w-xs">
-                                                        <label className={`block text-xs mb-1 ${sub}`}>
-                                                            Số lượng tối đa (để trống = không giới hạn)
-                                                        </label>
-                                                        <input type="number" min={1}
-                                                            value={regForm.maxAttendees}
-                                                            onChange={e => setRegForm(f => ({ ...f, maxAttendees: e.target.value }))}
-                                                            placeholder="Không giới hạn"
-                                                            className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
-                                                    </div>
-                                                    {regError && (
-                                                        <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">
-                                                            {regError}
-                                                        </p>
-                                                    )}
-                                                    <div className="flex gap-2">
-                                                        <button onClick={handleOpenRegistration} disabled={isOpeningReg}
-                                                            className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors">
-                                                            {isOpeningReg ? 'Đang xử lý...'
-                                                                : event.status === 'REGISTRATION_OPEN' ? 'Cập nhật thời gian' : 'Xác nhận mở đăng ký'}
-                                                        </button>
-                                                        <button onClick={() => { setShowRegForm(false); setRegError(null); }}
-                                                            className={`px-4 py-2 text-sm border ${border} rounded-lg ${sub} hover:opacity-80 transition-colors`}>
-                                                            Hủy
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* attendee table */}
-                                    <div>
-                                        <h3 className={`font-semibold mb-3 ${text}`}>
-                                            Danh sách đăng ký {attendees ? `(${attendees.length})` : ''}
-                                        </h3>
-
-                                        {/* Countdown / deadline banner */}
-                                        {event.status === 'REGISTRATION_OPEN' && regDeadline && (
-                                            <div className={`mb-4 px-4 py-3 rounded-lg border flex flex-wrap items-center justify-between gap-2 ${isRegDeadlinePassed
-                                                ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
-                                                : isRegNotStarted
-                                                    ? 'bg-amber-50 border-amber-200'
-                                                    : (regDeadline - now) < 30 * 60 * 1000
-                                                        ? 'bg-orange-50 border-orange-200'
-                                                        : 'bg-green-50 border-green-200'
-                                                }`}>
-                                                {isRegDeadlinePassed ? (
-                                                    <span className="text-sm font-medium text-red-600">
-                                                        ⏰ Đã hết thời gian đăng ký (kết thúc lúc {fmtDate(event.registrationEndDate)})
-                                                    </span>
-                                                ) : isRegNotStarted ? (
-                                                    <>
-                                                        <span className="text-sm font-medium text-amber-700">
-                                                            ⏳ Chưa bắt đầu đăng ký — mở lúc {fmtDate(event.registrationStartDate)}
-                                                        </span>
-                                                        <span className="text-sm font-mono font-bold text-amber-700">
-                                                            Còn {fmtCountdown(regStart!)}
-                                                        </span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span className={`text-sm font-medium ${(regDeadline - now) < 30 * 60 * 1000 ? 'text-orange-600' : 'text-green-700'
-                                                            }`}>
-                                                            🟢 Đăng ký đang mở — đóng lúc {fmtDate(event.registrationEndDate)}
-                                                        </span>
-                                                        <span className={`text-sm font-mono font-bold ${(regDeadline - now) < 30 * 60 * 1000 ? 'text-orange-600' : 'text-green-700'
-                                                            }`}>
-                                                            Còn {fmtCountdown(regDeadline)}
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Self-register / self-cancel section for non-managers */}
-                                        {currentUser && !can('approveattendance') && (
-                                            <div className={`mb-4 p-3 rounded-lg border ${border} flex flex-wrap items-center justify-between gap-3`}>
-                                                {(() => {
-                                                    const myRow = attendees?.find(a => a.userId === currentUser?.userId);
-                                                    if (!myRow) {
-                                                        if (isRegOpen) {
-                                                            return (
-                                                                <div className="flex items-center gap-3">
-                                                                    <span className={`text-sm ${sub}`}>Bạn chưa đăng ký sự kiện này.</span>
-                                                                    <button
-                                                                        onClick={handleRegisterMember}
-                                                                        disabled={isRegistering}
-                                                                        className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
-                                                                    >
-                                                                        {isRegistering ? 'Đang đăng ký...' : 'Đăng ký tham gia'}
-                                                                    </button>
-                                                                </div>
-                                                            );
-                                                        }
-                                                        if (isRegDeadlinePassed && event.status === 'REGISTRATION_OPEN') {
-                                                            return <span className="text-sm text-red-500 font-medium">Đã hết hạn đăng ký.</span>;
-                                                        }
-                                                        return null;
-                                                    }
-                                                    if (myRow.attendanceStatus === 'CANCELLED') {
-                                                        return <span className={`text-sm ${sub}`}>Bạn đã huỷ đăng ký.</span>;
-                                                    }
-                                                    if (myRow.attendanceStatus === 'PENDING') {
-                                                        return <span className="text-sm text-amber-600 font-medium">Đăng ký của bạn đang chờ duyệt.</span>;
-                                                    }
-                                                    if (myRow.attendanceStatus === 'WAITLIST') {
-                                                        return <span className="text-sm text-purple-600 font-medium">Bạn đang trong danh sách chờ.</span>;
-                                                    }
-                                                    return (
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-sm text-green-600 font-medium">Bạn đã đăng ký ({myRow.attendanceStatus}).</span>
-                                                            {['PENDING', 'REGISTERED', 'WAITLIST'].includes(myRow.attendanceStatus) && (
-                                                                <button
-                                                                    onClick={handleCancelRegistration}
-                                                                    disabled={isCancelling}
-                                                                    className="px-3 py-1.5 text-sm bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
-                                                                >
-                                                                    {isCancelling ? 'Đang huỷ...' : 'Huỷ đăng ký'}
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </div>
-                                        )}
-
-                                        {isLoadingAttendees ? (
-                                            <div className="animate-pulse space-y-2">
-                                                {[1, 2, 3].map(i => <div key={i} className="h-10 bg-gray-200 rounded" />)}
-                                            </div>
-                                        ) : !attendees?.length ? (
-                                            <p className={`text-sm ${sub}`}>Chưa có ai đăng ký.</p>
-                                        ) : (
-                                            <div className="overflow-x-auto rounded-lg border border-gray-200">
-                                                <table className="w-full text-sm">
-                                                    <thead className={`${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                                                        <tr>
-                                                            {['Họ tên', 'MSSV', 'Ngày đăng ký', 'Trạng thái', 'Check-in', 'Điểm', ...(can('approveattendance') ? ['Hành động'] : [])].map(h => (
-                                                                <th key={h} className={`px-3 py-2 text-left text-xs font-semibold ${sub}`}>{h}</th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {attendees.map(a => (
-                                                            <tr key={a.attendId} className={`border-t ${border} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
-                                                                <td className={`px-3 py-2.5 font-medium ${text}`}>{a.memberName}</td>
-                                                                <td className={`px-3 py-2.5 ${sub}`}>{a.studentId || '—'}</td>
-                                                                <td className={`px-3 py-2.5 ${sub}`}>{new Date(a.registrationDate).toLocaleDateString('vi-VN')}</td>
-                                                                <td className="px-3 py-2.5">
-                                                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${attendanceStatusBadge(a.attendanceStatus)}`}>
-                                                                        {a.attendanceStatus}
-                                                                    </span>
-                                                                </td>
-                                                                <td className={`px-3 py-2.5 ${sub}`}>
-                                                                    {a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('vi-VN') : '—'}
-                                                                </td>
-                                                                <td className={`px-3 py-2.5 font-semibold ${a.score != null ? 'text-blue-500' : sub}`}>
-                                                                    {a.score != null ? `${a.score}/100` : '—'}
-                                                                </td>
-                                                                {can('approveattendance') && (
-                                                                    <td className="px-3 py-2.5">
-                                                                        <div className="flex items-center gap-1.5">
-                                                                            {a.attendanceStatus === 'PENDING' && (
-                                                                                <>
-                                                                                    <button
-                                                                                        onClick={() => handleApprove(a.userId)}
-                                                                                        disabled={isApproving}
-                                                                                        className="px-2.5 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 transition-colors"
-                                                                                    >
-                                                                                        Duyệt
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={() => handleReject(a.userId)}
-                                                                                        disabled={isRejecting}
-                                                                                        className="px-2.5 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 transition-colors"
-                                                                                    >
-                                                                                        Từ chối
-                                                                                    </button>
-                                                                                </>
-                                                                            )}
-                                                                            {a.attendanceStatus === 'WAITLIST' && (
-                                                                                <button
-                                                                                    onClick={() => handleApprove(a.userId)}
-                                                                                    disabled={isApproving}
-                                                                                    className="px-2.5 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
-                                                                                >
-                                                                                    Thêm vào
-                                                                                </button>
-                                                                            )}
-                                                                            {['PENDING', 'REGISTERED', 'WAITLIST'].includes(a.attendanceStatus) && (
-                                                                                <button
-                                                                                    onClick={() => handleReject(a.userId)}
-                                                                                    disabled={isRejecting}
-                                                                                    title="Huỷ đăng ký của thành viên này"
-                                                                                    className={`px-2.5 py-1 text-xs border ${border} ${sub} rounded hover:opacity-70 transition-colors ${a.attendanceStatus === 'PENDING' ? 'hidden' : ''}`}
-                                                                                >
-                                                                                    Huỷ
-                                                                                </button>
-                                                                            )}
-                                                                        </div>
-                                                                    </td>
-                                                                )}
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                </div>
-                            )}
-
-                            {/* ── PENDING APPROVALS ── */}
-                            {activeTab === 'pending' && can('approveattendance') && (
-                                <div className="space-y-4">
-                                    {/* Header + bulk action */}
-                                    <div className="flex items-center justify-between flex-wrap gap-3">
-                                        <div>
-                                            <h3 className={`font-semibold ${text}`}>
-                                                <i className="fas fa-user-clock mr-2 text-amber-500" />
-                                                Chờ duyệt đăng ký
-                                            </h3>
-                                            <p className={`text-xs mt-0.5 ${sub}`}>
-                                                {pendingCount > 0
-                                                    ? `${pendingCount} đơn đang chờ duyệt`
-                                                    : 'Không có đơn nào đang chờ duyệt'}
-                                            </p>
-                                        </div>
-                                        {selectedPendingIds.length > 0 && (
-                                            <button
-                                                onClick={handleBulkApprove}
-                                                disabled={isBulkApproving}
-                                                className="px-4 py-2 text-sm font-semibold bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 transition-all shadow-sm flex items-center gap-2"
-                                            >
-                                                {isBulkApproving
-                                                    ? <><i className="fas fa-spinner fa-spin" /> Đang duyệt...</>
-                                                    : <><i className="fas fa-check-double" /> Duyệt {selectedPendingIds.length} đã chọn</>}
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {isLoadingAttendees && (
-                                        <div className="flex justify-center py-8">
-                                            <i className={`fas fa-spinner fa-spin text-2xl ${sub}`} />
-                                        </div>
-                                    )}
-
-                                    {!isLoadingAttendees && pendingCount === 0 && (
-                                        <div className={`flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed ${isDark ? 'border-gray-600' : 'border-gray-200'}`}>
-                                            <i className={`fas fa-check-circle text-3xl mb-3 text-green-400`} />
-                                            <p className={`${sub} text-sm`}>Không có đơn chờ duyệt</p>
-                                        </div>
-                                    )}
-
-                                    {!isLoadingAttendees && pendingCount > 0 && (() => {
-                                        const pendingList = attendees?.filter(a => a.attendanceStatus === 'PENDING') ?? [];
-                                        const allSelected = pendingList.length > 0 && selectedPendingIds.length === pendingList.length;
-                                        const toggleAll = () => {
-                                            if (allSelected) setSelectedPendingIds([]);
-                                            else setSelectedPendingIds(pendingList.map(a => a.userId));
-                                        };
-                                        const toggleOne = (uid: string) => {
-                                            setSelectedPendingIds(prev =>
-                                                prev.includes(uid) ? prev.filter(x => x !== uid) : [...prev, uid]
-                                            );
-                                        };
-                                        return (
-                                            <div className={`rounded-xl border ${border} overflow-hidden`}>
-                                                <table className="w-full text-sm">
-                                                    <thead>
-                                                        <tr className={isDark ? 'bg-gray-700/50' : 'bg-gray-50'}>
-                                                            <th className="px-3 py-2.5 w-10">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={allSelected}
-                                                                    onChange={toggleAll}
-                                                                    className="w-4 h-4 rounded text-blue-500"
-                                                                />
-                                                            </th>
-                                                            <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thành viên</th>
-                                                            <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>MSSV</th>
-                                                            <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Đăng ký lúc</th>
-                                                            <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thao tác</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {pendingList.map(a => (
-                                                            <tr key={a.attendId} className={`border-t ${border} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors`}>
-                                                                <td className="px-3 py-3">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={selectedPendingIds.includes(a.userId)}
-                                                                        onChange={() => toggleOne(a.userId)}
-                                                                        className="w-4 h-4 rounded text-blue-500"
-                                                                    />
-                                                                </td>
-                                                                <td className={`px-3 py-3 font-medium ${text}`}>{a.memberName}</td>
-                                                                <td className={`px-3 py-3 ${sub}`}>{a.studentId || '—'}</td>
-                                                                <td className={`px-3 py-3 ${sub}`}>
-                                                                    {new Date(a.registrationDate).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                                                </td>
-                                                                <td className="px-3 py-3">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button
-                                                                            onClick={() => handleApprove(a.userId)}
-                                                                            disabled={isApproving}
-                                                                            className="px-3 py-1 text-xs font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
-                                                                        >
-                                                                            <i className="fas fa-check mr-1" />Duyệt
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleReject(a.userId)}
-                                                                            disabled={isRejecting}
-                                                                            className="px-3 py-1 text-xs font-semibold border border-red-300 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
-                                                                        >
-                                                                            <i className="fas fa-times mr-1" />Từ chối
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            )}
-
-                            {/* ── CHECKIN ── */}
-                            {activeTab === 'checkin' && (
-                                <div className="space-y-5">
-                                    {/* generate code */}
-                                    {can('checkin') && (
-                                        <div className={`p-4 rounded-lg border ${border}`}>
-                                            <h3 className={`font-semibold mb-1 ${text}`}>Tạo mã điểm danh</h3>
-                                            <p className={`text-xs mb-3 ${sub}`}>Mã có hiệu lực 15 phút. Chia sẻ cho thành viên để điểm danh.</p>
-                                            <button onClick={handleGenerateCode} disabled={isGeneratingCode}
-                                                className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors">
-                                                {isGeneratingCode ? 'Đang tạo...' : 'Tạo mã mới'}
-                                            </button>
-                                            {codeError && <p className="text-sm text-red-500 mt-2">{codeError}</p>}
-                                            {generatedCode && (
-                                                <div className="mt-4">
-                                                    <div className="inline-block bg-orange-50 border-2 border-orange-300 rounded-xl px-8 py-4 text-center">
-                                                        <p className="text-4xl font-black tracking-widest text-orange-600 font-mono">
-                                                            {generatedCode.code}
-                                                        </p>
-                                                        <p className={`text-xs mt-1 ${sub}`}>
-                                                            Hết hạn lúc {new Date(generatedCode.expiresAt).toLocaleTimeString('vi-VN')}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Participant: Mã QR điểm danh của tôi (để BTC quét) */}
-                                    {currentUser && event?.status === 'ONGOING' && isUserRegistered && (
-                                        <div className={`p-4 rounded-lg border ${border}`}>
-                                            <h3 className={`font-semibold mb-2 ${text}`}>Mã QR điểm danh của tôi</h3>
-                                            <p className={`text-xs mb-3 ${sub}`}>
-                                                Mã QR cũng đã được gửi qua email khi bạn đăng ký. Bạn có thể dùng mã trên màn hình này hoặc trong email — đưa cho ban tổ chức quét để điểm danh.
-                                            </p>
-                                            {isLoadingMyQr ? (
-                                                <div className="animate-pulse h-48 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-                                            ) : (myCheckInQr?.token ?? myCheckInQr?.qrContent) ? (
-                                                <div className="flex flex-col items-start gap-2">
-                                                    <div className="rounded-lg border border-gray-200 dark:border-gray-600 p-2 bg-white inline-block">
-                                                        <QRCodeSVG
-                                                            value={myCheckInQr.token ?? myCheckInQr.qrContent ?? ''}
-                                                            size={200}
-                                                            level="M"
-                                                            bgColor="#ffffff"
-                                                            fgColor="#000000"
-                                                            title="QR điểm danh"
-                                                        />
-                                                    </div>
-                                                    {myCheckInQr.expiresAt && (
-                                                        <p className={`text-xs ${sub}`}>
-                                                            Hết hạn lúc {new Date(myCheckInQr.expiresAt).toLocaleTimeString('vi-VN')}
-                                                        </p>
-                                                    )}
-                                                    {/* Dev: copy token để test điểm danh QR khi không có máy quét */}
-                                                    {import.meta.env.DEV && (
-                                                        <details className={`mt-2 text-xs ${sub}`}>
-                                                            <summary className="cursor-pointer hover:underline">Copy mã để test (chỉ hiện khi dev)</summary>
-                                                            <code className="block mt-1 p-2 bg-black/10 rounded break-all select-all" title="Copy để dán vào ô Điểm danh bằng QR">
-                                                                {myCheckInQr.token ?? myCheckInQr.qrContent}
-                                                            </code>
-                                                        </details>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <p className={`text-sm ${sub}`}>Bạn chưa đăng ký sự kiện này. Vui lòng đăng ký ở tab Đăng ký trước.</p>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Organizer: Điểm danh bằng QR (camera hoặc dán token) */}
-                                    {can('checkin') && (
-                                        <div className={`p-4 rounded-lg border ${border}`}>
-                                            <h3 className={`font-semibold mb-2 ${text}`}>Điểm danh bằng QR</h3>
-                                            <p className={`text-xs mb-3 ${sub}`}>
-                                                Quét mã QR của người tham gia bằng camera, hoặc dán nội dung (token) đã quét từ thiết bị khác.
-                                            </p>
-                                            <div className={`text-xs mb-3 p-3 rounded-lg border ${border} ${isDark ? 'bg-black/20' : 'bg-gray-50'}`}>
-                                                <p className={`font-medium ${text} mb-1`}>Điện thoại cần gì để quét và gửi lên server?</p>
-                                                <p className={`${sub} mb-1`}>Chỉ mở camera / app quét QR mặc định của điện thoại <strong>không đủ</strong> — không gửi được lên server. Cần:</p>
-                                                <ul className={`list-disc list-inside ${sub} space-y-0.5`}>
-                                                    <li>Mở <strong>trình duyệt</strong> (Chrome, Safari…) trên điện thoại</li>
-                                                    <li>Truy cập <strong>đúng trang web app</strong> (cùng địa chỉ với app này)</li>
-                                                    <li><strong>Đăng nhập</strong> bằng tài khoản Manager/Admin của CLB</li>
-                                                    <li>Vào sự kiện này → tab <strong>Điểm danh</strong> → bấm <strong>&quot;Quét bằng camera&quot;</strong></li>
-                                                    <li>Cho phép camera khi trình duyệt yêu cầu</li>
-                                                </ul>
-                                                <p className={`${sub} mt-1`}>Sau đó hướng camera vào mã QR (trên màn hình máy tính hoặc điện thoại người tham gia). Quét xong app sẽ tự gửi lên server và điểm danh.</p>
-                                            </div>
-
-                                            {!showQrScanner ? (
-                                                <>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowQrScanner(true)}
-                                                        className="mb-3 px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors inline-flex items-center gap-2"
-                                                    >
-                                                        <i className="fas fa-camera" /> Quét bằng camera
-                                                    </button>
-                                                    <div className="flex flex-col sm:flex-row gap-2 max-w-md mt-2">
-                                                        <input
-                                                            type="text"
-                                                            value={qrToken}
-                                                            onChange={e => { setQrToken(e.target.value); setQrError(null); setQrSuccess(null); }}
-                                                            placeholder="Hoặc dán mã đã quét từ QR..."
-                                                            className={`flex-1 min-w-0 px-3 py-2 text-sm border rounded-lg outline-none font-mono ${inputCls}`}
-                                                        />
-                                                        <button
-                                                            onClick={() => handleCheckInByQr()}
-                                                            disabled={isCheckingInByQr || !qrToken.trim()}
-                                                            className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors whitespace-nowrap"
-                                                        >
-                                                            {isCheckingInByQr ? 'Đang xử lý...' : 'Điểm danh'}
-                                                        </button>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <QRScanner
-                                                    scannerId={`event-qr-${eventId}`}
-                                                    onScan={(token) => handleCheckInByQr(token)}
-                                                    onClose={() => setShowQrScanner(false)}
-                                                    className="mt-2"
-                                                />
-                                            )}
-
-                                            {qrError && <p className="text-sm text-red-500 mt-2">{qrError}</p>}
-                                            {qrSuccess && <p className="text-sm text-green-600 font-medium mt-2">{qrSuccess}</p>}
-                                        </div>
-                                    )}
-
-                                </div>
-                            )}
-
-                            {/* ── CHỨC VỤ SỰ KIỆN ── */}
-                            {activeTab === 'roles' && (can('manage_collaborator') || isManager) && (
-                                <EventRolesTab
-                                    eventId={eventId}
-                                    clubId={event.clubId ?? 0}
-                                    isDark={isDark}
-                                />
-                            )}
-
-                            {/* ── THÀNH VIÊN SỰ KIỆN ── */}
-                            {activeTab === 'members' && (can('manage_collaborator') || isManager) && (
-                                <EventMembersTab
-                                    eventId={eventId}
-                                    clubId={event.clubId ?? 0}
-                                    isDark={isDark}
-                                    eventStatus={event.status}
-                                />
-                            )}
-
-                        </div>
-                    </div>
+                        {can('openregistration') && event.status === 'PLANNED' && (
+                          <button onClick={() => { setShowRegForm(true); setActiveTab('registration'); }}
+                            className="px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                            Mở đăng ký
+                          </button>
+                        )}
+                        {can('startevent') && event.status === 'REGISTRATION_OPEN' && (
+                          <button onClick={handleStartEvent} disabled={isStarting}
+                            className="px-3 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 transition-colors">
+                            {isStarting ? 'Đang bật...' : 'Bắt đầu sự kiện'}
+                          </button>
+                        )}
+                        {can('completeevent') && event.status === 'ONGOING' && (
+                          <button onClick={handleCompleteEvent} disabled={isCompleting}
+                            className="px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors">
+                            {isCompleting ? 'Đang chốt...' : 'Kết thúc sự kiện'}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-            </main >
 
-            {/* Confirm Dialog */}
-            <ConfirmDialog
-                isOpen={confirmOpen}
-                title={confirmConfig.title}
-                message={confirmConfig.message}
-                type={confirmConfig.type}
-                confirmText={confirmConfig.confirmText}
-                onConfirm={() => confirmAction?.()}
-                onCancel={() => setConfirmOpen(false)}
-            />
-        </div >
+                <p className={`mt-3 text-sm ${sub}`}>{event.description}</p>
+
+                <div className={`mt-4 pt-4 border-t ${border} grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm`}>
+                  <div>
+                    <span className={sub}>Địa điểm</span>
+                    <p className={`${text} font-medium mt-0.5`}>{event.location || '—'}</p>
+                  </div>
+                  <div>
+                    <span className={sub}>Bắt đầu</span>
+                    <p className={`${text} font-medium mt-0.5`}>{fmtDate(event.startDate)}</p>
+                  </div>
+                  <div>
+                    <span className={sub}>Kết thúc</span>
+                    <p className={`${text} font-medium mt-0.5`}>{fmtDate(event.endDate)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* tabs */}
+            <div className={`${card} rounded-xl shadow-sm overflow-hidden`}>
+              <div className={`flex border-b ${border}`}>
+                {tabs.map(t => (
+                  <button key={t.key} onClick={() => setActiveTab(t.key)}
+                    className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === t.key
+                      ? 'border-blue-500 text-blue-600'
+                      : `border-transparent ${sub} hover:text-blue-500`}`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-6">
+
+                {/* ── SESSIONS ── */}
+                {activeTab === 'sessions' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className={`font-semibold ${text}`}>
+                        Sessions ({event.sessions?.length ?? 0})
+                      </h2>
+                      {can('managesession') && (
+                        <button onClick={() => setShowSessionForm(v => !v)}
+                          className="px-3 py-1.5 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors">
+                          {showSessionForm ? 'Hủy' : 'Thêm session'}
+                        </button>
+                      )}
+                    </div>
+                    {showSessionForm && can('managesession') && (
+                      <div className={`mb-4 p-4 border ${border} rounded-lg`}>
+                        <SessionForm eventId={event.eventId}
+                          clubId={event.clubId ?? 0}
+                          onSubmit={handleCreateSession}
+                          onCancel={() => setShowSessionForm(false)}
+                          isLoading={isCreatingSession}
+                          isDark={isDark} />
+                      </div>
+                    )}
+                    <SessionList sessions={event.sessions ?? []} isDark={isDark} />
+                  </div>
+                )}
+
+                {/* ── REGISTRATION ── */}
+                {activeTab === 'registration' && (
+                  <div className="space-y-6">
+
+                    {/* Registration management */}
+                    {can('viewattendance') && (
+                      <div className={`p-4 rounded-lg border ${border}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className={`font-semibold ${text}`}>Quản lý đăng ký</h3>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${statusBadge(event.status)}`}>
+                            {event.status}
+                          </span>
+                        </div>
+
+                        {/* Current registration info when REGISTRATION_OPEN */}
+                        {event.status === 'REGISTRATION_OPEN' && !showRegForm && (
+                          <div className="space-y-3">
+                            <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg ${isDark ? 'bg-green-900/20' : 'bg-green-50'}`}>
+                              <div>
+                                <p className={`text-xs ${sub}`}>Bắt đầu đăng ký</p>
+                                <p className={`text-sm font-medium ${text}`}>
+                                  {event.registrationStartDate ? fmtDate(event.registrationStartDate) : 'Chưa đặt'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={`text-xs ${sub}`}>Kết thúc đăng ký</p>
+                                <p className={`text-sm font-medium ${text}`}>
+                                  {event.registrationEndDate ? fmtDate(event.registrationEndDate) : 'Chưa đặt'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className={`text-xs ${sub}`}>Số lượng tối đa</p>
+                                <p className={`text-sm font-medium ${text}`}>
+                                  {event.maxAttendees ? `${event.currentAttendees}/${event.maxAttendees}` : 'Không giới hạn'}
+                                </p>
+                              </div>
+                            </div>
+                            <button onClick={() => {
+                              setShowRegForm(true);
+                              // Pre-fill with current values
+                              setRegForm({
+                                startDate: event.registrationStartDate ? new Date(event.registrationStartDate).toISOString().slice(0, 16) : '',
+                                endDate: event.registrationEndDate ? new Date(event.registrationEndDate).toISOString().slice(0, 16) : '',
+                                maxAttendees: event.maxAttendees?.toString() ?? '',
+                              });
+                            }}
+                              className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                              Chỉnh sửa thời gian đăng ký
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Non-editable states */}
+                        {event.status !== 'PLANNED' && event.status !== 'REGISTRATION_OPEN' && (
+                          <p className={`text-sm ${sub}`}>
+                            Không thể chỉnh sửa đăng ký khi event ở trạng thái {event.status}.
+                          </p>
+                        )}
+
+                        {/* Open registration form (PLANNED) or Edit form (REGISTRATION_OPEN) */}
+                        {(event.status === 'PLANNED' && !showRegForm) && (
+                          <button onClick={() => setShowRegForm(true)}
+                            className="mt-2 px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                            Mở đăng ký sự kiện
+                          </button>
+                        )}
+
+                        {showRegForm && (event.status === 'PLANNED' || event.status === 'REGISTRATION_OPEN') && (
+                          <div className="mt-3 space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className={`block text-xs mb-1 ${sub}`}>
+                                  Ngày bắt đầu đăng ký <span className="text-red-500">*</span>
+                                </label>
+                                <input type="datetime-local"
+                                  value={regForm.startDate}
+                                  onChange={e => setRegForm(f => ({ ...f, startDate: e.target.value }))}
+                                  className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
+                              </div>
+                              <div>
+                                <label className={`block text-xs mb-1 ${sub}`}>
+                                  Ngày kết thúc đăng ký <span className="text-red-500">*</span>
+                                </label>
+                                <input type="datetime-local"
+                                  value={regForm.endDate}
+                                  onChange={e => setRegForm(f => ({ ...f, endDate: e.target.value }))}
+                                  className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
+                              </div>
+                            </div>
+                            <div className="max-w-xs">
+                              <label className={`block text-xs mb-1 ${sub}`}>
+                                Số lượng tối đa (để trống = không giới hạn)
+                              </label>
+                              <input type="number" min={1}
+                                value={regForm.maxAttendees}
+                                onChange={e => setRegForm(f => ({ ...f, maxAttendees: e.target.value }))}
+                                placeholder="Không giới hạn"
+                                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`} />
+                            </div>
+                            {regError && (
+                              <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">
+                                {regError}
+                              </p>
+                            )}
+                            <div className="flex gap-2">
+                              <button onClick={handleOpenRegistration} disabled={isOpeningReg}
+                                className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors">
+                                {isOpeningReg ? 'Đang xử lý...'
+                                  : event.status === 'REGISTRATION_OPEN' ? 'Cập nhật thời gian' : 'Xác nhận mở đăng ký'}
+                              </button>
+                              <button onClick={() => { setShowRegForm(false); setRegError(null); }}
+                                className={`px-4 py-2 text-sm border ${border} rounded-lg ${sub} hover:opacity-80 transition-colors`}>
+                                Hủy
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* attendee table */}
+                    <div>
+                      <h3 className={`font-semibold mb-3 ${text}`}>
+                        Danh sách đăng ký {attendees ? `(${attendees.length})` : ''}
+                      </h3>
+
+                      {/* Countdown / deadline banner */}
+                      {event.status === 'REGISTRATION_OPEN' && regDeadline && (
+                        <div className={`mb-4 px-4 py-3 rounded-lg border flex flex-wrap items-center justify-between gap-2 ${isRegDeadlinePassed
+                          ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                          : isRegNotStarted
+                            ? 'bg-amber-50 border-amber-200'
+                            : (regDeadline - now) < 30 * 60 * 1000
+                              ? 'bg-orange-50 border-orange-200'
+                              : 'bg-green-50 border-green-200'
+                          }`}>
+                          {isRegDeadlinePassed ? (
+                            <span className="text-sm font-medium text-red-600">
+                              <i className="fas fa-clock mr-1" /> Đã hết thời gian đăng ký (kết thúc lúc {fmtDate(event.registrationEndDate)})
+                            </span>
+                          ) : isRegNotStarted ? (
+                            <>
+                              <span className="text-sm font-medium text-amber-700">
+                                <i className="fas fa-hourglass-half mr-1" /> Chưa bắt đầu đăng ký — mở lúc {fmtDate(event.registrationStartDate)}
+                              </span>
+                              <span className="text-sm font-mono font-bold text-amber-700">
+                                Còn {fmtCountdown(regStart!)}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className={`text-sm font-medium ${(regDeadline - now) < 30 * 60 * 1000 ? 'text-orange-600' : 'text-green-700'
+                                }`}>
+                                <i className="fas fa-circle text-green-500 mr-1 text-xs" /> Đăng ký đang mở — đóng lúc {fmtDate(event.registrationEndDate)}
+                              </span>
+                              <span className={`text-sm font-mono font-bold ${(regDeadline - now) < 30 * 60 * 1000 ? 'text-orange-600' : 'text-green-700'
+                                }`}>
+                                Còn {fmtCountdown(regDeadline)}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Self-register / self-cancel section for non-managers */}
+                      {currentUser && !can('approveattendance') && (
+                        <div className={`mb-4 p-3 rounded-lg border ${border} flex flex-wrap items-center justify-between gap-3`}>
+                          {(() => {
+                            const myRow = attendees?.find(a => a.userId === currentUser?.userId);
+                            if (!myRow) {
+                              if (isRegOpen) {
+                                return (
+                                  <div className="flex items-center gap-3">
+                                    <span className={`text-sm ${sub}`}>Bạn chưa đăng ký sự kiện này.</span>
+                                    <button
+                                      onClick={handleRegisterMember}
+                                      disabled={isRegistering}
+                                      className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                                    >
+                                      {isRegistering ? 'Đang đăng ký...' : 'Đăng ký tham gia'}
+                                    </button>
+                                  </div>
+                                );
+                              }
+                              if (isRegDeadlinePassed && event.status === 'REGISTRATION_OPEN') {
+                                return <span className="text-sm text-red-500 font-medium">Đã hết hạn đăng ký.</span>;
+                              }
+                              return null;
+                            }
+                            if (myRow.attendanceStatus === 'CANCELLED') {
+                              return <span className={`text-sm ${sub}`}>Bạn đã huỷ đăng ký.</span>;
+                            }
+                            if (myRow.attendanceStatus === 'PENDING') {
+                              return <span className="text-sm text-amber-600 font-medium">Đăng ký của bạn đang chờ duyệt.</span>;
+                            }
+                            if (myRow.attendanceStatus === 'WAITLIST') {
+                              return <span className="text-sm text-purple-600 font-medium">Bạn đang trong danh sách chờ.</span>;
+                            }
+                            return (
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm text-green-600 font-medium">Bạn đã đăng ký ({myRow.attendanceStatus}).</span>
+                                {['PENDING', 'REGISTERED', 'WAITLIST'].includes(myRow.attendanceStatus) && (
+                                  <button
+                                    onClick={handleCancelRegistration}
+                                    disabled={isCancelling}
+                                    className="px-3 py-1.5 text-sm bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+                                  >
+                                    {isCancelling ? 'Đang huỷ...' : 'Huỷ đăng ký'}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {isLoadingAttendees ? (
+                        <div className="animate-pulse space-y-2">
+                          {[1, 2, 3].map(i => <div key={i} className="h-10 bg-gray-200 rounded" />)}
+                        </div>
+                      ) : !attendees?.length ? (
+                        <p className={`text-sm ${sub}`}>Chưa có ai đăng ký.</p>
+                      ) : (
+                        <div className="overflow-x-auto rounded-lg border border-gray-200">
+                          <table className="w-full text-sm">
+                            <thead className={`${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                              <tr>
+                                {['Họ tên', 'MSSV', 'Ngày đăng ký', 'Trạng thái', 'Check-in', 'Điểm', ...(can('approveattendance') ? ['Hành động'] : [])].map(h => (
+                                  <th key={h} className={`px-3 py-2 text-left text-xs font-semibold ${sub}`}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {attendees.map(a => (
+                                <tr key={a.attendId} className={`border-t ${border} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
+                                  <td className={`px-3 py-2.5 font-medium ${text}`}>{a.memberName}</td>
+                                  <td className={`px-3 py-2.5 ${sub}`}>{a.studentId || '—'}</td>
+                                  <td className={`px-3 py-2.5 ${sub}`}>{new Date(a.registrationDate).toLocaleDateString('vi-VN')}</td>
+                                  <td className="px-3 py-2.5">
+                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${attendanceStatusBadge(a.attendanceStatus)}`}>
+                                      {a.attendanceStatus}
+                                    </span>
+                                  </td>
+                                  <td className={`px-3 py-2.5 ${sub}`}>
+                                    {a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('vi-VN') : '—'}
+                                  </td>
+                                  <td className={`px-3 py-2.5 font-semibold ${a.score != null ? 'text-blue-500' : sub}`}>
+                                    {a.score != null ? `${a.score}/100` : '—'}
+                                  </td>
+                                  {can('approveattendance') && (
+                                    <td className="px-3 py-2.5">
+                                      <div className="flex items-center gap-1.5">
+                                        {a.attendanceStatus === 'PENDING' && (
+                                          <>
+                                            <button
+                                              onClick={() => handleApprove(a.userId)}
+                                              disabled={isApproving}
+                                              className="px-2.5 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 transition-colors"
+                                            >
+                                              Duyệt
+                                            </button>
+                                            <button
+                                              onClick={() => handleReject(a.userId, a.fullName)}
+                                              disabled={isRejecting}
+                                              className="px-2.5 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 transition-colors"
+                                            >
+                                              Từ chối
+                                            </button>
+                                          </>
+                                        )}
+                                        {a.attendanceStatus === 'WAITLIST' && (
+                                          <button
+                                            onClick={() => handleApprove(a.userId)}
+                                            disabled={isApproving}
+                                            className="px-2.5 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                                          >
+                                            Thêm vào
+                                          </button>
+                                        )}
+                                        {['PENDING', 'REGISTERED', 'WAITLIST'].includes(a.attendanceStatus) && (
+                                          <button
+                                            onClick={() => handleReject(a.userId, a.fullName)}
+                                            disabled={isRejecting}
+                                            title="Huỷ đăng ký của thành viên này"
+                                            className={`px-2.5 py-1 text-xs border ${border} ${sub} rounded hover:opacity-70 transition-colors ${a.attendanceStatus === 'PENDING' ? 'hidden' : ''}`}
+                                          >
+                                            Huỷ
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                )}
+
+                {/* ── PENDING APPROVALS ── */}
+                {activeTab === 'pending' && can('approveattendance') && (
+                  <div className="space-y-4">
+                    {/* Header + bulk action */}
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <div>
+                        <h3 className={`font-semibold ${text}`}>
+                          <i className="fas fa-user-clock mr-2 text-amber-500" />
+                          Chờ duyệt đăng ký
+                        </h3>
+                        <p className={`text-xs mt-0.5 ${sub}`}>
+                          {pendingCount > 0
+                            ? `${pendingCount} đơn đang chờ duyệt`
+                            : 'Không có đơn nào đang chờ duyệt'}
+                        </p>
+                      </div>
+                      {selectedPendingIds.length > 0 && (
+                        <button
+                          onClick={handleBulkApprove}
+                          disabled={isBulkApproving}
+                          className="px-4 py-2 text-sm font-semibold bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 transition-all shadow-sm flex items-center gap-2"
+                        >
+                          {isBulkApproving
+                            ? <><i className="fas fa-spinner fa-spin" /> Đang duyệt...</>
+                            : <><i className="fas fa-check-double" /> Duyệt {selectedPendingIds.length} đã chọn</>}
+                        </button>
+                      )}
+                    </div>
+
+                    {isLoadingAttendees && (
+                      <div className="flex justify-center py-8">
+                        <i className={`fas fa-spinner fa-spin text-2xl ${sub}`} />
+                      </div>
+                    )}
+
+                    {!isLoadingAttendees && pendingCount === 0 && (
+                      <div className={`flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed ${isDark ? 'border-gray-600' : 'border-gray-200'}`}>
+                        <i className={`fas fa-check-circle text-3xl mb-3 text-green-400`} />
+                        <p className={`${sub} text-sm`}>Không có đơn chờ duyệt</p>
+                      </div>
+                    )}
+
+                    {!isLoadingAttendees && pendingCount > 0 && (() => {
+                      const pendingList = attendees?.filter(a => a.attendanceStatus === 'PENDING') ?? [];
+                      const allSelected = pendingList.length > 0 && selectedPendingIds.length === pendingList.length;
+                      const toggleAll = () => {
+                        if (allSelected) setSelectedPendingIds([]);
+                        else setSelectedPendingIds(pendingList.map(a => a.userId));
+                      };
+                      const toggleOne = (uid: string) => {
+                        setSelectedPendingIds(prev =>
+                          prev.includes(uid) ? prev.filter(x => x !== uid) : [...prev, uid]
+                        );
+                      };
+                      return (
+                        <div className={`rounded-xl border ${border} overflow-hidden`}>
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className={isDark ? 'bg-gray-700/50' : 'bg-gray-50'}>
+                                <th className="px-3 py-2.5 w-10">
+                                  <input
+                                    type="checkbox"
+                                    checked={allSelected}
+                                    onChange={toggleAll}
+                                    className="w-4 h-4 rounded text-blue-500"
+                                  />
+                                </th>
+                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thành viên</th>
+                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>MSSV</th>
+                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Đăng ký lúc</th>
+                                <th className={`px-3 py-2.5 text-left font-medium ${sub}`}>Thao tác</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {pendingList.map(a => (
+                                <tr key={a.attendId} className={`border-t ${border} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors`}>
+                                  <td className="px-3 py-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedPendingIds.includes(a.userId)}
+                                      onChange={() => toggleOne(a.userId)}
+                                      className="w-4 h-4 rounded text-blue-500"
+                                    />
+                                  </td>
+                                  <td className={`px-3 py-3 font-medium ${text}`}>{a.memberName}</td>
+                                  <td className={`px-3 py-3 ${sub}`}>{a.studentId || '—'}</td>
+                                  <td className={`px-3 py-3 ${sub}`}>
+                                    {new Date(a.registrationDate).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </td>
+                                  <td className="px-3 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => handleApprove(a.userId)}
+                                        disabled={isApproving}
+                                        className="px-3 py-1 text-xs font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
+                                      >
+                                        <i className="fas fa-check mr-1" />Duyệt
+                                      </button>
+                                      <button
+                                        onClick={() => handleReject(a.userId, a.fullName)}
+                                        disabled={isRejecting}
+                                        className="px-3 py-1 text-xs font-semibold border border-red-300 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                                      >
+                                        <i className="fas fa-times mr-1" />Từ chối
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* ── CHECKIN ── */}
+                {activeTab === 'checkin' && (
+                  <div className="space-y-5">
+                    {/* generate code */}
+                    {can('checkin') && (
+                      <div className={`p-4 rounded-lg border ${border}`}>
+                        <h3 className={`font-semibold mb-1 ${text}`}>Tạo mã điểm danh</h3>
+                        <p className={`text-xs mb-3 ${sub}`}>Mã có hiệu lực 15 phút. Chia sẻ cho thành viên để điểm danh.</p>
+                        <button onClick={handleGenerateCode} disabled={isGeneratingCode}
+                          className="px-4 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors">
+                          {isGeneratingCode ? 'Đang tạo...' : 'Tạo mã mới'}
+                        </button>
+                        {codeError && <p className="text-sm text-red-500 mt-2">{codeError}</p>}
+                        {generatedCode && (
+                          <div className="mt-4">
+                            <div className="inline-block bg-orange-50 border-2 border-orange-300 rounded-xl px-8 py-4 text-center">
+                              <p className="text-4xl font-black tracking-widest text-orange-600 font-mono">
+                                {generatedCode.code}
+                              </p>
+                              <p className={`text-xs mt-1 ${sub}`}>
+                                Hết hạn lúc {new Date(generatedCode.expiresAt).toLocaleTimeString('vi-VN')}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Participant: Mã QR điểm danh của tôi (để BTC quét) */}
+                    {currentUser && event?.status === 'ONGOING' && isUserRegistered && (
+                      <div className={`p-4 rounded-lg border ${border}`}>
+                        <h3 className={`font-semibold mb-2 ${text}`}>Mã QR điểm danh của tôi</h3>
+                        <p className={`text-xs mb-3 ${sub}`}>
+                          Mã QR cũng đã được gửi qua email khi bạn đăng ký. Bạn có thể dùng mã trên màn hình này hoặc trong email — đưa cho ban tổ chức quét để điểm danh.
+                        </p>
+                        {isLoadingMyQr ? (
+                          <div className="animate-pulse h-48 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+                        ) : (myCheckInQr?.token ?? myCheckInQr?.qrContent) ? (
+                          <div className="flex flex-col items-start gap-2">
+                            <div className="rounded-lg border border-gray-200 dark:border-gray-600 p-2 bg-white inline-block">
+                              <QRCodeSVG
+                                value={myCheckInQr.token ?? myCheckInQr.qrContent ?? ''}
+                                size={200}
+                                level="M"
+                                bgColor="#ffffff"
+                                fgColor="#000000"
+                                title="QR điểm danh"
+                              />
+                            </div>
+                            {myCheckInQr.expiresAt && (
+                              <p className={`text-xs ${sub}`}>
+                                Hết hạn lúc {new Date(myCheckInQr.expiresAt).toLocaleTimeString('vi-VN')}
+                              </p>
+                            )}
+                            {/* Dev: copy token để test điểm danh QR khi không có máy quét */}
+                            {import.meta.env.DEV && (
+                              <details className={`mt-2 text-xs ${sub}`}>
+                                <summary className="cursor-pointer hover:underline">Copy mã để test (chỉ hiện khi dev)</summary>
+                                <code className="block mt-1 p-2 bg-black/10 rounded break-all select-all" title="Copy để dán vào ô Điểm danh bằng QR">
+                                  {myCheckInQr.token ?? myCheckInQr.qrContent}
+                                </code>
+                              </details>
+                            )}
+                          </div>
+                        ) : (
+                          <p className={`text-sm ${sub}`}>Bạn chưa đăng ký sự kiện này. Vui lòng đăng ký ở tab Đăng ký trước.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Organizer: Điểm danh bằng QR (camera hoặc dán token) */}
+                    {can('checkin') && (
+                      <div className={`p-4 rounded-lg border ${border}`}>
+                        <h3 className={`font-semibold mb-2 ${text}`}>Điểm danh bằng QR</h3>
+                        <p className={`text-xs mb-3 ${sub}`}>
+                          Quét mã QR của người tham gia bằng camera, hoặc dán nội dung (token) đã quét từ thiết bị khác.
+                        </p>
+                        <div className={`text-xs mb-3 p-3 rounded-lg border ${border} ${isDark ? 'bg-black/20' : 'bg-gray-50'}`}>
+                          <p className={`font-medium ${text} mb-1`}>Điện thoại cần gì để quét và gửi lên server?</p>
+                          <p className={`${sub} mb-1`}>Chỉ mở camera / app quét QR mặc định của điện thoại <strong>không đủ</strong> — không gửi được lên server. Cần:</p>
+                          <ul className={`list-disc list-inside ${sub} space-y-0.5`}>
+                            <li>Mở <strong>trình duyệt</strong> (Chrome, Safari…) trên điện thoại</li>
+                            <li>Truy cập <strong>đúng trang web app</strong> (cùng địa chỉ với app này)</li>
+                            <li><strong>Đăng nhập</strong> bằng tài khoản Manager/Admin của CLB</li>
+                            <li>Vào sự kiện này → tab <strong>Điểm danh</strong> → bấm <strong>&quot;Quét bằng camera&quot;</strong></li>
+                            <li>Cho phép camera khi trình duyệt yêu cầu</li>
+                          </ul>
+                          <p className={`${sub} mt-1`}>Sau đó hướng camera vào mã QR (trên màn hình máy tính hoặc điện thoại người tham gia). Quét xong app sẽ tự gửi lên server và điểm danh.</p>
+                        </div>
+
+                        {!showQrScanner ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setShowQrScanner(true)}
+                              className="mb-3 px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors inline-flex items-center gap-2"
+                            >
+                              <i className="fas fa-camera" /> Quét bằng camera
+                            </button>
+                            <div className="flex flex-col sm:flex-row gap-2 max-w-md mt-2">
+                              <input
+                                type="text"
+                                value={qrToken}
+                                onChange={e => { setQrToken(e.target.value); setQrError(null); setQrSuccess(null); }}
+                                placeholder="Hoặc dán mã đã quét từ QR..."
+                                className={`flex-1 min-w-0 px-3 py-2 text-sm border rounded-lg outline-none font-mono ${inputCls}`}
+                              />
+                              <button
+                                onClick={() => handleCheckInByQr()}
+                                disabled={isCheckingInByQr || !qrToken.trim()}
+                                className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                              >
+                                {isCheckingInByQr ? 'Đang xử lý...' : 'Điểm danh'}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <QRScanner
+                            scannerId={`event-qr-${eventId}`}
+                            onScan={(token) => handleCheckInByQr(token)}
+                            onClose={() => setShowQrScanner(false)}
+                            className="mt-2"
+                          />
+                        )}
+
+                        {qrError && <p className="text-sm text-red-500 mt-2">{qrError}</p>}
+                        {qrSuccess && <p className="text-sm text-green-600 font-medium mt-2">{qrSuccess}</p>}
+                      </div>
+                    )}
+
+                  </div>
+                )}
+
+                {/* ── CHỨC VỤ SỰ KIỆN ── */}
+                {activeTab === 'roles' && (can('manage_collaborator') || isManager) && (
+                  <EventRolesTab
+                    eventId={eventId}
+                    clubId={event.clubId ?? 0}
+                    isDark={isDark}
+                  />
+                )}
+
+                {/* ── THÀNH VIÊN SỰ KIỆN ── */}
+                {activeTab === 'members' && (can('manage_collaborator') || isManager) && (
+                  <EventMembersTab
+                    eventId={eventId}
+                    clubId={event.clubId ?? 0}
+                    isDark={isDark}
+                    eventStatus={event.status}
+                  />
+                )}
+
+              </div>
+            </div>
+          </div>
+        </main >
+
+        {/* Confirm Dialog */}
+        <ConfirmDialog
+          isOpen={confirmOpen}
+          title={confirmConfig.title}
+          message={confirmConfig.message}
+          type={confirmConfig.type}
+          confirmText={confirmConfig.confirmText}
+          onConfirm={() => confirmAction?.()}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      </div >
     );
   }
 
@@ -1603,8 +1623,8 @@ export default function EventDetailPage() {
                   key={t.key}
                   onClick={() => setActiveTab(t.key)}
                   className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === t.key
-                      ? "border-blue-500 text-blue-600"
-                      : `border-transparent ${sub} hover:text-blue-500`
+                    ? "border-blue-500 text-blue-600"
+                    : `border-transparent ${sub} hover:text-blue-500`
                     }`}
                 >
                   {t.label}
@@ -1986,23 +2006,23 @@ export default function EventDetailPage() {
                     {event.status === "REGISTRATION_OPEN" && regDeadline && (
                       <div
                         className={`mb-4 px-4 py-3 rounded-lg border flex flex-wrap items-center justify-between gap-2 ${isRegDeadlinePassed
-                            ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
-                            : isRegNotStarted
-                              ? "bg-amber-50 border-amber-200"
-                              : regDeadline - now < 30 * 60 * 1000
-                                ? "bg-orange-50 border-orange-200"
-                                : "bg-green-50 border-green-200"
+                          ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                          : isRegNotStarted
+                            ? "bg-amber-50 border-amber-200"
+                            : regDeadline - now < 30 * 60 * 1000
+                              ? "bg-orange-50 border-orange-200"
+                              : "bg-green-50 border-green-200"
                           }`}
                       >
                         {isRegDeadlinePassed ? (
                           <span className="text-sm font-medium text-red-600">
-                            ⏰ Đã hết thời gian đăng ký (kết thúc lúc{" "}
+                            <i className="fas fa-clock mr-1" /> Đã hết thời gian đăng ký (kết thúc lúc{" "}
                             {fmtDate(event.registrationEndDate)})
                           </span>
                         ) : isRegNotStarted ? (
                           <>
                             <span className="text-sm font-medium text-amber-700">
-                              ⏳ Chưa bắt đầu đăng ký — mở lúc{" "}
+                              <i className="fas fa-hourglass-half mr-1" /> Chưa bắt đầu đăng ký — mở lúc{" "}
                               {fmtDate(event.registrationStartDate)}
                             </span>
                             <span className="text-sm font-mono font-bold text-amber-700">
@@ -2013,17 +2033,17 @@ export default function EventDetailPage() {
                           <>
                             <span
                               className={`text-sm font-medium ${regDeadline - now < 30 * 60 * 1000
-                                  ? "text-orange-600"
-                                  : "text-green-700"
+                                ? "text-orange-600"
+                                : "text-green-700"
                                 }`}
                             >
-                              🟢 Đăng ký đang mở — đóng lúc{" "}
+                              <i className="fas fa-circle text-green-500 mr-1 text-xs" /> Đăng ký đang mở — đóng lúc{" "}
                               {fmtDate(event.registrationEndDate)}
                             </span>
                             <span
                               className={`text-sm font-mono font-bold ${regDeadline - now < 30 * 60 * 1000
-                                  ? "text-orange-600"
-                                  : "text-green-700"
+                                ? "text-orange-600"
+                                : "text-green-700"
                                 }`}
                             >
                               Còn {fmtCountdown(regDeadline)}
@@ -2203,7 +2223,7 @@ export default function EventDetailPage() {
                                           </button>
                                           <button
                                             onClick={() =>
-                                              handleReject(a.userId)
+                                              handleReject(a.userId, a.fullName)
                                             }
                                             disabled={isRejecting}
                                             className="px-2.5 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 transition-colors"
@@ -2229,7 +2249,7 @@ export default function EventDetailPage() {
                                         "WAITLIST",
                                       ].includes(a.attendanceStatus) && (
                                           <button
-                                            onClick={() => handleReject(a.userId)}
+                                            onClick={() => handleReject(a.userId, a.fullName)}
                                             disabled={isRejecting}
                                             title="Huỷ đăng ký của thành viên này"
                                             className={`px-2.5 py-1 text-xs border ${border} ${sub} rounded hover:opacity-70 transition-colors ${a.attendanceStatus === "PENDING" ? "hidden" : ""}`}
@@ -2457,7 +2477,7 @@ export default function EventDetailPage() {
                                         Duyệt
                                       </button>
                                       <button
-                                        onClick={() => handleReject(a.userId)}
+                                        onClick={() => handleReject(a.userId, a.fullName)}
                                         disabled={isRejecting}
                                         className="px-3 py-1 text-xs font-semibold border border-red-300 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
                                       >
@@ -2523,7 +2543,7 @@ export default function EventDetailPage() {
                                       Duyệt
                                     </button>
                                     <button
-                                      onClick={() => handleReject(a.userId)}
+                                      onClick={() => handleReject(a.userId, a.fullName)}
                                       disabled={isRejecting}
                                       className="px-3 py-1 text-xs font-semibold border border-red-300 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
                                     >

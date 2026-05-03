@@ -78,7 +78,7 @@ export default function MyEventsPage() {
                     {/* Header */}
                     <div className="mb-8">
                         <h1 className="text-3xl font-bold text-gray-900">
-                            📅 Sự kiện của tôi
+                            <i className="fas fa-calendar-alt mr-2 text-orange-500" /> Sự kiện của tôi
                         </h1>
                         <p className="text-gray-500 mt-2">
                             Xem tất cả sự kiện bạn tham gia hoặc quản lý — thực hiện nhanh các tác vụ điểm danh, check-in.
