@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { encodeId } from '~/utils/hashId';
 import { useGetAllEventsQuery } from '~/cores/api';
 
 /* ── helpers ── */
@@ -153,7 +154,7 @@ const UpcomingEvents: React.FC = () => {
                         return (
                             <div
                                 key={event.eventId}
-                                onClick={() => navigate(`/public/events/${event.eventId}`)}
+                                onClick={() => navigate(`/public/events/${encodeId(event.eventId)}`)}
                                 className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer hover:-translate-y-1 border border-gray-100"
                             >
                                 {/* Image / gradient */}
@@ -211,7 +212,7 @@ const UpcomingEvents: React.FC = () => {
                                     </div>
 
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/public/events/${event.eventId}`); }}
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/public/events/${encodeId(event.eventId)}`); }}
                                         className="mt-4 w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:shadow-lg"
                                     >
                                         Xem chi tiết

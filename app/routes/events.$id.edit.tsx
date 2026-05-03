@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { decodeId, encodeId } from '~/utils/hashId';
 import {
     useGetEventByIdQuery,
     useUpdateEventMutation,
@@ -148,7 +149,8 @@ export default function EditEventPage() {
     const { isDark, toggleTheme } = useTheme();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
-    const { data: event, isLoading: isLoadingEvent } = useGetEventByIdQuery(Number(id));
+    const eventId = Number(id) || decodeId(id ?? '');
+    const { data: event, isLoading: isLoadingEvent } = useGetEventByIdQuery(eventId);
     const [updateEvent, { isLoading: isUpdating }] = useUpdateEventMutation();
     const [createSession] = useCreateSessionMutation();
     const [updateSession] = useUpdateSessionMutation();
@@ -158,7 +160,7 @@ export default function EditEventPage() {
     const [initialized, setInitialized] = useState(false);
 
     // Per-event permission gate
-    const { canEdit, isLoading: isLoadingPerm } = useEventPermission(event?.clubId ?? 0, Number(id));
+    const { canEdit, isLoading: isLoadingPerm } = useEventPermission(event?.clubId ?? 0, eventId);
     /** IDs của sessions hiện có (id > 0) đã bị xóa khỏi UI — cần gọi DELETE */
     const [deletedSessionIds, setDeletedSessionIds] = useState<number[]>([]);
 

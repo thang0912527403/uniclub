@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
+import { encodeId } from '~/utils/hashId';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
 import { useGetAllEventsQuery } from '~/cores/api';
@@ -391,7 +392,7 @@ const PublicEventsPage: React.FC = () => {
                                         key={ev.eventId}
                                         event={ev}
                                         clubName={ev.clubId ? clubMap[ev.clubId] : undefined}
-                                        onClick={() => navigate(`/public/events/${ev.eventId}`)}
+                                        onClick={() => navigate(`/public/events/${encodeId(ev.eventId)}`)}
                                     />
                                 ))}
                             </div>

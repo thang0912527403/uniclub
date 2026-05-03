@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router';
+import { decodeId } from '~/utils/hashId';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
 import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyRegistrationQuery, useCancelRegistrationMutation } from '~/cores/api';
@@ -62,8 +63,8 @@ function CalendarCard({ label, dateStr }: { label: string; dateStr?: string }) {
 const PublicEventDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const eventId = Number(id) || decodeId(id ?? '');
     const { show: showNotification } = useNotification();
-    const eventId = Number(id);
     const { data: event, isLoading, error } = useGetEventByIdQuery(eventId);
     const { data: user } = useGetCurrentUserQuery();
     const { data: myRegistration } = useGetMyRegistrationQuery(eventId, { skip: !user });
@@ -153,7 +154,7 @@ const PublicEventDetailPage: React.FC = () => {
                             )}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                             {/* Back button overlay */}
-                            <button onClick={() => navigate(-1)} className="absolute top-24 left-6 z-10 flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg">
+                            <button onClick={() => navigate(-1)} className="absolute top-4 left-6 z-10 flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg">
                                 <i className="fas fa-arrow-left" /> Quay lại
                             </button>
                         </div>

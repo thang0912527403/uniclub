@@ -21,7 +21,7 @@ interface Props {
 const ALL_EVENT_POLICIES = [
   { name: "viewevent", label: "Xem sự kiện" },
   { name: "editevent", label: "Chỉnh sửa sự kiện" },
-  { name: "deleteevent", label: "Xóa sự kiện" },
+  { name: "deleteevent", label: "Hủy sự kiện" },
   { name: "managesession", label: "Quản lý buổi họp" },
   { name: "openregistration", label: "Mở đăng ký" },
   { name: "startevent", label: "Bắt đầu sự kiện" },
@@ -72,7 +72,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
   // Filter club members that are not already in the event
   const existingMemberIds = new Set(members.map((m) => m.userId));
   const availableMembers = clubMembers.filter(
-    (m) => m.status === "ACTIVE" && !existingMemberIds.has(m.userId)
+    (m) => (m.status || "").toLowerCase() === "active" && !existingMemberIds.has(m.userId)
   );
 
   const filteredMembers = memberSearch.trim()
