@@ -19,20 +19,25 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
     // GET /RecruitmentCampaign  (admin: all campaigns)
     getRecruitmentCampaigns: builder.query<RecruitmentCampaign[], void>({
       query: () => '/RecruitmentCampaign',
-      transformResponse: (response: ApiResponse<RecruitmentCampaign[]>) => response.data.map(normalizeCampaign),
+      transformResponse: (response: ApiResponse<RecruitmentCampaign[]> | RecruitmentCampaign[]) =>
+        Array.isArray(response) ? response : response.data,
       providesTags: ['RecruitmentCampaign'],
     }),
 
+    // GET /club/{clubId}/RecruitmentCampaign
     getRecruitmentCampaignsByClubId: builder.query<RecruitmentCampaign[], number>({
-      query: (clubId) => `/RecruitmentCampaign/club/${clubId}`,
-      transformResponse: (response: ApiResponse<RecruitmentCampaign[]>) => response.data.map(normalizeCampaign),
+      query: (clubId) => `/club/${clubId}/RecruitmentCampaign`,
+      transformResponse: (response: ApiResponse<RecruitmentCampaign[]> | RecruitmentCampaign[]) =>
+        Array.isArray(response) ? response : response.data,
       providesTags: (result, error, clubId) => [{ type: 'RecruitmentCampaign', id: `club-${clubId}` }],
     }),
 
-    getRecruitmentCampaign: builder.query<RecruitmentCampaign, number>({
-      query: (id) => `/RecruitmentCampaign/${id}`,
-      transformResponse: (response: ApiResponse<RecruitmentCampaign>) => normalizeCampaign(response.data),
-      providesTags: ['RecruitmentCampaign'],
+    // GET /club/{clubId}/RecruitmentCampaign/{id}
+    getRecruitmentCampaign: builder.query<RecruitmentCampaign, { clubId: number; id: number }>({
+      query: ({ clubId, id }) => `/club/${clubId}/RecruitmentCampaign/${id}`,
+      transformResponse: (response: ApiResponse<RecruitmentCampaign> | RecruitmentCampaign) =>
+        'data' in response ? response.data : response,
+      providesTags: (result, error, { id }) => [{ type: 'RecruitmentCampaign', id }],
     }),
 
     // POST /club/{clubId}/RecruitmentCampaign

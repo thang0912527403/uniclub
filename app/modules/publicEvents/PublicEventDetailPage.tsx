@@ -4,8 +4,8 @@ import { decodeId } from '~/utils/hashId';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
 import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyRegistrationQuery, useCancelRegistrationMutation } from '~/cores/api';
+import { useGetClubPostsByEventIdQuery } from '~/cores/api/clubApi';
 import { useNotification } from '~/components/Notification';
-import { useGetClubPostsByEventIdQuery } from '~/cores/api';
 /* ── helpers ── */
 function fmtFullDate(dateStr?: string) {
     if (!dateStr) return 'TBD';
@@ -293,7 +293,18 @@ const PublicEventDetailPage: React.FC = () => {
                                             </div>
                                         )}
 
-                                        {/* My status */}
+                                        {/* ── Linked Post Button ── */}
+                                        {eventPosts.length > 0 && (
+                                            <button
+                                                onClick={() => navigate(`/public/news/${eventPosts[0].postId}`)}
+                                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-sm"
+                                            >
+                                                <i className="fas fa-newspaper" />
+                                                Xem bài đăng sự kiện
+                                            </button>
+                                        )}
+
+                                        {/* ── My Registration Status Badge ── */}
                                         {myStatus && (
                                             <div className={`p-3 rounded-xl border text-center ${getMyStatusLabel(myStatus).color}`}>
                                                 <p className="text-sm font-semibold flex items-center justify-center gap-2">

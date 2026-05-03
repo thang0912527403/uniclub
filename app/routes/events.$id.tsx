@@ -32,7 +32,7 @@ import { useSidebarToggle } from "~/hooks/useSidebarToggle";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
 import { useEventPermission } from "~/hooks/useEventPermission";
 import { useClubPolicy } from "~/hooks/useClubPolicy";
-import { useGetClubMembersQuery } from "~/cores/api/clubApi";
+import { useGetClubMembersQuery, useGetClubPostsByEventIdQuery } from "~/cores/api/clubApi";
 import { SessionList } from "~/modules/events/components/SessionList";
 import { SessionForm } from "~/modules/events/components/SessionForm";
 import { useNotification } from "~/components/Notification";
@@ -54,6 +54,7 @@ import {
 
 import { EventRolesTab } from "~/modules/events/components/EventRolesTab";
 import { EventMembersTab } from "~/modules/events/components/EventMembersTab";
+import { CreatePostModal } from "~/modules/clubs/posts/clubpost";
 
 type Tab = "sessions" | "registration" | "checkin" | "pending" | "members" | "roles";
 
@@ -147,6 +148,7 @@ export default function EventDetailPage() {
 
   const eventPerm = useEventPermission(event?.clubId ?? 0, eventId);
   const clubPolicy = useClubPolicy();
+  const { data: eventPosts = [] } = useGetClubPostsByEventIdQuery(eventId, { skip: !eventId });
 
   // Back-compat helpers for older checks in this route
   const can = (policyName: string) => eventPerm.can?.(policyName) ?? false;
@@ -1534,7 +1536,25 @@ export default function EventDetailPage() {
                   </span>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {(canEdit || canDelete || canOpenRegistration || canStartComplete) && (
+                  {eventPosts.length > 0 && (
+                    <button
+                      onClick={() => navigate(`/club/post/edit/${eventPosts[0].postId}`)}
+                      className="px-3 py-2 text-sm bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+                    >
+                      <i className="fas fa-newspaper mr-1.5" />
+                      Xem bài đăng
+                    </button>
+                  )}
+                  {clubPolicy.hasPolicy("viewpost") && (
+                    <button
+                      onClick={() => setShowCreatePostModal(true)}
+                      className="px-3 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                    >
+                      <i className="fas fa-pen mr-1.5" />
+                      Tạo bài đăng
+                    </button>
+                  )}
+                  {(canEdit || canOpenRegistration || canStartComplete) && (
                     <>
                       {canEdit && !['CANCELED', 'ENDED'].includes(event.status ?? '') && (
                         <button
