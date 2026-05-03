@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
+import { encodeId } from '~/utils/hashId';
 import { Footer } from '../home/components';
 import Navbar from '../../components/Navbar';
 import { useGetAllEventsQuery } from '~/cores/api';
@@ -173,9 +174,23 @@ const PublicEventsPage: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<FilterKey>('ALL');
     const [clubFilter, setClubFilter] = useState<number | 'ALL'>('ALL');
     const [page, setPage] = useState(1);
-    const PAGE_SIZE = 100; // fetch all for client-side filtering
+    const [pageSize, setPageSize] = useState(10);
 
-    const { data: events = [], isLoading, error } = useGetAllEventsQuery({ pageNumber: 1, pageSize: PAGE_SIZE });
+    // Map FilterKey → API status string (UPCOMING_7D không map trực tiếp → gửi undefined, lọc client)
+    const apiStatus = statusFilter === 'ALL' || statusFilter === 'UPCOMING_7D'
+        ? undefined
+        : statusFilter; // 'REGISTRATION_OPEN' | 'COMPLETED'
+    const apiClubId = clubFilter === 'ALL' ? undefined : clubFilter;
+
+    const { data, isLoading, isFetching, error } = useGetAllEventsQuery({
+        pageNumber: page,
+        pageSize,
+        status: apiStatus,
+        clubId: apiClubId,
+    });
+    const events = data?.items ?? [];
+    const total = data?.total ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const { data: clubs = [] } = useGetClubsQuery();
 
     // Build club id → name map
@@ -185,53 +200,46 @@ const PublicEventsPage: React.FC = () => {
         return map;
     }, [clubs]);
 
-    // Get unique clubs that have events
+    // Get unique clubs that have events (from current page — for dropdown hints)
     const clubsWithEvents = useMemo(() => {
         const ids = new Set<number>();
         events.forEach(ev => { if (ev.clubId) ids.add(ev.clubId); });
         return Array.from(ids).map(id => ({ id, name: clubMap[id] || `CLB #${id}` })).sort((a, b) => a.name.localeCompare(b.name));
     }, [events, clubMap]);
 
-    // Filter events
+    // Client-side search only (within current server page)
     const filtered = useMemo(() => {
+        if (!search && statusFilter !== 'UPCOMING_7D') return events;
         return events.filter((ev) => {
-            // search
             const matchSearch = !search ||
                 ev.eventName.toLowerCase().includes(search.toLowerCase()) ||
                 (ev.location ?? '').toLowerCase().includes(search.toLowerCase()) ||
                 (ev.description ?? '').toLowerCase().includes(search.toLowerCase());
 
-            // status filter
-            let matchStatus = true;
-            switch (statusFilter) {
-                case 'UPCOMING_7D':
-                    matchStatus = (ev.status === 'PLANNED' || ev.status === 'REGISTRATION_OPEN') && isUpcomingWithin7Days(ev.startDate);
-                    break;
-                case 'REGISTRATION_OPEN':
-                    matchStatus = ev.status === 'REGISTRATION_OPEN';
-                    break;
-                case 'COMPLETED':
-                    matchStatus = ev.status === 'COMPLETED';
-                    break;
-                case 'ALL':
-                default:
-                    matchStatus = true;
-            }
+            // UPCOMING_7D cần lọc thêm client-side vì backend không hỗ trợ
+            const matchUpcoming = statusFilter !== 'UPCOMING_7D' || isUpcomingWithin7Days(ev.startDate);
 
-            // club filter
-            const matchClub = clubFilter === 'ALL' || ev.clubId === clubFilter;
-
-            return matchSearch && matchStatus && matchClub;
+            return matchSearch && matchUpcoming;
         });
-    }, [events, search, statusFilter, clubFilter]);
+    }, [events, search, statusFilter]);
 
-    // Count per filter for badges
+    // Counts shown on filter badges (from current page data)
     const counts = useMemo(() => ({
-        ALL: events.length,
-        UPCOMING_7D: events.filter(ev => (ev.status === 'PLANNED' || ev.status === 'REGISTRATION_OPEN') && isUpcomingWithin7Days(ev.startDate)).length,
-        REGISTRATION_OPEN: events.filter(ev => ev.status === 'REGISTRATION_OPEN').length,
-        COMPLETED: events.filter(ev => ev.status === 'COMPLETED').length,
-    }), [events]);
+        ALL: total,
+        UPCOMING_7D: events.filter(ev => isUpcomingWithin7Days(ev.startDate)).length,
+        REGISTRATION_OPEN: statusFilter === 'REGISTRATION_OPEN' ? total : events.filter(ev => ev.status === 'REGISTRATION_OPEN').length,
+        COMPLETED: statusFilter === 'COMPLETED' ? total : events.filter(ev => ev.status === 'COMPLETED').length,
+    }), [events, total, statusFilter]);
+
+    // Page numbers to display (with ellipsis gaps)
+    const pageNumbers = useMemo(() => {
+        return Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2);
+    }, [totalPages, page]);
+
+    // Reset page khi thay đổi filter
+    const handleStatusFilter = (key: FilterKey) => { setStatusFilter(key); setPage(1); };
+    const handleClubFilter = (val: number | 'ALL') => { setClubFilter(val); setPage(1); };
 
     return (
         <div className="min-h-screen bg-white flex flex-col">
@@ -260,9 +268,7 @@ const PublicEventsPage: React.FC = () => {
             {/* ── Filters ── */}
             <section className="sticky top-16 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm px-6 md:px-12 py-4">
                 <div className="max-w-7xl mx-auto space-y-3">
-                    {/* Row 1: Search + Club dropdown */}
                     <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-                        {/* Search */}
                         <div className="relative flex-1 max-w-md">
                             <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
@@ -273,16 +279,13 @@ const PublicEventsPage: React.FC = () => {
                                 className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 transition-all"
                             />
                         </div>
-
-                        {/* Club filter */}
                         <div className="relative">
                             <i className="fas fa-building absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" />
                             <select
                                 value={clubFilter === 'ALL' ? 'ALL' : clubFilter}
                                 onChange={(e) => {
                                     const v = e.target.value;
-                                    setClubFilter(v === 'ALL' ? 'ALL' : Number(v));
-                                    setPage(1);
+                                    handleClubFilter(v === 'ALL' ? 'ALL' : Number(v));
                                 }}
                                 className="pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 appearance-none cursor-pointer min-w-[200px]"
                             >
@@ -294,13 +297,11 @@ const PublicEventsPage: React.FC = () => {
                             <i className="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs" />
                         </div>
                     </div>
-
-                    {/* Row 2: Status tabs */}
                     <div className="flex gap-2 flex-wrap">
                         {STATUS_FILTERS.map((f) => (
                             <button
                                 key={f.key}
-                                onClick={() => { setStatusFilter(f.key); setPage(1); }}
+                                onClick={() => handleStatusFilter(f.key)}
                                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer flex items-center gap-2 ${statusFilter === f.key
                                     ? 'bg-orange-500 text-white shadow-md'
                                     : 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
@@ -320,13 +321,29 @@ const PublicEventsPage: React.FC = () => {
             {/* ── Event Grid ── */}
             <section className="flex-1 py-12 px-6 md:px-12 bg-gray-50">
                 <div className="max-w-7xl mx-auto">
-                    {/* Count */}
+                    {/* Count + Page size selector */}
                     {!isLoading && !error && (
-                        <p className="text-sm text-gray-500 mb-6">
-                            Tìm thấy <span className="font-semibold text-orange-500">{filtered.length}</span> sự kiện
-                            {statusFilter !== 'ALL' && <span> · {STATUS_FILTERS.find(f => f.key === statusFilter)?.label}</span>}
-                            {clubFilter !== 'ALL' && <span> · {clubMap[clubFilter as number] || `CLB #${clubFilter}`}</span>}
-                        </p>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
+                            <p className="text-sm text-gray-500">
+                                Hiển thị <span className="font-semibold text-orange-500">{filtered.length}</span>
+                                {' '}/ <span className="font-semibold">{total}</span> sự kiện
+                                {' '}— Trang <span className="font-semibold">{page}</span>/<span className="font-semibold">{totalPages}</span>
+                                {isFetching && <span className="ml-2 text-orange-400 animate-pulse">đang tải...</span>}
+                            </p>
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <span>Hiển thị</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                                    className="px-2 py-1.5 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-300 cursor-pointer"
+                                >
+                                    {[5, 10, 20, 50].map(n => (
+                                        <option key={n} value={n}>{n}</option>
+                                    ))}
+                                </select>
+                                <span>sự kiện / trang</span>
+                            </div>
+                        </div>
                     )}
 
                     {/* Loading */}
@@ -368,16 +385,56 @@ const PublicEventsPage: React.FC = () => {
 
                     {/* Grid */}
                     {!isLoading && !error && filtered.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filtered.map((ev) => (
-                                <EventCardPublic
-                                    key={ev.eventId}
-                                    event={ev}
-                                    clubName={ev.clubId ? clubMap[ev.clubId] : undefined}
-                                    onClick={() => navigate(`/public/events/${ev.eventId}`)}
-                                />
-                            ))}
-                        </div>
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {filtered.map((ev) => (
+                                    <EventCardPublic
+                                        key={ev.eventId}
+                                        event={ev}
+                                        clubName={ev.clubId ? clubMap[ev.clubId] : undefined}
+                                        onClick={() => navigate(`/public/events/${encodeId(ev.eventId)}`)}
+                                    />
+                                ))}
+                            </div>
+
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-center gap-2 mt-10">
+                                    <button
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={page <= 1}
+                                        className="px-4 py-2 text-sm font-medium border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        ← Trước
+                                    </button>
+
+                                    {pageNumbers.map((p, idx, arr) => (
+                                        <React.Fragment key={p}>
+                                            {idx > 0 && arr[idx - 1] !== p - 1 && (
+                                                <span className="px-2 text-gray-300">…</span>
+                                            )}
+                                            <button
+                                                onClick={() => setPage(p)}
+                                                className={`w-10 h-10 text-sm font-semibold rounded-lg transition-all duration-200 ${p === page
+                                                        ? 'bg-orange-500 text-white shadow-md'
+                                                        : 'text-gray-500 hover:bg-gray-100'
+                                                    }`}
+                                            >
+                                                {p}
+                                            </button>
+                                        </React.Fragment>
+                                    ))}
+
+                                    <button
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={page >= totalPages}
+                                        className="px-4 py-2 text-sm font-medium border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Sau →
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </section>

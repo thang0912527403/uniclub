@@ -98,9 +98,21 @@ export const clubApi = baseApi.injectEndpoints({
       providesTags: (result, error, id) => [{ type: "ClubPost", id }],
     }),
     getClubPostsByClubId: builder.query<ClubPostResponseDto[], number>({
-      query: (clubId) => `/api/ClubPost/club/${clubId}`,
+      query: (clubId) => `/ClubPost/club/${clubId}`,
       transformResponse: (response: ApiResponse<ClubPostResponseDto[]>) =>
         response.data,
+      providesTags: ["ClubPost"],
+    }),
+    getClubPostsByEventId: builder.query<ClubPostResponseDto[], number>({
+      query: (eventId) => `/ClubPost/event/${eventId}`,
+      transformResponse: (response: ApiResponse<ClubPostResponseDto[]> | ClubPostResponseDto[]) =>
+        Array.isArray(response) ? response : response.data,
+      providesTags: ["ClubPost"],
+    }),
+    getClubPostsByCampaignId: builder.query<ClubPostResponseDto[], number>({
+      query: (campaignId) => `/ClubPost/campaign/${campaignId}`,
+      transformResponse: (response: ApiResponse<ClubPostResponseDto[]> | ClubPostResponseDto[]) =>
+        Array.isArray(response) ? response : response.data,
       providesTags: ["ClubPost"],
     }),
     createClubPost: builder.mutation<ClubPostResponseDto, FormData>({
@@ -234,8 +246,19 @@ export const clubApi = baseApi.injectEndpoints({
         { type: "Club", id: `member-${memberId}` },
       ],
     }),
+
+    // ─── Member Count ───────────────────────────────────────────────────
+    getClubMemberCount: builder.query<number, number>({
+      query: (clubId) => `/clubs/${clubId}/members/count`,
+      transformResponse: (response: { success: boolean; data: number }) =>
+        response.data,
+      providesTags: (_result, _error, clubId) => [
+        { type: "Member", id: `count-${clubId}` },
+      ],
+    }),
   }),
 });
+
 
 export const {
   useGetClubsQuery,
@@ -248,6 +271,8 @@ export const {
   useToggleClubStatusMutation,
   useGetClubPostsQuery,
   useGetClubPostsByClubIdQuery,
+  useGetClubPostsByEventIdQuery,
+  useGetClubPostsByCampaignIdQuery,
   useGetClubPostByIdQuery,
   useCreateClubPostMutation,
   useUpdateClubPostMutation,
@@ -260,4 +285,5 @@ export const {
   useGetMemberJoinedDepartmentsQuery,
   useGetMemberNotJoinedDepartmentsQuery,
   useUpdateMemberRoleMutation,
+  useGetClubMemberCountQuery,
 } = clubApi;

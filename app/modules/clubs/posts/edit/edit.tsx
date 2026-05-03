@@ -6,7 +6,7 @@ import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useParams, useNavigate } from 'react-router';
 import { useGetClubPostByIdQuery, useUpdateClubPostMutation } from '~/cores/api/clubApi';
 import { useClubRole } from '~/hooks/useClubRole';
-import { ArrowLeft, FileImage, Save, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, FileImage, Save, X, CheckCircle2, AlertCircle, Calendar, Megaphone } from 'lucide-react';
 
 /*
   ui-ux-promax skill — style #39 Bento Grid + #19 Soft UI Evolution
@@ -45,8 +45,8 @@ export default function EditClubPostModule() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-    const { clubManagerMembership } = useClubRole();
-    const clubId = clubManagerMembership?.clubId ?? 0;
+    const { currentClub } = useClubRole();
+    const clubId = currentClub?.clubId ?? 0;
     const [updateClubPost, { isLoading: isSaving }] = useUpdateClubPostMutation();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -238,6 +238,33 @@ export default function EditClubPostModule() {
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* Linked entity card */}
+                                {(post?.eventId || post?.campaignId) && (
+                                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5 border border-zinc-100 dark:border-gray-700 space-y-2">
+                                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Liên kết</p>
+                                        {post.eventId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate(`/events/${post.eventId}`)}
+                                                className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 text-sm font-semibold transition-colors cursor-pointer"
+                                            >
+                                                <Calendar size={15} />
+                                                Xem sự kiện liên quan
+                                            </button>
+                                        )}
+                                        {post.campaignId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate(`/campaign/${post.campaignId}`)}
+                                                className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 text-sm font-semibold transition-colors cursor-pointer"
+                                            >
+                                                <Megaphone size={15} />
+                                                Xem chiến dịch liên quan
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Actions card */}
                                 <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5 border border-zinc-100 dark:border-gray-700 space-y-3">

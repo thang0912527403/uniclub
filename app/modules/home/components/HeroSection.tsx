@@ -21,7 +21,7 @@ const HeroSection: React.FC = () => {
   }, []);
 
   return (
-    <section className="relative bg-gradient-to-br from-orange-50 via-white to-orange-50/30 py-20 px-6 md:px-12 overflow-hidden">
+    <section className="relative bg-gradient-to-br from-orange-50 via-white to-orange-50/30 pt-24 sm:pt-28 pb-12 sm:pb-20 px-4 sm:px-6 md:px-12 overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-orange-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
@@ -33,7 +33,7 @@ const HeroSection: React.FC = () => {
         <div className="grid md:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
           <div className="space-y-6">
-            <h1 className="text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight">
               Tham gia CLB và tạo{" "}
               <span className="text-orange-500 relative inline-block">
                 kết nối
@@ -55,7 +55,7 @@ const HeroSection: React.FC = () => {
               bền vững
             </h1>
 
-            <p className="text-gray-600 text-lg leading-relaxed max-w-lg">
+            <p className="text-gray-600 text-base sm:text-lg leading-relaxed max-w-lg">
               Khám phá các câu lạc bộ đa dạng, tham gia các hoạt động bổ ích và
               kết nối với những người bạn cùng chí hướng. Hãy là một phần của
               cộng đồng sinh viên sôi động!
@@ -64,7 +64,7 @@ const HeroSection: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link
                 to="/question"
-                className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1 cursor-pointer text-center flex items-center justify-center gap-2"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1 cursor-pointer text-center flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 Tham gia CLB
                 <svg
@@ -81,15 +81,15 @@ const HeroSection: React.FC = () => {
                   />
                 </svg>
               </Link>
-              <button className="border-2 border-gray-200 hover:border-orange-500 text-gray-700 hover:text-orange-500 px-8 py-4 rounded-xl font-medium transition-all duration-300 hover:shadow-md hover:-translate-y-1 bg-white cursor-pointer group">
+              <button className="border-2 border-gray-200 hover:border-orange-500 text-gray-700 hover:text-orange-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-medium transition-all duration-300 hover:shadow-md hover:-translate-y-1 bg-white cursor-pointer group text-sm sm:text-base">
                 Tìm hiểu thêm
               </button>
             </div>
 
             {/* Stats */}
-            <div className="flex gap-10 pt-8 border-t border-gray-100 mt-4">
+            <div className="flex flex-wrap gap-6 sm:gap-10 pt-6 sm:pt-8 border-t border-gray-100 mt-4">
               <div className="group cursor-default">
-                <div className="text-4xl font-extrabold text-gray-800 group-hover:text-orange-500 transition-colors duration-300">
+                <div className="text-2xl sm:text-4xl font-extrabold text-gray-800 group-hover:text-orange-500 transition-colors duration-300">
                   150<span className="text-orange-500">+</span>
                 </div>
                 <div className="text-gray-500 text-sm mt-1 font-medium">
@@ -97,7 +97,7 @@ const HeroSection: React.FC = () => {
                 </div>
               </div>
               <div className="group cursor-default">
-                <div className="text-4xl font-extrabold text-gray-800 group-hover:text-orange-500 transition-colors duration-300">
+                <div className="text-2xl sm:text-4xl font-extrabold text-gray-800 group-hover:text-orange-500 transition-colors duration-300">
                   5K<span className="text-orange-500">+</span>
                 </div>
                 <div className="text-gray-500 text-sm mt-1 font-medium">
@@ -105,7 +105,7 @@ const HeroSection: React.FC = () => {
                 </div>
               </div>
               <div className="group cursor-default">
-                <div className="text-4xl font-extrabold text-gray-800 group-hover:text-orange-500 transition-colors duration-300">
+                <div className="text-2xl sm:text-4xl font-extrabold text-gray-800 group-hover:text-orange-500 transition-colors duration-300">
                   200<span className="text-orange-500">+</span>
                 </div>
                 <div className="text-gray-500 text-sm mt-1 font-medium">
@@ -205,8 +205,8 @@ const HeroSection: React.FC = () => {
           </div>
 
           {/* Mobile fallback image (Only visible on small screens) */}
-          <div className="md:hidden mt-8">
-            <div className="rounded-2xl overflow-hidden shadow-lg relative h-[300px]">
+          <div className="md:hidden mt-6">
+            <div className="rounded-2xl overflow-hidden shadow-lg relative h-[220px] sm:h-[300px]">
               <img
                 src={hero3}
                 alt="Club activities default"

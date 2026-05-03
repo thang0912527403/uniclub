@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { decodeId, encodeId } from '~/utils/hashId';
 import {
     useGetEventByIdQuery,
     useUpdateEventMutation,
@@ -148,7 +149,8 @@ export default function EditEventPage() {
     const { isDark, toggleTheme } = useTheme();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
-    const { data: event, isLoading: isLoadingEvent } = useGetEventByIdQuery(Number(id));
+    const eventId = Number(id) || decodeId(id ?? '');
+    const { data: event, isLoading: isLoadingEvent } = useGetEventByIdQuery(eventId);
     const [updateEvent, { isLoading: isUpdating }] = useUpdateEventMutation();
     const [createSession] = useCreateSessionMutation();
     const [updateSession] = useUpdateSessionMutation();
@@ -158,7 +160,7 @@ export default function EditEventPage() {
     const [initialized, setInitialized] = useState(false);
 
     // Per-event permission gate
-    const { can, isLoading: isLoadingPerm } = useEventPermission(event?.clubId, Number(id));
+    const { canEdit, isLoading: isLoadingPerm } = useEventPermission(event?.clubId ?? 0, eventId);
     /** IDs của sessions hiện có (id > 0) đã bị xóa khỏi UI — cần gọi DELETE */
     const [deletedSessionIds, setDeletedSessionIds] = useState<number[]>([]);
 
@@ -223,6 +225,14 @@ export default function EditEventPage() {
         }
     }, [event, initialized]);
 
+    // Redirect if user doesn't have editevent permission
+    // Wait for event data to load first — otherwise clubId=0 causes false negative
+    useEffect(() => {
+        if (!isLoadingEvent && event && !isLoadingPerm && !canEdit) {
+            navigate(`/events/${id}`, { replace: true });
+        }
+    }, [isLoadingEvent, event, isLoadingPerm, canEdit, navigate, id]);
+
     // Derive calendar state
     const calState: CalendarState = deriveCalendarState(form, event?.eventName ?? '');
 
@@ -259,15 +269,27 @@ export default function EditEventPage() {
         }));
     }, []);
 
-    const handleSessionChange = useCallback((id: number, start: Date, end: Date, _revert: () => void) => {
-        setForm(prev => ({
-            ...prev,
-            sessions: prev.sessions.map(s =>
-                s.id === id
-                    ? { ...s, startTime: dateToLocal(start), endTime: dateToLocal(end) }
-                    : s
-            ),
-        }));
+    const handleSessionChange = useCallback((id: number, start: Date, end: Date, revert: () => void) => {
+        setForm(prev => {
+            const session = prev.sessions.find(s => s.id === id);
+            // Validate: main/break sessions must stay within event bounds
+            if (session && session.sessionType !== 'setup' && prev.startDate && prev.endDate) {
+                const eStart = new Date(prev.startDate);
+                const eEnd = new Date(prev.endDate);
+                if (start < eStart || end > eEnd) {
+                    revert();
+                    return prev;
+                }
+            }
+            return {
+                ...prev,
+                sessions: prev.sessions.map(s =>
+                    s.id === id
+                        ? { ...s, startTime: dateToLocal(start), endTime: dateToLocal(end) }
+                        : s
+                ),
+            };
+        });
     }, []);
 
     const updateSessionLocal = (id: number, patch: Partial<EditSession>) => {
@@ -311,82 +333,43 @@ export default function EditEventPage() {
     const handleSessionModalConfirm = useCallback(async (data: SessionQuickModalData) => {
         if (!sessionModal) return;
         if (sessionModal.mode === 'create') {
-            // Edit page: event đã có ID → call API ngay
-            if (event?.eventId && event?.clubId) {
-                try {
-                    await createSession({
-                        clubId: event.clubId,
-                        eventId: event.eventId,
-                        sessionName: data.sessionName,
-                        startTime: new Date(data.start).toISOString(),
-                        endTime: new Date(data.end).toISOString(),
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    }).unwrap();
-                } catch { return; }   // lỗi API → đóng modal
-            } else {
-                // Draft mode (chưa có eventId)
-                setForm(prev => ({
-                    ...prev,
-                    sessions: [...prev.sessions, {
-                        id: nextTempId(),
-                        sessionName: data.sessionName,
-                        startTime: data.start,
-                        endTime: data.end,
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    }],
-                }));
-            }
+            // Always add to local state — API call deferred to Save button
+            setForm(prev => ({
+                ...prev,
+                sessions: [...prev.sessions, {
+                    id: nextTempId(),
+                    sessionName: data.sessionName,
+                    startTime: data.start,
+                    endTime: data.end,
+                    location: data.location,
+                    description: data.description,
+                    sessionType: data.sessionType,
+                }],
+            }));
         } else if (sessionModal.mode === 'edit' && sessionModal.sessionId != null) {
             const sid = sessionModal.sessionId;
-            if (sid > 0 && event?.clubId) {
-                // Session đã lưu → call updateSession API
-                try {
-                    await updateSession({
-                        clubId: event.clubId,
-                        eventId: event!.eventId,
-                        scheduleId: sid,
-                        sessionName: data.sessionName,
-                        startTime: new Date(data.start).toISOString(),
-                        endTime: new Date(data.end).toISOString(),
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    }).unwrap();
-                } catch { return; }
-            } else {
-                // Draft → update state
-                setForm(prev => ({
-                    ...prev,
-                    sessions: prev.sessions.map(s => s.id === sid ? {
-                        ...s,
-                        sessionName: data.sessionName,
-                        startTime: data.start,
-                        endTime: data.end,
-                        location: data.location,
-                        description: data.description,
-                        sessionType: data.sessionType,
-                    } : s),
-                }));
-            }
+            // Always update local state — API call deferred to Save button
+            setForm(prev => ({
+                ...prev,
+                sessions: prev.sessions.map(s => s.id === sid ? {
+                    ...s,
+                    sessionName: data.sessionName,
+                    startTime: data.start,
+                    endTime: data.end,
+                    location: data.location,
+                    description: data.description,
+                    sessionType: data.sessionType,
+                } : s),
+            }));
         }
         setSessionModal(null);
-    }, [sessionModal, event, createSession, updateSession]);
+    }, [sessionModal]);
 
     const handleSessionModalDelete = useCallback(async () => {
         if (!sessionModal?.sessionId) return;
-        const sid = sessionModal.sessionId;
-        if (sid > 0 && event?.clubId) {
-            try { await deleteSession({ clubId: event.clubId, eventId: event!.eventId, scheduleId: sid }).unwrap(); }
-            catch { return; }
-        } else {
-            removeSession(sid);
-        }
+        removeSession(sessionModal.sessionId);
         setSessionModal(null);
-    }, [sessionModal, event, deleteSession]);
+    }, [sessionModal]);
 
     // ── Submit: nhận data từ EventForm, lưu vào pending rồi mở modal xác nhận ──
     const handleSubmit = (submitData: any) => {
@@ -438,6 +421,7 @@ export default function EditEventPage() {
                         endTime: toIso(s.endTime),
                         location: s.location || undefined,
                         description: s.description || undefined,
+                        sessionType: s.sessionType || undefined,
                     }))
                 );
             }
@@ -455,6 +439,7 @@ export default function EditEventPage() {
                         endTime: toIso(s.endTime),
                         location: s.location || undefined,
                         description: s.description || undefined,
+                        sessionType: s.sessionType || undefined,
                     }))
                 );
                 const failed = results
@@ -519,9 +504,7 @@ export default function EditEventPage() {
         );
     }
 
-    // Redirect if user doesn't have editevent permission
-    if (!isLoadingPerm && !can('editevent')) {
-        navigate(`/events/${id}`);
+    if (!isLoadingPerm && !canEdit) {
         return null;
     }
 
@@ -583,26 +566,24 @@ export default function EditEventPage() {
                             </button>
                         </div>
 
-                        {/* ── Tab: Thông tin sự kiện ── */}
-                        {activeTab === 'info' && (
-                            <div className={`${card} rounded-xl shadow-sm p-6`}>
-                                <EventForm
-                                    initialData={{
-                                        ...event,
-                                        startDate: form.startDate ? toIso(form.startDate) : event.startDate,
-                                        endDate: form.endDate ? toIso(form.endDate) : event.endDate,
-                                    }}
-                                    onChange={(data) => setForm(prev => ({ ...prev, ...data }))}
-                                    onSubmit={handleSubmit}
-                                    onCancel={() => navigate(`/events/${id}`)}
-                                    isLoading={isSaving}
-                                    isDark={isDark}
-                                    mode="edit"
-                                    formId="event-edit-form"
-                                    hideActions={true}
-                                />
-                            </div>
-                        )}
+                        {/* ── Tab: Thông tin sự kiện (always mounted, hidden when inactive) ── */}
+                        <div className={`${card} rounded-xl shadow-sm p-6 ${activeTab === 'info' ? '' : 'hidden'}`}>
+                            <EventForm
+                                initialData={{
+                                    ...event,
+                                    startDate: form.startDate ? toIso(form.startDate) : event.startDate,
+                                    endDate: form.endDate ? toIso(form.endDate) : event.endDate,
+                                }}
+                                onChange={(data) => setForm(prev => ({ ...prev, ...data }))}
+                                onSubmit={handleSubmit}
+                                onCancel={() => navigate(`/events/${id}`)}
+                                isLoading={isSaving}
+                                isDark={isDark}
+                                mode="edit"
+                                formId="event-edit-form"
+                                hideActions={true}
+                            />
+                        </div>
 
                         {/* ── Tab: Thời gian sự kiện ── */}
                         {activeTab === 'time' && (

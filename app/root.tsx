@@ -11,10 +11,12 @@ import { store } from './cores/store';
 import { NotificationProvider } from '~/components/Notification';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '~/utils/i18n';
+import { useNotificationHub } from '~/hooks/useNotificationHub';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import type { Route } from "./+types/root";
 import "./app.css";
 import "~/modules/funds/utils/clubFundDetailAuthSync";
+import "~/utils/i18n";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -35,7 +37,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* Inline script to avoid FOUC - Tailwind CSS docs pattern */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -59,11 +60,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function NotificationHubInit() {
+  useNotificationHub();
+  return null;
+}
+
 export default function App() {
   return (
     <I18nextProvider i18n={i18n}>
       <Provider store={store}>
         <NotificationProvider>
+          <NotificationHubInit />
           <Outlet />
         </NotificationProvider>
       </Provider>

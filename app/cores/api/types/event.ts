@@ -1,6 +1,7 @@
 export interface EventDetailDto {
     eventId: number;
     clubId?: number;
+    clubName?: string;
     eventName: string;
     description: string;
     imageUrl?: string;
@@ -17,6 +18,8 @@ export interface EventDetailDto {
     currentAttendees: number;
     registrationStartDate?: string;
     registrationEndDate?: string;
+    checkInCode?: string;
+    codeExpiresAt?: string;
     sessions: SessionDto[];
 }
 

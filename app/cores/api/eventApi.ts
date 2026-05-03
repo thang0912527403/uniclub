@@ -20,13 +20,39 @@ function buildEventFormData(data: Record<string, any>, image?: File): FormData {
     return fd;
 }
 
+export interface MyEventItem {
+    eventId: number;
+    eventName: string;
+    imageUrl?: string;
+    location?: string;
+    startDate?: string;
+    endDate?: string;
+    status: string;
+    clubName?: string;
+    clubId?: number;
+    isAttendee: boolean;
+    attendanceStatus?: string;
+    isCollaborator: boolean;
+    roleName?: string;
+    policies: string[];
+}
+
 export const eventApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         // ===== PUBLIC endpoints (api/events) =====
 
-        getAllEvents: builder.query<EventDetailDto[], { pageNumber?: number; pageSize?: number }>({
-            query: ({ pageNumber = 1, pageSize = 10 } = {}) =>
-                `/events?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+        getAllEvents: builder.query<
+            { items: EventDetailDto[]; total: number; page: number; pageSize: number },
+            { pageNumber?: number; pageSize?: number; status?: string; clubId?: number }
+        >({
+            query: ({ pageNumber = 1, pageSize = 10, status, clubId } = {}) => {
+                const params = new URLSearchParams();
+                params.set('pageNumber', String(pageNumber));
+                params.set('pageSize', String(pageSize));
+                if (status) params.set('status', status);
+                if (clubId) params.set('clubId', String(clubId));
+                return `/events?${params.toString()}`;
+            },
             providesTags: ['Event'],
         }),
 
@@ -124,7 +150,7 @@ export const eventApi = baseApi.injectEndpoints({
             invalidatesTags: (result, error, id) => [{ type: 'Event', id }, 'Event'],
         }),
 
-        startEvent: builder.mutation<{ checkInCode: string }, { clubId: number; eventId: number }>({
+        startEvent: builder.mutation<{ checkInCode: string; expiresAt?: string }, { clubId: number; eventId: number }>({
             query: ({ clubId, eventId }) => ({
                 url: `/club/${clubId}/events/${eventId}/start`,
                 method: 'PUT',
@@ -149,10 +175,58 @@ export const eventApi = baseApi.injectEndpoints({
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
         }),
 
+        cancelEvent: builder.mutation<void, { clubId: number; eventId: number }>({
+            query: ({ clubId, eventId }) => ({
+                url: `/club/${clubId}/events/${eventId}/cancel`,
+                method: 'PUT',
+            }),
+            invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }, 'Event'],
+        }),
+
         /** Get current user's role & policies for a specific event */
         getMyEventRole: builder.query<{ role: string | null; policies: string[] }, { clubId: number; eventId: number }>({
             query: ({ clubId, eventId }) => `/club/${clubId}/events/${eventId}/my-role`,
             providesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
+        }),
+
+        /** Get events the current user participates in (attendee or collaborator) */
+        getMyEvents: builder.query<
+            { items: MyEventItem[]; total: number; page: number; pageSize: number },
+            { search?: string; page?: number; pageSize?: number }
+        >({
+            query: ({ search, page = 1, pageSize = 10 } = {}) => {
+                const params = new URLSearchParams();
+                if (search) params.set('search', search);
+                params.set('page', String(page));
+                params.set('pageSize', String(pageSize));
+                return `/events/my-events?${params.toString()}`;
+            },
+            providesTags: ['Event'],
+        }),
+
+        // ===== Makeup Check-in =====
+
+        makeupCheckIn: builder.mutation<
+            { success: boolean; message: string; memberName: string; previousStatus: string },
+            { clubId: number; eventId: number; userId: string }
+        >({
+            query: ({ clubId, eventId, userId }) => ({
+                url: `/club/${clubId}/events/${eventId}/makeup-checkin/${userId}`,
+                method: 'POST',
+            }),
+            invalidatesTags: ['Event'],
+        }),
+
+        bulkMakeupCheckIn: builder.mutation<
+            { checkedIn: number; skipped: number; total: number; message: string },
+            { clubId: number; eventId: number; userIds: string[] }
+        >({
+            query: ({ clubId, eventId, userIds }) => ({
+                url: `/club/${clubId}/events/${eventId}/makeup-checkin-bulk`,
+                method: 'POST',
+                body: userIds,
+            }),
+            invalidatesTags: ['Event'],
         }),
     }),
 });
@@ -171,5 +245,9 @@ export const {
     useStartEventMutation,
     useCheckInEventMutation,
     useCompleteEventMutation,
+    useCancelEventMutation,
     useGetMyEventRoleQuery,
+    useGetMyEventsQuery,
+    useMakeupCheckInMutation,
+    useBulkMakeupCheckInMutation,
 } = eventApi;

@@ -60,21 +60,21 @@ const Statistics: React.FC = () => {
     };
 
     return (
-        <section className="py-16 px-6 md:px-12 bg-white">
+        <section className="py-10 sm:py-16 px-4 sm:px-6 md:px-12 bg-white">
             <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8">
                     {stats.map((stat) => (
                         <div
                             key={stat.id}
                             className="text-center group cursor-default"
                         >
-                            <div className={`${stat.color} w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 transform group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl text-white`}>
+                            <div className={`${stat.color} w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 transform group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl text-white`}>
                                 {getIcon(stat.icon)}
                             </div>
-                            <div className="text-4xl font-bold text-gray-900 mb-2 group-hover:text-orange-500 transition-colors duration-300">
+                            <div className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 group-hover:text-orange-500 transition-colors duration-300">
                                 {stat.value}
                             </div>
-                            <div className="text-gray-600 text-sm">
+                            <div className="text-gray-600 text-xs sm:text-sm">
                                 {stat.label}
                             </div>
                         </div>

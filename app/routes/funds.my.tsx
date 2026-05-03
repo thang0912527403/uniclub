@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, Navigate, useSearchParams } from 'react-router';
 import Cookies from 'js-cookie';
 import { Banknote, ChevronLeft, ChevronRight, Loader2, Lock, Plus, Search, Users } from 'lucide-react';
 import { Sidebar } from '~/components/Sidebar';
@@ -24,6 +24,7 @@ import {
   FundCardBalanceHint,
   FundRejectionReasonCallout,
 } from '~/modules/funds/components/FundUxHints';
+import { isFundClosedOnList } from '~/modules/funds/utils/isFundClosedOnList';
 import {
   applyFilterChangeParams,
   DEFAULT_FUND_PAGE_SIZE,
@@ -52,6 +53,7 @@ function fundListBalanceVnd(f: ClubFund): number {
 }
 
 function fundStatusLabel(f: ClubFund): string {
+  if (isFundClosedOnList(f)) return 'Đã đóng';
   const s = String(f.status ?? '').toUpperCase();
   if (s === 'PENDING') return 'Chờ duyệt';
   if (s === 'APPROVED') return 'Đã duyệt';
@@ -60,6 +62,14 @@ function fundStatusLabel(f: ClubFund): string {
 }
 
 function FundStatusBadge({ fund }: { fund: ClubFund }) {
+  if (isFundClosedOnList(fund)) {
+    return (
+      <span className={t.status.closed}>
+        <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-500 shrink-0" aria-hidden />
+        <span>{fundStatusLabel(fund)}</span>
+      </span>
+    );
+  }
   const s = String(fund.status ?? '').toUpperCase();
   if (s === 'APPROVED') {
     return (
@@ -256,6 +266,25 @@ export default function MyFundsPage() {
   );
 
   const myTxItems = (myTxPaged?.items ?? []) as FundHistoryItem[];
+
+  const txErrorStatus =
+    txError && typeof txError === 'object' && 'status' in txError
+      ? (txError as { status: number }).status
+      : undefined;
+
+  const redirectFund403 =
+    hasToken &&
+    clubId >= 1 &&
+    !capsLoading &&
+    !capsOtherError &&
+    (capsForbidden ||
+      errorStatus === 403 ||
+      (caps !== undefined && !canViewFunds) ||
+      (tab === 'transactions' && txErrorStatus === 403));
+
+  if (redirectFund403) {
+    return <Navigate to="/403" replace />;
+  }
 
   return (
     <div className="min-h-screen">

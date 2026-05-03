@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, Navigate, useNavigate, useParams } from "react-router";
 import {
   Gavel,
   X,
@@ -36,6 +36,7 @@ import { useSidebarToggle } from "~/hooks/useSidebarToggle";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
 import { useClubRole } from "~/hooks/useClubRole";
 import { extractClubFundErrorMessage } from "~/modules/funds/utils/fundRefundErrors";
+import { isFundClosedOnList } from "~/modules/funds/utils/isFundClosedOnList";
 import { RecordCashContributionForm } from "~/modules/funds/components/RecordCashContributionForm";
 import { canShowRecordCashContributionForm } from "~/modules/funds/utils/fundCashContributionAccess";
 import type {
@@ -45,7 +46,7 @@ import type {
   FundHistoryStatusFilter,
 } from "~/cores/api";
 import { fundTokens as t } from "../funds.design-tokens";
-import { savePayosPendingContribute } from "~/utils/payosContributeSession";
+import { savePayosPendingContribute } from "~/modules/funds/utils/payosContributeSession";
 import { useFundHistory } from "~/modules/funds/hooks/useFundHistory";
 import { getClubId } from "~/utils/auth";
 import {
@@ -100,17 +101,6 @@ function formatFundHistoryDateTime(iso: string | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
-}
-
-function fundHistoryCategoryLabel(item: FundHistoryItem): string {
-  const r = item as FundHistoryItem & Record<string, unknown>;
-  const nameRaw = r.categoryName ?? r.CategoryName;
-  const name = typeof nameRaw === "string" ? nameRaw.trim() : "";
-  if (name) return name;
-  const idRaw = r.categoryId ?? r.CategoryId;
-  const id = typeof idRaw === "number" ? idRaw : Number(idRaw);
-  if (Number.isFinite(id)) return `ID ${id}`;
-  return "—";
 }
 
 function fundHistoryStatusLabelVi(item: FundHistoryItem): string {
@@ -184,6 +174,7 @@ function resolvedFundTotalRecordedVnd(fund: ClubFund): number | null {
 }
 
 function fundStatusLabel(f: ClubFund): string {
+  if (isFundClosedOnList(f)) return "Đã đóng";
   const s = String(f.status ?? "").toUpperCase();
   if (s === "PENDING") return "Chờ duyệt";
   if (s === "APPROVED") return "Đã duyệt";
@@ -192,6 +183,17 @@ function fundStatusLabel(f: ClubFund): string {
 }
 
 function FundStatusBadge({ fund }: { fund: ClubFund }) {
+  if (isFundClosedOnList(fund)) {
+    return (
+      <span className={t.status.closed}>
+        <span
+          className="inline-block w-3 h-3 rounded-full bg-slate-500"
+          aria-hidden
+        />
+        <span>{fundStatusLabel(fund)}</span>
+      </span>
+    );
+  }
   const s = String(fund.status ?? "").toUpperCase();
   if (s === "APPROVED")
     return (
@@ -251,6 +253,7 @@ export default function FundDetailPageByClub() {
   const [showRecordCashModal, setShowRecordCashModal] = useState(false);
   const [contributeResult, setContributeResult] = useState<{
     transactionId: number;
+    externalOrderCode?: string;
     checkoutUrl?: string;
     paymentLinkId?: string;
     amount?: number;
@@ -484,7 +487,10 @@ export default function FundDetailPageByClub() {
   const isFundPending =
     fund && String(fund.status ?? "").toUpperCase() === "PENDING";
   const canShowContributeBtn =
-    !!fund && canContribute && fund.canAcceptContributions === true;
+    !!fund &&
+    canContribute &&
+    fund.canAcceptContributions === true &&
+    !isFundClosedOnList(fund);
   const isUnauthorized =
     fundError && "status" in fundError && fundError.status === 401;
 
@@ -584,6 +590,12 @@ export default function FundDetailPageByClub() {
           message: s.message,
           paymentLinkExpiresAtUtc: s.paymentLinkExpiresAtUtc,
         });
+        const extPoll = s.externalOrderCode?.trim();
+        if (extPoll) {
+          setContributeResult((prev) =>
+            prev && !prev.externalOrderCode ? { ...prev, externalOrderCode: extPoll } : prev,
+          );
+        }
         if (s.isPaid) {
           stop();
           void refetchFund();
@@ -677,6 +689,7 @@ export default function FundDetailPageByClub() {
         transactionId: res.transactionId,
         fundId: resolvedFundId,
         publicId: fund?.publicId ?? fundKey,
+        externalOrderCode: res.externalOrderCode ?? undefined,
       });
 
       setPayStatus(null);
@@ -684,6 +697,9 @@ export default function FundDetailPageByClub() {
       setContributePollTimedOut(false);
       setContributeResult({
         transactionId: res.transactionId,
+        ...(res.externalOrderCode?.trim()
+          ? { externalOrderCode: res.externalOrderCode.trim() }
+          : {}),
         checkoutUrl: res.checkoutUrl,
         paymentLinkId: res.paymentLinkId,
         amount: res.amount,
@@ -734,6 +750,25 @@ export default function FundDetailPageByClub() {
         </Link>
       </div>
     );
+  }
+
+  const fundForbidden =
+    !skipFundQuery &&
+    !isLoadingFund &&
+    fundError &&
+    typeof fundError === "object" &&
+    "status" in fundError &&
+    (fundError as { status: number }).status === 403;
+
+  const redirectFund403 =
+    !capsLoading &&
+    !capsOtherError &&
+    (capsForbidden ||
+      (caps !== undefined && !canViewFunds && !canContribute) ||
+      fundForbidden);
+
+  if (redirectFund403) {
+    return <Navigate to="/403" replace />;
   }
 
   return (
@@ -1048,14 +1083,18 @@ export default function FundDetailPageByClub() {
                           disabled
                           className={`${t.btn.primary} inline-flex items-center gap-2 opacity-60 cursor-not-allowed`}
                           title={
-                            fund.cannotContributeReasonVi?.trim() || undefined
+                            isFundClosedOnList(fund)
+                              ? fund.lifecycleStatusVi?.trim() ||
+                                fund.cannotContributeReasonVi?.trim() ||
+                                "Quỹ đã đóng"
+                              : fund.cannotContributeReasonVi?.trim() || undefined
                           }
                         >
                           <HandCoins className="w-4 h-4" aria-hidden />
                           Nộp tiền
                         </button>
                       )}
-                      {canRecordCashContribution && fund.isClosed !== true ? (
+                      {canRecordCashContribution && !isFundClosedOnList(fund) ? (
                         <button
                           type="button"
                           onClick={openRecordCashModal}
@@ -1064,7 +1103,7 @@ export default function FundDetailPageByClub() {
                           <Banknote className="w-4 h-4 shrink-0" aria-hidden />
                           Ghi nhận tiền mặt
                         </button>
-                      ) : canRecordCashContribution && fund.isClosed === true ? (
+                      ) : canRecordCashContribution && isFundClosedOnList(fund) ? (
                         <button
                           type="button"
                           disabled
@@ -1080,7 +1119,7 @@ export default function FundDetailPageByClub() {
                 </div>
               </section>
 
-              {canViewFunds ? (
+              {canViewFunds && !isFundClosedOnList(fund) ? (
                 <section
                   className={`${t.card.base} overflow-hidden`}
                   aria-labelledby="fund-member-contrib-heading"
@@ -1335,7 +1374,7 @@ export default function FundDetailPageByClub() {
                 </section>
               ) : null}
 
-              {canViewFunds ? (
+              {canViewFunds && !isFundClosedOnList(fund) ? (
                 <section
                   className={`${t.card.base} overflow-hidden`}
                   aria-labelledby="fund-tabs-heading"
@@ -1529,12 +1568,6 @@ export default function FundDetailPageByClub() {
                                   scope="col"
                                   className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200"
                                 >
-                                  Danh mục
-                                </th>
-                                <th
-                                  scope="col"
-                                  className="px-4 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200"
-                                >
                                   Mô tả
                                 </th>
                                 <th
@@ -1549,7 +1582,7 @@ export default function FundDetailPageByClub() {
                               {history.length === 0 ? (
                                 <tr>
                                   <td
-                                    colSpan={6}
+                                    colSpan={5}
                                     className={`px-4 py-6 text-center ${t.type.muted}`}
                                   >
                                     Không có giao dịch trên trang này.
@@ -1579,11 +1612,6 @@ export default function FundDetailPageByClub() {
                                       className={`px-4 py-2 text-sm ${t.type.body} whitespace-nowrap`}
                                     >
                                       {fundHistoryStatusLabelVi(item)}
-                                    </td>
-                                    <td
-                                      className={`px-4 py-2 text-sm ${t.type.muted}`}
-                                    >
-                                      {fundHistoryCategoryLabel(item)}
                                     </td>
                                     <td className={`px-4 py-2 ${t.type.body}`}>
                                       {item.description?.trim()
@@ -1707,6 +1735,11 @@ export default function FundDetailPageByClub() {
                   <div className={`text-sm ${textClass}`}>
                     <span className="font-semibold">Giao dịch</span> #
                     {contributeResult.transactionId}
+                    {contributeResult.externalOrderCode ? (
+                      <span className="ml-2 block sm:inline text-xs font-mono text-slate-600 dark:text-slate-400 break-all">
+                        Mã đơn PayOS: {contributeResult.externalOrderCode}
+                      </span>
+                    ) : null}
                     {typeof contributeResult.amount === "number" ? (
                       <span className="ml-2 text-slate-600 dark:text-slate-300">
                         — {contributeResult.amount.toLocaleString("vi-VN")} ₫

@@ -21,7 +21,7 @@ interface Props {
 const ALL_EVENT_POLICIES = [
   { name: "viewevent", label: "Xem sự kiện" },
   { name: "editevent", label: "Chỉnh sửa sự kiện" },
-  { name: "deleteevent", label: "Xóa sự kiện" },
+  { name: "deleteevent", label: "Hủy sự kiện" },
   { name: "managesession", label: "Quản lý buổi họp" },
   { name: "openregistration", label: "Mở đăng ký" },
   { name: "startevent", label: "Bắt đầu sự kiện" },
@@ -30,7 +30,6 @@ const ALL_EVENT_POLICIES = [
   { name: "viewattendance", label: "Xem điểm danh" },
   { name: "approveattendance", label: "Duyệt đăng ký" },
   { name: "checkin", label: "Điểm danh (Check-in)" },
-  { name: "evaluatemember", label: "Đánh giá thành viên" },
 ];
 
 export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props) {
@@ -51,12 +50,13 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
   const [removeMember, { isLoading: isRemoving }] = useRemoveEventMemberMutation();
   const [setPolicies, { isLoading: isSavingPolicies }] = useSetEventMemberPoliciesMutation();
 
-  const [teamForm, setTeamForm] = useState<{ userId: string; roleId?: number }>({
-    userId: "",
-    roleId: undefined,
-  });
+  // Add member panel
+  const [showAddPanel, setShowAddPanel] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | undefined>(undefined);
 
+  // Policy editor
   const [editingPoliciesFor, setEditingPoliciesFor] = useState<number | null>(null);
   const [editedPolicies, setEditedPolicies] = useState<Set<string>>(new Set());
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -72,41 +72,58 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
   // Filter club members that are not already in the event
   const existingMemberIds = new Set(members.map((m) => m.userId));
   const availableMembers = clubMembers.filter(
-    (m) => m.status === "ACTIVE" && !existingMemberIds.has(m.userId)
+    (m) => (m.status || "").toLowerCase() === "active" && !existingMemberIds.has(m.userId)
   );
 
   const filteredMembers = memberSearch.trim()
     ? availableMembers.filter(
-        (m) =>
-          m.fullName.toLowerCase().includes(memberSearch.toLowerCase()) ||
-          (m.email ?? "").toLowerCase().includes(memberSearch.toLowerCase()) ||
-          (m.studentId ?? "").toLowerCase().includes(memberSearch.toLowerCase())
+        (m) => {
+          const q = memberSearch.toLowerCase();
+          return (m.fullName || "").toLowerCase().includes(q)
+            || (m.email || "").toLowerCase().includes(q)
+            || (m.studentId || "").toLowerCase().includes(q);
+        }
       )
     : availableMembers;
 
-  const handleAddMember = async () => {
-    if (!teamForm.userId) {
-      showNotification({ type: "error", title: "Lỗi", message: "Vui lòng chọn thành viên" });
+  const allFilteredIds = filteredMembers.map((m) => m.userId);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedUserIds.includes(id));
+
+  const handleAddMembers = async () => {
+    if (selectedUserIds.length === 0) {
+      showNotification({ type: "error", title: "Lỗi", message: "Vui lòng chọn ít nhất 1 thành viên" });
       return;
     }
-    try {
-      await addMember({
-        clubId,
-        eventId,
-        userId: teamForm.userId,
-        eventRoleId: teamForm.roleId,
-      }).unwrap();
-      showNotification({ type: "success", title: "Đã thêm thành viên mới" });
-      setTeamForm({ userId: "", roleId: undefined });
-      setMemberSearch("");
-      refetch();
-    } catch (err: any) {
-      showNotification({
-        type: "error",
-        title: "Lỗi thêm thành viên",
-        message: err?.data?.error || err?.data?.message || "Đã xảy ra lỗi",
-      });
+    if (!selectedRoleId) {
+      showNotification({ type: "error", title: "Lỗi", message: "Vui lòng chọn chức vụ cho thành viên" });
+      return;
     }
+    let successCount = 0;
+    let errorMsg = "";
+    for (const userId of selectedUserIds) {
+      try {
+        await addMember({
+          clubId,
+          eventId,
+          userId,
+          eventRoleId: selectedRoleId,
+        }).unwrap();
+        successCount++;
+      } catch (err: any) {
+        errorMsg = err?.data?.error || err?.data?.message || "Đã xảy ra lỗi";
+      }
+    }
+    if (successCount > 0) {
+      showNotification({ type: "success", title: `Đã thêm ${successCount} thành viên` });
+    }
+    if (errorMsg) {
+      showNotification({ type: "error", title: "Lỗi", message: errorMsg });
+    }
+    setSelectedUserIds([]);
+    setMemberSearch("");
+    setSelectedRoleId(undefined);
+    setShowAddPanel(false);
+    refetch();
   };
 
   const handleUpdateRole = async (memberId: number, roleId: number) => {
@@ -167,6 +184,9 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
     }
   };
 
+  // Assignable roles (exclude Creator level 0)
+  const assignableRoles = roles.filter((r) => r.level !== 0);
+
   if (isLoading || isRolesLoading) {
     return (
       <div className="space-y-4 animate-pulse">
@@ -178,99 +198,139 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className={`font-semibold ${text} flex items-center`}>
             <i className="fas fa-users-cog mr-2 text-blue-500" />
-            Danh sách Ban tổ chức
+            Danh sách Ban tổ chức ({members.length})
           </h3>
           <p className={`text-sm ${sub} mt-1`}>
-            Quản lý thành viên trong ban tổ chức và chức vụ của họ. ({members.length} thành viên)
+            Quản lý thành viên trong ban tổ chức và chức vụ của họ.
           </p>
         </div>
+        {eventStatus !== "COMPLETED" && eventStatus !== "CANCELLED" && (
+          <button
+            onClick={() => setShowAddPanel(!showAddPanel)}
+            className="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
+          >
+            <i className="fas fa-user-plus" />
+            {showAddPanel ? "Đóng" : "Thêm thành viên"}
+          </button>
+        )}
       </div>
 
-      {/* Add New Member Box */}
-      {eventStatus !== "COMPLETED" && eventStatus !== "CANCELLED" && (
-        <div className={`p-4 rounded-xl border ${border} ${bgCard} shadow-sm`}>
-          <h4 className={`font-medium mb-3 ${text}`}>
-            <i className="fas fa-user-plus mr-2 text-blue-500" />
-            Thêm thành viên mới
-          </h4>
+      {/* Add member panel — same style as Registration tab */}
+      {showAddPanel && (
+        <div className={`p-4 rounded-lg border ${border} ${isDark ? "bg-gray-800/50" : "bg-blue-50"}`}>
+          <p className={`text-sm font-medium mb-2 ${text}`}>
+            Chọn thành viên CLB để thêm vào ban tổ chức:
+          </p>
 
           {isClubMembersLoading ? (
-            <p className={`text-sm ${sub}`}>Đang tải danh sách thành viên Câu lạc bộ...</p>
+            <p className={`text-sm ${sub}`}>Đang tải danh sách...</p>
           ) : (
-            <div className="space-y-3">
+            <>
               <input
                 type="text"
+                placeholder="Tìm theo tên, email, MSSV..."
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Tìm thành viên theo tên, email hoặc MSSV..."
-                className={`w-full px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`}
+                className={`w-full px-3 py-2 mb-3 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 ${inputCls}`}
               />
-              {filteredMembers.length === 0 ? (
-                <p className={`text-sm ${sub}`}>
-                  {memberSearch.trim()
-                    ? "Không tìm thấy thành viên phù hợp."
-                    : "Tất cả thành viên quản lý đã tham gia sự kiện này."}
-                </p>
-              ) : (
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <select
-                    value={teamForm.userId}
-                    onChange={(e) =>
-                      setTeamForm((f) => ({ ...f, userId: e.target.value }))
-                    }
-                    className={`flex-1 px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`}
-                  >
-                    <option value="">— Chọn thành viên —</option>
-                    {filteredMembers.map((m) => (
-                      <option key={m.userId} value={m.userId}>
-                        {m.fullName} {m.studentId ? `(${m.studentId})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={teamForm.roleId || ""}
-                    onChange={(e) =>
-                      setTeamForm((f) => ({
-                        ...f,
-                        roleId: e.target.value ? Number(e.target.value) : undefined,
-                      }))
-                    }
-                    className={`px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`}
-                  >
-                    <option value="">— Chọn chức vụ —</option>
-                    {roles
-                      .filter((r) => r.level !== 1) // Do not allow manual assign of Creator
-                      .map((r) => (
-                        <option key={r.eventRoleId} value={r.eventRoleId}>
-                          {r.roleName}
-                        </option>
-                      ))}
-                  </select>
-                  <button
-                    onClick={handleAddMember}
-                    disabled={isAdding || !teamForm.userId || !teamForm.roleId}
-                    className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
-                  >
-                    {isAdding ? <i className="fas fa-spinner fa-spin mr-1" /> : <i className="fas fa-plus mr-1" />}
-                    Thêm
-                  </button>
-                </div>
+
+              {/* Select All */}
+              {filteredMembers.length > 0 && (
+                <label className={`flex items-center gap-2 px-2 py-1.5 mb-1 rounded cursor-pointer text-sm font-semibold ${text} border-b ${border}`}>
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedUserIds((prev) => [...new Set([...prev, ...allFilteredIds])]);
+                      } else {
+                        setSelectedUserIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+                      }
+                    }}
+                    className="w-4 h-4 rounded text-blue-500"
+                  />
+                  Chọn tất cả ({filteredMembers.length})
+                </label>
               )}
-            </div>
+
+              {/* Members list */}
+              <div className="max-h-40 overflow-y-auto space-y-1 mb-3">
+                {filteredMembers.map((m) => (
+                  <label
+                    key={m.userId}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 text-sm ${text}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedUserIds.includes(m.userId)}
+                      onChange={(e) => {
+                        setSelectedUserIds((prev) =>
+                          e.target.checked ? [...prev, m.userId] : prev.filter((id) => id !== m.userId)
+                        );
+                      }}
+                      className="w-4 h-4 rounded text-blue-500"
+                    />
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {m.avatar ? (
+                        <img src={m.avatar} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs flex-shrink-0">
+                          {m.fullName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="truncate">{m.fullName} {m.studentId ? `(${m.studentId})` : ""}</span>
+                      <span className="text-gray-400 text-xs ml-1 flex-shrink-0">— {m.email}</span>
+                    </div>
+                  </label>
+                ))}
+                {filteredMembers.length === 0 && (
+                  <p className={`text-sm ${sub} px-2 py-2`}>
+                    {memberSearch.trim()
+                      ? "Không tìm thấy thành viên phù hợp."
+                      : "Tất cả thành viên đã tham gia ban tổ chức."}
+                  </p>
+                )}
+              </div>
+
+              {/* Role selector + Add button */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={selectedRoleId || ""}
+                  onChange={(e) => setSelectedRoleId(e.target.value ? Number(e.target.value) : undefined)}
+                  className={`px-3 py-2 text-sm border rounded-lg outline-none ${inputCls}`}
+                >
+                  <option value="">— Chọn chức vụ —</option>
+                  {assignableRoles.map((r) => (
+                    <option key={r.eventRoleId} value={r.eventRoleId}>
+                      {r.roleName}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  disabled={selectedUserIds.length === 0 || !selectedRoleId || isAdding}
+                  onClick={handleAddMembers}
+                  className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                >
+                  {isAdding && <i className="fas fa-spinner fa-spin mr-1" />}
+                  Thêm {selectedUserIds.length > 0 ? `${selectedUserIds.length} thành viên` : ""}
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {/* Members List */}
+      {/* Members Table */}
       <div className={`rounded-xl border ${border} ${bgCard} overflow-hidden shadow-sm`}>
         {members.length === 0 ? (
           <div className="flex flex-col items-center py-10">
             <i className="fas fa-users text-3xl text-gray-400 mb-2" />
-            <p className={`text-sm ${sub}`}>Chưa có thành viên nào.</p>
+            <p className={`text-sm ${sub}`}>Chưa có thành viên nào trong ban tổ chức.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -286,9 +346,9 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {members.map((m) => {
-                  const isCreator = roles.find((r) => r.eventRoleId === m.roleId)?.level === 1;
+                  const isCreator = m.roleLevel === 0;
                   const isEditingPolicies = editingPoliciesFor === m.eventMemberId;
-                  const hasCustomPolicies = m.customPolicies && m.customPolicies.length > 0;
+                  const hasCustomPolicies = m.directPolicies && m.directPolicies.length > 0;
 
                   return (
                     <React.Fragment key={m.eventMemberId}>
@@ -308,48 +368,48 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                             )}
                             <div>
                               <div>{m.userName}</div>
-                              <div className={`text-xs ${sub} font-normal`}>
-                                ID: {m.userId.slice(0, 8)}…
-                              </div>
+                              {m.userEmail && (
+                                <div className={`text-xs ${sub} font-normal`}>{m.userEmail}</div>
+                              )}
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <select
-                            value={m.roleId || ""}
-                            disabled={isUpdatingRole || isCreator}
-                            onChange={(e) =>
-                              handleUpdateRole(m.eventMemberId, Number(e.target.value))
-                            }
-                            className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium cursor-pointer outline-none ${
-                              isCreator
-                                ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-transparent"
-                                : `${inputCls}`
-                            }`}
-                          >
-                            {isCreator ? (
-                              <option value={m.roleId}>{m.roleName}</option>
-                            ) : (
-                              roles
-                                .filter((r) => r.level !== 1)
-                                .map((r) => (
-                                  <option key={r.eventRoleId} value={r.eventRoleId}>
-                                    {r.roleName}
-                                  </option>
-                                ))
-                            )}
-                          </select>
+                          {isCreator ? (
+                            <span className="text-xs px-2.5 py-1.5 rounded-lg font-medium bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border-transparent">
+                              {m.roleName || "Creator"}
+                            </span>
+                          ) : (
+                            <select
+                              value={m.eventRoleId || ""}
+                              disabled={isUpdatingRole}
+                              onChange={(e) =>
+                                handleUpdateRole(m.eventMemberId, Number(e.target.value))
+                              }
+                              className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium cursor-pointer outline-none ${inputCls}`}
+                            >
+                              {assignableRoles.map((r) => (
+                                <option key={r.eventRoleId} value={r.eventRoleId}>
+                                  {r.roleName}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </td>
                         <td className={`px-4 py-3 ${sub}`}>
-                          {new Date(m.joinDate).toLocaleDateString("vi-VN")}
+                          {new Date(m.assignedAt?.replace("Z", "") || "").toLocaleDateString("vi-VN")}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {hasCustomPolicies ? (
-                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded flex-col items-center justify-center bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                          {isCreator ? (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                              Full Access
+                            </span>
+                          ) : hasCustomPolicies ? (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                               Có tùy chỉnh
                             </span>
                           ) : (
-                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded flex-col items-center justify-center bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                               Theo chức vụ
                             </span>
                           )}
@@ -363,10 +423,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                                     setEditingPoliciesFor(null);
                                   } else {
                                     setEditingPoliciesFor(m.eventMemberId);
-                                    // Use custom policies if they exist, else empty Set. 
-                                    // Wait, maybe we should show all current policies but distinguish them? 
-                                    // Let's just edit custom member policies.
-                                    setEditedPolicies(new Set(m.customPolicies || []));
+                                    setEditedPolicies(new Set(m.directPolicies || []));
                                   }
                                 }}
                                 className={`px-2.5 py-1.5 text-xs border rounded-lg transition-colors flex items-center gap-1 ${
@@ -405,7 +462,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                                     Đặc quyền dành riêng cho {m.userName}
                                   </h5>
                                   <p className={`text-xs ${sub} mt-1`}>
-                                    Ngoài các quyền được gán từ chức vụ <b>{m.roleName}</b>, bạn có thể cấp thêm (hoặc ghi đè) 
+                                    Ngoài các quyền được gán từ chức vụ <b>{m.roleName}</b>, bạn có thể cấp thêm 
                                     các quyền hạn đặc thù cho riêng nhân sự này.
                                   </p>
                                 </div>
@@ -427,8 +484,9 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
 
                               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2">
                                 {ALL_EVENT_POLICIES.map((p) => {
-                                  // Indicates if this policy is already granted by the role
-                                  const HasRolePolicy = m.rolePolicies?.includes(p.name);
+                                  // Check if this policy is already granted by the member's role
+                                  const memberRole = roles.find((r) => r.eventRoleId === m.eventRoleId);
+                                  const hasRolePolicy = memberRole?.policies?.includes(p.name) ?? false;
                                   const isCustomSet = editedPolicies.has(p.name);
 
                                   return (
@@ -437,7 +495,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                                       className={`flex flex-col px-3 py-2 rounded-lg border text-xs cursor-pointer transition-all ${
                                         isCustomSet
                                           ? "border-blue-400 bg-white dark:bg-gray-800 shadow-sm"
-                                          : HasRolePolicy
+                                          : hasRolePolicy
                                           ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-700"
                                           : `border-gray-200 dark:border-gray-700 bg-transparent opacity-80`
                                       }`}
@@ -455,11 +513,11 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                                           }}
                                           className="w-3 h-3 accent-blue-600 rounded cursor-pointer"
                                         />
-                                        <span className={`font-medium ${isCustomSet ? "text-blue-700 dark:text-blue-400" : HasRolePolicy ? "text-emerald-700 dark:text-emerald-400" : text}`}>
+                                        <span className={`font-medium ${isCustomSet ? "text-blue-700 dark:text-blue-400" : hasRolePolicy ? "text-emerald-700 dark:text-emerald-400" : text}`}>
                                           {p.label}
                                         </span>
                                       </div>
-                                      {HasRolePolicy && !isCustomSet && (
+                                      {hasRolePolicy && !isCustomSet && (
                                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400 ml-5 mt-0.5">
                                           (Đã có từ chức vụ)
                                         </span>

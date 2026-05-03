@@ -18,8 +18,8 @@ const ClubCard: React.FC<ClubCardProps> = ({ image, title, category, description
         </div>
         <p className="text-gray-600 text-sm mb-6 line-clamp-2">{description}</p>
         <div className="flex gap-4 text-sm text-gray-500 mb-6">
-          <span>👥 {members} thành viên</span>
-          <span>📅 {events} sự kiện</span>
+          <span><i className="fas fa-users mr-1 text-orange-400" /> {members} thành viên</span>
+          <span><i className="fas fa-calendar-alt mr-1 text-orange-400" /> {events} sự kiện</span>
         </div>
         <button className="w-full py-2 bg-[#fff5ee] text-[#f26522] rounded-xl font-bold hover:bg-[#f26522] hover:text-white transition-colors">
           Chi tiết CLB

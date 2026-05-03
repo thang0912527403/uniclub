@@ -2,6 +2,7 @@ import { useGetMyEventRoleQuery } from "~/cores/api/eventCollaboratorApi";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
 import { useClubRole } from "~/hooks/useClubRole";
 
+/** All known event/attendance policy names */
 const POLICY_MAP = {
   canEdit: "editevent",
   canDelete: "deleteevent",
@@ -10,7 +11,6 @@ const POLICY_MAP = {
   canStartComplete: "startevent",
   canApprove: "approveattendance",
   canCheckIn: "checkin",
-  canEvaluate: "evaluatemember",
   canManageTeam: "managecollaborator",
 } as const;
 
@@ -44,9 +44,15 @@ export function useEventPermission(
     memberships.some(
       (m) =>
         m.clubId === safeClubId &&
+        (m.clubRoles?.some(r =>
+          Number(r.level) === 0 ||
+          /^(manager|admin|club\s?manager|quản lý|chủ nhiệm)$/i.test(
+            (r.roleName ?? "").trim(),
+          )
+        ) ||
         /^(manager|admin|club\s?manager|quản lý|chủ nhiệm)$/i.test(
           (m.roleName ?? "").trim(),
-        ),
+        )),
     );
 
   const { data: myRole, isLoading } = useGetMyEventRoleQuery(

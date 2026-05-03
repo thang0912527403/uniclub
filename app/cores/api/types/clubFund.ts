@@ -190,6 +190,7 @@ export interface ContributeToFundDto {
 
 export interface ContributeToFundResponse {
   transactionId: number;
+  externalOrderCode?: string | null;
   checkoutUrl?: string;
   qrCode?: string;
   paymentLinkId?: string;
@@ -201,6 +202,7 @@ export interface ContributeToFundResponse {
 export interface FundContributeTransactionStatus {
   transactionId: number;
   fundId: number;
+  externalOrderCode?: string | null;
   status?: string;
   amount?: number;
   isPaid: boolean;
@@ -213,6 +215,8 @@ export interface PayosFundContributionReturn {
   clubId: number;
   fundId: number;
   publicId?: string;
+  transactionId?: number;
+  externalOrderCode?: string | null;
   isPaid: boolean;
   message?: string;
 }
