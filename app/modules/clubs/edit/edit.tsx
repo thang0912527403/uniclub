@@ -75,8 +75,9 @@ export default function ClubEditModule() {
             return;
         }
 
+        const resolvedId = club?.clubId || clubId;
         try {
-            await updateClub({ id: clubId, club: formData }).unwrap();
+            await updateClub({ id: resolvedId, club: formData }).unwrap();
             showNotification({
                 type: 'success',
                 title: 'Cập nhật thành công!',

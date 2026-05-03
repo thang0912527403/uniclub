@@ -4,9 +4,9 @@ const Footer: React.FC = () => {
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer className="bg-gray-900 text-white py-12 px-6 md:px-12">
+        <footer className="bg-gray-900 text-white py-10 sm:py-12 px-4 sm:px-6 md:px-12">
             <div className="max-w-7xl mx-auto">
-                <div className="grid md:grid-cols-4 gap-8 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8">
                     {/* Brand */}
                     <div>
                         <div className="flex items-center gap-2 mb-4">

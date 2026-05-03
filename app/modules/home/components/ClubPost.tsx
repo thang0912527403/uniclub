@@ -33,19 +33,19 @@ function timeAgo(dateStr: string) {
 /* ── Skeleton ─────────────────────────────── */
 function Skeleton() {
     return (
-        <section className="py-12 bg-zinc-50">
-            <div className="max-w-7xl mx-auto px-6">
+        <section className="py-8 sm:py-12 bg-zinc-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
                 <div className="animate-pulse">
                     <div className="h-5 bg-zinc-200 rounded w-40 mb-8" />
-                    <div className="grid grid-cols-12 gap-4">
-                        <div className="col-span-7 h-[420px] bg-zinc-200 rounded-2xl" />
-                        <div className="col-span-5 flex flex-col gap-4">
-                            <div className="flex-1 bg-zinc-200 rounded-2xl" />
-                            <div className="flex-1 bg-zinc-200 rounded-2xl" />
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                        <div className="sm:col-span-7 h-[250px] sm:h-[420px] bg-zinc-200 rounded-2xl" />
+                        <div className="sm:col-span-5 flex flex-col gap-4">
+                            <div className="h-[150px] sm:flex-1 bg-zinc-200 rounded-2xl" />
+                            <div className="h-[150px] sm:flex-1 bg-zinc-200 rounded-2xl" />
                         </div>
-                        <div className="col-span-4 h-56 bg-zinc-200 rounded-2xl" />
-                        <div className="col-span-4 h-56 bg-zinc-200 rounded-2xl" />
-                        <div className="col-span-4 h-56 bg-zinc-200 rounded-2xl" />
+                        <div className="sm:col-span-4 h-40 sm:h-56 bg-zinc-200 rounded-2xl" />
+                        <div className="sm:col-span-4 h-40 sm:h-56 bg-zinc-200 rounded-2xl" />
+                        <div className="sm:col-span-4 h-40 sm:h-56 bg-zinc-200 rounded-2xl" />
                     </div>
                 </div>
             </div>
@@ -166,8 +166,8 @@ const ClubNewsFeed = () => {
     }
 
     return (
-        <section className="py-10 bg-zinc-50">
-            <div className="max-w-7xl mx-auto px-6">
+        <section className="py-8 sm:py-10 bg-zinc-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
                 {/* ── Header ── */}
                 <div className="flex items-center justify-between mb-7">
@@ -192,15 +192,15 @@ const ClubNewsFeed = () => {
                 {/* ══════════════════════════════════
                 Hero (7 cols) + 2 sub (5 cols) - CHỈ 3 BẢN TIN
                 ══════════════════════════════════ */}
-                <div className="grid grid-cols-12 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
 
                     {/* Hero card – overlaid gradient, big title */}
                     {hero && (
                         <article
                             onClick={() => go(hero)}
-                            className="col-span-12 lg:col-span-7 relative overflow-hidden rounded-2xl cursor-pointer group shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow duration-300"
+                            className="sm:col-span-12 lg:col-span-7 relative overflow-hidden rounded-2xl cursor-pointer group shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow duration-300"
                             aria-label={hero.title}
-                            style={{ minHeight: '400px' }}
+                            style={{ minHeight: 'clamp(250px, 50vw, 400px)' }}
                         >
                             {/* Image */}
                             <div className="absolute inset-0">
@@ -241,7 +241,7 @@ const ClubNewsFeed = () => {
                     )}
 
                     {/* 2 Sub cards stacked */}
-                    <div className="col-span-12 lg:col-span-5 flex flex-col gap-4">
+                    <div className="sm:col-span-12 lg:col-span-5 flex flex-col gap-4">
                         {[sub1, sub2].map((post, i) => post && (
                             <article
                                 key={post.postId}

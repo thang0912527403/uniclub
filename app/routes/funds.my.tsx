@@ -24,6 +24,7 @@ import {
   FundCardBalanceHint,
   FundRejectionReasonCallout,
 } from '~/modules/funds/components/FundUxHints';
+import { isFundClosedOnList } from '~/modules/funds/utils/isFundClosedOnList';
 import {
   applyFilterChangeParams,
   DEFAULT_FUND_PAGE_SIZE,
@@ -52,6 +53,7 @@ function fundListBalanceVnd(f: ClubFund): number {
 }
 
 function fundStatusLabel(f: ClubFund): string {
+  if (isFundClosedOnList(f)) return 'Đã đóng';
   const s = String(f.status ?? '').toUpperCase();
   if (s === 'PENDING') return 'Chờ duyệt';
   if (s === 'APPROVED') return 'Đã duyệt';
@@ -60,6 +62,14 @@ function fundStatusLabel(f: ClubFund): string {
 }
 
 function FundStatusBadge({ fund }: { fund: ClubFund }) {
+  if (isFundClosedOnList(fund)) {
+    return (
+      <span className={t.status.closed}>
+        <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-500 shrink-0" aria-hidden />
+        <span>{fundStatusLabel(fund)}</span>
+      </span>
+    );
+  }
   const s = String(fund.status ?? '').toUpperCase();
   if (s === 'APPROVED') {
     return (

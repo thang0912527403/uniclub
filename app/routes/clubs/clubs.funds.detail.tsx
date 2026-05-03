@@ -34,6 +34,8 @@ import { FundWorkflowLifecycleBadges } from '~/modules/funds/components/FundWork
 import { clearClubFundDetailSession } from '~/modules/funds/utils/clubFundDetailSession';
 import { extractClubFundErrorMessage } from '~/modules/funds/utils/fundRefundErrors';
 import { isManagerClosedAmberNoteDuplicateVi } from '~/modules/funds/utils/fundContributeNoteFilter';
+import { isFundClosedOnList } from '~/modules/funds/utils/isFundClosedOnList';
+import { fundSoftDeleteBlockedReasonVi } from '~/modules/funds/utils/fundSoftDeleteBlockedReasonVi';
 import { useFundHistory } from '~/modules/funds/hooks/useFundHistory';
 import {
   DEFAULT_FUND_HISTORY_PAGE_SIZE,
@@ -80,17 +82,6 @@ function formatFundHistoryDateTime(iso: string | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
-}
-
-function fundHistoryCategoryLabel(item: FundHistoryItem): string {
-  const r = item as FundHistoryItem & Record<string, unknown>;
-  const nameRaw = r.categoryName ?? r.CategoryName;
-  const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
-  if (name) return name;
-  const idRaw = r.categoryId ?? r.CategoryId;
-  const id = typeof idRaw === 'number' ? idRaw : Number(idRaw);
-  if (Number.isFinite(id)) return `ID ${id}`;
-  return '—';
 }
 
 function fundHistoryStatusLabelVi(item: FundHistoryItem): string {
@@ -358,7 +349,10 @@ export default function FundDetailPageByClub() {
   const isFundApproved = fund && String(fund.status ?? '').toUpperCase() === 'APPROVED';
   const isFundPending = fund && String(fund.status ?? '').toUpperCase() === 'PENDING';
   const canShowContributeBtn =
-    !!fund && canContribute && fund.canAcceptContributions === true && fund.isClosed !== true;
+    !!fund &&
+    canContribute &&
+    fund.canAcceptContributions === true &&
+    !isFundClosedOnList(fund);
   const isUnauthorized =
     (fundError && 'status' in fundError && fundError.status === 401);
 
@@ -758,7 +752,9 @@ export default function FundDetailPageByClub() {
                         Hạn nhận nộp tiền: {new Date(fund.expiresAt).toLocaleDateString('vi-VN')}
                       </p>
                     ) : null}
-                    {isFundApproved && canContribute && (fund.canAcceptContributions === false || fund.isClosed === true)
+                    {isFundApproved &&
+                    canContribute &&
+                    (fund.canAcceptContributions === false || isFundClosedOnList(fund))
                       ? (() => {
                           const line =
                             fund.cannotContributeReasonVi?.trim() ||
@@ -795,8 +791,10 @@ export default function FundDetailPageByClub() {
                             disabled
                             className={`${t.btn.primary} inline-flex items-center gap-2 opacity-60 cursor-not-allowed`}
                             title={
-                              fund.isClosed
-                                ? fund.lifecycleStatusVi?.trim() || 'Quỹ đã đóng'
+                              isFundClosedOnList(fund)
+                                ? fund.lifecycleStatusVi?.trim() ||
+                                  fund.cannotContributeReasonVi?.trim() ||
+                                  'Quỹ đã đóng'
                                 : fund.cannotContributeReasonVi?.trim() || undefined
                             }
                           >
@@ -805,7 +803,7 @@ export default function FundDetailPageByClub() {
                           </button>
                         )
                       ) : null}
-                      {canRecordCashContribution && fund.isClosed !== true ? (
+                      {canRecordCashContribution && !isFundClosedOnList(fund) ? (
                         <button
                           type="button"
                           onClick={openRecordCashModal}
@@ -814,7 +812,7 @@ export default function FundDetailPageByClub() {
                           <Banknote className="w-4 h-4 shrink-0" aria-hidden />
                           Ghi nhận tiền mặt
                         </button>
-                      ) : canRecordCashContribution && fund.isClosed === true ? (
+                      ) : canRecordCashContribution && isFundClosedOnList(fund) ? (
                         <button
                           type="button"
                           disabled
@@ -835,7 +833,10 @@ export default function FundDetailPageByClub() {
                       fundId={fund.fundId}
                       fundLabel={fund.fundName || `Quỹ #${fund.fundId}`}
                       canSoftDeleteFund={caps?.canSoftDeleteFund === true}
-                      isFundClosed={fund.isClosed === true}
+                      isFundClosed={isFundClosedOnList(fund)}
+                      softDeleteBlockedReasonVi={fundSoftDeleteBlockedReasonVi(
+                        fund,
+                      )}
                       financeAccessHintVi={caps?.financeAccessHintVi}
                       onAfterSuccess={() => {
                         clearClubFundDetailSession();
@@ -851,7 +852,7 @@ export default function FundDetailPageByClub() {
                 ) : null}
               </section>
 
-              {canViewFunds ? (
+              {canViewFunds && !isFundClosedOnList(fund) ? (
               <>
               <section className={`${t.card.base} overflow-hidden`} aria-labelledby="fund-member-contrib-heading">
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 space-y-1">
@@ -930,7 +931,49 @@ export default function FundDetailPageByClub() {
                           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
                             <p className={`text-xs ${t.type.muted}`}>Tổng đã đóng</p>
                             <p className="mt-1 text-lg font-semibold">
-                              {memberContrib.totalContributions.toLocaleString('vi-VN')} ₫                            </p>
+                              {(memberContrib.totalApprovedMemberContributions ?? 0).toLocaleString('vi-VN')} ₫
+                            </p>
+                            <div className="mt-2">
+                              <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                <div
+                                  className="h-full bg-violet-600"
+                                  style={{
+                                    width: `${Math.min(
+                                      100,
+                                      Math.round(
+                                        ((memberContrib.totalApprovedMemberContributions ?? 0) /
+                                          Math.max(1, memberContrib.goalAmount ?? 0)) *
+                                          100,
+                                      ),
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
+                              <p className={`mt-1 text-xs ${t.type.muted}`}>
+                                {Math.min(
+                                  100,
+                                  Math.round(
+                                    ((memberContrib.totalApprovedMemberContributions ?? 0) /
+                                      Math.max(1, memberContrib.goalAmount ?? 0)) *
+                                      100,
+                                  ),
+                                )}
+                                %
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                            <p className={`text-xs ${t.type.muted}`}>Thành viên</p>
+                            <p className="mt-1 text-lg font-semibold">{memberContrib.activeMemberCount}</p>
+                          </div>
+                          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                            <p className={`text-xs ${t.type.muted}`}>Số tiền đã đóng</p>
+                            <p className="mt-1 text-lg font-semibold">
+                              {(memberContrib.totalApprovedMemberContributions ?? 0).toLocaleString('vi-VN')} ₫
+                            </p>
                           </div>
                         </div>
                       )}

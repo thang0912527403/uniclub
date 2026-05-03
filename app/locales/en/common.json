@@ -1,6 +1,13 @@
 {
   "sidebar": {
     "dashboard": "Dashboard",
+    "system": {
+      "title": "System",
+      "manageClubs": "Manage Clubs",
+      "manageUsers": "Manage Users",
+      "creationRequests": "Creation Requests",
+      "recordOfChange": "Record of Change"
+    },
     "manageClub": {
       "title": "Manage Club",
       "allClubs": "All Clubs",
@@ -29,7 +36,8 @@
       "allMembers": "All Members",
       "addMember": "Add Member",
       "memberRoles": "Member Roles",
-      "memberActivity": "Member Activity"
+      "memberActivity": "Member Activity",
+      "participationHistory": "Participation History"
     },
     "managePosts": {
       "title": "Manage Posts",
@@ -47,7 +55,13 @@
       "budgetOverview": "Budget Overview",
       "myFunds": "My Funds",
       "transactions": "Transactions",
+      "paymentSettings": "Payment Settings",
       "expenseReports": "Expense Reports"
+    },
+    "manageInterview": {
+      "title": "Manage Interview",
+      "allInterviews": "Interview Schedule",
+      "comparison": "Comparison & Announcement"
     },
     "manageNotifications": {
       "title": "Manage Notifications",

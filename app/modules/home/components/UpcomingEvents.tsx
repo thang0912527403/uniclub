@@ -39,7 +39,7 @@ const UpcomingEvents: React.FC = () => {
     // Skeleton
     if (isLoading) {
         return (
-            <section className="py-16 px-6 md:px-12 bg-gray-50">
+            <section className="py-10 sm:py-16 px-4 sm:px-6 md:px-12 bg-gray-50">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Sự kiện sắp diễn ra</h2>
@@ -47,8 +47,8 @@ const UpcomingEvents: React.FC = () => {
                     </div>
                     <div className="grid md:grid-cols-2 gap-6">
                         {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-md flex animate-pulse">
-                                <div className="w-[100px] bg-orange-200" />
+                            <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-md flex flex-col sm:flex-row animate-pulse">
+                                <div className="h-[60px] sm:h-auto sm:w-[100px] bg-orange-200" />
                                 <div className="flex-1 p-6 space-y-3">
                                     <div className="h-4 bg-gray-200 rounded w-1/4" />
                                     <div className="h-5 bg-gray-200 rounded w-3/4" />
@@ -66,7 +66,7 @@ const UpcomingEvents: React.FC = () => {
     // Fallback: show placeholder message if no events
     if (events.length === 0) {
         return (
-            <section className="py-16 px-6 md:px-12 bg-gray-50">
+            <section className="py-10 sm:py-16 px-4 sm:px-6 md:px-12 bg-gray-50">
                 <div className="max-w-7xl mx-auto text-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Sự kiện sắp diễn ra</h2>
                     <p className="text-gray-500">Hiện chưa có sự kiện sắp diễn ra. Hãy quay lại sau!</p>
@@ -82,7 +82,7 @@ const UpcomingEvents: React.FC = () => {
     }
 
     return (
-        <section className="py-16 px-6 md:px-12 bg-gray-50">
+        <section className="py-10 sm:py-16 px-4 sm:px-6 md:px-12 bg-gray-50">
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
@@ -93,21 +93,21 @@ const UpcomingEvents: React.FC = () => {
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     {events.map((event) => (
                         <div
                             key={event.eventId}
                             onClick={() => navigate(`/public/events/${event.eventId}`)}
-                            className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex cursor-pointer hover:scale-[1.02]"
+                            className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row cursor-pointer hover:scale-[1.02]"
                         >
                             {/* Date Badge */}
-                            <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 flex flex-col items-center justify-center min-w-[100px]">
+                            <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 sm:p-6 flex flex-row sm:flex-col items-center justify-center sm:min-w-[100px] gap-2 sm:gap-0">
                                 <div className="text-3xl font-bold">{formatDay(event.startDate)}</div>
                                 <div className="text-sm uppercase font-medium">{formatMonth(event.startDate)}</div>
                             </div>
 
                             {/* Event Details */}
-                            <div className="flex-1 p-6">
+                            <div className="flex-1 p-4 sm:p-6">
                                 <div className="inline-block bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-medium mb-3">
                                     {getStatusLabel(event.status)}
                                 </div>
