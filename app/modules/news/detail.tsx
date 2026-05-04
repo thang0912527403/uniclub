@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { Footer } from '../home/components';
+import Footer from '~/modules/home/components/Footer';
 import Navbar from '../../components/Navbar';
 import { useGetClubPostByIdQuery, useGetClubPostsQuery } from '~/cores/api/clubApi';
 

@@ -63,7 +63,7 @@ const HeroSection: React.FC = () => {
 
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link
-                to="/question"
+                to="/public/clubs"
                 className="bg-orange-500 hover:bg-orange-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-medium transition-all duration-300 shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1 cursor-pointer text-center flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 Tham gia CLB
@@ -87,7 +87,7 @@ const HeroSection: React.FC = () => {
             </div>
 
             {/* Stats */}
-            <div className="flex flex-wrap gap-6 sm:gap-10 pt-6 sm:pt-8 border-t border-gray-100 mt-4">
+            {/* <div className="flex flex-wrap gap-6 sm:gap-10 pt-6 sm:pt-8 border-t border-gray-100 mt-4">
               <div className="group cursor-default">
                 <div className="text-2xl sm:text-4xl font-extrabold text-gray-800 group-hover:text-orange-500 transition-colors duration-300">
                   150<span className="text-orange-500">+</span>
@@ -112,7 +112,7 @@ const HeroSection: React.FC = () => {
                   Sự kiện/năm
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Right Image - Parallax Grid */}
@@ -194,11 +194,11 @@ const HeroSection: React.FC = () => {
                   />
                 </div>
                 <div className="h-[180px] lg:h-[200px] bg-gradient-to-br from-orange-400 to-rose-400 rounded-2xl shadow-xl flex flex-col items-center justify-center group cursor-pointer relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-orange-400/40">
-                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                   <Sparkles className="text-white mb-2" size={28} />
-                  <span className="font-bold text-white text-lg px-4 text-center">
+                  <Link to="/public/news" className="font-bold text-white text-lg px-4 text-center relative z-10">
                     Khám phá <br /> ngay!
-                  </span>
+                  </Link>
                 </div>
               </div>
             </div>

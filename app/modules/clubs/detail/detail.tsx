@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { Sidebar } from "~/components/Sidebar";
 import { HeaderBar } from "~/components/HeaderBar";
 import { SettingButton } from "~/components/SettingButton";
@@ -115,13 +115,6 @@ export default function ClubDetailModule() {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <Link
-                      to="/question"
-                      className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors inline-flex items-center"
-                    >
-                      <i className="fas fa-file-alt mr-2"></i>
-                      Nộp đơn ứng tuyển
-                    </Link>
                     <button
                       onClick={() =>
                         navigate(paramId ? `/clubs/edit/${id}` : `/club/edit`)
@@ -130,10 +123,6 @@ export default function ClubDetailModule() {
                     >
                       <i className="fas fa-edit mr-2"></i>
                       Chỉnh sửa
-                    </button>
-                    <button className="cursor-pointer px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <i className="fas fa-share mr-2"></i>
-                      Chia sẻ
                     </button>
                   </div>
                 </div>
@@ -303,91 +292,7 @@ export default function ClubDetailModule() {
               </div>
             </div>
 
-            {/* Additional Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Members Section */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  <i className="fas fa-users mr-2"></i>
-                  Thành viên nổi bật
-                </h2>
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                    >
-                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                        U{i}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 dark:text-white">
-                          User {i}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Member
-                        </p>
-                      </div>
-                      <button className="text-blue-500 hover:text-blue-600">
-                        <i className="fas fa-chevron-right"></i>
-                      </button>
-                    </div>
-                  ))}
-                  <button className="w-full text-center text-blue-500 hover:text-blue-600 font-semibold py-2">
-                    Xem tất cả thành viên →
-                  </button>
-                </div>
-              </div>
 
-              {/* Recent Activities */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  <i className="fas fa-history mr-2"></i>
-                  Hoạt động gần đây
-                </h2>
-                <div className="space-y-3">
-                  {[
-                    {
-                      icon: "fa-calendar",
-                      text: "Sự kiện mới được tạo",
-                      time: "2 giờ trước",
-                    },
-                    {
-                      icon: "fa-user-plus",
-                      text: "5 thành viên mới tham gia",
-                      time: "1 ngày trước",
-                    },
-                    {
-                      icon: "fa-image",
-                      text: "Cập nhật ảnh bìa",
-                      time: "3 ngày trước",
-                    },
-                  ].map((activity, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
-                        <i
-                          className={`fas ${activity.icon} text-sm text-blue-500`}
-                        ></i>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {activity.text}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {activity.time}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  <button className="w-full text-center text-blue-500 hover:text-blue-600 font-semibold py-2">
-                    Xem tất cả hoạt động →
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </main>

@@ -106,9 +106,8 @@ export default function CampaignDetailPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
               <span
-                className={`inline-block px-3 py-1 rounded-full text-sm font-semibold mb-3 ${
-                  isActive ? "bg-green-500" : "bg-gray-500"
-                }`}
+                className={`inline-block px-3 py-1 rounded-full text-sm font-semibold mb-3 ${isActive ? "bg-green-500" : "bg-gray-500"
+                  }`}
               >
                 {isActive ? "OPEN" : campaign.status}
               </span>

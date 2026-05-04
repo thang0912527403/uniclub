@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { decodeId } from '~/utils/hashId';
-import { Footer } from '../home/components';
+import Footer from '~/modules/home/components/Footer';
 import Navbar from '../../components/Navbar';
 import { useGetEventByIdQuery, useGetCurrentUserQuery, useRegisterForEventMutation, useCheckInMutation, useGetMyRegistrationQuery, useCancelRegistrationMutation } from '~/cores/api';
 import { useGetClubPostsByEventIdQuery } from '~/cores/api/clubApi';

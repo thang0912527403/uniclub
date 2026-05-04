@@ -27,6 +27,9 @@ export default [
   route("public/news", "routes/news.tsx"),
   route("public/news/:id", "routes/news.$id.tsx"),
   route("campaign/:id", "routes/campaign.$id.tsx"),
+  route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
+  route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
+  route("public/recruitment", "routes/public.recruitment.tsx"),
 
   // Error routes
   route("401", "routes/error/401.tsx"),
@@ -77,8 +80,6 @@ export default [
     // Recruitment & Applications
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
     route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
-    route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
-    route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
     route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
     route("club/all-requests", "routes/clubs/clubrequests.tsx"),
 

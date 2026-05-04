@@ -37,7 +37,13 @@ export const requiredUrlSchema = z
 /** ISO date string (YYYY-MM-DD) */
 export const dateSchema = z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày không hợp lệ (định dạng YYYY-MM-DD)');
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày không hợp lệ (định dạng YYYY-MM-DD)')
+    .refine((val) => {
+        const inputDate = new Date(val);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        return inputDate <= today;
+    }, 'Ngày thành lập không được vượt quá ngày hiện tại');
 
 /** Strong password — min 8 chars, at least 1 uppercase, 1 digit */
 export const passwordSchema = z
