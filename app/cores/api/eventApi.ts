@@ -47,6 +47,7 @@ export const eventApi = baseApi.injectEndpoints({
         total: number;
         page: number;
         pageSize: number;
+        totalPages: number;
       },
       {
         pageNumber?: number;
@@ -63,12 +64,40 @@ export const eventApi = baseApi.injectEndpoints({
         if (clubId) params.set("clubId", String(clubId));
         return `/events?${params.toString()}`;
       },
-      transformResponse: (response: ApiResponse<{
-        items: EventDetailDto[];
-        total: number;
-        page: number;
-        pageSize: number;
-      }>) => response.data,
+      transformResponse: (response: any) => {
+        // Case 1: ApiResponse<EventDetailDto[]>
+        if (response && response.success && Array.isArray(response.data)) {
+          return {
+            items: response.data,
+            total: response.totalCount ?? response.data.length,
+            totalPages: response.totalPages ?? 1,
+            page: 1,
+            pageSize: 10,
+          };
+        }
+        // Case 2: Paginated object { items, total, ... }
+        if (response && Array.isArray(response.items)) {
+          return {
+            items: response.items,
+            total: response.total ?? response.items.length,
+            totalPages: response.totalPages ?? 1,
+            page: response.page ?? 1,
+            pageSize: response.pageSize ?? 10,
+          };
+        }
+        // Case 3: Direct array EventDetailDto[]
+        if (Array.isArray(response)) {
+          return {
+            items: response,
+            total: response.length,
+            totalPages: 1,
+            page: 1,
+            pageSize: response.length,
+          };
+        }
+        // Fallback
+        return { items: [], total: 0, totalPages: 0, page: 1, pageSize: 10 };
+      },
       providesTags: ["Event"],
     }),
 
