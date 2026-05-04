@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { encodeId } from '~/utils/hashId';
-import { Footer } from '../home/components';
+import Footer from '~/modules/home/components/Footer';
 import Navbar from '../../components/Navbar';
 import { useGetAllEventsQuery } from '~/cores/api';
 import { useGetActiveClubsQuery } from '~/cores/api/clubApi';
@@ -417,8 +417,8 @@ const PublicEventsPage: React.FC = () => {
                                             <button
                                                 onClick={() => setPage(p)}
                                                 className={`w-10 h-10 text-sm font-semibold rounded-lg transition-all duration-200 ${p === page
-                                                        ? 'bg-orange-500 text-white shadow-md'
-                                                        : 'text-gray-500 hover:bg-gray-100'
+                                                    ? 'bg-orange-500 text-white shadow-md'
+                                                    : 'text-gray-500 hover:bg-gray-100'
                                                     }`}
                                             >
                                                 {p}

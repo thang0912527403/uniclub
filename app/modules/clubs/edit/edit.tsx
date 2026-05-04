@@ -256,9 +256,11 @@ export default function ClubEditModule() {
                                             <input
                                                 type="date"
                                                 value={formData.foundedDate}
+                                                max={new Date().toISOString().split('T')[0]}
                                                 onChange={(e) => handleInputChange('foundedDate', e.target.value)}
-                                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg pl-10 pr-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                                                className={`w-full bg-gray-50 dark:bg-gray-900 border ${formErrors.foundedDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'} rounded-lg pl-10 pr-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500`}
                                             />
+                                            {formErrors.foundedDate && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{formErrors.foundedDate}</p>}
                                         </div>
                                     </div>
 

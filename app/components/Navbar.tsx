@@ -32,7 +32,7 @@ const Navbar: React.FC = () => {
     { name: "Câu lạc bộ", href: "/public/clubs" },
     { name: "Sự kiện", href: "/public/events" },
     { name: "Tin tức", href: "/public/news" },
-    { name: "Về chúng tôi", href: "#about" },
+    { name: "Tuyển dụng", href: "/public/recruitment" },
   ];
 
   const handleSmoothScroll = (
