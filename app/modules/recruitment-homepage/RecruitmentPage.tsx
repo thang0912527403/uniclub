@@ -140,7 +140,8 @@ function SkeletonCard() {
    ═════════════════════════════════════════════════════════ */
 const RecruitmentPage: React.FC = () => {
   const navigate = useNavigate();
-  const { data: allCampaigns = [], isLoading, isFetching } = useGetRecruitmentCampaignsQuery();
+  const { data, isLoading, isFetching } = useGetRecruitmentCampaignsQuery();
+  const allCampaigns = data?.items ?? [];
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');

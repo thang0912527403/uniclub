@@ -39,8 +39,16 @@ const ResetPasswordPage: React.FC = () => {
     
     if (!formData.newPassword) {
       newErrors.newPassword = 'Mật khẩu mới là bắt buộc';
-    } else if (formData.newPassword.length < 6) {
-      newErrors.newPassword = 'Mật khẩu phải có ít nhất 6 ký tự';
+    } else if (formData.newPassword.length < 8) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 8 ký tự';
+    } else if (!/[A-Z]/.test(formData.newPassword)) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 1 chữ cái viết hoa';
+    } else if (!/[a-z]/.test(formData.newPassword)) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 1 chữ cái viết thường';
+    } else if (!/[0-9]/.test(formData.newPassword)) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 1 chữ số';
+    } else if (!/[^A-Za-z0-9]/.test(formData.newPassword)) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt';
     }
     
     if (!formData.confirmNewPassword) {

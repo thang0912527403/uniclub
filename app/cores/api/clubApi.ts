@@ -10,10 +10,12 @@ export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getClubs: builder.query<
       { data: Club[]; totalPage: number; totalCount: number },
-      { pageIndex: string; searchQuery: string; pageSize: string }
+      { pageIndex: string; searchQuery?: string; pageSize: string; status?: string }
     >({
-      query: ({ pageIndex, searchQuery, pageSize } = {} as any) =>
-        `/Club?pageSize=${pageSize}&pageIndex=${pageIndex}&searchQuery=${searchQuery}`,
+      query: (params) => ({
+        url: '/Club',
+        params,
+      }),
       transformResponse: (response: ApiResponse<Club[]>) => ({
         data: response.data,
         totalPage: response.totalPages,
@@ -24,10 +26,12 @@ export const clubApi = baseApi.injectEndpoints({
 
     getActiveClubs: builder.query<
       { data: Club[]; totalPage: number; totalCount: number },
-      { pageIndex: string; searchQuery: string; pageSize: string }
+      { pageIndex: string; searchQuery?: string; pageSize: string }
     >({
-      query: ({ pageIndex, searchQuery, pageSize } = {} as any) =>
-        `/Club/active?pageSize=${pageSize}&pageIndex=${pageIndex}&searchQuery=${searchQuery}`,
+      query: (params) => ({
+        url: '/Club/active',
+        params,
+      }),
       transformResponse: (response: ApiResponse<Club[]>) => ({
         data: response.data,
         totalPage: response.totalPages,
