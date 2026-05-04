@@ -103,7 +103,12 @@ export const eventApi = baseApi.injectEndpoints({
 
     getEventById: builder.query<EventDetailDto, number>({
       query: (id) => `/events/${id}`,
-      transformResponse: (response: ApiResponse<EventDetailDto>) => response.data,
+      transformResponse: (response: any) => {
+        if (response && response.success && response.data) {
+          return response.data;
+        }
+        return response;
+      },
       providesTags: (result, error, id) => [{ type: "Event", id }],
     }),
 

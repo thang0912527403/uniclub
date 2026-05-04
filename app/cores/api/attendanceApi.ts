@@ -20,6 +20,10 @@ export const attendanceApi = baseApi.injectEndpoints({
                 url: `/events/${eventId}/register`,
                 method: 'POST',
             }),
+            transformResponse: (response: any) => {
+                if (response && response.success && response.data) return response.data;
+                return response;
+            },
             invalidatesTags: (result, error, eventId) => [{ type: 'Event', id: eventId }],
         }),
 
@@ -29,6 +33,10 @@ export const attendanceApi = baseApi.injectEndpoints({
                 url: `/events/${eventId}/cancel`,
                 method: 'POST',
             }),
+            transformResponse: (response: any) => {
+                if (response && response.success && response.data) return response.data;
+                return response;
+            },
             invalidatesTags: (result, error, eventId) => [{ type: 'Event', id: eventId }],
         }),
 
@@ -39,6 +47,10 @@ export const attendanceApi = baseApi.injectEndpoints({
                 method: 'POST',
                 body: request,
             }),
+            transformResponse: (response: any) => {
+                if (response && response.success && response.data) return response.data;
+                return response;
+            },
             invalidatesTags: (result, error, arg) => [{ type: 'Event', id: arg.eventId }],
         }),
 
@@ -51,6 +63,10 @@ export const attendanceApi = baseApi.injectEndpoints({
         // Lấy trạng thái đăng ký của user hiện tại cho event
         getMyRegistration: builder.query<{ attendanceStatus: string; registrationDate: string; checkInTime?: string }, number>({
             query: (eventId) => `/events/${eventId}/my-registration`,
+            transformResponse: (response: any) => {
+                if (response && response.success && response.data) return response.data;
+                return response;
+            },
             providesTags: (result, error, eventId) => [{ type: 'Event', id: eventId }],
         }),
 
