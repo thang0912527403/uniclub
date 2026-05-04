@@ -20,6 +20,7 @@ import { useGetUserByIdQuery } from "~/cores/api";
 import { useGetRecruitmentCampaignQuery } from "~/cores/api/recruitmentCampaignApi";
 import { getUserId } from "~/utils/auth";
 import PublishResultModal from "./PublishResultModal";
+import { useClubRole } from "~/hooks/useClubRole";
 import type {
   CandidateComparisonItem,
   AiCandidateAnalysis,
@@ -507,13 +508,19 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
   campaignId,
 }) => {
   const navigate = useNavigate();
+  const { currentClub } = useClubRole();
+  const clubId = currentClub?.clubId;
+
   const {
     data: comparison,
     isLoading,
     error,
   } = useGetCampaignComparisonQuery(campaignId);
   const { data: criteria } = useGetCampaignCriteriaQuery(campaignId);
-  const { data: campaign } = useGetRecruitmentCampaignQuery({ clubId: 0, id: campaignId });
+  const { data: campaign } = useGetRecruitmentCampaignQuery(
+    { clubId: clubId || 0, id: campaignId },
+    { skip: !clubId },
+  );
   const { data: publishStatus } = useGetPublishStatusQuery(campaignId);
   const {
     data: aiAnalysis,

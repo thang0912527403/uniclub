@@ -13,8 +13,12 @@ const CampaignSelection = () => {
   const { currentClub } = useClubRole();
   const clubId = currentClub?.clubId;
 
-  const { data: myCampaigns = [], isLoading: campaignsLoading } =
-    useGetRecruitmentCampaignsByClubIdQuery(clubId || 0, { skip: !clubId });
+  const { data: campaignResponse, isLoading: campaignsLoading } =
+    useGetRecruitmentCampaignsByClubIdQuery(
+      { clubId: clubId || 0, pageSize: 100 },
+      { skip: !clubId },
+    );
+  const myCampaigns = campaignResponse?.items ?? [];
 
   const [search, setSearch] = useState("");
   const [directId, setDirectId] = useState("");
