@@ -330,7 +330,9 @@ function CampaignTableRow({
         </span>
       </td>
       <td className="px-4 py-3">
-        <span className={`text-xs whitespace-nowrap ${expired ? "text-orange-500 dark:text-orange-400 font-medium" : "text-gray-500 dark:text-gray-400"}`}>
+        <span
+          className={`text-xs whitespace-nowrap ${expired ? "text-orange-500 dark:text-orange-400 font-medium" : "text-gray-500 dark:text-gray-400"}`}
+        >
           {formatDateVN(campaign.endDate)}
         </span>
       </td>
@@ -495,8 +497,8 @@ function toISODate(dateStr: string) {
 
 // Map frontend lowercase status to backend expected uppercase values
 function toBackendStatus(status: string): string {
-  if (status === 'close') return 'CLOSED';
-  if (status === 'open')  return 'OPEN';
+  if (status === "close") return "CLOSED";
+  if (status === "open") return "OPEN";
   return status.toUpperCase();
 }
 
@@ -883,34 +885,12 @@ export default function RecruitmentCampaignsModule() {
   const { currentClub } = useClubRole();
   const managerClubId = currentClub?.clubId ?? 0;
   // clubId từ navigation state (khi điều hướng từ trang chi tiết club)
-  const stateClubId: number | undefined = (location.state as { clubId?: number } | null)?.clubId;
+  const stateClubId: number | undefined = (
+    location.state as { clubId?: number } | null
+  )?.clubId;
   const clubId = stateClubId ?? managerClubId;
   const canManage = !isAdmin && managerClubId !== 0;
   const { show: notify } = useNotification();
-
-  // ── API ──
-  const {
-    data: adminCampaigns,
-    isLoading: adminLoading,
-    error: adminError,
-  } = useGetRecruitmentCampaignsQuery(undefined, { skip: !isAdmin || !!stateClubId });
-  const {
-    data: clubCampaigns,
-    isLoading: clubLoading,
-    error: clubError,
-  } = useGetRecruitmentCampaignsByClubIdQuery(clubId, {
-    skip: (isAdmin && !stateClubId) || clubId === 0,
-  });
-  const [createCampaign, { isLoading: isCreating }] =
-    useCreateRecruitmentCampaignMutation();
-  const [updateCampaign, { isLoading: isUpdating }] =
-    useUpdateRecruitmentCampaignMutation();
-  const [deleteCampaign, { isLoading: isDeleting }] =
-    useDeleteRecruitmentCampaignMutation();
-
-  const campaigns = (isAdmin && !stateClubId) ? adminCampaigns : clubCampaigns;
-  const isLoading = (isAdmin && !stateClubId) ? adminLoading : clubLoading;
-  const error = (isAdmin && !stateClubId) ? adminError : clubError;
 
   // ── Local state ──
   const [activeTab, setActiveTab] = useState<StatusTabKey>("all");
@@ -925,47 +905,83 @@ export default function RecruitmentCampaignsModule() {
     null,
   );
 
+  // ── API ──
+  const {
+    data: adminCampaignsData,
+    isLoading: adminLoading,
+    error: adminError,
+  } = useGetRecruitmentCampaignsQuery(
+    {
+      page: currentPage,
+      pageSize: ITEMS_PER_PAGE,
+      search: searchQuery,
+    },
+    {
+      skip: !isAdmin || !!stateClubId,
+    },
+  );
+  const {
+    data: clubCampaignsData,
+    isLoading: clubLoading,
+    error: clubError,
+  } = useGetRecruitmentCampaignsByClubIdQuery(
+    {
+      clubId,
+      page: currentPage,
+      pageSize: ITEMS_PER_PAGE,
+      search: searchQuery,
+    },
+    {
+      skip: (isAdmin && !stateClubId) || clubId === 0,
+    },
+  );
+  const [createCampaign, { isLoading: isCreating }] =
+    useCreateRecruitmentCampaignMutation();
+  const [updateCampaign, { isLoading: isUpdating }] =
+    useUpdateRecruitmentCampaignMutation();
+  const [deleteCampaign, { isLoading: isDeleting }] =
+    useDeleteRecruitmentCampaignMutation();
+
+  const campaignsData = isAdmin && !stateClubId ? adminCampaignsData : clubCampaignsData;
+  const campaigns = campaignsData?.items ?? [];
+  const isLoading = isAdmin && !stateClubId ? adminLoading : clubLoading;
+  const error = isAdmin && !stateClubId ? adminError : clubError;
+  const totalCount = campaignsData?.totalCount ?? 0;
+  const totalPages = campaignsData?.totalPages ?? 1;
+
   // ── Derived data ──
   const statusCounts = useMemo(() => {
+    // Note: With server-side pagination, these counts are only for the current page
+    // Unless the API returns total counts per status, we show a simplified count or total
     if (!campaigns) return { all: 0, open: 0, close: 0, expired: 0 };
     return {
-      all: campaigns.length,
+      all: totalCount,
       open: campaigns.filter((c) => c.status === "open" && !isExpired(c.endDate)).length,
       close: campaigns.filter((c) => c.status === "close" && !isExpired(c.endDate)).length,
       expired: campaigns.filter((c) => isExpired(c.endDate)).length,
     };
-  }, [campaigns]);
+  }, [campaigns, totalCount]);
 
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];
     let result = [...campaigns];
     if (activeTab === "open") {
-      result = result.filter((c) => c.status === "open" && !isExpired(c.endDate));
+      result = result.filter(
+        (c) => c.status === "open" && !isExpired(c.endDate),
+      );
     } else if (activeTab === "close") {
-      result = result.filter((c) => c.status === "close" && !isExpired(c.endDate));
+      result = result.filter(
+        (c) => c.status === "close" && !isExpired(c.endDate),
+      );
     } else if (activeTab === "expired") {
       result = result.filter((c) => isExpired(c.endDate));
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter(
-        (c) =>
-          c.campaignName.toLowerCase().includes(q) ||
-          (c.description && c.description.toLowerCase().includes(q)),
-      );
-    }
+    // Search is handled server-side, but we keep this as a safeguard for current page items
     return result;
-  }, [campaigns, activeTab, searchQuery]);
+  }, [campaigns, activeTab]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredCampaigns.length / ITEMS_PER_PAGE),
-  );
   const safePage = Math.min(currentPage, totalPages);
-  const pagedCampaigns = filteredCampaigns.slice(
-    (safePage - 1) * ITEMS_PER_PAGE,
-    safePage * ITEMS_PER_PAGE,
-  );
+  const pagedCampaigns = filteredCampaigns; // Data is already paged from server
 
   // ── Handlers ──
   const handleTabChange = useCallback((tab: StatusTabKey) => {
@@ -1115,7 +1131,10 @@ export default function RecruitmentCampaignsModule() {
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
-      await deleteCampaign({ clubId: deleteTarget.clubId, id: deleteTarget.campaignId }).unwrap();
+      await deleteCampaign({
+        clubId: deleteTarget.clubId,
+        id: deleteTarget.campaignId,
+      }).unwrap();
       notify({
         type: "success",
         title: "Đã xóa chiến dịch",

@@ -17,7 +17,8 @@ import { useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api';
 
 const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
   const navigate = useNavigate();
-  const { data: campaigns = [] } = useGetRecruitmentCampaignsByClubIdQuery(club.clubId);
+  const { data } = useGetRecruitmentCampaignsByClubIdQuery({ clubId: club.clubId, page: 1, pageSize: 50 });
+  const campaigns = data?.items || [];
   const openCampaign = campaigns.find(c => {
     const s = c.status?.toLowerCase();
     return (s === 'open' || s === 'active') && new Date(c.endDate).setHours(23, 59, 59, 999) >= Date.now();

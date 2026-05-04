@@ -17,19 +17,29 @@ function normalizeCampaign(c: RecruitmentCampaign): RecruitmentCampaign {
 export const recruitmentCampaignApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // GET /RecruitmentCampaign  (admin: all campaigns)
-    getRecruitmentCampaigns: builder.query<RecruitmentCampaign[], void>({
-      query: () => '/RecruitmentCampaign',
-      transformResponse: (response: ApiResponse<RecruitmentCampaign[]> | RecruitmentCampaign[]) =>
-        Array.isArray(response) ? response : response.data,
+    getRecruitmentCampaigns: builder.query<
+      { items: RecruitmentCampaign[]; totalCount: number; totalPages: number },
+      { page?: number; pageSize?: number; search?: string; filterBy?: string; ascending?: boolean } | void
+    >({
+      query: (params) => ({
+        url: '/RecruitmentCampaign',
+        params: params || {},
+      }),
+      transformResponse: (response: ApiResponse<{ items: RecruitmentCampaign[]; totalCount: number; totalPages: number }>) => response.data,
       providesTags: ['RecruitmentCampaign'],
     }),
 
     // GET /club/{clubId}/RecruitmentCampaign
-    getRecruitmentCampaignsByClubId: builder.query<RecruitmentCampaign[], number>({
-      query: (clubId) => `/club/${clubId}/RecruitmentCampaign`,
-      transformResponse: (response: ApiResponse<RecruitmentCampaign[]> | RecruitmentCampaign[]) =>
-        Array.isArray(response) ? response : response.data,
-      providesTags: (result, error, clubId) => [{ type: 'RecruitmentCampaign', id: `club-${clubId}` }],
+    getRecruitmentCampaignsByClubId: builder.query<
+      { items: RecruitmentCampaign[]; totalCount: number; totalPages: number },
+      { clubId: number; page?: number; pageSize?: number; search?: string; filterBy?: string; ascending?: boolean }
+    >({
+      query: ({ clubId, ...params }) => ({
+        url: `/club/${clubId}/RecruitmentCampaign`,
+        params,
+      }),
+      transformResponse: (response: ApiResponse<{ items: RecruitmentCampaign[]; totalCount: number; totalPages: number }>) => response.data,
+      providesTags: (result, error, { clubId }) => [{ type: 'RecruitmentCampaign', id: `club-${clubId}` }],
     }),
 
     // GET /club/{clubId}/RecruitmentCampaign/{id}

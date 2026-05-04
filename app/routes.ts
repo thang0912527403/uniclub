@@ -15,7 +15,8 @@ export default [
   route("auth/forgot-password", "routes/auth/forgot-password.tsx"),
   route("auth/reset-password", "routes/auth/reset-password.tsx"),
   route("auth/verify-email", "routes/auth/verify-email.tsx"),
-
+  route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
+  route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
   // PayOS callback routes (public)
   route("payos/return", "routes/payos.return.tsx"),
   route("payos/cancel", "routes/payos.cancel.tsx"),

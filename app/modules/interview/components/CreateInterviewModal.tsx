@@ -152,9 +152,7 @@ const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
     ).toISOString();
 
     const proposedTimeSlots =
-      validSlots.length > 1
-        ? validSlots.map((s) => ({ date: s.date, time: s.time }))
-        : undefined;
+      validSlots.map((s) => ({ date: s.date, time: s.time }));
 
     try {
       // Create ONE interview per application (not per slot)

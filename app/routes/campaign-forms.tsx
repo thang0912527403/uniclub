@@ -19,18 +19,25 @@ export default function CampaignFormsPage() {
   const { currentClub } = useClubRole();
   const clubId = currentClub?.clubId ?? 0;
 
-  const { data: adminCampaigns } = useGetRecruitmentCampaignsQuery(undefined, {
-    skip: !isAdmin,
-  });
+  const { data: adminCampaignsData } = useGetRecruitmentCampaignsQuery(
+    { page: 1, pageSize: 200 },
+    {
+      skip: !isAdmin,
+    },
+  );
 
-  const { data: clubCampaigns } = useGetRecruitmentCampaignsByClubIdQuery(
-    clubId,
+  const { data: clubCampaignsData } = useGetRecruitmentCampaignsByClubIdQuery(
+    {
+      clubId,
+      page: 1,
+      pageSize: 200,
+    },
     {
       skip: isAdmin || clubId === 0,
     },
   );
 
-  const campaigns = (isAdmin ? adminCampaigns : clubCampaigns) || [];
+  const campaigns = (isAdmin ? adminCampaignsData?.items : clubCampaignsData?.items) || [];
   const campaign = campaigns.find((c) => c.campaignId === id);
 
   if (!id || isNaN(id)) {

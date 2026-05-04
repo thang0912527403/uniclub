@@ -35,12 +35,10 @@ const UpcomingEvents: React.FC = () => {
     // Only upcoming / active events
     const events = useMemo(
         () =>
-            allEvents.filter(
-                (ev) =>
-                    ev.status === 'PLANNED' ||
-                    ev.status === 'REGISTRATION_OPEN' ||
-                    ev.status === 'ONGOING',
-            ),
+            allEvents.filter((ev) => {
+                const s = ev.status?.toUpperCase();
+                return s === 'PLANNED' || s === 'REGISTRATION_OPEN' || s === 'ONGOING';
+            }),
         [allEvents],
     );
 

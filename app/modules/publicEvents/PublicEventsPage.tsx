@@ -4,7 +4,7 @@ import { encodeId } from '~/utils/hashId';
 import { Footer } from '~/modules/home/components/Footer';
 import Navbar from '../../components/Navbar';
 import { useGetAllEventsQuery } from '~/cores/api';
-import { useGetClubsQuery } from '~/cores/api/clubApi';
+import { useGetActiveClubsQuery } from '~/cores/api/clubApi';
 import type { EventDetailDto } from '~/cores/api/types';
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
@@ -191,7 +191,8 @@ const PublicEventsPage: React.FC = () => {
     const events = data?.items ?? [];
     const total = data?.total ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    const { data: clubs = [] } = useGetClubsQuery();
+    const { data: clubsData } = useGetActiveClubsQuery({ pageIndex: '1', pageSize: '1000', searchQuery: '' });
+    const clubs = clubsData?.data ?? [];
 
     // Build club id → name map
     const clubMap = useMemo(() => {

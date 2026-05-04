@@ -45,17 +45,24 @@ const InterviewSchedulePage: React.FC = () => {
     skip: !clubId,
   });
 
-  const { data: adminCampaigns, isLoading: adminLoading } =
-    useGetRecruitmentCampaignsQuery(undefined, {
-      skip: !isAdmin,
-    });
+  const { data: adminCampaignsData, isLoading: adminLoading } =
+    useGetRecruitmentCampaignsQuery(
+      { page: 1, pageSize: 200 },
+      {
+        skip: !isAdmin,
+      },
+    );
 
-  const { data: clubCampaigns, isLoading: clubLoading } =
-    useGetRecruitmentCampaignsByClubIdQuery(clubId, {
-      skip: isAdmin || clubId === 0,
-    });
+  const { data: clubCampaignsData, isLoading: clubLoading } =
+    useGetRecruitmentCampaignsByClubIdQuery(
+      { clubId, page: 1, pageSize: 200 },
+      {
+        skip: isAdmin || clubId === 0,
+      },
+    );
 
-  const campaigns = (isAdmin ? adminCampaigns : clubCampaigns) || [];
+  const campaigns =
+    (isAdmin ? adminCampaignsData?.items : clubCampaignsData?.items) || [];
   const campaignsLoading = isAdmin ? adminLoading : clubLoading;
 
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(
@@ -141,7 +148,12 @@ const InterviewSchedulePage: React.FC = () => {
       PendingFeedback: 0,
     };
     allInterviews.forEach((iv) => {
-      if (counts[iv.status] !== undefined) counts[iv.status]++;
+      // Count Rescheduled interviews together with Scheduled
+      if (iv.status === 'Rescheduled') {
+        counts.Scheduled++;
+      } else if (counts[iv.status] !== undefined) {
+        counts[iv.status]++;
+      }
       // Count pending feedback: Completed but not all feedbacks submitted
       if (iv.status === "Completed") {
         const total = iv.assignments?.length || 0;
@@ -300,7 +312,12 @@ const InterviewSchedulePage: React.FC = () => {
         return total > 0 && done < total;
       });
     } else {
-      items = allInterviews.filter((iv) => iv.status === activeTab);
+      // Include Rescheduled in Scheduled tab
+      if (activeTab === 'Scheduled') {
+        items = allInterviews.filter((iv) => iv.status === 'Scheduled' || iv.status === 'Rescheduled');
+      } else {
+        items = allInterviews.filter((iv) => iv.status === activeTab);
+      }
     }
 
     // Search
@@ -482,6 +499,28 @@ const InterviewSchedulePage: React.FC = () => {
       setDrawerOpen(false);
     } catch (err) {
       message.error("Cập nhật trạng thái thất bại");
+    }
+  };
+
+  const handleReschedule = async (
+    id: number,
+    newScheduledAt: string,
+    proposedTimeSlots: { date: string; time: string }[],
+  ) => {
+    try {
+      await updateStatus({
+        id,
+        dto: { 
+          status: 'Rescheduled',
+          proposedTimeSlots 
+        } as any,
+      }).unwrap();
+
+      message.success('Đã dời lịch phỏng vấn thành công!');
+      setDrawerOpen(false);
+    } catch (err) {
+      message.error('Dời lịch thất bại');
+      throw err;
     }
   };
 
@@ -792,6 +831,7 @@ const InterviewSchedulePage: React.FC = () => {
         clubId={clubId}
         clubRoles={clubRoles}
         onUpdateStatus={handleUpdateStatus}
+        onReschedule={handleReschedule}
         onAssignInterviewer={handleAssignInterviewer}
         onRemoveAssignment={handleRemoveAssignment}
         onNavigateToRoom={(roomCode) => navigate(`/meeting-room/${roomCode}`)}

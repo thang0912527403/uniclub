@@ -130,7 +130,8 @@ function Skeleton() {
    MAIN
    ═════════════════════════════════════════════════════════ */
 export default function CampaignsSection() {
-    const { data: campaigns = [], isLoading } = useGetRecruitmentCampaignsQuery();
+    const { data, isLoading } = useGetRecruitmentCampaignsQuery({ page: 1, pageSize: 50 });
+    const campaigns = data?.items ?? [];
     const scrollRef = useRef<HTMLDivElement>(null);
     const [canLeft, setCanLeft] = useState(false);
     const [canRight, setCanRight] = useState(true);
