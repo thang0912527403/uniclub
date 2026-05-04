@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { encodeId } from '~/utils/hashId';
-import { Footer } from '~/modules/home/components/Footer';
+import Footer from '~/modules/home/components/Footer';
 import Navbar from '../../components/Navbar';
 import { useGetAllEventsQuery } from '~/cores/api';
 import { useGetActiveClubsQuery } from '~/cores/api/clubApi';
