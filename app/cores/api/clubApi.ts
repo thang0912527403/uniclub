@@ -256,6 +256,20 @@ export const clubApi = baseApi.injectEndpoints({
         { type: "Member", id: `count-${clubId}` },
       ],
     }),
+    // ─── Transfer Club ──────────────────────────────────────────────────
+    transferClub: builder.mutation<
+      void,
+      { clubId: number; newManagerMemberId: number }
+    >({
+      query: ({ clubId, newManagerMemberId }) => ({
+        url: `/clubs/${clubId}/transfer`,
+        method: "PUT",
+        body: { newManagerMemberId },
+      }),
+      invalidatesTags: (_result, _error, { clubId }) => [
+        { type: "Club", id: `members-${clubId}` },
+      ],
+    }),
   }),
 });
 
@@ -286,4 +300,5 @@ export const {
   useGetMemberNotJoinedDepartmentsQuery,
   useUpdateMemberRoleMutation,
   useGetClubMemberCountQuery,
+  useTransferClubMutation,
 } = clubApi;

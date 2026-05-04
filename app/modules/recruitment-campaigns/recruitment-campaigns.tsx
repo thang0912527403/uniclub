@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { Sidebar } from "~/components/Sidebar";
 import { HeaderBar } from "~/components/HeaderBar";
 import { SettingButton } from "~/components/SettingButton";
@@ -26,6 +26,7 @@ const STATUS_TABS = [
   { key: "all", label: "Tất cả", icon: "fa-layer-group" },
   { key: "open", label: "Đang mở", icon: "fa-circle-check" },
   { key: "close", label: "Đã đóng", icon: "fa-circle-xmark" },
+  { key: "expired", label: "Quá hạn", icon: "fa-clock" },
 ] as const;
 
 type StatusTabKey = (typeof STATUS_TABS)[number]["key"];
@@ -49,6 +50,13 @@ function getStatusConfig(status: string) {
         text: "text-slate-600 dark:text-slate-400",
         dot: "bg-slate-500",
       };
+    case "expired":
+      return {
+        label: "Quá hạn",
+        bg: "bg-orange-500/15",
+        text: "text-orange-600 dark:text-orange-400",
+        dot: "bg-orange-500",
+      };
     default:
       return {
         label: status,
@@ -57,6 +65,14 @@ function getStatusConfig(status: string) {
         dot: "bg-gray-500",
       };
   }
+}
+
+function isExpired(endDate: string): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+  return end < today;
 }
 
 function formatDateVN(dateStr: string) {
@@ -133,6 +149,9 @@ function CampaignCard({
   onDelete?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
   onToggle?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
 }) {
+  const expired = isExpired(campaign.endDate);
+  const effectiveStatus = expired ? "expired" : campaign.status;
+
   return (
     <div
       className="group bg-white dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
@@ -161,7 +180,7 @@ function CampaignCard({
         )}
         {/* Status overlay */}
         <div className="absolute top-3 left-3">
-          <StatusBadge status={campaign.status} />
+          <StatusBadge status={effectiveStatus} />
         </div>
         {/* Edit / Delete overlay (managers only) */}
         {(onEdit || onDelete) && (
@@ -216,24 +235,27 @@ function CampaignCard({
             {onToggle && (
               <button
                 onClick={(e) => onToggle(campaign, e)}
+                disabled={expired}
                 title={
-                  campaign.status === "open"
-                    ? "Đóng chiến dịch"
-                    : "Mở chiến dịch"
+                  expired
+                    ? "Chiến dịch đã quá hạn"
+                    : campaign.status === "open"
+                      ? "Đóng chiến dịch"
+                      : "Mở chiến dịch"
                 }
-                className="cursor-pointer flex items-center gap-1.5 group/toggle"
+                className="flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer group/toggle"
               >
                 <span
-                  className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${campaign.status === "open" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                  className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${!expired && campaign.status === "open" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${campaign.status === "open" ? "translate-x-4" : "translate-x-0"}`}
+                    className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${!expired && campaign.status === "open" ? "translate-x-4" : "translate-x-0"}`}
                   />
                 </span>
                 <span
-                  className={`text-xs font-medium ${campaign.status === "open" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-gray-500"}`}
+                  className={`text-xs font-medium ${!expired && campaign.status === "open" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-gray-500"}`}
                 >
-                  {campaign.status === "open" ? "Mở" : "Đóng"}
+                  {!expired && campaign.status === "open" ? "Mở" : "Đóng"}
                 </span>
               </button>
             )}
@@ -260,6 +282,9 @@ function CampaignTableRow({
   onDelete?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
   onToggle?: (campaign: RecruitmentCampaign, e: React.MouseEvent) => void;
 }) {
+  const expired = isExpired(campaign.endDate);
+  const effectiveStatus = expired ? "expired" : campaign.status;
+
   return (
     <tr
       className="group border-b border-gray-100 dark:border-gray-700/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 cursor-pointer transition-colors duration-150"
@@ -296,7 +321,7 @@ function CampaignTableRow({
       </td>
       {/* Status */}
       <td className="px-4 py-3">
-        <StatusBadge status={campaign.status} />
+        <StatusBadge status={effectiveStatus} />
       </td>
       {/* Dates */}
       <td className="px-4 py-3">
@@ -305,7 +330,7 @@ function CampaignTableRow({
         </span>
       </td>
       <td className="px-4 py-3">
-        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+        <span className={`text-xs whitespace-nowrap ${expired ? "text-orange-500 dark:text-orange-400 font-medium" : "text-gray-500 dark:text-gray-400"}`}>
           {formatDateVN(campaign.endDate)}
         </span>
       </td>
@@ -318,22 +343,27 @@ function CampaignTableRow({
           {onToggle && (
             <button
               onClick={(e) => onToggle(campaign, e)}
+              disabled={expired}
               title={
-                campaign.status === "open" ? "Đóng chiến dịch" : "Mở chiến dịch"
+                expired
+                  ? "Chiến dịch đã quá hạn"
+                  : campaign.status === "open"
+                    ? "Đóng chiến dịch"
+                    : "Mở chiến dịch"
               }
-              className="cursor-pointer flex items-center gap-1.5"
+              className="flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <span
-                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${campaign.status === "open" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${!expired && campaign.status === "open" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${campaign.status === "open" ? "translate-x-4" : "translate-x-0"}`}
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${!expired && campaign.status === "open" ? "translate-x-4" : "translate-x-0"}`}
                 />
               </span>
               <span
-                className={`text-xs font-medium ${campaign.status === "open" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-gray-500"}`}
+                className={`text-xs font-medium ${!expired && campaign.status === "open" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-gray-500"}`}
               >
-                {campaign.status === "open" ? "Mở" : "Đóng"}
+                {!expired && campaign.status === "open" ? "Mở" : "Đóng"}
               </span>
             </button>
           )}
@@ -847,11 +877,15 @@ function DeleteConfirmModal({
 // ──────────────────────────────────────────────
 export default function RecruitmentCampaignsModule() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isAdmin } = useCurrentUser();
   const { currentClub } = useClubRole();
-  const clubId = currentClub?.clubId ?? 0;
-  const canManage = !isAdmin && clubId !== 0;
+  const managerClubId = currentClub?.clubId ?? 0;
+  // clubId từ navigation state (khi điều hướng từ trang chi tiết club)
+  const stateClubId: number | undefined = (location.state as { clubId?: number } | null)?.clubId;
+  const clubId = stateClubId ?? managerClubId;
+  const canManage = !isAdmin && managerClubId !== 0;
   const { show: notify } = useNotification();
 
   // ── API ──
@@ -859,13 +893,13 @@ export default function RecruitmentCampaignsModule() {
     data: adminCampaigns,
     isLoading: adminLoading,
     error: adminError,
-  } = useGetRecruitmentCampaignsQuery(undefined, { skip: !isAdmin });
+  } = useGetRecruitmentCampaignsQuery(undefined, { skip: !isAdmin || !!stateClubId });
   const {
     data: clubCampaigns,
     isLoading: clubLoading,
     error: clubError,
   } = useGetRecruitmentCampaignsByClubIdQuery(clubId, {
-    skip: isAdmin || clubId === 0,
+    skip: (isAdmin && !stateClubId) || clubId === 0,
   });
   const [createCampaign, { isLoading: isCreating }] =
     useCreateRecruitmentCampaignMutation();
@@ -874,9 +908,9 @@ export default function RecruitmentCampaignsModule() {
   const [deleteCampaign, { isLoading: isDeleting }] =
     useDeleteRecruitmentCampaignMutation();
 
-  const campaigns = isAdmin ? adminCampaigns : clubCampaigns;
-  const isLoading = isAdmin ? adminLoading : clubLoading;
-  const error = isAdmin ? adminError : clubError;
+  const campaigns = (isAdmin && !stateClubId) ? adminCampaigns : clubCampaigns;
+  const isLoading = (isAdmin && !stateClubId) ? adminLoading : clubLoading;
+  const error = (isAdmin && !stateClubId) ? adminError : clubError;
 
   // ── Local state ──
   const [activeTab, setActiveTab] = useState<StatusTabKey>("all");
@@ -893,19 +927,24 @@ export default function RecruitmentCampaignsModule() {
 
   // ── Derived data ──
   const statusCounts = useMemo(() => {
-    if (!campaigns) return { all: 0, open: 0, close: 0 };
+    if (!campaigns) return { all: 0, open: 0, close: 0, expired: 0 };
     return {
       all: campaigns.length,
-      open: campaigns.filter((c) => c.status === "open").length,
-      close: campaigns.filter((c) => c.status === "close").length,
+      open: campaigns.filter((c) => c.status === "open" && !isExpired(c.endDate)).length,
+      close: campaigns.filter((c) => c.status === "close" && !isExpired(c.endDate)).length,
+      expired: campaigns.filter((c) => isExpired(c.endDate)).length,
     };
   }, [campaigns]);
 
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];
     let result = [...campaigns];
-    if (activeTab !== "all") {
-      result = result.filter((c) => c.status === activeTab);
+    if (activeTab === "open") {
+      result = result.filter((c) => c.status === "open" && !isExpired(c.endDate));
+    } else if (activeTab === "close") {
+      result = result.filter((c) => c.status === "close" && !isExpired(c.endDate));
+    } else if (activeTab === "expired") {
+      result = result.filter((c) => isExpired(c.endDate));
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -1124,7 +1163,7 @@ export default function RecruitmentCampaignsModule() {
         {!isLoading && campaigns && (
           <>
             {/* ────── Stats Cards ────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <StatCard
                 icon="fa-bullhorn"
                 label="Tổng chiến dịch"
@@ -1142,6 +1181,12 @@ export default function RecruitmentCampaignsModule() {
                 label="Đã đóng"
                 value={statusCounts.close}
                 gradient="bg-gradient-to-br from-slate-500 to-slate-600"
+              />
+              <StatCard
+                icon="fa-clock"
+                label="Quá hạn"
+                value={statusCounts.expired}
+                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
               />
             </div>
 
