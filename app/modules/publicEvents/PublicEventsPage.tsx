@@ -191,7 +191,8 @@ const PublicEventsPage: React.FC = () => {
     const events = data?.items ?? [];
     const total = data?.total ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    const { data: clubs = [] } = useGetClubsQuery();
+    const { data: clubsData } = useGetClubsQuery({ pageIndex: '1', pageSize: '1000', searchQuery: '' });
+    const clubs = clubsData?.data ?? [];
 
     // Build club id → name map
     const clubMap = useMemo(() => {

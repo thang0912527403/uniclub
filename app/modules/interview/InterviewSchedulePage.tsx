@@ -45,17 +45,24 @@ const InterviewSchedulePage: React.FC = () => {
     skip: !clubId,
   });
 
-  const { data: adminCampaigns, isLoading: adminLoading } =
-    useGetRecruitmentCampaignsQuery(undefined, {
-      skip: !isAdmin,
-    });
+  const { data: adminCampaignsData, isLoading: adminLoading } =
+    useGetRecruitmentCampaignsQuery(
+      { page: 1, pageSize: 200 },
+      {
+        skip: !isAdmin,
+      },
+    );
 
-  const { data: clubCampaigns, isLoading: clubLoading } =
-    useGetRecruitmentCampaignsByClubIdQuery(clubId, {
-      skip: isAdmin || clubId === 0,
-    });
+  const { data: clubCampaignsData, isLoading: clubLoading } =
+    useGetRecruitmentCampaignsByClubIdQuery(
+      { clubId, page: 1, pageSize: 200 },
+      {
+        skip: isAdmin || clubId === 0,
+      },
+    );
 
-  const campaigns = (isAdmin ? adminCampaigns : clubCampaigns) || [];
+  const campaigns =
+    (isAdmin ? adminCampaignsData?.items : clubCampaignsData?.items) || [];
   const campaignsLoading = isAdmin ? adminLoading : clubLoading;
 
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(
