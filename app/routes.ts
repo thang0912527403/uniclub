@@ -28,8 +28,6 @@ export default [
   route("public/news", "routes/news.tsx"),
   route("public/news/:id", "routes/news.$id.tsx"),
   route("campaign/:id", "routes/campaign.$id.tsx"),
-  route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
-  route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
   route("public/recruitment", "routes/public.recruitment.tsx"),
 
   // Error routes
