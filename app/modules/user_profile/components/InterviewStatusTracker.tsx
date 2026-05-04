@@ -243,7 +243,7 @@ const InterviewStatusTracker: React.FC<InterviewStatusTrackerProps> = ({ userId 
           .map((interview) => {
             const cfg = statusConfig[interview.status] || statusConfig.Scheduled;
             const isExpanded = expandedId === interview.id;
-            const isScheduled = interview.status === 'Scheduled';
+            const isScheduled = interview.status === 'Scheduled' || interview.status === 'Rescheduled';
             const isConfirmed = interview.status === 'Confirmed';
             const isUpcoming = ['Scheduled', 'Confirmed', 'Rescheduled'].includes(interview.status);
             const hasRoom = !!interview.meetingRoom;

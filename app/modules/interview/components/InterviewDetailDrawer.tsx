@@ -42,6 +42,11 @@ interface InterviewDetailDrawerProps {
   clubId: number;
   clubRoles?: ClubRole[];
   onUpdateStatus?: (id: number, status: string) => void;
+  onReschedule?: (
+    id: number,
+    newScheduledAt: string,
+    proposedTimeSlots: { date: string; time: string }[],
+  ) => Promise<void>;
   onAssignInterviewer?: (
     scheduleId: number,
     userId: string,
@@ -102,12 +107,6 @@ const statusActions: Record<
       nextStatus: "InProgress",
       color: "bg-blue-500 hover:bg-blue-600",
       icon: "fa-solid fa-play",
-    },
-    {
-      label: "Dời lịch",
-      nextStatus: "Rescheduled",
-      color: "bg-purple-500 hover:bg-purple-600",
-      icon: "fa-solid fa-calendar-days",
     },
     {
       label: "Hủy",
@@ -176,10 +175,18 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
   clubId,
   clubRoles,
   onUpdateStatus,
+  onReschedule,
   onAssignInterviewer,
   onRemoveAssignment,
   onNavigateToRoom,
 }) => {
+  // Reschedule modal state
+  const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+  const [rescheduleSlots, setRescheduleSlots] = useState<
+    { id: string; date: string; time: string }[]
+  >([{ id: Math.random().toString(36).slice(2, 9), date: "", time: "" }]);
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
   const [activeTab, setActiveTab] = useState<
     "info" | "assignments" | "feedback" | "evaluation"
   >("info");
@@ -639,7 +646,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                 )}
 
                 {/* Status Actions */}
-                {actions.length > 0 && (
+                {(actions.length > 0 || interview.status === "Confirmed") && (
                   <div>
                     <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                       Thao tác
@@ -657,6 +664,25 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                           {action.label}
                         </button>
                       ))}
+                      {/* Reschedule button — separate from actions since it opens a modal */}
+                      {interview.status === "Confirmed" && (
+                        <button
+                          onClick={() => {
+                            setRescheduleSlots([
+                              {
+                                id: Math.random().toString(36).slice(2, 9),
+                                date: "",
+                                time: "",
+                              },
+                            ]);
+                            setRescheduleModalOpen(true);
+                          }}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-all hover:shadow-md"
+                        >
+                          <i className="fa-solid fa-calendar-days" />
+                          Dời lịch
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1220,6 +1246,259 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ─── Reschedule Modal ─── */}
+      {rescheduleModalOpen && interview && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+            onClick={() => setRescheduleModalOpen(false)}
+          />
+          <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scaleIn">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">
+                      Dời lịch phỏng vấn
+                    </h3>
+                    <p className="text-purple-200 text-sm mt-0.5">
+                      {interview.title}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setRescheduleModalOpen(false)}
+                    className="text-white/80 hover:text-white transition-colors p-1"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Chọn khung giờ mới để đề xuất cho ứng viên. Ứng viên sẽ cần
+                  xác nhận lại lịch.
+                </p>
+
+                {/* Time Slots */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Khung giờ mới <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRescheduleSlots((prev) => [
+                          ...prev,
+                          {
+                            id: Math.random().toString(36).slice(2, 9),
+                            date: "",
+                            time: "",
+                          },
+                        ])
+                      }
+                      className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                    >
+                      <i className="fa-solid fa-plus text-[10px]" />
+                      Thêm khung giờ
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {rescheduleSlots.map((slot, index) => (
+                      <div
+                        key={slot.id}
+                        className="flex items-center gap-2 group"
+                      >
+                        <span className="text-xs font-bold w-5 text-center flex-shrink-0 text-gray-400">
+                          {index + 1}
+                        </span>
+                        <input
+                          type="date"
+                          min={(() => {
+                            const d = new Date();
+                            const offset = d.getTimezoneOffset() * 60000;
+                            const localDate = new Date(d.getTime() - offset);
+                            return localDate.toISOString().split("T")[0];
+                          })()}
+                          value={slot.date}
+                          onChange={(e) =>
+                            setRescheduleSlots((prev) =>
+                              prev.map((s) =>
+                                s.id === slot.id
+                                  ? { ...s, date: e.target.value }
+                                  : s,
+                              ),
+                            )
+                          }
+                          className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
+                        />
+                        <input
+                          type="time"
+                          value={slot.time}
+                          onChange={(e) =>
+                            setRescheduleSlots((prev) =>
+                              prev.map((s) =>
+                                s.id === slot.id
+                                  ? { ...s, time: e.target.value }
+                                  : s,
+                              ),
+                            )
+                          }
+                          className="w-28 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
+                        />
+                        {rescheduleSlots.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setRescheduleSlots((prev) =>
+                                prev.filter((s) => s.id !== slot.id),
+                              )
+                            }
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {rescheduleSlots.filter((s) => s.date && s.time).length > 1 && (
+                  <div className="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-100 dark:border-purple-800">
+                    <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                      <i className="fa-solid fa-info-circle" />
+                      Ứng viên sẽ chọn 1 trong{" "}
+                      {
+                        rescheduleSlots.filter((s) => s.date && s.time).length
+                      }{" "}
+                      khung giờ
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 px-6 pb-6">
+                <button
+                  onClick={() => setRescheduleModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  disabled={
+                    isRescheduling ||
+                    rescheduleSlots.filter((s) => s.date && s.time).length === 0
+                  }
+                  onClick={async () => {
+                    const validSlots = rescheduleSlots.filter(
+                      (s) => s.date && s.time,
+                    );
+                    if (validSlots.length === 0) {
+                      message.warning("Vui lòng chọn ít nhất 1 khung giờ");
+                      return;
+                    }
+                    const now = new Date();
+                    const hasPast = validSlots.some(
+                      (s) => new Date(`${s.date}T${s.time}`) < now,
+                    );
+                    if (hasPast) {
+                      message.warning("Không thể chọn ngày giờ trong quá khứ");
+                      return;
+                    }
+                    setIsRescheduling(true);
+                    try {
+                      const firstSlot = validSlots[0];
+                      const newScheduledAt = new Date(
+                        `${firstSlot.date}T${firstSlot.time}`,
+                      ).toISOString();
+                      const proposedTimeSlots = validSlots.map((s) => ({
+                        date: s.date,
+                        time: s.time,
+                      }));
+                      await onReschedule?.(
+                        interview.id,
+                        newScheduledAt,
+                        proposedTimeSlots,
+                      );
+                      setRescheduleModalOpen(false);
+                    } catch {
+                      // error is handled by parent
+                    } finally {
+                      setIsRescheduling(false);
+                    }
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium text-sm hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {isRescheduling ? (
+                    <span className="flex items-center gap-2">
+                      <svg
+                        className="w-4 h-4 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      Đang xử lý...
+                    </span>
+                  ) : (
+                    "Xác nhận dời lịch"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes scaleIn {
+              from { opacity: 0; transform: scale(0.95); }
+              to { opacity: 1; transform: scale(1); }
+            }
+            .animate-scaleIn { animation: scaleIn 0.2s ease-out forwards; }
+          `}</style>
+        </>
+      )}
     </>
   );
 };
@@ -1233,9 +1512,9 @@ const InfoCard: React.FC<{ label: string; value: React.ReactNode }> = ({
     <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-0.5">
       {label}
     </p>
-    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+    <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
       {value}
-    </p>
+    </div>
   </div>
 );
 

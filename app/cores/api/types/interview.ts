@@ -47,6 +47,7 @@ export interface UpdateInterviewScheduleDto {
 export interface UpdateInterviewStatusDto {
   status: string; // Confirmed | Cancelled | Rescheduled
   cancelReason?: string | null;
+  proposedTimeSlots?: ProposedTimeSlotItemDto[];
 }
 
 export interface InterviewScheduleResponse {
