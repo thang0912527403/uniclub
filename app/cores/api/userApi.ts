@@ -49,10 +49,29 @@ export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getUsers: builder.query<
       GetUsersResult,
-      { pageNumber?: number; pageSize?: number }
+      {
+        pageNumber?: number;
+        pageSize?: number;
+        search?: string;
+        status?: string;
+        gender?: string;
+      }
     >({
-      query: ({ pageNumber = 1, pageSize = 10 } = {}) =>
-        `/Users?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+      query: ({
+        pageNumber = 1,
+        pageSize = 10,
+        search,
+        status,
+        gender,
+      } = {}) => {
+        const params = new URLSearchParams();
+        params.set("pageNumber", String(pageNumber));
+        params.set("pageSize", String(pageSize));
+        if (search) params.set("search", search);
+        if (status) params.set("status", status);
+        if (gender) params.set("gender", gender);
+        return `/Users?${params.toString()}`;
+      },
       transformResponse: (response: unknown): GetUsersResult => {
         let items: User[] = [];
         let totalCount = 0;

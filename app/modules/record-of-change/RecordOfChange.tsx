@@ -11,6 +11,7 @@ import {
   useGetRecordsOfChangeQuery,
   useUndoRecordOfChangeMutation,
   useGetClubByIdQuery,
+  useGetClubsQuery,
 } from '~/cores/api';
 import type { RecordOfChange, RecordOfChangeParams } from '~/cores/api/types/recordOfChange';
 import { useRecordOfChangeSignalR } from './hooks/useRecordOfChangeSignalR';
@@ -56,11 +57,13 @@ function truncate(str: string | null | undefined, maxLen = 60) {
 /* ─── Detail Drawer ─── */
 function RecordDetailDrawer({
   record,
+  clubName,
   onClose,
   onUndo,
   isUndoing,
 }: {
   record: RecordOfChange;
+  clubName?: string | null;
   onClose: () => void;
   onUndo: () => void;
   isUndoing: boolean;
@@ -110,6 +113,19 @@ function RecordDetailDrawer({
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Hành động</p>
               <ChangeTypeBadge type={record.changeType} />
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 col-span-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Câu lạc bộ</p>
+              {record.clubId ? (
+                <span className="inline-flex items-center gap-2 text-sm font-semibold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/40 px-2 py-0.5 rounded">
+                  <i className="fas fa-building text-xs" />
+                  {clubName ?? record.clubName ?? `CLB #${record.clubId}`}
+                </span>
+              ) : (
+                <span className="text-sm text-gray-400 dark:text-gray-500 italic">
+                  Hệ thống (không thuộc CLB nào)
+                </span>
+              )}
             </div>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Người thay đổi</p>
@@ -196,13 +212,35 @@ export default function RecordOfChangeModule() {
   const { show: showNotification } = useNotification();
 
   // Đọc clubId từ URL (?clubId=...) — khi admin/CLB xem nhật ký theo từng CLB
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const clubIdFromQuery = searchParams.get('clubId');
   const filterClubId = clubIdFromQuery ? Number(clubIdFromQuery) : undefined;
   const isClubScoped = !!filterClubId && filterClubId > 0;
   const { data: scopedClub } = useGetClubByIdQuery(filterClubId as number, {
     skip: !isClubScoped,
   });
+
+  // Lấy danh sách CLB (có pagination ở backend, lấy 1 trang lớn để đủ map clubId → clubName)
+  const { data: clubsListData } = useGetClubsQuery({
+    pageIndex: '1',
+    pageSize: '500',
+  });
+  const clubMap = (() => {
+    const m = new Map<number, string>();
+    (clubsListData?.data ?? []).forEach((c) => {
+      m.set(Number(c.clubId), c.clubName);
+    });
+    return m;
+  })();
+  const resolveClubName = (
+    clubId: number | null | undefined,
+    fallback?: string | null,
+  ) => {
+    if (!clubId) return null;
+    return (
+      fallback ?? clubMap.get(Number(clubId)) ?? `CLB #${clubId}`
+    );
+  };
 
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -438,6 +476,28 @@ export default function RecordOfChangeModule() {
                 )}
               </div>
 
+              {/* Club filter — chỉ hiện khi đang ở chế độ tổng (không scoped) */}
+              {!isClubScoped && (
+                <select
+                  value={clubIdFromQuery ?? ''}
+                  onChange={(e) => {
+                    const next = new URLSearchParams(searchParams);
+                    if (e.target.value) next.set('clubId', e.target.value);
+                    else next.delete('clubId');
+                    setSearchParams(next, { replace: true });
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all min-w-[160px]"
+                >
+                  <option value="">Tất cả CLB</option>
+                  {(clubsListData?.data ?? []).map((c) => (
+                    <option key={c.clubId} value={c.clubId}>
+                      {c.clubName}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               {/* Entity type */}
               <select
                 value={entityName}
@@ -554,11 +614,14 @@ export default function RecordOfChangeModule() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px]">
+                <table className="w-full min-w-[760px]">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700 bg-violet-50/80 dark:bg-violet-900/30">
                       <th className="text-left py-3 px-4 text-xs font-semibold text-violet-900 dark:text-violet-50 whitespace-nowrap">
                         Thời gian
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-violet-900 dark:text-violet-50">
+                        Câu lạc bộ
                       </th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-violet-900 dark:text-violet-50">
                         Loại entity
@@ -576,36 +639,56 @@ export default function RecordOfChangeModule() {
                     </tr>
                   </thead>
                   <tbody>
-                    {records.map((record) => (
-                      <tr
-                        key={record.id}
-                        onClick={() => setSelectedRecord(record)}
-                        className="border-b border-gray-100 dark:border-gray-800 hover:bg-violet-50/70 dark:hover:bg-gray-800/70 transition-colors cursor-pointer group"
-                      >
-                        <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                          {formatDate(record.changedAt)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                            {record.entityName}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <ChangeTypeBadge type={record.changeType} />
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 max-w-[260px]">
-                          <span title={record.notification ?? ''}>
-                            {truncate(record.notification, 90) ?? '—'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                          {record.changedByName || '—'}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <i className="fas fa-chevron-right text-gray-300 dark:text-gray-600 group-hover:text-violet-400 dark:group-hover:text-violet-500 transition-colors text-xs" />
-                        </td>
-                      </tr>
-                    ))}
+                    {records.map((record) => {
+                      const recordClubName = resolveClubName(
+                        record.clubId,
+                        record.clubName,
+                      );
+                      return (
+                        <tr
+                          key={record.id}
+                          onClick={() => setSelectedRecord(record)}
+                          className="border-b border-gray-100 dark:border-gray-800 hover:bg-violet-50/70 dark:hover:bg-gray-800/70 transition-colors cursor-pointer group"
+                        >
+                          <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                            {formatDate(record.changedAt)}
+                          </td>
+                          <td className="py-3 px-4">
+                            {record.clubId ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/40 px-2 py-0.5 rounded">
+                                <i className="fas fa-building text-[10px]" />
+                                <span className="truncate max-w-[160px]">
+                                  {recordClubName}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-xs italic text-gray-400 dark:text-gray-500">
+                                Hệ thống
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                              {record.entityName}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <ChangeTypeBadge type={record.changeType} />
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 max-w-[260px]">
+                            <span title={record.notification ?? ''}>
+                              {truncate(record.notification, 90) ?? '—'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                            {record.changedByName || '—'}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <i className="fas fa-chevron-right text-gray-300 dark:text-gray-600 group-hover:text-violet-400 dark:group-hover:text-violet-500 transition-colors text-xs" />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -651,6 +734,7 @@ export default function RecordOfChangeModule() {
       {selectedRecord && (
         <RecordDetailDrawer
           record={selectedRecord}
+          clubName={resolveClubName(selectedRecord.clubId, selectedRecord.clubName)}
           onClose={() => setSelectedRecord(null)}
           onUndo={handleUndo}
           isUndoing={isUndoing}

@@ -179,12 +179,12 @@ export function Sidebar({
           {
             label: t("sidebar.manageRecruitment.title"),
             icon: "fa-solid fa-flag",
-            policy: "viewrecruitment",
+            policy: "managerecruiment",
             subItems: [
               {
                 label: t("sidebar.manageRecruitment.allCampaigns"),
                 url: "/recruitment-campaigns",
-                policy: "viewrecruitment",
+                policy: "managerecruiment",
               },
             ],
           },
@@ -201,17 +201,7 @@ export function Sidebar({
               {
                 label: t("sidebar.manageMembers.addMember"),
                 url: `${clubBaseUrl}/members/add`,
-                policy: "createmember",
-              },
-              {
-                label: t("sidebar.manageMembers.memberRoles"),
-                url: `${clubBaseUrl}/members/roles`,
-                policy: "viewrole",
-              },
-              {
-                label: t("sidebar.manageMembers.memberActivity"),
-                url: `${clubBaseUrl}/members/activity`,
-                policy: "viewattendance",
+                policy: "addmember",
               },
               {
                 label: t("sidebar.manageMembers.participationHistory"),
@@ -275,17 +265,17 @@ export function Sidebar({
           {
             label: t("sidebar.manageInterview.title"),
             icon: "fa-solid fa-microphone",
-            policy: "viewschedule",
+            policy: "manageinterview",
             subItems: [
               {
                 label: t("sidebar.manageInterview.allInterviews"),
                 url: "/interview/schedule",
-                policy: "viewschedule",
+                policy: "manageschedule",
               },
               {
                 label: t("sidebar.manageInterview.comparison"),
                 url: "/interview/comparison",
-                policy: "viewrecruitment",
+                policy: "manageresults",
               },
             ],
           },

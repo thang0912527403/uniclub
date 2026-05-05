@@ -299,12 +299,62 @@ export default function UsersModule() {
   const { show: showNotification } = useNotification();
 
   const [currentPage, setCurrentPage] = useState(1);
-  const { data: usersData, isLoading, error } = useGetUsersQuery({
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('');
+
+  // Debounce search 400ms để tránh spam API
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Reset trang về 1 khi đổi filter
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, genderFilter]);
+
+  const {
+    data: usersData,
+    isLoading,
+    isFetching,
+    error,
+  } = useGetUsersQuery({
     pageNumber: currentPage,
     pageSize: PAGE_SIZE,
+    search: searchQuery || undefined,
+    status: statusFilter || undefined,
+    gender: genderFilter || undefined,
   });
-  const users = usersData?.items ?? [];
+  const allUsers = usersData?.items ?? [];
   const totalCount = usersData?.totalCount ?? 0;
+
+  // Trường hợp backend chưa hỗ trợ filter/search server-side, lọc lại client-side
+  // để UX nhất quán (vẫn dùng page hiện tại như "1 trang dữ liệu").
+  const users = allUsers.filter((u) => {
+    if (statusFilter && (u.status ?? '') !== statusFilter) return false;
+    if (genderFilter && (u.gender ?? '') !== genderFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const haystack = [
+        u.fullName,
+        u.email,
+        u.phoneNumber,
+        u.studentId,
+        u.major,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
   const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
   const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation();
@@ -319,6 +369,15 @@ export default function UsersModule() {
   useEffect(() => {
     if (currentPage > totalPages && totalPages >= 1) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
+
+  const hasActiveFilters = !!(searchQuery || statusFilter || genderFilter);
+  const resetFilters = () => {
+    setSearchInput('');
+    setSearchQuery('');
+    setStatusFilter('');
+    setGenderFilter('');
+    setCurrentPage(1);
+  };
 
   const openCreate = () => {
     setEditingUser(null);
@@ -519,26 +578,120 @@ export default function UsersModule() {
               </div>
             </section>
 
+            {/* Filter bar */}
+            <div className="mb-6 bg-white dark:bg-gray-800 rounded-2xl border border-violet-100 dark:border-gray-700 p-4 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center gap-3 flex-wrap">
+                {/* Search */}
+                <div className="relative flex-1 min-w-[220px]">
+                  <i className="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="Tìm theo tên, email, SĐT, mã SV, chuyên ngành..."
+                    className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all"
+                  />
+                  {searchInput && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchInput('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      <i className="fas fa-times text-sm" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Status tabs */}
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1">
+                  {[
+                    { value: '', label: 'Tất cả' },
+                    { value: 'active', label: 'Hoạt động' },
+                    { value: 'inactive', label: 'Không HĐ' },
+                    { value: 'pending', label: 'Chờ duyệt' },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value || 'all'}
+                      type="button"
+                      onClick={() => setStatusFilter(value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        statusFilter === value
+                          ? 'bg-white dark:bg-gray-600 text-violet-600 dark:text-violet-300 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Gender select */}
+                <select
+                  value={genderFilter}
+                  onChange={(e) => setGenderFilter(e.target.value)}
+                  className="px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none transition-all min-w-[140px] cursor-pointer"
+                >
+                  <option value="">Tất cả giới tính</option>
+                  {GENDER_OPTIONS.map((g) => (
+                    <option key={g.value} value={g.value}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="px-3 py-2.5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-medium transition-all cursor-pointer flex items-center gap-2 hover:bg-red-100 dark:hover:bg-red-900/40"
+                  >
+                    <i className="fas fa-times" />
+                    Xóa bộ lọc
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Table */}
             <div className="bg-white/95 dark:bg-gray-900/80 rounded-2xl shadow-sm border border-violet-100/70 dark:border-gray-700 overflow-hidden">
-              {totalCount === 0 ? (
+              {isFetching && !isLoading && (
+                <div className="px-4 py-2 text-xs text-violet-600 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 border-b border-violet-100 dark:border-violet-800 flex items-center gap-2">
+                  <i className="fas fa-spinner fa-spin" />
+                  Đang cập nhật danh sách...
+                </div>
+              )}
+              {paginatedUsers.length === 0 ? (
                 <div className="p-12 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center">
                     <i className="fas fa-users text-3xl" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                    Chưa có người dùng nào
+                    {hasActiveFilters
+                      ? 'Không tìm thấy người dùng phù hợp'
+                      : 'Chưa có người dùng nào'}
                   </h3>
                   <p className="text-gray-500 dark:text-gray-400 mb-4">
-                    Tạo người dùng đầu tiên để khởi động hệ thống thành viên.
+                    {hasActiveFilters
+                      ? 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc khác.'
+                      : 'Tạo người dùng đầu tiên để khởi động hệ thống thành viên.'}
                   </p>
-                  <button
-                    type="button"
-                    onClick={openCreate}
-                    className="px-6 py-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
-                  >
-                    Thêm người dùng
-                  </button>
+                  {hasActiveFilters ? (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="px-6 py-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                    >
+                      Xóa bộ lọc
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openCreate}
+                      className="px-6 py-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                    >
+                      Thêm người dùng
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">

@@ -8,6 +8,8 @@ export interface RecordOfChange {
   changedBy: string;
   changedByName: string;
   clubId: number | null;
+  /** Tên CLB (nếu backend trả về) – nếu không, FE sẽ tự lookup từ /Clubs */
+  clubName?: string | null;
   changedAt: string;
   isUndo: boolean;
 }
