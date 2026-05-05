@@ -326,8 +326,8 @@ const PublicEventDetailPage: React.FC = () => {
                                             const isFull = event.maxAttendees != null && event.currentAttendees >= event.maxAttendees;
                                             return (
                                                 <button onClick={handleRegister} disabled={isRegistering}
-                                                    className={`w-full py-3 rounded-xl font-bold transition-all disabled:opacity-50 ${isFull ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30'}`}>
-                                                    {isRegistering ? 'Đang đăng ký...' : isFull ? 'Danh sách đã đầy' : 'Đăng Ký Ngay'}
+                                                    className={`w-full py-3 rounded-xl font-bold transition-all disabled:opacity-50 ${isFull ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30' : 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30'}`}>
+                                                    {isRegistering ? 'Đang đăng ký...' : isFull ? 'Đăng ký vào danh sách chờ' : 'Đăng Ký Ngay'}
                                                 </button>
                                             );
                                         })()}
