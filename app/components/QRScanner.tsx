@@ -48,24 +48,62 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
                 await cleanup();
                 if (cancelled) return;
 
+                // Wait a tick for the DOM element to be rendered
+                await new Promise(resolve => setTimeout(resolve, 100));
+                if (cancelled) return;
+
+                // Verify the container element exists
+                const container = document.getElementById(scannerId);
+                if (!container) {
+                    throw new Error('Không tìm thấy vùng hiển thị camera');
+                }
+
                 const html5QrCode = new Html5Qrcode(scannerId);
                 scannerRef.current = html5QrCode;
 
-                await html5QrCode.start(
-                    { facingMode: 'environment' },
-                    {
-                        fps: 5,
-                        qrbox: { width: 250, height: 250 },
-                    },
-                    (decodedText) => {
-                        if (cancelled || !scannerRef.current) return;
-                        onScanRef.current(decodedText.trim());
-                    },
-                    () => { /* ignore scan errors (no code in frame) */ }
-                );
+                // Try rear camera first, fallback to front camera
+                try {
+                    await html5QrCode.start(
+                        { facingMode: 'environment' },
+                        { fps: 5, qrbox: { width: 250, height: 250 } },
+                        (decodedText) => {
+                            if (cancelled || !scannerRef.current) return;
+                            onScanRef.current(decodedText.trim());
+                        },
+                        () => { /* ignore scan errors (no code in frame) */ }
+                    );
+                } catch {
+                    // Rear camera failed → try front camera
+                    try {
+                        await html5QrCode.start(
+                            { facingMode: 'user' },
+                            { fps: 5, qrbox: { width: 250, height: 250 } },
+                            (decodedText) => {
+                                if (cancelled || !scannerRef.current) return;
+                                onScanRef.current(decodedText.trim());
+                            },
+                            () => { /* ignore */ }
+                        );
+                    } catch {
+                        // Both failed → try any available camera
+                        const devices = await Html5Qrcode.getCameras();
+                        if (!devices.length) throw new Error('Không tìm thấy camera nào');
+                        await html5QrCode.start(
+                            devices[0].id,
+                            { fps: 5, qrbox: { width: 250, height: 250 } },
+                            (decodedText) => {
+                                if (cancelled || !scannerRef.current) return;
+                                onScanRef.current(decodedText.trim());
+                            },
+                            () => { /* ignore */ }
+                        );
+                    }
+                }
+
                 if (!cancelled) setError(null);
             } catch (e: unknown) {
                 const msg = e instanceof Error ? e.message : 'Không thể mở camera';
+                console.error('[QRScanner] Camera error:', e);
                 if (!cancelled) setError(msg);
             } finally {
                 startingRef.current = false;
@@ -97,11 +135,18 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
     return (
         <div className={className}>
             {isStarting && (
-                <p className="text-sm text-gray-500 mb-2">Đang bật camera...</p>
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm text-gray-500">Đang bật camera...</p>
+                </div>
             )}
             {error && (
-                <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm">
-                    {error}
+                <div className="mb-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <p className="font-medium mb-1">⚠️ Lỗi camera</p>
+                    <p>{error}</p>
+                    <p className="text-xs text-red-500 mt-2">
+                        Hãy đảm bảo truy cập qua HTTPS hoặc localhost và đã cấp quyền camera cho trình duyệt.
+                    </p>
                 </div>
             )}
             <div id={scannerId} className="max-w-[300px] overflow-hidden rounded-lg" />
