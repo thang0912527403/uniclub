@@ -22,7 +22,7 @@ const ClubCard: React.FC<{ club: Club }> = ({ club }) => {
             {/* Image Section */}
             <div className="relative h-56 overflow-hidden">
                 <img
-                    src={club.coverImageUrl || 'https://i.ytimg.com/vi/Cq2uAOsK930/maxresdefault.jpg'}
+                    src={club.coverImageUrl || 'https://gemini.google.com/share/7c0bfa0f995f'}
                     alt={club.clubName}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
@@ -41,7 +41,7 @@ const ClubCard: React.FC<{ club: Club }> = ({ club }) => {
                 <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors line-clamp-2 leading-snug flex items-center gap-2">
                     {/* Logo Club */}
                     <img
-                        src={club.logoUrl || 'https://yt3.googleusercontent.com/YaAFWY03ER0DfF77HAyMqNlRxmJiSEDq_I7ZF0MlcgRcVzOhIhZfB8QlwNhAuVXZesi2I2zy=s900-c-k-c0x00ffffff-no-rj'}
+                        src={club.logoUrl || 'https://gemini.google.com/share/7c0bfa0f995f'}
                         alt={club.clubName}
                         className="w-6 h-6 rounded-full object-cover border border-gray-100 shadow-sm"
                     />

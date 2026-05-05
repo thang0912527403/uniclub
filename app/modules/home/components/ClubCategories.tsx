@@ -21,7 +21,7 @@ function ClubCard({ club }: { club: Club }) {
         <img
           src={
             club.coverImageUrl ||
-            "https://i.ytimg.com/vi/Cq2uAOsK930/maxresdefault.jpg"
+            "https://gemini.google.com/share/7c0bfa0f995f"
           }
           alt={club.clubName}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
@@ -34,7 +34,7 @@ function ClubCard({ club }: { club: Club }) {
             <img
               src={
                 club.logoUrl ||
-                "https://yt3.googleusercontent.com/YaAFWY03ER0DfF77HAyMqNlRxmJiSEDq_I7ZF0MlcgRcVzOhIhZfB8QlwNhAuVXZesi2I2zy=s900-c-k-c0x00ffffff-no-rj"
+                "https://gemini.google.com/share/7c0bfa0f995f"
               }
               alt="logo"
               className="w-full h-full object-contain rounded-lg"
