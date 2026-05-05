@@ -174,12 +174,12 @@ export function Sidebar({
           {
             label: t("sidebar.manageRecruitment.title"),
             icon: "fa-solid fa-flag",
-            policy: "managerecruiment",
+            policy: "managerecruitment",
             subItems: [
               {
                 label: t("sidebar.manageRecruitment.allCampaigns"),
                 url: "/recruitment-campaigns",
-                policy: "managerecruiment",
+                policy: "managerecruitment",
               },
             ],
           },
@@ -234,7 +234,6 @@ export function Sidebar({
           {
             label: t("sidebar.manageFunds.title"),
             icon: "fa-wallet",
-            policy: "viewfinance",
             subItems: [
               {
                 label: t("sidebar.manageFunds.budgetOverview"),
