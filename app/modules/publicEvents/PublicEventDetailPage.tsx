@@ -246,12 +246,22 @@ const PublicEventDetailPage: React.FC = () => {
                                                         <div className="w-px flex-1 bg-gray-200" />
                                                     </div>
                                                     <div className="flex flex-col sm:flex-row sm:items-start w-full gap-1">
-                                                        <div className="text-orange-500 font-bold w-40 shrink-0 font-mono text-sm">
-                                                            {fmtTime(s.startTime)}{s.endTime ? ` – ${fmtTime(s.endTime)}` : ''}
+                                                        <div className="shrink-0 w-44">
+                                                            <div className="flex items-baseline gap-1 font-mono text-sm">
+                                                                <div className="text-center">
+                                                                    <span className="text-orange-500 font-bold">{fmtTime(s.startTime)}</span>
+                                                                    <p className="text-[11px] text-gray-400 font-sans">{s.startTime ? new Date(s.startTime).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : ''}</p>
+                                                                </div>
+                                                                <span className="text-gray-400 mx-0.5">–</span>
+                                                                <div className="text-center">
+                                                                    <span className="text-orange-500 font-bold">{fmtTime(s.endTime)}</span>
+                                                                    <p className="text-[11px] text-gray-400 font-sans">{s.endTime ? new Date(s.endTime).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : ''}</p>
+                                                                </div>
+                                                            </div>
+                                                            {s.startTime && <p className="text-xs text-gray-400 mt-0.5">{fmtFullDate(s.startTime)}</p>}
                                                         </div>
                                                         <div>
                                                             <p className="text-gray-700 font-medium">{s.scheduleName}</p>
-                                                            {s.startTime && <p className="text-xs text-gray-400">{fmtFullDate(s.startTime)}</p>}
                                                             {s.location && s.location !== 'string' && (
                                                                 <p className="text-sm text-orange-600 flex items-center gap-1 mt-1"><i className="fas fa-map-marker-alt text-xs" /> {s.location}</p>
                                                             )}
