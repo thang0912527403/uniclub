@@ -24,6 +24,16 @@ export const authApi = baseApi.injectEndpoints({
       invalidatesTags: ['User'],
     }),
 
+    // Đăng nhập Google
+    googleLogin: builder.mutation<ApiResponse<LoginResponse>, { idToken: string }>({
+      query: (credentials) => ({
+        url: '/auth/google-login',
+        method: 'POST',
+        body: credentials,
+      }),
+      invalidatesTags: ['User'],
+    }),
+
     // Đăng ký
     register: builder.mutation<ApiResponse<UserInfo>, RegisterRequest>({
       query: (userData) => ({
@@ -118,6 +128,7 @@ export const authApi = baseApi.injectEndpoints({
 
 export const {
   useLoginMutation,
+  useGoogleLoginMutation,
   useRegisterMutation,
   useRefreshTokenMutation,
   useLogoutMutation,
