@@ -31,7 +31,7 @@ export default function ClubEditModule() {
         facebookUrl: '',
         logoUrl: '',
         coverImageUrl: '',
-        foundedDate: new Date().toISOString().split('T')[0],
+        foundedDate: '',
         isActive: true,
         isPublic: true,
     });
@@ -53,7 +53,7 @@ export default function ClubEditModule() {
                 coverImageUrl: club.coverImageUrl ?? '',
                 foundedDate: club.foundedDate
                     ? new Date(club.foundedDate).toISOString().split('T')[0]
-                    : new Date().toISOString().split('T')[0],
+                    : '',
                 isActive: club.isActive ?? true,
                 isPublic: club.isPublic ?? true,
             });
@@ -76,8 +76,12 @@ export default function ClubEditModule() {
         }
 
         const resolvedId = club?.clubId || clubId;
+        const payload = {
+            ...formData,
+            foundedDate: formData.foundedDate || undefined,
+        };
         try {
-            await updateClub({ id: resolvedId, club: formData }).unwrap();
+            await updateClub({ id: resolvedId, club: payload }).unwrap();
             showNotification({
                 type: 'success',
                 title: 'Cập nhật thành công!',
@@ -264,46 +268,6 @@ export default function ClubEditModule() {
                                         </div>
                                     </div>
 
-                                    {/* isPublic Toggle */}
-                                    <div>
-                                        <label className="block text-sm text-gray-700 dark:text-gray-400 mb-2">Trạng Thái</label>
-                                        <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-globe text-blue-500"></i>
-                                                <span className="text-gray-900 dark:text-white text-sm">Công khai</span>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">Mọi người đều có thể tìm thấy CLB</p>
-                                            </div>
-                                            <label className="relative inline-flex items-center cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.isPublic}
-                                                    onChange={(e) => handleInputChange('isPublic', e.target.checked)}
-                                                    className="sr-only peer"
-                                                />
-                                                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    {/* isActive Toggle */}
-                                    <div>
-                                        <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-check-circle text-green-500"></i>
-                                                <span className="text-gray-900 dark:text-white text-sm">Hoạt động</span>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">Câu lạc bộ đang hoạt động</p>
-                                            </div>
-                                            <label className="relative inline-flex items-center cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.isActive}
-                                                    onChange={(e) => handleInputChange('isActive', e.target.checked)}
-                                                    className="sr-only peer"
-                                                />
-                                                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                                            </label>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 

@@ -16,6 +16,16 @@ const POLICY_MAP = {
     canViewAttendance:     'viewattendance',
     canApproveAttendance:  'approveattendance',
     canCheckIn:            'checkin',
+    canAddMember:            'addmember',
+    canUpdateMemberRole:       'updatememberrole',
+    canUpdateMemberStatus:     'updatememberstatus',
+    canRemoveMember:            'removemember',
+    canAddMemberRole:       'addmemberrole',
+    canRemoveMemberRole:    'removememberrole',
+    canAddPolicy:            'addpolicy',
+    canSetPolicy:            'setpolicy',
+    canRevokePolicy:            'revokepolicy',
+    
 } as const;
 
 type PolicyKey = keyof typeof POLICY_MAP;

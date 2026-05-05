@@ -3,7 +3,7 @@ import { Sidebar } from "~/components/Sidebar";
 import { HeaderBar } from "~/components/HeaderBar";
 import { SettingButton } from "~/components/SettingButton";
 import { useSidebarToggle } from "~/hooks/useSidebarToggle";
-import { useGetClubByIdQuery } from "~/cores/api";
+import { useGetClubByIdQuery, useToggleClubStatusMutation, useUpdateClubMutation } from "~/cores/api";
 import { getClubId } from "~/utils/auth";
 import { Loading } from "~/components/Loading";
 import { Error } from "~/components/Error";
@@ -17,6 +17,18 @@ export default function ClubDetailModule() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
   const { data: club, isLoading, error } = useGetClubByIdQuery(Number(id));
+  const [toggleClubStatus, { isLoading: isTogglingStatus }] = useToggleClubStatusMutation();
+  const [updateClub, { isLoading: isTogglingPublic }] = useUpdateClubMutation();
+
+  const handleToggleActive = async () => {
+    if (!club) return;
+    await toggleClubStatus({ id: Number(id), isActive: !club.isActive });
+  };
+
+  const handleTogglePublic = async () => {
+    if (!club) return;
+    await updateClub({ id: Number(id), club: { ...club, isPublic: !club.isPublic } });
+  };
 
   return (
     <div className="min-h-screen">
@@ -126,6 +138,51 @@ export default function ClubDetailModule() {
                     </button>
                   </div>
                 </div>
+
+                {/* Quick Settings */}
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
+                  {/* isActive toggle */}
+                  <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 min-w-[230px]">
+                    <div className="flex items-center gap-2">
+                      <i className="fas fa-check-circle text-green-500"></i>
+                      <div>
+                        <p className="text-sm text-gray-900 dark:text-white">Hoạt động</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Trạng thái hoạt động của CLB</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer ml-4">
+                      <input
+                        type="checkbox"
+                        checked={club.isActive}
+                        onChange={handleToggleActive}
+                        disabled={isTogglingStatus}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500 peer-disabled:opacity-50"></div>
+                    </label>
+                  </div>
+
+                  {/* isPublic toggle */}
+                  <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 min-w-[230px]">
+                    <div className="flex items-center gap-2">
+                      <i className="fas fa-globe text-blue-500"></i>
+                      <div>
+                        <p className="text-sm text-gray-900 dark:text-white">Công khai</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Mọi người đều có thể tìm thấy CLB</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer ml-4">
+                      <input
+                        type="checkbox"
+                        checked={club.isPublic}
+                        onChange={handleTogglePublic}
+                        disabled={isTogglingPublic}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -173,7 +230,9 @@ export default function ClubDetailModule() {
                       Ngày thành lập
                     </p>
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                      {new Date(club.foundedDate).toLocaleDateString("vi-VN")}
+                      {club.foundedDate
+                        ? new Date(club.foundedDate).toLocaleDateString("vi-VN")
+                        : "Chưa cập nhật"}
                     </h3>
                   </div>
                 </div>
@@ -182,14 +241,16 @@ export default function ClubDetailModule() {
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-eye text-white text-xl"></i>
+                    <i className="fas fa-calendar-plus text-white text-xl"></i>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                      Trạng thái
+                      Ngày tạo
                     </p>
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                      {club.isPublic ? "Công khai" : "Riêng tư"}
+                      {club.createdAt
+                        ? new Date(club.createdAt).toLocaleDateString("vi-VN")
+                        : "Chưa cập nhật"}
                     </h3>
                   </div>
                 </div>

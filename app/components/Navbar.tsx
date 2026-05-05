@@ -5,7 +5,7 @@ import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAuth, isLoading, isError } = useCurrentUser();
+  const { user, isAuth, isLoading, isError, isAdmin } = useCurrentUser();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -29,6 +29,7 @@ const Navbar: React.FC = () => {
 
   const navLinks = [
     { name: "Trang chủ", href: "/home" },
+    ...(isAdmin ? [{ name: "Dashboard", href: "/dashboard" }] : []),
     { name: "Câu lạc bộ", href: "/public/clubs" },
     { name: "Sự kiện", href: "/public/events" },
     { name: "Tin tức", href: "/public/news" },
@@ -225,26 +226,28 @@ const Navbar: React.FC = () => {
                         Hồ sơ cá nhân
                       </Link>
 
-                      <Link
-                        to="/manage-clubs"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      {!isAdmin && (
+                        <Link
+                          to="/manage-clubs"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                          />
-                        </svg>
-                        Câu lạc bộ của tôi
-                      </Link>
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                            />
+                          </svg>
+                          Câu lạc bộ của tôi
+                        </Link>
+                      )}
 
                       <Link
                         to="/my-events"
@@ -464,13 +467,15 @@ const Navbar: React.FC = () => {
                   >
                     Hồ sơ cá nhân
                   </Link>
-                  <Link
-                    to="/manage-clubs"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm"
-                  >
-                    Câu lạc bộ của tôi
-                  </Link>
+                  {!isAdmin && (
+                    <Link
+                      to="/manage-clubs"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="block px-4 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm"
+                    >
+                      Câu lạc bộ của tôi
+                    </Link>
+                  )}
                   <Link
                     to="/meeting-room"
                     onClick={() => setIsMobileMenuOpen(false)}

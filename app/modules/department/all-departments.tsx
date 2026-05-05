@@ -7,7 +7,8 @@ import { Loading } from '~/components/Loading';
 import { Error } from '~/components/Error';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { getClubId, isLoggedIn } from '~/utils/auth';
-import { useGetUserDepartmentsQuery, useUpdateDepartmentMutation, useDeleteDepartmentMutation } from '~/cores/api';
+import { useGetUserDepartmentsQuery, useGetDepartmentsQuery, useUpdateDepartmentMutation, useDeleteDepartmentMutation } from '~/cores/api';
+import { useClubRole } from '~/hooks/useClubRole';
 import { useNotification } from '~/components/Notification';
 import { validateDepartmentForm, type DepartmentFormData } from '~/utils/validation/schemas/departmentSchema';
 import type { UserDepartment } from '~/cores/api/types';
@@ -217,7 +218,7 @@ function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEd
                         <h3 className="font-bold text-gray-900 dark:text-white text-base truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {dept.departmentName}
                         </h3>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {/* <div className="flex items-center gap-2 mt-1 flex-wrap">
                             {dept.createdAt ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
                                     <i className="far fa-calendar-alt text-[8px]"></i>
@@ -235,7 +236,7 @@ function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEd
                                     {levelConfig.label}
                                 </span>
                             )}
-                        </div>
+                        </div> */}
                     </div>
                 </div>
 
@@ -247,7 +248,7 @@ function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEd
                 {/* Bottom Stats & Actions */}
                 <div className="flex items-center justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-auto">
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
+                        {/* <div className="flex items-center gap-1.5">
                             <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
                                 <i className="fas fa-users text-blue-500 text-[10px]"></i>
                             </div>
@@ -265,7 +266,7 @@ function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEd
                                 <span className="text-xs font-semibold text-gray-900 dark:text-white">{dept.roleCount ?? dept.roles?.length ?? 0}</span>
                                 <span className="text-[10px] text-gray-500 dark:text-gray-400">Vai trò</span>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
 
                     <div className="flex gap-2">
@@ -297,19 +298,29 @@ export default function AllDepartmentsModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const clubId = getClubId();
     const loggedIn = isLoggedIn();
+    const { isClubManager, isLoading: roleLoading } = useClubRole();
 
-    const { data: departments, isLoading, error } = useGetUserDepartmentsQuery(
-        { clubId },
-        { skip: !loggedIn || !clubId || clubId <= 0 }
+    const skipAll = roleLoading || !loggedIn || !clubId || clubId <= 0;
+
+    const { data: allDeptData, isLoading: allLoading, error: allError } = useGetDepartmentsQuery(
+        clubId,
+        { skip: skipAll || !isClubManager }
     );
-    console.log('Fetched departments:', departments);
+    const { data: userDeptData, isLoading: userLoading, error: userError } = useGetUserDepartmentsQuery(
+        { clubId },
+        { skip: skipAll || isClubManager }
+    );
+
+    const departments = isClubManager ? allDeptData : userDeptData;
+    const isLoading = roleLoading || (isClubManager ? allLoading : userLoading);
+    const error = isClubManager ? allError : userError;
     const [search, setSearch] = useState('');
     const [editTarget, setEditTarget] = useState<UserDepartment | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<UserDepartment | null>(null);
 
     const allDepartments = departments ?? [];
     const filteredDepartments = allDepartments.filter((d) =>
-        d.departmentName.toLowerCase().includes(search.toLowerCase()) ||
+        (d.departmentName ?? '').toLowerCase().includes(search.toLowerCase()) ||
         (d.description ?? '').toLowerCase().includes(search.toLowerCase())
     );
 
