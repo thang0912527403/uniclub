@@ -7,7 +7,8 @@ import { Loading } from '~/components/Loading';
 import { Error } from '~/components/Error';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { getClubId, isLoggedIn } from '~/utils/auth';
-import { useGetUserDepartmentsQuery, useUpdateDepartmentMutation, useDeleteDepartmentMutation } from '~/cores/api';
+import { useGetUserDepartmentsQuery, useGetDepartmentsQuery, useUpdateDepartmentMutation, useDeleteDepartmentMutation } from '~/cores/api';
+import { useClubRole } from '~/hooks/useClubRole';
 import { useNotification } from '~/components/Notification';
 import { validateDepartmentForm, type DepartmentFormData } from '~/utils/validation/schemas/departmentSchema';
 import type { UserDepartment } from '~/cores/api/types';
@@ -297,11 +298,20 @@ export default function AllDepartmentsModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const clubId = getClubId();
     const loggedIn = isLoggedIn();
+    const { isClubManager } = useClubRole();
 
-    const { data: departments, isLoading, error } = useGetUserDepartmentsQuery(
-        { clubId },
-        { skip: !loggedIn || !clubId || clubId <= 0 }
+    const { data: allDeptData, isLoading: allLoading, error: allError } = useGetDepartmentsQuery(
+        clubId,
+        { skip: !isClubManager || !loggedIn || !clubId || clubId <= 0 }
     );
+    const { data: userDeptData, isLoading: userLoading, error: userError } = useGetUserDepartmentsQuery(
+        { clubId },
+        { skip: isClubManager || !loggedIn || !clubId || clubId <= 0 }
+    );
+
+    const departments = isClubManager ? allDeptData : userDeptData;
+    const isLoading = isClubManager ? allLoading : userLoading;
+    const error = isClubManager ? allError : userError;
     console.log('Fetched departments:', departments);
     const [search, setSearch] = useState('');
     const [editTarget, setEditTarget] = useState<UserDepartment | null>(null);

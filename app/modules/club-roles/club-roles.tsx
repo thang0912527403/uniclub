@@ -143,8 +143,10 @@ export default function ClubRolesModule() {
 
     const allRoles = roles ?? [];
     const filteredRoles = allRoles.filter((r) =>
-        r.roleName.toLowerCase().includes(search.toLowerCase()) ||
-        (r.description ?? '').toLowerCase().includes(search.toLowerCase())
+        r.level !== 0 && (
+            r.roleName.toLowerCase().includes(search.toLowerCase()) ||
+            (r.description ?? '').toLowerCase().includes(search.toLowerCase())
+        )
     );
 
     const maxPolicies = Math.max(...allRoles.map(r => r.policies.length), 1);
