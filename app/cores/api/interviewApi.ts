@@ -321,6 +321,18 @@ export const interviewApi = baseApi.injectEndpoints({
       ],
     }),
 
+    getCriteriaForAssignment: builder.query<
+      EvaluationCriterionResponse[],
+      { scheduleId: number; assignmentId: number }
+    >({
+      query: ({ scheduleId, assignmentId }) =>
+        `/interviews/${scheduleId}/assignments/${assignmentId}/criteria`,
+      transformResponse: (response: any) => extractData(response),
+      providesTags: (result, error, { scheduleId, assignmentId }) => [
+        { type: "Interview" as const, id: `CRITERIA_ASSIGN_${scheduleId}_${assignmentId}` },
+      ],
+    }),
+
     createCriterion: builder.mutation<
       EvaluationCriterionResponse,
       { campaignId: number; dto: CreateEvaluationCriterionDto }
@@ -332,8 +344,11 @@ export const interviewApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: ApiResponse<EvaluationCriterionResponse>) =>
         response.data,
-      invalidatesTags: (result, error, { campaignId }) => [
+      invalidatesTags: (result, error, { campaignId, dto }) => [
         { type: "Interview", id: `CRITERIA_${campaignId}` },
+        ...(dto.isDraft && dto.assignmentId
+          ? [{ type: "Interview" as const, id: `CRITERIA_ASSIGN_${dto.assignmentId}` }]
+          : []),
       ],
     }),
 
@@ -554,6 +569,7 @@ export const {
   useGetFeedbackSummaryQuery,
   // Evaluation
   useGetCampaignCriteriaQuery,
+  useGetCriteriaForAssignmentQuery,
   useCreateCriterionMutation,
   useUpdateCriterionMutation,
   useDeleteCriterionMutation,

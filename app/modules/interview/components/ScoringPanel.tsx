@@ -5,7 +5,7 @@ import type {
   EvaluationCriterionResponse,
 } from "~/cores/api/types";
 import {
-  useGetCampaignCriteriaQuery,
+  useGetCriteriaForAssignmentQuery,
   useSubmitCriteriaFeedbackMutation,
   useCreateCriterionMutation,
 } from "~/cores/api/interviewApi";
@@ -50,9 +50,10 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
 
   // Fetch campaign criteria
   const { data: criteria, isLoading: isCriteriaLoading } =
-    useGetCampaignCriteriaQuery(campaignId, {
-      skip: !campaignId,
-    });
+    useGetCriteriaForAssignmentQuery(
+      { scheduleId, assignmentId: assignment?.id ?? 0 },
+      { skip: !assignment?.id },
+    );
   const [submitCriteriaFeedback, { isLoading: isSubmittingCriteria }] =
     useSubmitCriteriaFeedbackMutation();
   const [createCriterion, { isLoading: isCreatingCriterion }] =
@@ -76,7 +77,8 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
         dto: {
           name: newCriteriaName.trim(),
           description: newCriteriaDesc.trim() || null,
-          displayOrder: (criteria?.length || 0) + 1,
+          isDraft: true,
+          assignmentId: assignment?.id,
         },
       }).unwrap();
       setNewCriteriaName("");

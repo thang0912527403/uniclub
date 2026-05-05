@@ -12,12 +12,15 @@ export interface EvaluationCriterionResponse {
   description?: string | null;
   displayOrder: number;
   isDefault: boolean;
+  isDraft: boolean;
 }
 
 export interface CreateEvaluationCriterionDto {
   name: string;
   description?: string | null;
   displayOrder?: number;
+  isDraft?: boolean;
+  assignmentId?: number | null;
 }
 
 export interface UpdateEvaluationCriterionDto {
