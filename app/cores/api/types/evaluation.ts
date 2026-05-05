@@ -12,12 +12,15 @@ export interface EvaluationCriterionResponse {
   description?: string | null;
   displayOrder: number;
   isDefault: boolean;
+  isDraft: boolean;
 }
 
 export interface CreateEvaluationCriterionDto {
   name: string;
   description?: string | null;
   displayOrder?: number;
+  isDraft?: boolean;
+  assignmentId?: number | null;
 }
 
 export interface UpdateEvaluationCriterionDto {
@@ -107,7 +110,6 @@ export interface SubmitDecisionsDto {
 export interface PublishResultDto {
   mode: 'Now' | 'Schedule';
   scheduledAt?: string | null;
-  notificationChannels?: string | null;
   decisionIds?: number[] | null;
 }
 
@@ -144,6 +146,7 @@ export interface AiCriteriaEvaluation {
   criterionId: number;
   criterionName: string;
   result: 'Pass' | 'Fail' | 'Hold';
+  reason?: string;
 }
 
 export interface AiCandidateAnalysis {

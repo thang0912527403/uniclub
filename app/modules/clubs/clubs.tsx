@@ -9,6 +9,7 @@ import { useSidebarToggle } from "~/hooks/useSidebarToggle";
 import { useGetClubsQuery, useToggleClubStatusMutation } from "~/cores/api";
 import type { Club } from "~/cores/api";
 import { useNotification } from "~/components/Notification";
+import { setClubId } from "~/utils/auth";
 interface ConfirmModalProps {
   club: Club;
   onConfirm: () => void;
@@ -375,7 +376,13 @@ export default function ClubsModule() {
                   <div
                     key={club.clubId}
                     className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
-                    onClick={() => navigate(`/clubs/${club.clubId}`)}
+                    onClick={() => {
+                      // Set clubId vào cookie để các trang quản lý CLB
+                      // (info, members, events, record-of-change, ...) đều
+                      // làm việc trên đúng CLB mà admin vừa chọn.
+                      setClubId(club.clubId);
+                      navigate("/club/info");
+                    }}
                   >
                     {/* Banner */}
                     <div className="h-32 bg-gradient-to-br from-blue-500 to-purple-600 relative overflow-hidden">

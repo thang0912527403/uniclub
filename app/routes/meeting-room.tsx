@@ -16,6 +16,7 @@ import type {
   InterviewAssignmentResponse,
 } from "~/cores/api";
 import { getUserId } from "~/utils/auth";
+import { useClubRole } from "~/hooks/useClubRole";
 import ScoringPanel from "~/modules/interview/components/ScoringPanel";
 
 // ── Interview Scoring sidebar (auto-attached when room matches an interview) ──
@@ -24,6 +25,7 @@ const InterviewSidePanel: React.FC<{
   roomCode: string;
   currentUserId: string;
 }> = ({ roomCode, currentUserId }) => {
+  const { isClubManager } = useClubRole();
   const [submitFeedback, { isLoading: isSubmitting }] =
     useSubmitFeedbackMutation();
   const { data: interviews = [] } = useGetInterviewsQuery();
@@ -65,6 +67,7 @@ const InterviewSidePanel: React.FC<{
       assignment={currentAssignment}
       allAssignments={relatedInterview.assignments}
       campaignId={relatedInterview.campaignId}
+      isClubManager={isClubManager}
       onSubmitFeedback={handleSubmitFeedback}
       isSubmitting={isSubmitting}
     />

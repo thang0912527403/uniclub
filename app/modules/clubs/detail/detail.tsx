@@ -1,9 +1,9 @@
-import { useParams, useNavigate, Link } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { Sidebar } from "~/components/Sidebar";
 import { HeaderBar } from "~/components/HeaderBar";
 import { SettingButton } from "~/components/SettingButton";
 import { useSidebarToggle } from "~/hooks/useSidebarToggle";
-import { useGetClubByIdQuery } from "~/cores/api";
+import { useGetClubByIdQuery, useToggleClubStatusMutation, useUpdateClubMutation } from "~/cores/api";
 import { getClubId } from "~/utils/auth";
 import { Loading } from "~/components/Loading";
 import { Error } from "~/components/Error";
@@ -17,6 +17,18 @@ export default function ClubDetailModule() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
   const { data: club, isLoading, error } = useGetClubByIdQuery(Number(id));
+  const [toggleClubStatus, { isLoading: isTogglingStatus }] = useToggleClubStatusMutation();
+  const [updateClub, { isLoading: isTogglingPublic }] = useUpdateClubMutation();
+
+  const handleToggleActive = async () => {
+    if (!club) return;
+    await toggleClubStatus({ id: Number(id), isActive: !club.isActive });
+  };
+
+  const handleTogglePublic = async () => {
+    if (!club) return;
+    await updateClub({ id: Number(id), club: { ...club, isPublic: !club.isPublic } });
+  };
 
   return (
     <div className="min-h-screen">
@@ -115,13 +127,6 @@ export default function ClubDetailModule() {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <Link
-                      to="/question"
-                      className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors inline-flex items-center"
-                    >
-                      <i className="fas fa-file-alt mr-2"></i>
-                      Nộp đơn ứng tuyển
-                    </Link>
                     <button
                       onClick={() =>
                         navigate(paramId ? `/clubs/edit/${id}` : `/club/edit`)
@@ -131,10 +136,51 @@ export default function ClubDetailModule() {
                       <i className="fas fa-edit mr-2"></i>
                       Chỉnh sửa
                     </button>
-                    <button className="cursor-pointer px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <i className="fas fa-share mr-2"></i>
-                      Chia sẻ
-                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Settings */}
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
+                  {/* isActive toggle */}
+                  <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 min-w-[230px]">
+                    <div className="flex items-center gap-2">
+                      <i className="fas fa-check-circle text-green-500"></i>
+                      <div>
+                        <p className="text-sm text-gray-900 dark:text-white">Hoạt động</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Trạng thái hoạt động của CLB</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer ml-4">
+                      <input
+                        type="checkbox"
+                        checked={club.isActive}
+                        onChange={handleToggleActive}
+                        disabled={isTogglingStatus}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500 peer-disabled:opacity-50"></div>
+                    </label>
+                  </div>
+
+                  {/* isPublic toggle */}
+                  <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 min-w-[230px]">
+                    <div className="flex items-center gap-2">
+                      <i className="fas fa-globe text-blue-500"></i>
+                      <div>
+                        <p className="text-sm text-gray-900 dark:text-white">Công khai</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Mọi người đều có thể tìm thấy CLB</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer ml-4">
+                      <input
+                        type="checkbox"
+                        checked={club.isPublic}
+                        onChange={handleTogglePublic}
+                        disabled={isTogglingPublic}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -184,7 +230,9 @@ export default function ClubDetailModule() {
                       Ngày thành lập
                     </p>
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                      {new Date(club.foundedDate).toLocaleDateString("vi-VN")}
+                      {club.foundedDate
+                        ? new Date(club.foundedDate).toLocaleDateString("vi-VN")
+                        : "Chưa cập nhật"}
                     </h3>
                   </div>
                 </div>
@@ -193,14 +241,16 @@ export default function ClubDetailModule() {
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-eye text-white text-xl"></i>
+                    <i className="fas fa-calendar-plus text-white text-xl"></i>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                      Trạng thái
+                      Ngày tạo
                     </p>
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                      {club.isPublic ? "Công khai" : "Riêng tư"}
+                      {club.createdAt
+                        ? new Date(club.createdAt).toLocaleDateString("vi-VN")
+                        : "Chưa cập nhật"}
                     </h3>
                   </div>
                 </div>
@@ -303,91 +353,7 @@ export default function ClubDetailModule() {
               </div>
             </div>
 
-            {/* Additional Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Members Section */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  <i className="fas fa-users mr-2"></i>
-                  Thành viên nổi bật
-                </h2>
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                    >
-                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                        U{i}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 dark:text-white">
-                          User {i}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Member
-                        </p>
-                      </div>
-                      <button className="text-blue-500 hover:text-blue-600">
-                        <i className="fas fa-chevron-right"></i>
-                      </button>
-                    </div>
-                  ))}
-                  <button className="w-full text-center text-blue-500 hover:text-blue-600 font-semibold py-2">
-                    Xem tất cả thành viên →
-                  </button>
-                </div>
-              </div>
 
-              {/* Recent Activities */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  <i className="fas fa-history mr-2"></i>
-                  Hoạt động gần đây
-                </h2>
-                <div className="space-y-3">
-                  {[
-                    {
-                      icon: "fa-calendar",
-                      text: "Sự kiện mới được tạo",
-                      time: "2 giờ trước",
-                    },
-                    {
-                      icon: "fa-user-plus",
-                      text: "5 thành viên mới tham gia",
-                      time: "1 ngày trước",
-                    },
-                    {
-                      icon: "fa-image",
-                      text: "Cập nhật ảnh bìa",
-                      time: "3 ngày trước",
-                    },
-                  ].map((activity, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
-                        <i
-                          className={`fas ${activity.icon} text-sm text-blue-500`}
-                        ></i>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900 dark:text-white">
-                          {activity.text}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {activity.time}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  <button className="w-full text-center text-blue-500 hover:text-blue-600 font-semibold py-2">
-                    Xem tất cả hoạt động →
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </main>

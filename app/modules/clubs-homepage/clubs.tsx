@@ -4,6 +4,7 @@ import ClubCard from './components/ClubCard';
 import { useGetActiveClubsQuery, useGetClubsQuery } from '~/cores/api';
 import { ChevronLeft, ChevronRight, Search, ChevronDown, X } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import Footer from '../home/components/Footer';
 
 const PAGE_SIZE_OPTIONS = [6, 12, 24, 48];
 
@@ -145,8 +146,8 @@ const NewsPage: React.FC = () => {
                       key={size}
                       onClick={() => handlePageSizeChange(size)}
                       className={`w-full text-left px-5 py-3 text-sm font-semibold transition-colors ${pageSize === size
-                          ? 'bg-orange-50 text-orange-500'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-orange-500'
+                        ? 'bg-orange-50 text-orange-500'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-orange-500'
                         }`}
                     >
                       {size} câu lạc bộ / trang
@@ -234,9 +235,7 @@ const NewsPage: React.FC = () => {
         )}
       </div>
 
-      <footer className="py-12 text-center text-gray-400 text-sm border-t border-gray-100 bg-white">
-        © 2026 UniClubs News - Mọi thông tin thuộc bản quyền của các CLB UNIC.
-      </footer>
+      <Footer />
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { Footer } from '../home/components';
+import Footer from '~/modules/home/components/Footer';
 import Navbar from '../../components/Navbar';
 import { useGetClubPostByIdQuery, useGetClubPostsQuery } from '~/cores/api/clubApi';
 
@@ -159,9 +159,29 @@ const NewsDetailPage: React.FC = () => {
                                             <InfoRow icon="user" label="Tác giả" value={post.userName} />
                                         )}
 
+                                        {/* Linked event / campaign */}
+                                        {post.eventId && (
+                                            <button
+                                                onClick={() => navigate(`/public/events/${post.eventId}`)}
+                                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-sm cursor-pointer"
+                                            >
+                                                <i className="fas fa-calendar-alt" />
+                                                Xem sự kiện liên quan
+                                            </button>
+                                        )}
+                                        {post.campaignId && (
+                                            <button
+                                                onClick={() => navigate(`/campaign/${post.campaignId}`)}
+                                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors text-sm cursor-pointer"
+                                            >
+                                                <i className="fas fa-bullhorn" />
+                                                Xem chiến dịch liên quan
+                                            </button>
+                                        )}
+
                                         <button
                                             onClick={() => navigate('/public/news')}
-                                            className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg cursor-pointer"
+                                            className="w-full mt-2 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg cursor-pointer"
                                         >
                                             ← Xem thêm tin tức
                                         </button>

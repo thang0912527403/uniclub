@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, Navigate, useSearchParams } from "react-router";
 import Cookies from "js-cookie";
 import {
   Wallet,
@@ -519,6 +519,19 @@ export default function FundsPage() {
       });
     }
   };
+
+  const redirectFund403 =
+    hasToken &&
+    clubId >= 1 &&
+    !capsLoading &&
+    !capsOtherError &&
+    (capsForbidden ||
+      isForbiddenFunds ||
+      (caps !== undefined && !canViewFunds));
+
+  if (redirectFund403) {
+    return <Navigate to="/403" replace />;
+  }
 
   return (
     <div className="min-h-screen">

@@ -1,20 +1,31 @@
-import { useParams, Link } from "react-router";
+import { useState } from "react";
+import { useParams, Link, useNavigate } from "react-router";
 import {
   useGetRecruitmentCampaignQuery,
   useGetFormsByCampaignQuery,
 } from "~/cores/api";
 import Navbar from "../components/Navbar";
 import Footer from "~/modules/home/components/Footer";
+import { useClubRole } from "~/hooks/useClubRole";
+import { getUserId } from "~/utils/auth";
+import { CreatePostModal } from "~/modules/clubs/posts/clubpost";
+import { useGetClubPostsByCampaignIdQuery } from "~/cores/api/clubApi";
 
 export default function CampaignDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const campaignId = Number(id) || 0;
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+
+  const { can: canClub } = useClubRole();
+  const userId = getUserId() ?? "";
+  const { data: campaignPosts = [] } = useGetClubPostsByCampaignIdQuery(campaignId, { skip: !campaignId });
 
   const {
     data: campaign,
     isLoading,
     error,
-  } = useGetRecruitmentCampaignQuery(campaignId, {
+  } = useGetRecruitmentCampaignQuery({ clubId: 0, id: campaignId }, {
     skip: !campaignId,
   });
 
@@ -95,9 +106,8 @@ export default function CampaignDetailPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
               <span
-                className={`inline-block px-3 py-1 rounded-full text-sm font-semibold mb-3 ${
-                  isActive ? "bg-green-500" : "bg-gray-500"
-                }`}
+                className={`inline-block px-3 py-1 rounded-full text-sm font-semibold mb-3 ${isActive ? "bg-green-500" : "bg-gray-500"
+                  }`}
               >
                 {isActive ? "OPEN" : campaign.status}
               </span>
@@ -107,14 +117,24 @@ export default function CampaignDetailPage() {
                     {campaign.campaignName}
                   </h1>
                 </div>
-                {isActive && (
-                  <Link
-                    to={`/campaign/${campaignId}/application-form`}
-                    className="flex-shrink-0 inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                  >
-                    <i className="fas fa-paper-plane" /> Ứng tuyển ngay
-                  </Link>
-                )}
+                <div className="flex flex-wrap gap-2 flex-shrink-0">
+                  {campaignPosts.length > 0 && (
+                    <button
+                      onClick={() => navigate(`/public/news/${campaignPosts[0].postId}`)}
+                      className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                      <i className="fas fa-newspaper" /> Xem bài đăng
+                    </button>
+                  )}
+                  {isActive && (
+                    <Link
+                      to={`/campaign/${campaignId}/application-form`}
+                      className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                      <i className="fas fa-paper-plane" /> Ứng tuyển ngay
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -173,6 +193,17 @@ export default function CampaignDetailPage() {
               </div>
             )}
 
+            {canClub("viewpost", clubId) && (
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setShowCreatePostModal(true)}
+                  className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors shadow-md hover:shadow-lg"
+                >
+                  <i className="fas fa-pen" /> Tạo bài đăng cho chiến dịch này
+                </button>
+              </div>
+            )}
+
             {isActive && firstFormId && (
               <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -202,6 +233,15 @@ export default function CampaignDetailPage() {
           </div>
         </article>
       </main>
+
+      {showCreatePostModal && clubId > 0 && (
+        <CreatePostModal
+          onClose={() => setShowCreatePostModal(false)}
+          clubId={clubId}
+          userId={userId}
+          campaignId={campaignId}
+        />
+      )}
 
       <Footer />
     </div>

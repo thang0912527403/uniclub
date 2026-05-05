@@ -4,7 +4,9 @@
 .claude/
 .agent/
 /node_modules/
-
+.agent/
+.cursor
 # React Router
 /.react-router/
 /build/
+load-test

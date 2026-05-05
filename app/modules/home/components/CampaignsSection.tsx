@@ -130,14 +130,16 @@ function Skeleton() {
    MAIN
    ═════════════════════════════════════════════════════════ */
 export default function CampaignsSection() {
-    const { data: campaigns = [], isLoading } = useGetRecruitmentCampaignsQuery();
+    const { data, isLoading } = useGetRecruitmentCampaignsQuery({ page: 1, pageSize: 50 });
+    const campaigns = data?.items ?? [];
     const scrollRef = useRef<HTMLDivElement>(null);
     const [canLeft, setCanLeft] = useState(false);
     const [canRight, setCanRight] = useState(true);
 
     const active = campaigns.filter(c => {
         const s = c.status?.toLowerCase();
-        return s === 'open' || s === 'active';
+        const notExpired = new Date(c.endDate).setHours(23, 59, 59, 999) >= Date.now();
+        return (s === 'open' || s === 'active') && notExpired;
     });
 
     const checkScroll = () => {

@@ -3,7 +3,6 @@ import {
   usePublishResultsMutation,
   useGetPublishStatusQuery,
 } from "~/cores/api/interviewApi";
-import { useAddMemberMutation } from "~/cores/api/clubApi";
 import { useGetUserByIdQuery } from "~/cores/api";
 
 // ─── Inline user name resolver ───────────────────────────────────
@@ -62,15 +61,11 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
   onSuccess,
 }) => {
   const [publishResults, { isLoading }] = usePublishResultsMutation();
-  const [addClubMember] = useAddMemberMutation();
   const { data: publishStatus } = useGetPublishStatusQuery(campaignId);
 
   const [mode, setMode] = useState<"Now" | "Schedule">("Now");
   const [scheduledAt, setScheduledAt] = useState("");
-  const [emailNotify, setEmailNotify] = useState(true);
-  const [inAppNotify, setInAppNotify] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [addingMembers, setAddingMembers] = useState(false);
 
   // ─── Candidate selection ──────────────────────────────────────
   const allDecisions = useMemo(
@@ -133,55 +128,21 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
       return;
     }
 
-    const channels: string[] = [];
-    if (emailNotify) channels.push("Email");
-    if (inAppNotify) channels.push("InApp");
-
     try {
-      const result = await publishResults({
+      await publishResults({
         campaignId,
         dto: {
           mode,
           scheduledAt:
             mode === "Schedule" ? new Date(scheduledAt).toISOString() : null,
-          notificationChannels: channels.join(",") || null,
           decisionIds: Array.from(selectedIds),
         },
       }).unwrap();
-
-      // After publishing NOW, add accepted candidates to club
-      if (mode === "Now" && clubId) {
-        setAddingMembers(true);
-        const acceptedPublished = result.decisions.filter(
-          (d) =>
-            d.decision === "Accept" &&
-            d.publishStatus === "Published" &&
-            selectedIds.has(d.id),
-        );
-
-        await Promise.all(
-          acceptedPublished.map(async (d) => {
-            try {
-              await addClubMember({
-                clubId: clubId!,
-                userId: d.candidateUserId,
-              }).unwrap();
-            } catch (err) {
-              console.warn(
-                `Could not add candidate ${d.candidateUserId} to club:`,
-                err,
-              );
-            }
-          }),
-        );
-        setAddingMembers(false);
-      }
 
       onSuccess?.();
       onClose();
     } catch (err: unknown) {
       setError("Công bố thất bại");
-      setAddingMembers(false);
       console.error("Failed to publish results:", err);
     }
   };
@@ -259,7 +220,7 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
             </div>
 
             {/* Auto-add to club note */}
-            {clubId && selectedAcceptCount > 0 && mode === "Now" && (
+            {clubId && selectedAcceptCount > 0 && (
               <div className="px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
                 <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-xs">
                   <i className="fa-solid fa-user-plus text-[10px]" />
@@ -340,38 +301,6 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
               </div>
             )}
 
-            {/* Notification channels */}
-            <div className="flex-shrink-0">
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Kênh thông báo
-              </p>
-              <div className="space-y-2">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={emailNotify}
-                    onChange={(e) => setEmailNotify(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    <i className="fa-solid fa-envelope mr-1 text-gray-400" />{" "}
-                    Email
-                  </span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={inAppNotify}
-                    onChange={(e) => setInAppNotify(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    <i className="fa-solid fa-bell mr-1 text-gray-400" /> Thông
-                    báo trong ứng dụng
-                  </span>
-                </label>
-              </div>
-            </div>
           </>
         )}
 
@@ -387,20 +316,18 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
           {hasDecisions && (
             <button
               onClick={handlePublish}
-              disabled={isLoading || addingMembers || selectedIds.size === 0}
+              disabled={isLoading || selectedIds.size === 0}
               className={`px-5 py-2 rounded-xl text-white text-sm font-semibold hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                 mode === "Now"
                   ? "bg-gradient-to-r from-green-500 to-green-600"
                   : "bg-gradient-to-r from-yellow-500 to-orange-500"
               }`}
             >
-              {addingMembers
-                ? "Đang thêm thành viên..."
-                : isLoading
-                  ? "Đang xử lý..."
-                  : mode === "Now"
-                    ? `Công bố ${selectedIds.size} ứng viên`
-                    : "Lên lịch"}
+              {isLoading
+                ? "Đang xử lý..."
+                : mode === "Now"
+                  ? `Công bố ${selectedIds.size} ứng viên`
+                  : "Lên lịch"}
             </button>
           )}
         </div>

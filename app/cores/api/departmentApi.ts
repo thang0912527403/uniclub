@@ -1,12 +1,21 @@
 import { baseApi } from "./baseApi";
 import { type Department, type DepartmentCreateRequest, type ApiResponse } from "./types";
-import type { DepartmentMember } from "./types/department";
+import type { DepartmentMember, UserDepartment } from "./types/department";
 
 export const departmentApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
-        getDepartments: builder.query<Department[], number>({
+        getDepartments: builder.query<UserDepartment[], number>({
             query: (clubId) => `/club/${clubId}/Department`,
-            transformResponse: (response: ApiResponse<Department[]>) => response.data,
+            transformResponse: (response: ApiResponse<Record<string, unknown>[]>) =>
+                (response.data ?? []).map(d => ({
+                    departmentId: (d.departmentId ?? d.DepartmentId) as number,
+                    departmentName: (d.departmentName ?? d.Name ?? '') as string,
+                    description: (d.description ?? d.Description ?? '') as string,
+                    departmentRole: (d.departmentRole ?? null) as string | null,
+                    roles: (d.roles ?? []) as UserDepartment['roles'],
+                    memberCount: (d.memberCount ?? 0) as number,
+                    roleCount: (d.roleCount ?? 0) as number,
+                })),
             providesTags: ['Department'],
         }),
         getDepartmentById: builder.query<Department, { clubId: number; id: number }>({

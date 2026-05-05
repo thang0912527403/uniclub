@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, Navigate, useSearchParams } from 'react-router';
 import Cookies from 'js-cookie';
 import { Banknote, ChevronLeft, ChevronRight, Loader2, Lock, Plus, Search, Users } from 'lucide-react';
 import { Sidebar } from '~/components/Sidebar';
@@ -266,6 +266,25 @@ export default function MyFundsPage() {
   );
 
   const myTxItems = (myTxPaged?.items ?? []) as FundHistoryItem[];
+
+  const txErrorStatus =
+    txError && typeof txError === 'object' && 'status' in txError
+      ? (txError as { status: number }).status
+      : undefined;
+
+  const redirectFund403 =
+    hasToken &&
+    clubId >= 1 &&
+    !capsLoading &&
+    !capsOtherError &&
+    (capsForbidden ||
+      errorStatus === 403 ||
+      (caps !== undefined && !canViewFunds) ||
+      (tab === 'transactions' && txErrorStatus === 403));
+
+  if (redirectFund403) {
+    return <Navigate to="/403" replace />;
+  }
 
   return (
     <div className="min-h-screen">

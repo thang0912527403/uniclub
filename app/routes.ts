@@ -15,7 +15,8 @@ export default [
   route("auth/forgot-password", "routes/auth/forgot-password.tsx"),
   route("auth/reset-password", "routes/auth/reset-password.tsx"),
   route("auth/verify-email", "routes/auth/verify-email.tsx"),
-
+  route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
+  route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
   // PayOS callback routes (public)
   route("payos/return", "routes/payos.return.tsx"),
   route("payos/cancel", "routes/payos.cancel.tsx"),
@@ -27,6 +28,7 @@ export default [
   route("public/news", "routes/news.tsx"),
   route("public/news/:id", "routes/news.$id.tsx"),
   route("campaign/:id", "routes/campaign.$id.tsx"),
+  route("public/recruitment", "routes/public.recruitment.tsx"),
 
   // Error routes
   route("401", "routes/error/401.tsx"),
@@ -44,6 +46,9 @@ export default [
     // User management
     route("users", "routes/users.tsx"),
     route("club/members/history", "routes/members-history.tsx"),
+
+    // Record of Change (dùng chung cho System & per-Club, lọc theo ?clubId=)
+    route("record-of-change", "routes/record-of-change.tsx"),
 
     // Club management
     route("clubs", "routes/clubs/clubs.tsx"),
@@ -77,8 +82,6 @@ export default [
     // Recruitment & Applications
     route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
     route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
-    route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
-    route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
     route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
     route("club/all-requests", "routes/clubs/clubrequests.tsx"),
 

@@ -40,8 +40,16 @@ const ChangePasswordPage: React.FC = () => {
     
     if (!formData.newPassword) {
       newErrors.newPassword = 'Mật khẩu mới là bắt buộc';
-    } else if (formData.newPassword.length < 6) {
-      newErrors.newPassword = 'Mật khẩu phải có ít nhất 6 ký tự';
+    } else if (formData.newPassword.length < 8) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 8 ký tự';
+    } else if (!/[A-Z]/.test(formData.newPassword)) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 1 chữ cái viết hoa';
+    } else if (!/[a-z]/.test(formData.newPassword)) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 1 chữ cái viết thường';
+    } else if (!/[0-9]/.test(formData.newPassword)) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 1 chữ số';
+    } else if (!/[^A-Za-z0-9]/.test(formData.newPassword)) {
+      newErrors.newPassword = 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt';
     } else if (formData.newPassword === formData.currentPassword) {
       newErrors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại';
     }
@@ -149,22 +157,34 @@ const ChangePasswordPage: React.FC = () => {
           <p className="text-sm text-gray-600 font-medium mb-2">Yêu cầu mật khẩu:</p>
           <ul className="text-xs text-gray-500 space-y-1">
             <li className="flex items-center gap-2">
-              <span className={formData.newPassword.length >= 6 ? 'text-green-500' : ''}>
-                {formData.newPassword.length >= 6 ? '✓' : '○'}
+              <span className={formData.newPassword.length >= 8 ? 'text-green-500 font-bold' : ''}>
+                {formData.newPassword.length >= 8 ? '✓' : '○'}
               </span>
-              Ít nhất 6 ký tự
+              Ít nhất 8 ký tự
             </li>
             <li className="flex items-center gap-2">
-              <span className={/[A-Z]/.test(formData.newPassword) ? 'text-green-500' : ''}>
+              <span className={/[A-Z]/.test(formData.newPassword) ? 'text-green-500 font-bold' : ''}>
                 {/[A-Z]/.test(formData.newPassword) ? '✓' : '○'}
               </span>
-              Có ít nhất 1 chữ hoa
+              Ít nhất 1 chữ hoa
             </li>
             <li className="flex items-center gap-2">
-              <span className={/[0-9]/.test(formData.newPassword) ? 'text-green-500' : ''}>
+              <span className={/[a-z]/.test(formData.newPassword) ? 'text-green-500 font-bold' : ''}>
+                {/[a-z]/.test(formData.newPassword) ? '✓' : '○'}
+              </span>
+              Ít nhất 1 chữ thường
+            </li>
+            <li className="flex items-center gap-2">
+              <span className={/[0-9]/.test(formData.newPassword) ? 'text-green-500 font-bold' : ''}>
                 {/[0-9]/.test(formData.newPassword) ? '✓' : '○'}
               </span>
-              Có ít nhất 1 số
+              Ít nhất 1 chữ số
+            </li>
+            <li className="flex items-center gap-2">
+              <span className={/[^A-Za-z0-9]/.test(formData.newPassword) ? 'text-green-500 font-bold' : ''}>
+                {/[^A-Za-z0-9]/.test(formData.newPassword) ? '✓' : '○'}
+              </span>
+              Ít nhất 1 ký tự đặc biệt
             </li>
           </ul>
         </div>

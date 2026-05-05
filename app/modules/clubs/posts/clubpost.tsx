@@ -93,14 +93,18 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 /* ── Create Post Modal ─────────────────────────────────── */
-function CreatePostModal({
+export function CreatePostModal({
   onClose,
   clubId,
   userId,
+  eventId,
+  campaignId,
 }: {
   onClose: () => void;
   clubId: number;
   userId: string;
+  eventId?: number | null;
+  campaignId?: number | null;
 }) {
   const [createClubPost, { isLoading }] = useCreateClubPostMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +146,8 @@ function CreatePostModal({
     fd.append("caption", form.caption);
     fd.append("content", form.content);
     fd.append("status", form.status);
+    if (eventId) fd.append("eventId", String(eventId));
+    if (campaignId) fd.append("campaignId", String(campaignId));
     if (imageFile) fd.append("imageFile", imageFile);
     try {
       await createClubPost(fd).unwrap();

@@ -97,7 +97,8 @@ function Meta({ userName, postDate }: { userName?: string; postDate: string }) {
    ════════════════════════════════════════════ */
 const ClubNewsFeed = () => {
     const navigate = useNavigate();
-    const { data: posts = [], isLoading, isError } = useGetClubPostsQuery();
+    const { data, isLoading, isError } = useGetClubPostsQuery();
+    const posts = Array.isArray(data) ? data : [];
 
     if (isLoading) return <Skeleton />;
     if (isError || posts.length === 0) return null;

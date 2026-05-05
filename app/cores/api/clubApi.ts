@@ -10,10 +10,12 @@ export const clubApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getClubs: builder.query<
       { data: Club[]; totalPage: number; totalCount: number },
-      { pageIndex: string; searchQuery: string; pageSize: string }
+      { pageIndex: string; searchQuery?: string; pageSize: string; status?: string }
     >({
-      query: ({ pageIndex, searchQuery, pageSize }) =>
-        `/Club?pageSize=${pageSize}&pageIndex=${pageIndex}&searchQuery=${searchQuery}`,
+      query: (params) => ({
+        url: '/Club',
+        params,
+      }),
       transformResponse: (response: ApiResponse<Club[]>) => ({
         data: response.data,
         totalPage: response.totalPages,
@@ -24,10 +26,12 @@ export const clubApi = baseApi.injectEndpoints({
 
     getActiveClubs: builder.query<
       { data: Club[]; totalPage: number; totalCount: number },
-      { pageIndex: string; searchQuery: string; pageSize: string }
+      { pageIndex: string; searchQuery?: string; pageSize: string }
     >({
-      query: ({ pageIndex, searchQuery, pageSize }) =>
-        `/Club/active?pageSize=${pageSize}&pageIndex=${pageIndex}&searchQuery=${searchQuery}`,
+      query: (params) => ({
+        url: '/Club/active',
+        params,
+      }),
       transformResponse: (response: ApiResponse<Club[]>) => ({
         data: response.data,
         totalPage: response.totalPages,
@@ -101,6 +105,18 @@ export const clubApi = baseApi.injectEndpoints({
       query: (clubId) => `/ClubPost/club/${clubId}`,
       transformResponse: (response: ApiResponse<ClubPostResponseDto[]>) =>
         response.data,
+      providesTags: ["ClubPost"],
+    }),
+    getClubPostsByEventId: builder.query<ClubPostResponseDto[], number>({
+      query: (eventId) => `/ClubPost/event/${eventId}`,
+      transformResponse: (response: ApiResponse<ClubPostResponseDto[]> | ClubPostResponseDto[]) =>
+        Array.isArray(response) ? response : response.data,
+      providesTags: ["ClubPost"],
+    }),
+    getClubPostsByCampaignId: builder.query<ClubPostResponseDto[], number>({
+      query: (campaignId) => `/ClubPost/campaign/${campaignId}`,
+      transformResponse: (response: ApiResponse<ClubPostResponseDto[]> | ClubPostResponseDto[]) =>
+        Array.isArray(response) ? response : response.data,
       providesTags: ["ClubPost"],
     }),
     createClubPost: builder.mutation<ClubPostResponseDto, FormData>({
@@ -244,6 +260,20 @@ export const clubApi = baseApi.injectEndpoints({
         { type: "Member", id: `count-${clubId}` },
       ],
     }),
+    // ─── Transfer Club ──────────────────────────────────────────────────
+    transferClub: builder.mutation<
+      void,
+      { clubId: number; newManagerMemberId: number }
+    >({
+      query: ({ clubId, newManagerMemberId }) => ({
+        url: `/clubs/${clubId}/transfer`,
+        method: "PUT",
+        body: { newManagerMemberId },
+      }),
+      invalidatesTags: (_result, _error, { clubId }) => [
+        { type: "Club", id: `members-${clubId}` },
+      ],
+    }),
   }),
 });
 
@@ -259,6 +289,8 @@ export const {
   useToggleClubStatusMutation,
   useGetClubPostsQuery,
   useGetClubPostsByClubIdQuery,
+  useGetClubPostsByEventIdQuery,
+  useGetClubPostsByCampaignIdQuery,
   useGetClubPostByIdQuery,
   useCreateClubPostMutation,
   useUpdateClubPostMutation,
@@ -272,4 +304,5 @@ export const {
   useGetMemberNotJoinedDepartmentsQuery,
   useUpdateMemberRoleMutation,
   useGetClubMemberCountQuery,
+  useTransferClubMutation,
 } = clubApi;

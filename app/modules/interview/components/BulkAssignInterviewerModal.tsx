@@ -53,6 +53,7 @@ interface BulkAssignInterviewerModalProps {
   isOpen: boolean;
   onClose: () => void;
   interviews: InterviewScheduleResponse[];
+  allInterviews: InterviewScheduleResponse[];
   clubId: number;
   campaignId: number;
 }
@@ -61,6 +62,7 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
   isOpen,
   onClose,
   interviews,
+  allInterviews,
   clubId,
   campaignId,
 }) => {
@@ -122,6 +124,37 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
     }
     return intersection;
   }, [interviews]);
+
+  // Detect time conflicts for selected member across allInterviews
+  const timeConflicts = useMemo(() => {
+    if (!selectedMember) return [];
+    const selectedIds = new Set(interviews.map((iv) => iv.id));
+    const conflicts: { targetTitle: string; conflictTitle: string; scheduledAt: string }[] = [];
+
+    for (const target of interviews) {
+      const targetStart = new Date(target.scheduledAt).getTime();
+      const targetEnd = targetStart + (target.durationMinutes || 60) * 60_000;
+
+      for (const other of allInterviews) {
+        if (selectedIds.has(other.id)) continue;
+        const hasAssignment = other.assignments?.some(
+          (a) => a.interviewerUserId === selectedMember.userId,
+        );
+        if (!hasAssignment) continue;
+
+        const otherStart = new Date(other.scheduledAt).getTime();
+        const otherEnd = otherStart + (other.durationMinutes || 60) * 60_000;
+        if (targetStart < otherEnd && targetEnd > otherStart) {
+          conflicts.push({
+            targetTitle: target.title,
+            conflictTitle: other.title,
+            scheduledAt: other.scheduledAt,
+          });
+        }
+      }
+    }
+    return conflicts;
+  }, [selectedMember, interviews, allInterviews]);
 
   const filteredMembers = useMemo(() => {
     let members = clubMembers.filter(
@@ -631,6 +664,26 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* ── Conflict warning ── */}
+          {timeConflicts.length > 0 && (
+            <div className="px-3 py-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 mb-1.5">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                Cảnh báo trùng lịch ({timeConflicts.length})
+              </p>
+              <ul className="space-y-0.5">
+                {timeConflicts.map((c, i) => (
+                  <li key={i} className="text-[11px] text-amber-600 dark:text-amber-300">
+                    <span className="font-medium">{c.targetTitle}</span> trùng với <span className="font-medium">{c.conflictTitle}</span>{" "}
+                    ({new Date(c.scheduledAt).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* ── Info banner ── */}
           <div className="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-100 dark:border-purple-800">

@@ -4,7 +4,7 @@ import {
     emailSchema,
     phoneSchema,
     optionalUrlSchema,
-    dateSchema,
+    optionalDateSchema,
     parseErrors,
 } from './commonSchemas';
 
@@ -19,7 +19,7 @@ export const clubSchema = z.object({
     facebookUrl: optionalUrlSchema,
     logoUrl: optionalUrlSchema,
     coverImageUrl: optionalUrlSchema,
-    foundedDate: dateSchema,
+    foundedDate: optionalDateSchema,
     isActive: z.boolean(),
     isPublic: z.boolean(),
 });

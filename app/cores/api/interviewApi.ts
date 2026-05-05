@@ -29,11 +29,19 @@ import type {
   PublishResultDto,
   PublishStatusResponse,
   AiAnalysisResponse,
+  AiCandidateAnalysis,
   AiSearchRequest,
   AiSearchResponse,
   ConfirmTimeSlotDto,
   ProposedTimeSlotResponse,
 } from "./types";
+
+const extractData = (response: any) => {
+  if (response && response.success && response.data !== undefined) {
+    return response.data;
+  }
+  return response;
+};
 
 export const interviewApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -55,8 +63,7 @@ export const interviewApi = baseApi.injectEndpoints({
         const qs = searchParams.toString();
         return `/interviews${qs ? `?${qs}` : ""}`;
       },
-      transformResponse: (response: ApiResponse<InterviewScheduleResponse[]>) =>
-        response.data,
+      transformResponse: (response: any) => extractData(response),
       providesTags: (result) =>
         result
           ? [
@@ -68,8 +75,7 @@ export const interviewApi = baseApi.injectEndpoints({
 
     getInterviewById: builder.query<InterviewScheduleResponse, number>({
       query: (id) => `/interviews/${id}`,
-      transformResponse: (response: ApiResponse<InterviewScheduleResponse>) =>
-        response.data,
+      transformResponse: (response: any) => extractData(response),
       providesTags: (result, error, id) => [{ type: "Interview" as const, id }],
     }),
 
@@ -309,11 +315,21 @@ export const interviewApi = baseApi.injectEndpoints({
 
     getCampaignCriteria: builder.query<EvaluationCriterionResponse[], number>({
       query: (campaignId) => `/interviews/campaign/${campaignId}/criteria`,
-      transformResponse: (
-        response: ApiResponse<EvaluationCriterionResponse[]>,
-      ) => response.data,
+      transformResponse: (response: any) => extractData(response),
       providesTags: (result, error, campaignId) => [
         { type: "Interview" as const, id: `CRITERIA_${campaignId}` },
+      ],
+    }),
+
+    getCriteriaForAssignment: builder.query<
+      EvaluationCriterionResponse[],
+      { scheduleId: number; assignmentId: number }
+    >({
+      query: ({ scheduleId, assignmentId }) =>
+        `/interviews/${scheduleId}/assignments/${assignmentId}/criteria`,
+      transformResponse: (response: any) => extractData(response),
+      providesTags: (result, error, { assignmentId }) => [
+        { type: "Interview" as const, id: `CRITERIA_ASSIGN_${assignmentId}` },
       ],
     }),
 
@@ -328,8 +344,11 @@ export const interviewApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: ApiResponse<EvaluationCriterionResponse>) =>
         response.data,
-      invalidatesTags: (result, error, { campaignId }) => [
+      invalidatesTags: (result, error, { campaignId, dto }) => [
         { type: "Interview", id: `CRITERIA_${campaignId}` },
+        ...(dto.isDraft && dto.assignmentId
+          ? [{ type: "Interview" as const, id: `CRITERIA_ASSIGN_${dto.assignmentId}` }]
+          : []),
       ],
     }),
 
@@ -339,6 +358,7 @@ export const interviewApi = baseApi.injectEndpoints({
         criterionId: number;
         dto: UpdateEvaluationCriterionDto;
         campaignId: number;
+        assignmentId?: number;
       }
     >({
       query: ({ criterionId, dto }) => ({
@@ -348,21 +368,27 @@ export const interviewApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: ApiResponse<EvaluationCriterionResponse>) =>
         response.data,
-      invalidatesTags: (result, error, { campaignId }) => [
+      invalidatesTags: (result, error, { campaignId, assignmentId }) => [
         { type: "Interview", id: `CRITERIA_${campaignId}` },
+        ...(assignmentId
+          ? [{ type: "Interview" as const, id: `CRITERIA_ASSIGN_${assignmentId}` }]
+          : []),
       ],
     }),
 
     deleteCriterion: builder.mutation<
       void,
-      { criterionId: number; campaignId: number }
+      { criterionId: number; campaignId: number; assignmentId?: number }
     >({
       query: ({ criterionId }) => ({
         url: `/interviews/criteria/${criterionId}`,
         method: "DELETE",
       }),
-      invalidatesTags: (result, error, { campaignId }) => [
+      invalidatesTags: (result, error, { campaignId, assignmentId }) => [
         { type: "Interview", id: `CRITERIA_${campaignId}` },
+        ...(assignmentId
+          ? [{ type: "Interview" as const, id: `CRITERIA_ASSIGN_${assignmentId}` }]
+          : []),
       ],
     }),
 
@@ -419,8 +445,7 @@ export const interviewApi = baseApi.injectEndpoints({
 
     getEvaluationSummary: builder.query<EvaluationSummaryResponse, number>({
       query: (scheduleId) => `/interviews/${scheduleId}/evaluation-summary`,
-      transformResponse: (response: ApiResponse<EvaluationSummaryResponse>) =>
-        response.data,
+      transformResponse: (response: any) => extractData(response),
       providesTags: (result, error, scheduleId) => [
         { type: "Interview", id: scheduleId },
       ],
@@ -428,8 +453,7 @@ export const interviewApi = baseApi.injectEndpoints({
 
     getCampaignComparison: builder.query<CandidateComparisonItem[], number>({
       query: (campaignId) => `/interviews/campaign/${campaignId}/comparison`,
-      transformResponse: (response: ApiResponse<CandidateComparisonItem[]>) =>
-        response.data,
+      transformResponse: (response: any) => extractData(response),
       providesTags: (result, error, campaignId) => [
         { type: "Interview" as const, id: `COMPARISON_${campaignId}` },
       ],
@@ -448,8 +472,7 @@ export const interviewApi = baseApi.injectEndpoints({
         method: "POST",
         body: dto,
       }),
-      transformResponse: (response: ApiResponse<CampaignDecisionResponse[]>) =>
-        response.data,
+      transformResponse: (response: any) => extractData(response),
       invalidatesTags: (result, error, { campaignId }) => [
         { type: "Interview" as const, id: `COMPARISON_${campaignId}` },
         { type: "Interview" as const, id: `DECISIONS_${campaignId}` },
@@ -465,8 +488,7 @@ export const interviewApi = baseApi.injectEndpoints({
         method: "POST",
         body: dto,
       }),
-      transformResponse: (response: ApiResponse<PublishStatusResponse>) =>
-        response.data,
+      transformResponse: (response: any) => extractData(response),
       invalidatesTags: (result, error, { campaignId }) => [
         { type: 'Interview' as const, id: `DECISIONS_${campaignId}` },
       ],
@@ -475,8 +497,7 @@ export const interviewApi = baseApi.injectEndpoints({
     getPublishStatus: builder.query<PublishStatusResponse, number>({
       query: (campaignId) =>
         `/interviews/campaign/${campaignId}/publish-status`,
-      transformResponse: (response: ApiResponse<PublishStatusResponse>) =>
-        response.data,
+      transformResponse: (response: any) => extractData(response),
       providesTags: (result, error, campaignId) => [
         { type: 'Interview' as const, id: `DECISIONS_${campaignId}` },
       ],
@@ -488,22 +509,31 @@ export const interviewApi = baseApi.injectEndpoints({
 
     getAiAnalysis: builder.query<AiAnalysisResponse, number>({
       query: (campaignId) => `/interviews/campaign/${campaignId}/ai-analysis`,
-      transformResponse: (response: ApiResponse<AiAnalysisResponse>) =>
-        response.data,
+      transformResponse: (response: any) => extractData(response),
       providesTags: (result, error, campaignId) => [
         { type: "Interview" as const, id: `AI_ANALYSIS_${campaignId}` },
       ],
     }),
 
-    generateAiAnalysis: builder.mutation<AiAnalysisResponse, number>({
-      query: (campaignId) => ({
-        url: `/interviews/campaign/${campaignId}/ai-analysis/generate`,
+    generateAiAnalysis: builder.mutation<AiAnalysisResponse, { campaignId: number; force?: boolean }>({
+      query: ({ campaignId, force }) => ({
+        url: `/interviews/campaign/${campaignId}/ai-analysis/generate${force ? '?force=true' : ''}`,
         method: "POST",
       }),
-      transformResponse: (response: ApiResponse<AiAnalysisResponse>) =>
-        response.data,
-      invalidatesTags: (result, error, campaignId) => [
-        { type: "Interview" as const, id: `AI_ANALYSIS_${campaignId}` },
+      transformResponse: (response: any) => extractData(response),
+      invalidatesTags: (result, error, arg) => [
+        { type: "Interview" as const, id: `AI_ANALYSIS_${arg.campaignId}` },
+      ],
+    }),
+
+    generateSingleAiAnalysis: builder.mutation<AiCandidateAnalysis, { scheduleId: number; campaignId: number; force?: boolean }>({
+      query: ({ scheduleId, force }) => ({
+        url: `/interviews/schedule/${scheduleId}/ai-analysis/generate${force ? '?force=true' : ''}`,
+        method: "POST",
+      }),
+      transformResponse: (response: any) => extractData(response),
+      invalidatesTags: (result, error, arg) => [
+        { type: "Interview" as const, id: `AI_ANALYSIS_${arg.campaignId}` },
       ],
     }),
 
@@ -516,8 +546,7 @@ export const interviewApi = baseApi.injectEndpoints({
         method: "POST",
         body: dto,
       }),
-      transformResponse: (response: ApiResponse<AiSearchResponse>) =>
-        response.data,
+      transformResponse: (response: any) => extractData(response),
     }),
   }),
   overrideExisting: false,
@@ -547,6 +576,7 @@ export const {
   useGetFeedbackSummaryQuery,
   // Evaluation
   useGetCampaignCriteriaQuery,
+  useGetCriteriaForAssignmentQuery,
   useCreateCriterionMutation,
   useUpdateCriterionMutation,
   useDeleteCriterionMutation,
@@ -561,5 +591,6 @@ export const {
   // AI
   useGetAiAnalysisQuery,
   useGenerateAiAnalysisMutation,
+  useGenerateSingleAiAnalysisMutation,
   useAiSearchMutation,
 } = interviewApi;

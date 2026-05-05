@@ -17,7 +17,8 @@
       "manageClubName": "Manage Club Name",
       "recruitmentCampaigns": "Recruitment Campaigns",
       "clubMembers": "Club Members",
-      "clubActivities": "Club Activities"
+      "clubActivities": "Club Activities",
+      "recordOfChange": "Record of Change"
     },
     "manageDepartment": {
       "title": "Manage Department",

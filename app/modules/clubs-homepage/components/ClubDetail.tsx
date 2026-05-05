@@ -13,9 +13,22 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import type { Club } from '~/cores/api';
+import { useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api';
 
 const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
   const navigate = useNavigate();
+  const { data } = useGetRecruitmentCampaignsByClubIdQuery({ clubId: club.clubId, page: 1, pageSize: 50 });
+  const campaigns = data?.items || [];
+  const openCampaign = campaigns.find(c => {
+    const s = c.status?.toLowerCase();
+    return (s === 'open' || s === 'active') && new Date(c.endDate).setHours(23, 59, 59, 999) >= Date.now();
+  });
+
+  const handleJoin = () => {
+    if (openCampaign) {
+      navigate(`/campaign/${openCampaign.campaignId}`);
+    }
+  };
 
   // Xử lý hiển thị ngày thành lập hoặc ngày tạo
   const displayDate = club.foundedDate || club.createdAt;
@@ -36,7 +49,7 @@ const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
       {/* 2. Banner & Logo Section */}
       <section className="relative h-[35vh] md:h-[45vh] overflow-hidden">
         <img 
-          src={club.coverImageUrl || 'https://i.ytimg.com/vi/Cq2uAOsK930/maxresdefault.jpg'} 
+          src={club.coverImageUrl || 'https://gemini.google.com/share/7c0bfa0f995f'} 
           className="w-full h-full object-cover shadow-inner" 
           alt="Club Cover" 
         />
@@ -48,7 +61,7 @@ const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
             <div className="relative group">
               <div className="w-32 h-32 md:w-40 md:h-40 bg-white rounded-[2.5rem] p-1.5 shadow-2xl border-4 border-white overflow-hidden">
                 <img 
-                  src={club.logoUrl || 'https://yt3.googleusercontent.com/YaAFWY03ER0DfF77HAyMqNlRxmJiSEDq_I7ZF0MlcgRcVzOhIhZfB8QlwNhAuVXZesi2I2zy=s900-c-k-c0x00ffffff-no-rj'} 
+                  src={club.logoUrl || 'https://gemini.google.com/share/7c0bfa0f995f'} 
                   className="w-full h-full object-contain rounded-[2.2rem]" 
                   alt="Club Logo" 
                 />
@@ -77,7 +90,12 @@ const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
 
             {/* Action Buttons */}
             <div className="flex gap-3 mb-2">
-              <button className="bg-white text-gray-900 px-8 py-3.5 rounded-2xl font-black text-sm hover:bg-orange-500 hover:text-white transition-all shadow-xl active:scale-95">
+              <button
+                className="bg-white text-gray-900 px-8 py-3.5 rounded-2xl font-black text-sm hover:bg-orange-500 hover:text-white transition-all shadow-xl active:scale-95"
+                onClick={handleJoin}
+                disabled={!openCampaign}
+                title={!openCampaign ? 'Hiện không có đợt tuyển thành viên' : undefined}
+              >
                 THAM GIA
               </button>
             </div>
