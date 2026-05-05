@@ -199,8 +199,8 @@ const CriteriaAssignment: React.FC<CriteriaAssignmentProps> = ({
             {readOnly ? 'Tiêu chí được phân' : savedSuccessfully ? 'Đã lưu tiêu chí' : `Phân tiêu chí cho ${interviewerName || 'PV viên'}`}
           </h3>
         </div>
-        {!isDisabled && (
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1">
+          {!isDisabled && (
             <button
               type="button"
               onClick={selected.length === criteria.length ? deselectAll : selectAll}
@@ -208,8 +208,19 @@ const CriteriaAssignment: React.FC<CriteriaAssignmentProps> = ({
             >
               {selected.length === criteria.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
             </button>
-          </div>
-        )}
+          )}
+          {!readOnly && !isAddingDraft && (
+            <button
+              type="button"
+              onClick={() => setIsAddingDraft(true)}
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-all"
+              title="Thêm tiêu chí riêng"
+            >
+              <i className="fa-solid fa-plus text-[9px]" />
+              Thêm tiêu chí riêng
+            </button>
+          )}
+        </div>
       </div>
 
       {!isDisabled && (
@@ -295,23 +306,11 @@ const CriteriaAssignment: React.FC<CriteriaAssignmentProps> = ({
 
       {/* Draft criteria section */}
       <div className="pt-1 border-t border-dashed border-gray-200 dark:border-gray-600">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5">
-            <i className="fa-solid fa-pen-to-square text-orange-400 text-xs" />
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
-              Tiêu chí riêng ({drafts.length})
-            </span>
-          </div>
-          {!readOnly && !isAddingDraft && (
-            <button
-              type="button"
-              onClick={() => setIsAddingDraft(true)}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-all"
-            >
-              <i className="fa-solid fa-plus text-[9px]" />
-              Thêm tiêu chí riêng
-            </button>
-          )}
+        <div className="flex items-center gap-1.5 mb-2">
+          <i className="fa-solid fa-pen-to-square text-orange-400 text-xs" />
+          <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+            Tiêu chí riêng ({drafts.length})
+          </span>
         </div>
 
         {/* Add draft form */}

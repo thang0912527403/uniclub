@@ -4,6 +4,8 @@ import {
   useGetCriteriaForAssignmentQuery,
   useSubmitCriteriaFeedbackMutation,
   useCreateCriterionMutation,
+  useUpdateCriterionMutation,
+  useDeleteCriterionMutation,
 } from "~/cores/api/interviewApi";
 
 interface CriteriaFeedbackFormProps {
