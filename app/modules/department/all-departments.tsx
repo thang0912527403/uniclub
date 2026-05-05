@@ -218,7 +218,7 @@ function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEd
                         <h3 className="font-bold text-gray-900 dark:text-white text-base truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {dept.departmentName}
                         </h3>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {/* <div className="flex items-center gap-2 mt-1 flex-wrap">
                             {dept.createdAt ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
                                     <i className="far fa-calendar-alt text-[8px]"></i>
@@ -236,7 +236,7 @@ function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEd
                                     {levelConfig.label}
                                 </span>
                             )}
-                        </div>
+                        </div> */}
                     </div>
                 </div>
 
