@@ -855,8 +855,8 @@ export default function EventDetailPage() {
                               setShowRegForm(true);
                               // Pre-fill with current values
                               setRegForm({
-                                startDate: event.registrationStartDate ? new Date(event.registrationStartDate).toISOString().slice(0, 16) : '',
-                                endDate: event.registrationEndDate ? new Date(event.registrationEndDate).toISOString().slice(0, 16) : '',
+                                startDate: event.registrationStartDate ? (() => { const d = new Date(event.registrationStartDate); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; })() : '',
+                                endDate: event.registrationEndDate ? (() => { const d = new Date(event.registrationEndDate); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; })() : '',
                                 maxAttendees: event.maxAttendees?.toString() ?? '',
                               });
                             }}

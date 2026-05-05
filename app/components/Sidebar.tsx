@@ -226,16 +226,6 @@ export function Sidebar({
                 url: "/events/create",
                 policy: "createevent",
               },
-              {
-                label: t("sidebar.manageEvents.eventCalendar"),
-                url: "/events/calendar",
-                policy: "viewevent",
-              },
-              {
-                label: t("sidebar.manageEvents.eventReports"),
-                url: "/events/reports",
-                policy: "viewevent",
-              },
             ],
           },
           {

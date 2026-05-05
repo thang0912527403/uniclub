@@ -321,6 +321,18 @@ export const interviewApi = baseApi.injectEndpoints({
       ],
     }),
 
+    getCriteriaForAssignment: builder.query<
+      EvaluationCriterionResponse[],
+      { scheduleId: number; assignmentId: number }
+    >({
+      query: ({ scheduleId, assignmentId }) =>
+        `/interviews/${scheduleId}/assignments/${assignmentId}/criteria`,
+      transformResponse: (response: any) => extractData(response),
+      providesTags: (result, error, { assignmentId }) => [
+        { type: "Interview" as const, id: `CRITERIA_ASSIGN_${assignmentId}` },
+      ],
+    }),
+
     createCriterion: builder.mutation<
       EvaluationCriterionResponse,
       { campaignId: number; dto: CreateEvaluationCriterionDto }
@@ -332,8 +344,11 @@ export const interviewApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: ApiResponse<EvaluationCriterionResponse>) =>
         response.data,
-      invalidatesTags: (result, error, { campaignId }) => [
+      invalidatesTags: (result, error, { campaignId, dto }) => [
         { type: "Interview", id: `CRITERIA_${campaignId}` },
+        ...(dto.isDraft && dto.assignmentId
+          ? [{ type: "Interview" as const, id: `CRITERIA_ASSIGN_${dto.assignmentId}` }]
+          : []),
       ],
     }),
 
@@ -343,6 +358,7 @@ export const interviewApi = baseApi.injectEndpoints({
         criterionId: number;
         dto: UpdateEvaluationCriterionDto;
         campaignId: number;
+        assignmentId?: number;
       }
     >({
       query: ({ criterionId, dto }) => ({
@@ -352,21 +368,27 @@ export const interviewApi = baseApi.injectEndpoints({
       }),
       transformResponse: (response: ApiResponse<EvaluationCriterionResponse>) =>
         response.data,
-      invalidatesTags: (result, error, { campaignId }) => [
+      invalidatesTags: (result, error, { campaignId, assignmentId }) => [
         { type: "Interview", id: `CRITERIA_${campaignId}` },
+        ...(assignmentId
+          ? [{ type: "Interview" as const, id: `CRITERIA_ASSIGN_${assignmentId}` }]
+          : []),
       ],
     }),
 
     deleteCriterion: builder.mutation<
       void,
-      { criterionId: number; campaignId: number }
+      { criterionId: number; campaignId: number; assignmentId?: number }
     >({
       query: ({ criterionId }) => ({
         url: `/interviews/criteria/${criterionId}`,
         method: "DELETE",
       }),
-      invalidatesTags: (result, error, { campaignId }) => [
+      invalidatesTags: (result, error, { campaignId, assignmentId }) => [
         { type: "Interview", id: `CRITERIA_${campaignId}` },
+        ...(assignmentId
+          ? [{ type: "Interview" as const, id: `CRITERIA_ASSIGN_${assignmentId}` }]
+          : []),
       ],
     }),
 
@@ -554,6 +576,7 @@ export const {
   useGetFeedbackSummaryQuery,
   // Evaluation
   useGetCampaignCriteriaQuery,
+  useGetCriteriaForAssignmentQuery,
   useCreateCriterionMutation,
   useUpdateCriterionMutation,
   useDeleteCriterionMutation,

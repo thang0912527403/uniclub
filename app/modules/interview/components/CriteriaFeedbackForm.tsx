@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import type { CriteriaNoteItemDto } from "~/cores/api/types";
 import {
-  useGetCampaignCriteriaQuery,
+  useGetCriteriaForAssignmentQuery,
   useSubmitCriteriaFeedbackMutation,
   useCreateCriterionMutation,
+  useUpdateCriterionMutation,
+  useDeleteCriterionMutation,
 } from "~/cores/api/interviewApi";
 
 interface CriteriaFeedbackFormProps {
@@ -23,7 +25,7 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
   onSuccess,
   onCancel,
 }) => {
-  const { data: criteria, isLoading } = useGetCampaignCriteriaQuery(campaignId);
+  const { data: criteria, isLoading } = useGetCriteriaForAssignmentQuery({ scheduleId, assignmentId });
   const [submitFeedback] = useSubmitCriteriaFeedbackMutation();
   const [createCriterion, { isLoading: isCreatingCriterion }] =
     useCreateCriterionMutation();
@@ -51,7 +53,8 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
         dto: {
           name: newCriteriaName.trim(),
           description: newCriteriaDesc.trim() || null,
-          displayOrder: (criteria?.length || 0) + 1,
+          isDraft: true,
+          assignmentId,
         },
       }).unwrap();
       setNewCriteriaName("");

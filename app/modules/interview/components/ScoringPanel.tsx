@@ -5,9 +5,11 @@ import type {
   EvaluationCriterionResponse,
 } from "~/cores/api/types";
 import {
-  useGetCampaignCriteriaQuery,
+  useGetCriteriaForAssignmentQuery,
   useSubmitCriteriaFeedbackMutation,
   useCreateCriterionMutation,
+  useUpdateCriterionMutation,
+  useDeleteCriterionMutation,
 } from "~/cores/api/interviewApi";
 
 interface ScoringPanelProps {
@@ -48,15 +50,25 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
   const [newCriteriaDesc, setNewCriteriaDesc] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
 
-  // Fetch campaign criteria
+  // Edit/delete draft state
+  const [editingCriterionId, setEditingCriterionId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Fetch assignment-specific criteria
   const { data: criteria, isLoading: isCriteriaLoading } =
-    useGetCampaignCriteriaQuery(campaignId, {
-      skip: !campaignId,
-    });
+    useGetCriteriaForAssignmentQuery(
+      { scheduleId, assignmentId: assignment?.id ?? 0 },
+      { skip: !assignment?.id },
+    );
   const [submitCriteriaFeedback, { isLoading: isSubmittingCriteria }] =
     useSubmitCriteriaFeedbackMutation();
   const [createCriterion, { isLoading: isCreatingCriterion }] =
     useCreateCriterionMutation();
+  const [updateCriterion, { isLoading: isUpdatingCriterion }] =
+    useUpdateCriterionMutation();
+  const [deleteCriterion] = useDeleteCriterionMutation();
 
   const hasCriteria = criteria && criteria.length > 0;
   const hasSubmitted = !!assignment?.feedbackSubmittedAt;
@@ -64,6 +76,29 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
     (a) => a.feedbackSubmittedAt && a.id !== assignment?.id,
   );
   const isSubmitting = isSubmittingLegacy || isSubmittingCriteria;
+
+  const startEditCriterion = (id: number, name: string, desc: string | null) => {
+    setEditingCriterionId(id);
+    setEditName(name);
+    setEditDesc(desc || '');
+  };
+
+  const cancelEdit = () => { setEditingCriterionId(null); setEditName(''); setEditDesc(''); };
+
+  const handleUpdateCriterion = async (criterionId: number) => {
+    if (!editName.trim()) return;
+    try {
+      await updateCriterion({ campaignId, criterionId, assignmentId: assignment?.id, dto: { name: editName.trim(), description: editDesc.trim() || null } }).unwrap();
+      cancelEdit();
+    } catch { /* no-op */ }
+  };
+
+  const handleDeleteCriterion = async (criterionId: number) => {
+    setDeletingId(criterionId);
+    try {
+      await deleteCriterion({ campaignId, criterionId, assignmentId: assignment?.id }).unwrap();
+    } finally { setDeletingId(null); }
+  };
 
   // ── Add new criterion ──────────────────────────────────────────
   const handleAddCriteria = async () => {
@@ -76,7 +111,8 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
         dto: {
           name: newCriteriaName.trim(),
           description: newCriteriaDesc.trim() || null,
-          displayOrder: (criteria?.length || 0) + 1,
+          isDraft: true,
+          assignmentId: assignment?.id,
         },
       }).unwrap();
       setNewCriteriaName("");
@@ -223,7 +259,7 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                         </span>
                       )}
                     </label>
-                    {!isAddingCriteria && isClubManager && (
+                    {!isAddingCriteria && !hasSubmitted && !submitSuccess && (
                       <button
                         onClick={() => setIsAddingCriteria(true)}
                         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-all hover:scale-[1.02]"
@@ -291,32 +327,78 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                       {criteria.map((criterion) => (
                         <div
                           key={criterion.id}
-                          className="p-3.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/30 space-y-2 transition-all hover:border-orange-200 hover:bg-orange-50/30"
+                          className={`p-3.5 rounded-xl border space-y-2 transition-all ${
+                            criterion.isDraft
+                              ? 'border-orange-200 bg-orange-50/30 dark:bg-orange-900/10 hover:border-orange-300'
+                              : 'border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/30 hover:border-orange-200 hover:bg-orange-50/30'
+                          }`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
-                                {criterion.name}
-                              </p>
-                              {criterion.description && (
-                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                  {criterion.description}
-                                </p>
-                              )}
+                          {editingCriterionId === criterion.id ? (
+                            <div className="space-y-1.5">
+                              <input
+                                type="text"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateCriterion(criterion.id); if (e.key === 'Escape') cancelEdit(); }}
+                                className="w-full px-2.5 py-1.5 rounded-lg border border-orange-300 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none"
+                                autoFocus
+                              />
+                              <input
+                                type="text"
+                                value={editDesc}
+                                onChange={(e) => setEditDesc(e.target.value)}
+                                placeholder="Mô tả (tùy chọn)..."
+                                className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-sm text-gray-500 dark:text-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none"
+                              />
+                              <div className="flex justify-end gap-1.5">
+                                <button type="button" onClick={cancelEdit} className="px-2.5 py-1 text-[11px] text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">Hủy</button>
+                                <button type="button" onClick={() => handleUpdateCriterion(criterion.id)} disabled={!editName.trim() || isUpdatingCriterion} className="px-2.5 py-1 text-[11px] font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg disabled:opacity-50 flex items-center gap-1">
+                                  {isUpdatingCriterion ? <i className="fa-solid fa-spinner fa-spin text-[9px]" /> : <i className="fa-solid fa-check text-[9px]" />}
+                                  Lưu
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                          <textarea
-                            value={criteriaNotes[criterion.id] || ""}
-                            onChange={(e) =>
-                              setCriteriaNotes((prev) => ({
-                                ...prev,
-                                [criterion.id]: e.target.value,
-                              }))
-                            }
-                            placeholder={`Nhận xét về ${criterion.name.toLowerCase()}...`}
-                            rows={2}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all resize-none"
-                          />
+                          ) : (
+                            <>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    {criterion.isDraft && <i className="fa-solid fa-pen-to-square text-orange-400 text-[10px]" />}
+                                    <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                                      {criterion.name}
+                                    </p>
+                                  </div>
+                                  {criterion.description && (
+                                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                      {criterion.description}
+                                    </p>
+                                  )}
+                                </div>
+                                {criterion.isDraft && !hasSubmitted && !submitSuccess && (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button type="button" onClick={() => startEditCriterion(criterion.id, criterion.name, criterion.description ?? null)} className="p-1 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-colors" title="Sửa">
+                                      <i className="fa-solid fa-pen text-[10px]" />
+                                    </button>
+                                    <button type="button" onClick={() => handleDeleteCriterion(criterion.id)} disabled={deletingId === criterion.id} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50" title="Xóa">
+                                      {deletingId === criterion.id ? <i className="fa-solid fa-spinner fa-spin text-[10px]" /> : <i className="fa-solid fa-trash text-[10px]" />}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              <textarea
+                                value={criteriaNotes[criterion.id] || ""}
+                                onChange={(e) =>
+                                  setCriteriaNotes((prev) => ({
+                                    ...prev,
+                                    [criterion.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder={`Nhận xét về ${criterion.name.toLowerCase()}...`}
+                                rows={2}
+                                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all resize-none"
+                              />
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>

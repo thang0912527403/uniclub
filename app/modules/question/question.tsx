@@ -357,7 +357,7 @@ const QuestionPage: React.FC = () => {
               Bạn đã là thành viên của câu lạc bộ này nên không thể ứng tuyển.
             </p>
             <Link
-              to="/recruitment-campaigns"
+              to="/public/recruitment"
               className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all"
             >
               <i className="fa-solid fa-arrow-left mr-2" />
