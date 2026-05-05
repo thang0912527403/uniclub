@@ -17,6 +17,7 @@ import type {
   InterviewAssignmentResponse,
 } from "~/cores/api";
 import { getUserId } from "~/utils/auth";
+import { useClubRole } from "~/hooks/useClubRole";
 
 /**
  * InterviewRoom wraps GenericMeetingRoom and adds:
@@ -30,6 +31,7 @@ const InterviewSidePanel: React.FC<{
   roomCode: string;
   currentUserId: string;
 }> = ({ roomCode, currentUserId }) => {
+  const { isClubManager } = useClubRole();
   const [submitFeedback, { isLoading: isSubmitting }] =
     useSubmitFeedbackMutation();
   const { data: interviews = [] } = useGetInterviewsQuery();
@@ -71,6 +73,7 @@ const InterviewSidePanel: React.FC<{
       assignment={currentAssignment}
       allAssignments={relatedInterview.assignments}
       campaignId={relatedInterview.campaignId}
+      isClubManager={isClubManager}
       onSubmitFeedback={handleSubmitFeedback}
       isSubmitting={isSubmitting}
     />

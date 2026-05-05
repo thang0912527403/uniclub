@@ -144,6 +144,7 @@ export interface AiCriteriaEvaluation {
   criterionId: number;
   criterionName: string;
   result: 'Pass' | 'Fail' | 'Hold';
+  reason?: string;
 }
 
 export interface AiCandidateAnalysis {

@@ -41,6 +41,7 @@ interface InterviewDetailDrawerProps {
   currentUserId: string;
   clubId: number;
   clubRoles?: ClubRole[];
+  isClubManager?: boolean;
   onUpdateStatus?: (id: number, status: string) => void;
   onReschedule?: (
     id: number,
@@ -174,6 +175,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
   currentUserId,
   clubId,
   clubRoles,
+  isClubManager = false,
   onUpdateStatus,
   onReschedule,
   onAssignInterviewer,
@@ -997,7 +999,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                           </div>
                           <div className="flex items-center gap-1">
                             {/* Criteria assignment button */}
-                            {!isReadOnly && (
+                            {!isReadOnly && isClubManager && (
                               <button
                                 onClick={() =>
                                   setCriteriaForAssignment(
@@ -1078,7 +1080,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                               scheduleId={interview.id}
                               assignmentId={a.id}
                               campaignId={interview.campaignId}
-                              readOnly={isReadOnly}
+                              readOnly={isReadOnly || !isClubManager}
                               onSuccess={() => {}}
                             />
                           </div>
@@ -1197,6 +1199,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                                 scheduleId={interview.id}
                                 assignmentId={a.id}
                                 campaignId={interview.campaignId}
+                                isClubManager={isClubManager}
                                 onSuccess={() => setFeedbackForAssignment(null)}
                                 onCancel={() => setFeedbackForAssignment(null)}
                               />

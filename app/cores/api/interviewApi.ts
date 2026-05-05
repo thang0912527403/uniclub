@@ -29,6 +29,7 @@ import type {
   PublishResultDto,
   PublishStatusResponse,
   AiAnalysisResponse,
+  AiCandidateAnalysis,
   AiSearchRequest,
   AiSearchResponse,
   ConfirmTimeSlotDto,
@@ -492,14 +493,25 @@ export const interviewApi = baseApi.injectEndpoints({
       ],
     }),
 
-    generateAiAnalysis: builder.mutation<AiAnalysisResponse, number>({
-      query: (campaignId) => ({
-        url: `/interviews/campaign/${campaignId}/ai-analysis/generate`,
+    generateAiAnalysis: builder.mutation<AiAnalysisResponse, { campaignId: number; force?: boolean }>({
+      query: ({ campaignId, force }) => ({
+        url: `/interviews/campaign/${campaignId}/ai-analysis/generate${force ? '?force=true' : ''}`,
         method: "POST",
       }),
       transformResponse: (response: any) => extractData(response),
-      invalidatesTags: (result, error, campaignId) => [
-        { type: "Interview" as const, id: `AI_ANALYSIS_${campaignId}` },
+      invalidatesTags: (result, error, arg) => [
+        { type: "Interview" as const, id: `AI_ANALYSIS_${arg.campaignId}` },
+      ],
+    }),
+
+    generateSingleAiAnalysis: builder.mutation<AiCandidateAnalysis, { scheduleId: number; campaignId: number; force?: boolean }>({
+      query: ({ scheduleId, force }) => ({
+        url: `/interviews/schedule/${scheduleId}/ai-analysis/generate${force ? '?force=true' : ''}`,
+        method: "POST",
+      }),
+      transformResponse: (response: any) => extractData(response),
+      invalidatesTags: (result, error, arg) => [
+        { type: "Interview" as const, id: `AI_ANALYSIS_${arg.campaignId}` },
       ],
     }),
 
@@ -556,5 +568,6 @@ export const {
   // AI
   useGetAiAnalysisQuery,
   useGenerateAiAnalysisMutation,
+  useGenerateSingleAiAnalysisMutation,
   useAiSearchMutation,
 } = interviewApi;

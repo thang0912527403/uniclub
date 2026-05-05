@@ -23,6 +23,7 @@ import type {
 } from "~/cores/api";
 import { getUserId } from "~/utils/auth";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
+import { useClubRole } from "~/hooks/useClubRole";
 import { useGetClubRolesByClubIdQuery } from "~/cores/api/clubRoleApi";
 
 import StatusPipelineTabs from "./components/StatusPipelineTabs";
@@ -40,6 +41,7 @@ const InterviewSchedulePage: React.FC = () => {
 
   // ─── Campaign selector ──────────────────────────────────────
   const { isAdmin } = useCurrentUser();
+  const { isClubManager } = useClubRole();
   const clubId = Number(Cookies.get("clubId"));
   const { data: clubRoles = [] } = useGetClubRolesByClubIdQuery(clubId, {
     skip: !clubId,
@@ -830,6 +832,7 @@ const InterviewSchedulePage: React.FC = () => {
         currentUserId={currentUserId}
         clubId={clubId}
         clubRoles={clubRoles}
+        isClubManager={isClubManager}
         onUpdateStatus={handleUpdateStatus}
         onReschedule={handleReschedule}
         onAssignInterviewer={handleAssignInterviewer}

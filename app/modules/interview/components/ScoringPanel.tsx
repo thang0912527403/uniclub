@@ -15,6 +15,7 @@ interface ScoringPanelProps {
   assignment: InterviewAssignmentResponse | null;
   allAssignments: InterviewAssignmentResponse[];
   campaignId: number;
+  isClubManager?: boolean;
   onSubmitFeedback: (data: {
     scheduleId: number;
     assignmentId: number;
@@ -29,6 +30,7 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
   assignment,
   allAssignments,
   campaignId,
+  isClubManager = false,
   onSubmitFeedback,
   isSubmitting: isSubmittingLegacy = false,
 }) => {
@@ -221,7 +223,7 @@ const ScoringPanel: React.FC<ScoringPanelProps> = ({
                         </span>
                       )}
                     </label>
-                    {!isAddingCriteria && (
+                    {!isAddingCriteria && isClubManager && (
                       <button
                         onClick={() => setIsAddingCriteria(true)}
                         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-all hover:scale-[1.02]"

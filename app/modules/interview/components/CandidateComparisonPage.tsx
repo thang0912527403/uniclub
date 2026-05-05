@@ -6,6 +6,7 @@ import React, {
   useEffect,
 } from "react";
 import { useNavigate } from "react-router";
+import { Tooltip, message } from "antd";
 import {
   useGetCampaignComparisonQuery,
   useGetCampaignCriteriaQuery,
@@ -14,7 +15,7 @@ import {
   useAiSearchMutation,
   useGetEvaluationSummaryQuery,
   useGetPublishStatusQuery,
-  useGenerateAiAnalysisMutation,
+  useGenerateSingleAiAnalysisMutation,
 } from "~/cores/api/interviewApi";
 import { useGetUserByIdQuery } from "~/cores/api";
 import { useGetRecruitmentCampaignQuery } from "~/cores/api/recruitmentCampaignApi";
@@ -71,8 +72,17 @@ function getResultLabel(result: string): {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Reusable Components
+//  Reusable Components & Constants
 // ═══════════════════════════════════════════════════════════════
+
+const AI_CRITERIA_LIST = [
+  { id: 1, name: "Năng lực & Kỹ năng thực tế" },
+  { id: 2, name: "Kinh nghiệm & Dấu ấn cá nhân" },
+  { id: 3, name: "Kỹ năng giao tiếp & Tương tác" },
+  { id: 4, name: "Nhiệt huyết & Cam kết" },
+  { id: 5, name: "Tinh thần đồng đội & Phối hợp" },
+  { id: 6, name: "Phù hợp văn hóa & Cá tính" },
+];
 
 const UserName: React.FC<{ userId: string; fallback?: string }> = ({
   userId,
@@ -130,7 +140,6 @@ const AiSearchBadge: React.FC<{ match: AiSearchCandidate }> = ({ match }) => (
 const CandidateRow: React.FC<{
   candidate: CandidateComparisonItem;
   rowIdx: number;
-  criteria: { id: number; name: string }[];
   decision: string;
   onDecision: (scheduleId: number, decision: string) => void;
   aiData?: AiCandidateAnalysis;
@@ -140,7 +149,6 @@ const CandidateRow: React.FC<{
 }> = ({
   candidate,
   rowIdx,
-  criteria,
   decision,
   onDecision,
   aiData,
@@ -149,32 +157,8 @@ const CandidateRow: React.FC<{
   isLocked,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [notesPopover, setNotesPopover] = useState<{
-    criterionId: number;
-    criterionName: string;
-  } | null>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  // Fetch evaluation summary (contains interviewer notes from DB)
-  const { data: evalSummary } = useGetEvaluationSummaryQuery(
-    candidate.interviewScheduleId,
-  );
-
-  // Close popover on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node)
-      ) {
-        setNotesPopover(null);
-      }
-    };
-    if (notesPopover) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [notesPopover]);
+  // We don't fetch evalSummary here anymore because the notes are mapped to DB criteria,
+  // while the table shows the 6 fixed AI categories. We will only display the AI result.
 
   // Build per-criteria evaluation map from AI backend data
   const aiCriteriaMap = useMemo(() => {
@@ -185,16 +169,6 @@ const CandidateRow: React.FC<{
     }
     return map;
   }, [aiData]);
-
-  // Build per-criteria notes map from evaluation summary
-  const criteriaNotesMap = useMemo(() => {
-    if (!evalSummary?.criteriaSummaries) return {};
-    const map: Record<number, CriteriaNoteResult[]> = {};
-    for (const cs of evalSummary.criteriaSummaries) {
-      map[cs.criterionId] = cs.individualNotes;
-    }
-    return map;
-  }, [evalSummary]);
 
   const aiResult = getResultLabel(aiData?.result || "");
 
@@ -232,100 +206,33 @@ const CandidateRow: React.FC<{
           </div>
         </td>
 
-        {/* Criteria result icons from AI - clickable to show notes */}
-        {criteria.map((c) => {
+        {/* Criteria result icons from AI */}
+        {AI_CRITERIA_LIST.map((c) => {
           const ca = aiCriteriaMap[c.id];
-          const notes = criteriaNotesMap[c.id] || [];
-          const isOpen = notesPopover?.criterionId === c.id;
+          const reason = ca?.reason || "Chưa có đánh giá chi tiết";
           return (
             <td
               key={c.id}
-              className="px-3 py-3.5 text-center border-r border-gray-200 dark:border-gray-700 relative"
+              className="px-3 py-3.5 text-center border-r border-gray-200 dark:border-gray-700"
             >
               {aiLoading ? (
                 <span className="inline-block w-7 h-7 rounded-full bg-gray-100 animate-pulse" />
               ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setNotesPopover(
-                      isOpen
-                        ? null
-                        : { criterionId: c.id, criterionName: c.name },
-                    );
-                  }}
-                  className="relative cursor-pointer"
-                  title={`Xem nhận xét: ${c.name}`}
-                >
-                  <ResultIcon result={ca?.result || "Hold"} />
-                </button>
-              )}
-
-              {/* Notes Popover */}
-              {isOpen && (
-                <div
-                  ref={popoverRef}
-                  className="absolute z-50 top-full mt-1 left-1/2 -translate-x-1/2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-600 p-3 animate-fadeIn"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Arrow */}
-                  <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-800 border-l border-t border-gray-200 dark:border-gray-600 rotate-45" />
-
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                      <i className="fa-solid fa-clipboard-list text-blue-500 text-[10px]" />
-                      {notesPopover.criterionName}
-                    </p>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setNotesPopover(null);
-                      }}
-                      className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <i className="fa-solid fa-xmark text-[9px] text-gray-400" />
-                    </button>
-                  </div>
-
-                  {notes.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">
-                      Chưa có nhận xét nào.
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {notes.map((note, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 border border-gray-100 dark:border-gray-600"
-                        >
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
-                              <span className="text-[7px] text-white font-bold">
-                                {note.interviewerRole
-                                  ?.charAt(0)
-                                  ?.toUpperCase() || "I"}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400">
-                              <UserName userId={note.interviewerUserId} />
-                            </span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-500 font-medium">
-                              {note.interviewerRole}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed pl-5">
-                            {note.note || (
-                              <span className="italic text-gray-400">
-                                Không có ghi chú
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      ))}
+                <Tooltip
+                  title={
+                    <div className="max-w-[250px] text-xs leading-relaxed">
+                      {reason}
                     </div>
-                  )}
-                </div>
+                  }
+                  color="blue"
+                  placement="top"
+                >
+                  <div className="inline-block cursor-help">
+                    <ResultIcon
+                      result={(ca?.result as CriteriaResult) || "Hold"}
+                    />
+                  </div>
+                </Tooltip>
               )}
             </td>
           );
@@ -400,7 +307,7 @@ const CandidateRow: React.FC<{
       {/* Expanded AI Summary Row - powered by backend AI */}
       {isExpanded && (
         <tr className="bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800 dark:to-gray-800/50">
-          <td colSpan={criteria.length + 4} className="px-6 py-5">
+          <td colSpan={AI_CRITERIA_LIST.length + 4} className="px-6 py-5">
             <div className="space-y-4 animate-fadeIn">
               {aiLoading ? (
                 <div className="flex items-center gap-3 text-gray-400">
@@ -527,8 +434,38 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
     isLoading: aiLoading,
     isFetching: aiFetching,
   } = useGetAiAnalysisQuery(campaignId);
-  const [generateAiAnalysis, { isLoading: isGeneratingAi }] =
-    useGenerateAiAnalysisMutation();
+  const [generateSingleAiAnalysis] = useGenerateSingleAiAnalysisMutation();
+  const [analyzingSchedules, setAnalyzingSchedules] = useState<Set<number>>(
+    new Set(),
+  );
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+
+  const handleGenerateAiAnalysis = async () => {
+    if (!tabFilteredCandidates || tabFilteredCandidates.length === 0) {
+      message.info("Không có ứng viên nào trong danh sách hiện tại để phân tích.");
+      return;
+    }
+    setIsGeneratingAll(true);
+    for (const c of tabFilteredCandidates) {
+      setAnalyzingSchedules((prev) => new Set(prev).add(c.interviewScheduleId));
+      try {
+        await generateSingleAiAnalysis({
+          scheduleId: c.interviewScheduleId,
+          campaignId,
+          force: true,
+        }).unwrap();
+      } catch (e) {
+        console.error("AI Analysis failed for", c.interviewScheduleId, e);
+      } finally {
+        setAnalyzingSchedules((prev) => {
+          const next = new Set(prev);
+          next.delete(c.interviewScheduleId);
+          return next;
+        });
+      }
+    }
+    setIsGeneratingAll(false);
+  };
   const [aiSearch, { isLoading: aiSearchLoading }] = useAiSearchMutation();
   const [submitDecisions] = useSubmitDecisionsMutation();
 
@@ -806,11 +743,11 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
-            onClick={() => generateAiAnalysis(campaignId)}
-            disabled={isGeneratingAi}
+            onClick={handleGenerateAiAnalysis}
+            disabled={isGeneratingAll}
             className="px-4 py-2 rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-800 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isGeneratingAi ? (
+            {isGeneratingAll ? (
               <svg
                 className="w-3.5 h-3.5 animate-spin"
                 fill="none"
@@ -976,7 +913,7 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
               <th className="px-4 py-3 text-left font-bold text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider min-w-[180px]">
                 Ứng viên
               </th>
-              {criteriaList.map((c) => (
+              {AI_CRITERIA_LIST.map((c) => (
                 <th
                   key={c.id}
                   className="px-3 py-3 text-center font-bold text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider border-l border-gray-200 dark:border-gray-600 min-w-[80px]"
@@ -1009,11 +946,14 @@ const CandidateComparisonPage: React.FC<CandidateComparisonPageProps> = ({
                   key={candidate.interviewScheduleId}
                   candidate={candidate}
                   rowIdx={rowIdx}
-                  criteria={criteriaList}
                   decision={currentDecision}
                   onDecision={handleDecision}
                   aiData={aiDataMap[candidate.interviewScheduleId]}
-                  aiLoading={aiLoading || aiFetching}
+                  aiLoading={
+                    aiLoading ||
+                    aiFetching ||
+                    analyzingSchedules.has(candidate.interviewScheduleId)
+                  }
                   searchMatch={searchResultMap[candidate.interviewScheduleId]}
                   isLocked={isLocked}
                 />

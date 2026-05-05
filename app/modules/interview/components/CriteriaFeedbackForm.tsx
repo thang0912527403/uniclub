@@ -10,6 +10,7 @@ interface CriteriaFeedbackFormProps {
   scheduleId: number;
   assignmentId: number;
   campaignId: number;
+  isClubManager?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -18,6 +19,7 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
   scheduleId,
   assignmentId,
   campaignId,
+  isClubManager = false,
   onSuccess,
   onCancel,
 }) => {
@@ -128,7 +130,7 @@ const CriteriaFeedbackForm: React.FC<CriteriaFeedbackFormProps> = ({
             Đánh giá theo tiêu chí
           </h3>
         </div>
-        {!isAddingCriteria && (
+        {!isAddingCriteria && isClubManager && (
           <button
             type="button"
             onClick={() => setIsAddingCriteria(true)}
