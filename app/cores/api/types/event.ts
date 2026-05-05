@@ -48,6 +48,7 @@ export interface UpdateEventRequest {
     isOnline?: boolean;
     requiresApproval?: boolean;
     isPublic?: boolean;
+    maxAttendees?: number;
 }
 
 export interface SessionDto {
