@@ -49,7 +49,7 @@ const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
       {/* 2. Banner & Logo Section */}
       <section className="relative h-[35vh] md:h-[45vh] overflow-hidden">
         <img 
-          src={club.coverImageUrl || 'https://i.ytimg.com/vi/Cq2uAOsK930/maxresdefault.jpg'} 
+          src={club.coverImageUrl || 'https://gemini.google.com/share/7c0bfa0f995f'} 
           className="w-full h-full object-cover shadow-inner" 
           alt="Club Cover" 
         />
@@ -61,7 +61,7 @@ const ClubDetailModule: React.FC<{ club: Club }> = ({ club }) => {
             <div className="relative group">
               <div className="w-32 h-32 md:w-40 md:h-40 bg-white rounded-[2.5rem] p-1.5 shadow-2xl border-4 border-white overflow-hidden">
                 <img 
-                  src={club.logoUrl || 'https://yt3.googleusercontent.com/YaAFWY03ER0DfF77HAyMqNlRxmJiSEDq_I7ZF0MlcgRcVzOhIhZfB8QlwNhAuVXZesi2I2zy=s900-c-k-c0x00ffffff-no-rj'} 
+                  src={club.logoUrl || 'https://gemini.google.com/share/7c0bfa0f995f'} 
                   className="w-full h-full object-contain rounded-[2.2rem]" 
                   alt="Club Logo" 
                 />
