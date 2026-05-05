@@ -93,8 +93,6 @@ export default [
     // Events
     route("events", "routes/events.tsx"),
     route("events/create", "routes/events.create.tsx"),
-    route("events/calendar", "routes/events.calendar.tsx"),
-    route("events/reports", "routes/events.reports.tsx"),
     route("events/:id", "routes/events.$id.tsx"),
     route("events/:id/edit", "routes/events.$id.edit.tsx"),
     route("my-events", "routes/my-events.tsx"),
