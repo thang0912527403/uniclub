@@ -246,7 +246,9 @@ export const eventApi = baseApi.injectEndpoints({
         url: `/club/${clubId}/events/${eventId}/start`,
         method: "PUT",
       }),
-      transformResponse: (response: ApiResponse<{ checkInCode: string; expiresAt?: string }>) => response.data,
+      transformResponse: (
+        response: ApiResponse<{ checkInCode: string; expiresAt?: string }>,
+      ) => response.data,
       invalidatesTags: (result, error, arg) => [
         { type: "Event", id: arg.eventId },
         "Event",
@@ -293,19 +295,6 @@ export const eventApi = baseApi.injectEndpoints({
       ],
     }),
 
-    /** Get current user's role & policies for a specific event */
-    getMyEventRole: builder.query<
-      { role: string | null; policies: string[] },
-      { clubId: number; eventId: number }
-    >({
-      query: ({ clubId, eventId }) =>
-        `/club/${clubId}/events/${eventId}/my-role`,
-      transformResponse: (response: ApiResponse<{ role: string | null; policies: string[] }>) => response.data,
-      providesTags: (result, error, arg) => [
-        { type: "Event", id: arg.eventId },
-      ],
-    }),
-
     /** Get events the current user participates in (attendee or collaborator) */
     getMyEvents: builder.query<
       { items: MyEventItem[]; total: number; page: number; pageSize: number },
@@ -318,7 +307,14 @@ export const eventApi = baseApi.injectEndpoints({
         params.set("pageSize", String(pageSize));
         return `/events/my-events?${params.toString()}`;
       },
-      transformResponse: (response: ApiResponse<{ items: MyEventItem[]; total: number; page: number; pageSize: number }>) => response.data,
+      transformResponse: (
+        response: ApiResponse<{
+          items: MyEventItem[];
+          total: number;
+          page: number;
+          pageSize: number;
+        }>,
+      ) => response.data,
       providesTags: ["Event"],
     }),
 
@@ -337,12 +333,14 @@ export const eventApi = baseApi.injectEndpoints({
         url: `/club/${clubId}/events/${eventId}/makeup-checkin/${userId}`,
         method: "POST",
       }),
-      transformResponse: (response: ApiResponse<{
-        success: boolean;
-        message: string;
-        memberName: string;
-        previousStatus: string;
-      }>) => response.data,
+      transformResponse: (
+        response: ApiResponse<{
+          success: boolean;
+          message: string;
+          memberName: string;
+          previousStatus: string;
+        }>,
+      ) => response.data,
       invalidatesTags: ["Event"],
     }),
 
@@ -355,7 +353,14 @@ export const eventApi = baseApi.injectEndpoints({
         method: "POST",
         body: userIds,
       }),
-      transformResponse: (response: ApiResponse<{ checkedIn: number; skipped: number; total: number; message: string }>) => response.data,
+      transformResponse: (
+        response: ApiResponse<{
+          checkedIn: number;
+          skipped: number;
+          total: number;
+          message: string;
+        }>,
+      ) => response.data,
       invalidatesTags: ["Event"],
     }),
   }),
@@ -376,7 +381,6 @@ export const {
   useCheckInEventMutation,
   useCompleteEventMutation,
   useCancelEventMutation,
-  useGetMyEventRoleQuery,
   useGetMyEventsQuery,
   useMakeupCheckInMutation,
   useBulkMakeupCheckInMutation,

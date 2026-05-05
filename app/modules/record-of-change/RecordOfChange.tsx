@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
 import { SettingButton } from '~/components/SettingButton';
@@ -6,7 +7,11 @@ import { Loading } from '~/components/Loading';
 import { Error } from '~/components/Error';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useNotification } from '~/components/Notification';
-import { useGetRecordsOfChangeQuery, useUndoRecordOfChangeMutation } from '~/cores/api';
+import {
+  useGetRecordsOfChangeQuery,
+  useUndoRecordOfChangeMutation,
+  useGetClubByIdQuery,
+} from '~/cores/api';
 import type { RecordOfChange, RecordOfChangeParams } from '~/cores/api/types/recordOfChange';
 import { useRecordOfChangeSignalR } from './hooks/useRecordOfChangeSignalR';
 
@@ -190,6 +195,15 @@ export default function RecordOfChangeModule() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { show: showNotification } = useNotification();
 
+  // Đọc clubId từ URL (?clubId=...) — khi admin/CLB xem nhật ký theo từng CLB
+  const [searchParams] = useSearchParams();
+  const clubIdFromQuery = searchParams.get('clubId');
+  const filterClubId = clubIdFromQuery ? Number(clubIdFromQuery) : undefined;
+  const isClubScoped = !!filterClubId && filterClubId > 0;
+  const { data: scopedClub } = useGetClubByIdQuery(filterClubId as number, {
+    skip: !isClubScoped,
+  });
+
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -203,6 +217,11 @@ export default function RecordOfChangeModule() {
   const [selectedRecord, setSelectedRecord] = useState<RecordOfChange | null>(null);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Khi đổi CLB ở URL, reset trang về 1 để tránh lệch dữ liệu
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterClubId]);
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -221,6 +240,7 @@ export default function RecordOfChangeModule() {
     search: debouncedSearch || undefined,
     entityName: entityName || undefined,
     changeType: changeType || undefined,
+    clubId: isClubScoped ? filterClubId : undefined,
     fromDate: fromDate || undefined,
     toDate: toDate || undefined,
     oldValueSearch: oldValueSearch || undefined,
@@ -279,13 +299,27 @@ export default function RecordOfChangeModule() {
 
   const hasAdvancedFilters = fromDate || toDate || oldValueSearch || newValueSearch;
 
+  // Khi có clubId trên URL, sidebar nên highlight đúng menu dưới mục
+  // "Quản lý CLB", còn ở chế độ hệ thống thì giữ path /record-of-change
+  const sidebarCurrentPath = isClubScoped
+    ? `/record-of-change?clubId=${filterClubId}`
+    : '/record-of-change';
+
   return (
     <div className="min-h-screen">
       <SettingButton />
-      <Sidebar currentPath="/record-of-change" isOpen={isSidebarOpen} onClose={toggleSidebar} />
+      <Sidebar currentPath={sidebarCurrentPath} isOpen={isSidebarOpen} onClose={toggleSidebar} />
       <HeaderBar
-        title="Nhật ký thay đổi"
-        breadcrumb="Bảng điều khiển / Nhật ký thay đổi"
+        title={
+          isClubScoped
+            ? `Nhật ký thay đổi · ${scopedClub?.clubName ?? 'CLB'}`
+            : 'Nhật ký thay đổi'
+        }
+        breadcrumb={
+          isClubScoped
+            ? `CLB / ${scopedClub?.clubName ?? '...'} / Nhật ký thay đổi`
+            : 'Bảng điều khiển / Nhật ký thay đổi'
+        }
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />
@@ -301,9 +335,17 @@ export default function RecordOfChangeModule() {
             <div>
               <h2 className="text-2xl font-bold text-violet-900 dark:text-violet-100">
                 Nhật ký thay đổi
+                {isClubScoped && (
+                  <span className="ml-3 inline-flex items-center gap-2 align-middle text-sm font-semibold text-violet-600 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/40 px-3 py-1 rounded-full">
+                    <i className="fas fa-building text-xs" />
+                    {scopedClub?.clubName ?? `CLB #${filterClubId}`}
+                  </span>
+                )}
               </h2>
               <p className="text-sm text-violet-700/80 dark:text-violet-200/70">
-                Theo dõi lịch sử thay đổi dữ liệu theo thời gian thực.
+                {isClubScoped
+                  ? 'Lịch sử thay đổi dữ liệu chỉ hiển thị cho CLB đang chọn.'
+                  : 'Theo dõi lịch sử thay đổi dữ liệu theo thời gian thực.'}
               </p>
             </div>
             <div className="flex items-center gap-2">

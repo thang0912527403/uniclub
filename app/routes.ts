@@ -47,6 +47,9 @@ export default [
     route("users", "routes/users.tsx"),
     route("club/members/history", "routes/members-history.tsx"),
 
+    // Record of Change (dùng chung cho System & per-Club, lọc theo ?clubId=)
+    route("record-of-change", "routes/record-of-change.tsx"),
+
     // Club management
     route("clubs", "routes/clubs/clubs.tsx"),
     route("club/info", "routes/clubs/clubs.$id.tsx"),

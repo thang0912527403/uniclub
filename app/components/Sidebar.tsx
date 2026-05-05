@@ -74,7 +74,8 @@ export function Sidebar({
   }, []);
 
   const { t } = useTranslation("common");
-  const { can, isAdmin, memberships } = useClubRole();
+  const { can, isAdmin, memberships, selectedClubId, currentClub } =
+    useClubRole();
 
   const handleNavigate = (url?: string) => {
     if (!url) return;
@@ -86,6 +87,18 @@ export function Sidebar({
 
   // URLs quản lý CLB không còn dùng ID trên URL mà lấy từ Context/Cookie
   const clubBaseUrl = "/club";
+
+  // Admin đã chọn 1 CLB cụ thể (từ trang /clubs) thì cũng cho phép admin
+  // truy cập đầy đủ menu quản lý CLB như chủ nhiệm CLB.
+  const adminManagingClub = isAdmin && Number(selectedClubId) > 0;
+  // Hiện menu Quản lý CLB cho thành viên có quyền (không phải admin)
+  // hoặc admin đang quản lý 1 CLB đã chọn.
+  const showClubManagement = !isAdmin || adminManagingClub;
+  // Link Record of Change ở từng CLB sẽ kèm theo clubId để filter
+  const clubRecordOfChangeUrl =
+    Number(selectedClubId) > 0
+      ? `/record-of-change?clubId=${selectedClubId}`
+      : "/record-of-change";
 
   const allNavItems: NavItem[] = [
     { label: t("sidebar.dashboard"), icon: "fa-th-large", url: "/dashboard" },
@@ -119,10 +132,13 @@ export function Sidebar({
       : []),
 
     // --- SECTION: CLUB MANAGEMENT ---
-    ...(!isAdmin
+    ...(showClubManagement
       ? [
           {
-            label: t("sidebar.manageClub.title"),
+            label:
+              adminManagingClub && currentClub?.clubName
+                ? t("sidebar.manageClub.title") + " · " + currentClub.clubName
+                : t("sidebar.manageClub.title"),
             icon: "fa-building",
             policy: "viewclub",
             subItems: [
@@ -140,6 +156,11 @@ export function Sidebar({
                 label: t("sidebar.manageClub.clubRoles"),
                 url: "/club-roles",
                 policy: "viewrole",
+              },
+              {
+                label: t("sidebar.manageClub.recordOfChange"),
+                url: clubRecordOfChangeUrl,
+                policy: "viewclub",
               },
             ],
           },

@@ -511,208 +511,6 @@ function KickFromDepartmentModal({
   );
 }
 
-/* ─── Add Member Modal ────────────────────────────────────────────────────── */
-function AddMemberModal({
-  clubId,
-  existingMemberUserIds,
-  onClose,
-}: {
-  clubId: number;
-  existingMemberUserIds: string[];
-  onClose: () => void;
-}) {
-  const { show } = useNotification();
-  const [query, setQuery] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-
-  const [
-    searchUsers,
-    { data: results, isLoading: isSearching, isUninitialized },
-  ] = useLazySearchUsersQuery();
-  const [addMember, { isLoading: isAdding }] = useAddMemberMutation();
-
-  const handleSearch = () => {
-    const trimmed = query.trim();
-    if (!trimmed) return;
-    setSelectedUserId(null);
-    searchUsers(trimmed);
-  };
-
-  const filteredResults = (results ?? []).filter(
-    (u) => !existingMemberUserIds.includes(u.userId),
-  );
-
-  const handleAdd = async () => {
-    if (!selectedUserId) return;
-    try {
-      await addMember({ clubId, userId: selectedUserId }).unwrap();
-      show({
-        type: "success",
-        title: "Thành công!",
-        message: "Đã thêm thành viên vào câu lạc bộ.",
-        duration: 3000,
-      });
-      onClose();
-    } catch (err: any) {
-      show({
-        type: "error",
-        title: "Thất bại",
-        message: err?.data?.message ?? "Không thể thêm thành viên.",
-        duration: 4000,
-      });
-    }
-  };
-
-  const colors = [
-    "bg-blue-500",
-    "bg-purple-500",
-    "bg-green-500",
-    "bg-rose-500",
-    "bg-amber-500",
-    "bg-cyan-500",
-  ];
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-          <div>
-            <h3 className="text-base font-bold text-gray-900 dark:text-white">
-              Thêm thành viên
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Tìm người dùng theo tên hoặc email
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer"
-          >
-            <i className="fas fa-times" />
-          </button>
-        </div>
-
-        <div className="px-6 pt-4 pb-3">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Nhập tên hoặc email..."
-                autoFocus
-                className="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <button
-              onClick={handleSearch}
-              disabled={!query.trim() || isSearching}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition-all cursor-pointer"
-            >
-              {isSearching ? (
-                <i className="fas fa-spinner fa-spin" />
-              ) : (
-                <i className="fas fa-search" />
-              )}
-              Tìm
-            </button>
-          </div>
-        </div>
-
-        <div className="px-6 pb-4 min-h-[80px] max-h-72 overflow-y-auto">
-          {isSearching ? (
-            <div className="py-6 flex justify-center">
-              <i className="fas fa-spinner fa-spin text-blue-500 text-xl" />
-            </div>
-          ) : isUninitialized ? null : filteredResults.length === 0 ? (
-            <div className="py-6 text-center text-sm text-gray-400">
-              <i className="fas fa-user-slash text-3xl mb-2 opacity-30 block" />
-              Không tìm thấy người dùng phù hợp.
-            </div>
-          ) : (
-            <div className="space-y-1.5 py-1">
-              {filteredResults.map((user) => (
-                <button
-                  key={user.userId}
-                  onClick={() =>
-                    setSelectedUserId(
-                      selectedUserId === user.userId ? null : user.userId,
-                    )
-                  }
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all cursor-pointer border-2 ${
-                    selectedUserId === user.userId
-                      ? "bg-blue-50 dark:bg-blue-900/30 border-blue-400"
-                      : "border-transparent bg-gray-50 dark:bg-gray-700/40 hover:border-blue-300"
-                  }`}
-                >
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.fullName}
-                      className="w-9 h-9 rounded-full object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div
-                      className={`w-9 h-9 rounded-full ${colors[user.userId.charCodeAt(0) % colors.length]} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
-                    >
-                      {user.fullName
-                        ?.split(" ")
-                        .map((w: string) => w[0])
-                        .slice(-2)
-                        .join("")
-                        .toUpperCase() ?? "?"}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                      {user.fullName}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {user.email}
-                      {user.studentId ? ` · ${user.studentId}` : ""}
-                    </p>
-                  </div>
-                  {selectedUserId === user.userId && (
-                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                      <i className="fas fa-check text-white text-[10px]" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={handleAdd}
-            disabled={!selectedUserId || isAdding}
-            className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold flex items-center gap-2 shadow-lg shadow-green-500/20 disabled:opacity-50 transition-all cursor-pointer"
-          >
-            {isAdding && <i className="fas fa-spinner fa-spin" />}
-            <i className="fas fa-user-plus text-[13px]" />
-            Thêm thành viên
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Kick from Club Modal ────────────────────────────────────────────────── */
 function KickFromClubModal({
   member,
@@ -879,8 +677,8 @@ function TransferClubModal({
           <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
             <i className="fas fa-exclamation-triangle mr-1.5" />
             Hành động này sẽ trao toàn quyền quản lý câu lạc bộ cho{" "}
-            <span className="font-semibold">{member.fullName}</span>.
-            Bạn sẽ mất vai trò Club Manager sau khi xác nhận.
+            <span className="font-semibold">{member.fullName}</span>. Bạn sẽ mất
+            vai trò Club Manager sau khi xác nhận.
           </p>
         </div>
 
@@ -1013,27 +811,6 @@ export default function ClubMembersModule() {
       <main
         className={`pt-24 p-6 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? "md:ml-64" : "ml-0"}`}
       >
-        {/* Page header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {club ? `${club.clubName} — Thành viên` : "Thành viên"}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {members ? `${members.length} thành viên` : ""}
-            </p>
-          </div>
-          <button
-            onClick={() =>
-              setActiveModal({ type: "addMember", member: null as any })
-            }
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold shadow-lg shadow-green-500/20 transition-all cursor-pointer"
-          >
-            <i className="fas fa-user-plus" />
-            Thêm thành viên
-          </button>
-        </div>
-
         {isLoading && <Loading />}
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-6 text-center">
@@ -1207,14 +984,6 @@ export default function ClubMembersModule() {
         )}
       </main>
 
-      {/* Modals */}
-      {activeModal?.type === "addMember" && (
-        <AddMemberModal
-          clubId={clubId}
-          existingMemberUserIds={(members ?? []).map((m) => m.userId)}
-          onClose={closeModal}
-        />
-      )}
       {activeModal?.type === "addDept" && (
         <AddToDepartmentModal
           member={activeModal.member}
