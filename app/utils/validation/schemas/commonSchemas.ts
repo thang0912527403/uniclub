@@ -45,6 +45,18 @@ export const dateSchema = z
         return inputDate <= today;
     }, 'Ngày thành lập không được vượt quá ngày hiện tại');
 
+/** Optional ISO date string — allows empty string (chưa điền) or valid YYYY-MM-DD */
+export const optionalDateSchema = z
+    .string()
+    .refine((val) => val === '' || /^\d{4}-\d{2}-\d{2}$/.test(val), 'Ngày không hợp lệ (định dạng YYYY-MM-DD)')
+    .refine((val) => {
+        if (val === '') return true;
+        const inputDate = new Date(val);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        return inputDate <= today;
+    }, 'Ngày thành lập không được vượt quá ngày hiện tại');
+
 /** Strong password — min 8 chars, at least 1 uppercase, 1 digit */
 export const passwordSchema = z
     .string()
