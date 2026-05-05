@@ -65,7 +65,7 @@ export const userApi = baseApi.injectEndpoints({
         gender,
       } = {}) => {
         const params = new URLSearchParams();
-        params.set("pageNumber", String(pageNumber));
+        params.set("page", String(pageNumber));
         params.set("pageSize", String(pageSize));
         if (search) params.set("search", search);
         if (status) params.set("status", status);

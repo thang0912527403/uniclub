@@ -140,17 +140,14 @@ export function Sidebar({
                 ? t("sidebar.manageClub.title") + " · " + currentClub.clubName
                 : t("sidebar.manageClub.title"),
             icon: "fa-building",
-            policy: "viewclub",
             subItems: [
               {
                 label: t("sidebar.manageClub.yourClubInfo"),
                 url: `${clubBaseUrl}/info`,
-                policy: "viewclub",
               },
               {
                 label: t("sidebar.manageClub.clubStructure"),
                 url: `${clubBaseUrl}/organization`,
-                policy: "viewdepartment",
               },
               {
                 label: t("sidebar.manageClub.clubRoles"),
@@ -167,12 +164,10 @@ export function Sidebar({
           {
             label: t("sidebar.manageDepartment.title"),
             icon: "fa-sitemap",
-            policy: "viewdepartment",
             subItems: [
               {
                 label: t("sidebar.manageDepartment.allDepartments"),
                 url: "/department",
-                policy: "viewdepartment",
               },
             ],
           },
@@ -191,12 +186,10 @@ export function Sidebar({
           {
             label: t("sidebar.manageMembers.title"),
             icon: "fa-users",
-            policy: "viewmember",
             subItems: [
               {
                 label: t("sidebar.manageMembers.allMembers"),
                 url: `${clubBaseUrl}/members`,
-                policy: "viewmember",
               },
               {
                 label: t("sidebar.manageMembers.addMember"),
@@ -206,7 +199,6 @@ export function Sidebar({
               {
                 label: t("sidebar.manageMembers.participationHistory"),
                 url: `${clubBaseUrl}/members/history`,
-                policy: "viewmember",
               },
             ],
           },
