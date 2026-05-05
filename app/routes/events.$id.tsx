@@ -164,6 +164,8 @@ export default function EventDetailPage() {
     eventPerm.canOpenRegistration || clubPolicy.canOpenRegistration;
   const canStartComplete =
     eventPerm.canStartComplete || clubPolicy.canStartComplete;
+  const canCompleteEvent =
+    eventPerm.canCompleteEvent || clubPolicy.canCompleteEvent;
   const canApprove = eventPerm.canApprove || clubPolicy.canApproveAttendance;
   const canCheckIn = eventPerm.canCheckIn || clubPolicy.canCheckIn;
   const canManageTeam =
@@ -1546,7 +1548,7 @@ export default function EventDetailPage() {
                       Xem bài đăng
                     </button>
                   )}
-                  {clubPolicy.hasPolicy("viewpost") && (
+                  {clubPolicy.hasPolicy("viewpost") && event?.isPublic !== false && (
                     <button
                       onClick={() => setShowCreatePostModal(true)}
                       className="px-3 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
@@ -1555,7 +1557,7 @@ export default function EventDetailPage() {
                       Tạo bài đăng
                     </button>
                   )}
-                  {(canEdit || canOpenRegistration || canStartComplete) && (
+                  {(canEdit || canOpenRegistration || canStartComplete || canCompleteEvent) && (
                     <>
                       {canEdit && !['CANCELED', 'ENDED'].includes(event.status ?? '') && (
                         <button
@@ -1588,7 +1590,7 @@ export default function EventDetailPage() {
                             {isStarting ? "Đang bật..." : "Bắt đầu sự kiện"}
                           </button>
                         )}
-                      {canStartComplete && event.status === "ONGOING" && (
+                      {canCompleteEvent && event.status === "ONGOING" && (
                         <button
                           onClick={handleCompleteEvent}
                           disabled={isCompleting}

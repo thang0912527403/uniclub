@@ -254,8 +254,11 @@ export const eventApi = baseApi.injectEndpoints({
                 method: "PUT",
             }),
             transformResponse: (
-                response: ApiResponse<{ checkInCode: string; expiresAt?: string }>,
-            ) => response.data,
+                response: any,
+            ) => {
+                const d = response?.data ?? response;
+                return { checkInCode: d.checkInCode, expiresAt: d.expiresAt };
+            },
             invalidatesTags: (result, error, arg) => [
                 { type: "Event", id: arg.eventId },
                 "Event",

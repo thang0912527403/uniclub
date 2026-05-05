@@ -9,6 +9,7 @@ const POLICY_MAP = {
   canManageSession: "managesession",
   canOpenRegistration: "openregistration",
   canStartComplete: "startevent",
+  canCompleteEvent: "completeevent",
   canApprove: "approveattendance",
   canCheckIn: "checkin",
   canManageTeam: "managecollaborator",
