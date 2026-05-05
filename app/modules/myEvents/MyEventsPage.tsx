@@ -47,11 +47,14 @@ export default function MyEventsPage() {
         return () => clearTimeout(timer);
     }, [search]);
 
-    const { data, isLoading, isFetching } = useGetMyEventsQuery({
+    const { data, isLoading, isFetching, error } = useGetMyEventsQuery({
         search: debouncedSearch,
         page,
         pageSize: PAGE_SIZE,
     });
+
+    // DEBUG — F12 Console để kiểm tra
+    console.log('[MyEvents] RTK Query state:', { data, isLoading, isFetching, error });
 
     const events = data?.items || [];
     const total = data?.total || 0;
@@ -161,8 +164,18 @@ export default function MyEventsPage() {
                         </div>
                     )}
 
+                    {/* API Error */}
+                    {!isLoading && error && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                            <p className="text-red-700 text-sm font-medium">
+                                <i className="fas fa-exclamation-triangle mr-2" />
+                                Lỗi tải dữ liệu: {JSON.stringify(error)}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Empty state */}
-                    {!isLoading && filteredEvents.length === 0 && (
+                    {!isLoading && !error && filteredEvents.length === 0 && (
                         <div className="flex flex-col items-center py-20">
                             <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center mb-6">
                                 <svg className="w-12 h-12 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
