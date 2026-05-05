@@ -14,50 +14,83 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
     const [error, setError] = useState<string | null>(null);
     const [isStarting, setIsStarting] = useState(true);
     const scannerRef = useRef<Html5Qrcode | null>(null);
+    const startingRef = useRef(false);
+
+    // Use ref for onScan to avoid restarting camera when callback identity changes
+    const onScanRef = useRef(onScan);
+    onScanRef.current = onScan;
 
     useEffect(() => {
-        let mounted = true;
+        let cancelled = false;
+
+        const cleanup = async () => {
+            if (scannerRef.current) {
+                try {
+                    if (scannerRef.current.isScanning) {
+                        await scannerRef.current.stop();
+                    }
+                } catch { /* ignore */ }
+                try { scannerRef.current.clear(); } catch { /* ignore */ }
+                scannerRef.current = null;
+            }
+            // Clear any leftover DOM elements from previous instances
+            const el = document.getElementById(scannerId);
+            if (el) el.innerHTML = '';
+        };
+
         const start = async () => {
+            // Prevent concurrent starts (StrictMode double-mount)
+            if (startingRef.current) return;
+            startingRef.current = true;
+
             try {
+                // Always clean up any previous instance first
+                await cleanup();
+                if (cancelled) return;
+
                 const html5QrCode = new Html5Qrcode(scannerId);
                 scannerRef.current = html5QrCode;
 
                 await html5QrCode.start(
                     { facingMode: 'environment' },
                     {
-                        fps: 10,
+                        fps: 5,
                         qrbox: { width: 250, height: 250 },
                     },
                     (decodedText) => {
-                        if (!mounted || !scannerRef.current) return;
-                        onScan(decodedText.trim());
+                        if (cancelled || !scannerRef.current) return;
+                        onScanRef.current(decodedText.trim());
                     },
                     () => { /* ignore scan errors (no code in frame) */ }
                 );
-                if (mounted) setError(null);
+                if (!cancelled) setError(null);
             } catch (e: unknown) {
                 const msg = e instanceof Error ? e.message : 'Không thể mở camera';
-                if (mounted) setError(msg);
+                if (!cancelled) setError(msg);
             } finally {
-                if (mounted) setIsStarting(false);
+                startingRef.current = false;
+                if (!cancelled) setIsStarting(false);
             }
         };
 
         start();
-        return () => {
-            mounted = false;
-            if (scannerRef.current?.isScanning) {
-                scannerRef.current.stop().catch(() => {});
-            }
-            scannerRef.current = null;
-        };
-    }, [scannerId, onScan]);
 
-    const handleClose = () => {
-        if (scannerRef.current?.isScanning) {
-            scannerRef.current.stop().catch(() => {});
+        return () => {
+            cancelled = true;
+            cleanup();
+        };
+    }, [scannerId]);
+
+    const handleClose = async () => {
+        if (scannerRef.current) {
+            try {
+                if (scannerRef.current.isScanning) {
+                    await scannerRef.current.stop();
+                }
+                scannerRef.current.clear();
+            } catch { /* ignore */ }
+            scannerRef.current = null;
         }
-        scannerRef.current = null;
         onClose?.();
     };
 

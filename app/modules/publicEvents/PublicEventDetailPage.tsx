@@ -243,7 +243,7 @@ const PublicEventDetailPage: React.FC = () => {
                                             <i className="fas fa-list-ol mr-2 text-orange-500" /> Lịch trình ({event.sessions.length} buổi)
                                         </h2>
                                         <div>
-                                            {event.sessions.map((s) => (
+                                            {[...event.sessions].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()).map((s) => (
                                                 <div key={s.scheduleId} className="flex relative pl-8 py-4 border-b border-gray-50 last:border-0">
                                                     <div className="absolute left-0 top-0 bottom-0 flex flex-col items-center">
                                                         <div className="w-px h-5 bg-gray-200" />
@@ -251,12 +251,22 @@ const PublicEventDetailPage: React.FC = () => {
                                                         <div className="w-px flex-1 bg-gray-200" />
                                                     </div>
                                                     <div className="flex flex-col sm:flex-row sm:items-start w-full gap-1">
-                                                        <div className="text-orange-500 font-bold w-40 shrink-0 font-mono text-sm">
-                                                            {fmtTime(s.startTime)}{s.endTime ? ` – ${fmtTime(s.endTime)}` : ''}
+                                                        <div className="shrink-0 w-44">
+                                                            <div className="flex items-baseline gap-1 font-mono text-sm">
+                                                                <div className="text-center">
+                                                                    <span className="text-orange-500 font-bold">{fmtTime(s.startTime)}</span>
+                                                                    <p className="text-[11px] text-gray-400 font-sans">{s.startTime ? new Date(s.startTime).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : ''}</p>
+                                                                </div>
+                                                                <span className="text-gray-400 mx-0.5">–</span>
+                                                                <div className="text-center">
+                                                                    <span className="text-orange-500 font-bold">{fmtTime(s.endTime)}</span>
+                                                                    <p className="text-[11px] text-gray-400 font-sans">{s.endTime ? new Date(s.endTime).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : ''}</p>
+                                                                </div>
+                                                            </div>
+                                                            {s.startTime && <p className="text-xs text-gray-400 mt-0.5">{fmtFullDate(s.startTime)}</p>}
                                                         </div>
                                                         <div>
                                                             <p className="text-gray-700 font-medium">{s.scheduleName}</p>
-                                                            {s.startTime && <p className="text-xs text-gray-400">{fmtFullDate(s.startTime)}</p>}
                                                             {s.location && s.location !== 'string' && (
                                                                 <p className="text-sm text-orange-600 flex items-center gap-1 mt-1"><i className="fas fa-map-marker-alt text-xs" /> {s.location}</p>
                                                             )}
@@ -332,8 +342,8 @@ const PublicEventDetailPage: React.FC = () => {
                                             const isFull = event.maxAttendees != null && event.currentAttendees >= event.maxAttendees;
                                             return (
                                                 <button onClick={handleRegister} disabled={isRegistering}
-                                                    className={`w-full py-3 rounded-xl font-bold transition-all disabled:opacity-50 ${isFull ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30'}`}>
-                                                    {isRegistering ? 'Đang đăng ký...' : isFull ? 'Danh sách đã đầy' : 'Đăng Ký Ngay'}
+                                                    className={`w-full py-3 rounded-xl font-bold transition-all disabled:opacity-50 ${isFull ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30' : 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30'}`}>
+                                                    {isRegistering ? 'Đang đăng ký...' : isFull ? 'Đăng ký vào danh sách chờ' : 'Đăng Ký Ngay'}
                                                 </button>
                                             );
                                         })()}
