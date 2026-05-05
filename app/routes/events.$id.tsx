@@ -186,6 +186,8 @@ export default function EventDetailPage() {
     eventPerm.canOpenRegistration || clubPolicy.canOpenRegistration;
   const canStartComplete =
     eventPerm.canStartComplete || clubPolicy.canStartComplete;
+  const canCompleteEvent =
+    eventPerm.canCompleteEvent || clubPolicy.canCompleteEvent;
   const canApprove = eventPerm.canApprove || clubPolicy.canApproveAttendance;
   const canCheckIn = eventPerm.canCheckIn || clubPolicy.canCheckIn;
   const canManageTeam =
@@ -2025,7 +2027,7 @@ export default function EventDetailPage() {
                             {isStarting ? "Đang bật..." : "Bắt đầu sự kiện"}
                           </button>
                         )}
-                      {canStartComplete && event.status === "ONGOING" && (
+                      {canCompleteEvent && event.status === "ONGOING" && (
                         <button
                           onClick={handleCompleteEvent}
                           disabled={isCompleting}
