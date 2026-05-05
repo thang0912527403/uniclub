@@ -69,7 +69,7 @@ function TermsStep({ onAccept }: TermsStepProps) {
                     </div>
                     <div>
                         <h1 className="text-lg font-bold">Điều khoản thành lập Câu lạc bộ</h1>
-                        <p className="text-orange-50/80 text-xs">Phiên bản 1.0 — Vui lòng đọc kỹ trước khi tiếp tục</p>
+                        <p className="text-orange-50/80 text-xs">Vui lòng đọc kỹ trước khi tiếp tục</p>
                     </div>
                 </div>
             </div>
@@ -329,7 +329,7 @@ const CreateClubRequestPage: React.FC = () => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!termsAccepted) return;
-        if (!formData.clubName.trim()) return;
+        if (!formData.clubName.trim() || !formData.description.trim() || !formData.reason.trim()) return;
         setShowConfirm(true);
     };
 
@@ -354,7 +354,6 @@ const CreateClubRequestPage: React.FC = () => {
     };
 
     const handleSuccessClose = () => {
-        setShowSuccess(false);
         navigate('/manage-clubs');
     };
 
@@ -409,11 +408,12 @@ const CreateClubRequestPage: React.FC = () => {
 
                                 <div>
                                     <label className="block text-sm font-bold text-zinc-700 mb-2">
-                                        Mô tả ngắn gọn
+                                        Mô tả ngắn gọn <span className="text-red-500">*</span>
                                     </label>
                                     <textarea
                                         name="description"
                                         rows={3}
+                                        required
                                         value={formData.description}
                                         onChange={handleChange}
                                         placeholder="Câu lạc bộ hoạt động về lĩnh vực gì? Mục tiêu chính là gì?..."
@@ -423,11 +423,12 @@ const CreateClubRequestPage: React.FC = () => {
 
                                 <div>
                                     <label className="block text-sm font-bold text-zinc-700 mb-2">
-                                        Lý do muốn thành lập CLB
+                                        Lý do muốn thành lập CLB <span className="text-red-500">*</span>
                                     </label>
                                     <textarea
                                         name="reason"
                                         rows={3}
+                                        required
                                         value={formData.reason}
                                         onChange={handleChange}
                                         placeholder="Tại sao trường/tổ chức cần có câu lạc bộ này?..."
@@ -445,7 +446,7 @@ const CreateClubRequestPage: React.FC = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        disabled={!formData.clubName.trim()}
+                                        disabled={!formData.clubName.trim() || !formData.description.trim() || !formData.reason.trim()}
                                         className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl text-sm font-bold hover:shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
                                     >
                                         <i className="fa-solid fa-paper-plane" />
