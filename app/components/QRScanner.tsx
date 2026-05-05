@@ -23,7 +23,7 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
     useEffect(() => {
         let cancelled = false;
 
-        const cleanup = async () => {
+        const stopScanner = async () => {
             if (scannerRef.current) {
                 try {
                     if (scannerRef.current.isScanning) {
@@ -33,26 +33,27 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
                 try { scannerRef.current.clear(); } catch { /* ignore */ }
                 scannerRef.current = null;
             }
-            // Clear any leftover DOM elements from previous instances
             const el = document.getElementById(scannerId);
             if (el) el.innerHTML = '';
         };
 
         const start = async () => {
             // Prevent concurrent starts (StrictMode double-mount)
-            if (startingRef.current) return;
+            if (startingRef.current) {
+                console.log('[QRScanner] Already starting, skip');
+                return;
+            }
             startingRef.current = true;
+            console.log('[QRScanner] Starting camera...');
 
             try {
-                // Always clean up any previous instance first
-                await cleanup();
+                await stopScanner();
                 if (cancelled) return;
 
-                // Wait a tick for the DOM element to be rendered
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // Wait for DOM element to be rendered
+                await new Promise(resolve => setTimeout(resolve, 150));
                 if (cancelled) return;
 
-                // Verify the container element exists
                 const container = document.getElementById(scannerId);
                 if (!container) {
                     throw new Error('Không tìm thấy vùng hiển thị camera');
@@ -61,43 +62,44 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
                 const html5QrCode = new Html5Qrcode(scannerId);
                 scannerRef.current = html5QrCode;
 
-                // Try rear camera first, fallback to front camera
-                try {
-                    await html5QrCode.start(
-                        { facingMode: 'environment' },
-                        { fps: 5, qrbox: { width: 250, height: 250 } },
-                        (decodedText) => {
-                            if (cancelled || !scannerRef.current) return;
-                            onScanRef.current(decodedText.trim());
-                        },
-                        () => { /* ignore scan errors (no code in frame) */ }
-                    );
-                } catch {
-                    // Rear camera failed → try front camera
+                const scanConfig = {
+                    fps: 10,
+                    qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+                        const size = Math.min(viewfinderWidth, viewfinderHeight) * 0.7;
+                        return { width: Math.floor(size), height: Math.floor(size) };
+                    },
+                    aspectRatio: 1.0,
+                };
+                const onSuccess = (decodedText: string) => {
+                    if (cancelled || !scannerRef.current) return;
+                    onScanRef.current(decodedText.trim());
+                };
+                const onError = () => { /* no QR in frame — ignore */ };
+
+                // Try rear camera → front camera → any camera
+                let started = false;
+                for (const constraint of [
+                    { facingMode: 'environment' },
+                    { facingMode: 'user' },
+                ] as MediaTrackConstraints[]) {
+                    if (started || cancelled) break;
                     try {
-                        await html5QrCode.start(
-                            { facingMode: 'user' },
-                            { fps: 5, qrbox: { width: 250, height: 250 } },
-                            (decodedText) => {
-                                if (cancelled || !scannerRef.current) return;
-                                onScanRef.current(decodedText.trim());
-                            },
-                            () => { /* ignore */ }
-                        );
-                    } catch {
-                        // Both failed → try any available camera
-                        const devices = await Html5Qrcode.getCameras();
-                        if (!devices.length) throw new Error('Không tìm thấy camera nào');
-                        await html5QrCode.start(
-                            devices[0].id,
-                            { fps: 5, qrbox: { width: 250, height: 250 } },
-                            (decodedText) => {
-                                if (cancelled || !scannerRef.current) return;
-                                onScanRef.current(decodedText.trim());
-                            },
-                            () => { /* ignore */ }
-                        );
+                        await html5QrCode.start(constraint, scanConfig, onSuccess, onError);
+                        started = true;
+                        console.log('[QRScanner] Camera started with', constraint);
+                    } catch (e) {
+                        console.warn('[QRScanner] Failed with', constraint, e);
                     }
+                }
+
+                // Last resort: enumerate devices
+                if (!started && !cancelled) {
+                    const devices = await Html5Qrcode.getCameras();
+                    console.log('[QRScanner] Available cameras:', devices);
+                    if (!devices.length) throw new Error('Không tìm thấy camera nào');
+                    await html5QrCode.start(devices[0].id, scanConfig, onSuccess, onError);
+                    started = true;
+                    console.log('[QRScanner] Camera started with device', devices[0].id);
                 }
 
                 if (!cancelled) setError(null);
@@ -115,7 +117,8 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
 
         return () => {
             cancelled = true;
-            cleanup();
+            startingRef.current = false;
+            stopScanner();
         };
     }, [scannerId]);
 
@@ -149,7 +152,7 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
                     </p>
                 </div>
             )}
-            <div id={scannerId} className="max-w-[300px] overflow-hidden rounded-lg" />
+            <div id={scannerId} style={{ width: '100%', maxWidth: 400 }} className="overflow-hidden rounded-lg" />
             <button
                 type="button"
                 onClick={handleClose}
