@@ -598,10 +598,11 @@ export default function EventDetailPage() {
           message: "Sự kiện đã bắt đầu thành công!",
         });
       } catch (e: any) {
+        console.error('[StartEvent] Error:', e);
         showNotification({
           type: "error",
           title: "Lỗi",
-          message: e?.data?.error ?? "Có lỗi khi bắt đầu sự kiện.",
+          message: e?.data?.error ?? e?.message ?? "Có lỗi khi bắt đầu sự kiện.",
         });
       } finally {
         setConfirmOpen(false);
@@ -1365,7 +1366,7 @@ export default function EventDetailPage() {
                 )}
 
                 {/* ── CHỨC VỤ SỰ KIỆN ── */}
-                {activeTab === 'roles' && (can('manage_collaborator') || isManager) && (
+                {activeTab === 'roles' && (can('managecollaborator') || isManager) && (
                   <EventRolesTab
                     eventId={eventId}
                     clubId={event.clubId ?? 0}
@@ -1374,7 +1375,7 @@ export default function EventDetailPage() {
                 )}
 
                 {/* ── THÀNH VIÊN SỰ KIỆN ── */}
-                {activeTab === 'members' && (can('manage_collaborator') || isManager) && (
+                {activeTab === 'members' && (can('managecollaborator') || isManager) && (
                   <EventMembersTab
                     eventId={eventId}
                     clubId={event.clubId ?? 0}
