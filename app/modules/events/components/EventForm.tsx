@@ -364,9 +364,6 @@ export function EventForm({
                                 className={`w-full px-4 py-2 rounded-lg border outline-none transition-colors ${inputClass}`}
                                 placeholder="https://meet.google.com/... hoặc link Zoom, Teams..."
                             />
-                            <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                Hệ thống cũng hỗ trợ phòng họp nội bộ WebRTC tích hợp sẵn.
-                            </p>
                         </div>
                     )}
 

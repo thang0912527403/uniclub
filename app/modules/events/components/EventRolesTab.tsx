@@ -16,7 +16,6 @@ interface Props {
 }
 
 const ALL_EVENT_POLICIES = [
-  { name: "viewevent", label: "Xem sự kiện" },
   { name: "editevent", label: "Chỉnh sửa sự kiện" },
   { name: "deleteevent", label: "Hủy sự kiện" },
   { name: "managesession", label: "Quản lý buổi họp" },

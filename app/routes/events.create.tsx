@@ -403,7 +403,7 @@ export default function CreateEventPage() {
                     </div>
 
                     {/* ── Tab: Thông tin sự kiện ── */}
-                    {activeTab === 'info' && (
+                    <div style={{ display: activeTab === 'info' ? 'block' : 'none' }}>
                         <div className={`${card} rounded-xl shadow-sm p-6`}>
                             <EventForm
                                 initialData={{
@@ -422,10 +422,10 @@ export default function CreateEventPage() {
                                 mode="create"
                             />
                         </div>
-                    )}
+                    </div>
 
                     {/* ── Tab: Thời gian sự kiện ── */}
-                    {activeTab === 'time' && (
+                    <div style={{ display: activeTab === 'time' ? 'block' : 'none' }}>
                         <div className="space-y-5">
                             {/* Thời gian đăng ký */}
                             <div className={`${card} rounded-xl shadow-sm p-5`}>
@@ -487,7 +487,7 @@ export default function CreateEventPage() {
                                 />
                             </div>
                         </div>
-                    )}
+                    </div>
                 </div>
             </main>
 

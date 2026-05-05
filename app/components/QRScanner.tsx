@@ -23,7 +23,7 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
     useEffect(() => {
         let cancelled = false;
 
-        const cleanup = async () => {
+        const stopScanner = async () => {
             if (scannerRef.current) {
                 try {
                     if (scannerRef.current.isScanning) {
@@ -33,39 +33,79 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
                 try { scannerRef.current.clear(); } catch { /* ignore */ }
                 scannerRef.current = null;
             }
-            // Clear any leftover DOM elements from previous instances
             const el = document.getElementById(scannerId);
             if (el) el.innerHTML = '';
         };
 
         const start = async () => {
             // Prevent concurrent starts (StrictMode double-mount)
-            if (startingRef.current) return;
+            if (startingRef.current) {
+                console.log('[QRScanner] Already starting, skip');
+                return;
+            }
             startingRef.current = true;
+            console.log('[QRScanner] Starting camera...');
 
             try {
-                // Always clean up any previous instance first
-                await cleanup();
+                await stopScanner();
                 if (cancelled) return;
+
+                // Wait for DOM element to be rendered
+                await new Promise(resolve => setTimeout(resolve, 150));
+                if (cancelled) return;
+
+                const container = document.getElementById(scannerId);
+                if (!container) {
+                    throw new Error('Không tìm thấy vùng hiển thị camera');
+                }
 
                 const html5QrCode = new Html5Qrcode(scannerId);
                 scannerRef.current = html5QrCode;
 
-                await html5QrCode.start(
+                const scanConfig = {
+                    fps: 10,
+                    qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+                        const size = Math.min(viewfinderWidth, viewfinderHeight) * 0.7;
+                        return { width: Math.floor(size), height: Math.floor(size) };
+                    },
+                    aspectRatio: 1.0,
+                };
+                const onSuccess = (decodedText: string) => {
+                    if (cancelled || !scannerRef.current) return;
+                    onScanRef.current(decodedText.trim());
+                };
+                const onError = () => { /* no QR in frame — ignore */ };
+
+                // Try rear camera → front camera → any camera
+                let started = false;
+                for (const constraint of [
                     { facingMode: 'environment' },
-                    {
-                        fps: 5,
-                        qrbox: { width: 250, height: 250 },
-                    },
-                    (decodedText) => {
-                        if (cancelled || !scannerRef.current) return;
-                        onScanRef.current(decodedText.trim());
-                    },
-                    () => { /* ignore scan errors (no code in frame) */ }
-                );
+                    { facingMode: 'user' },
+                ] as MediaTrackConstraints[]) {
+                    if (started || cancelled) break;
+                    try {
+                        await html5QrCode.start(constraint, scanConfig, onSuccess, onError);
+                        started = true;
+                        console.log('[QRScanner] Camera started with', constraint);
+                    } catch (e) {
+                        console.warn('[QRScanner] Failed with', constraint, e);
+                    }
+                }
+
+                // Last resort: enumerate devices
+                if (!started && !cancelled) {
+                    const devices = await Html5Qrcode.getCameras();
+                    console.log('[QRScanner] Available cameras:', devices);
+                    if (!devices.length) throw new Error('Không tìm thấy camera nào');
+                    await html5QrCode.start(devices[0].id, scanConfig, onSuccess, onError);
+                    started = true;
+                    console.log('[QRScanner] Camera started with device', devices[0].id);
+                }
+
                 if (!cancelled) setError(null);
             } catch (e: unknown) {
                 const msg = e instanceof Error ? e.message : 'Không thể mở camera';
+                console.error('[QRScanner] Camera error:', e);
                 if (!cancelled) setError(msg);
             } finally {
                 startingRef.current = false;
@@ -77,7 +117,8 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
 
         return () => {
             cancelled = true;
-            cleanup();
+            startingRef.current = false;
+            stopScanner();
         };
     }, [scannerId]);
 
@@ -97,14 +138,21 @@ export function QRScanner({ scannerId: propId, onScan, onClose, className = '' }
     return (
         <div className={className}>
             {isStarting && (
-                <p className="text-sm text-gray-500 mb-2">Đang bật camera...</p>
-            )}
-            {error && (
-                <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm">
-                    {error}
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm text-gray-500">Đang bật camera...</p>
                 </div>
             )}
-            <div id={scannerId} className="max-w-[300px] overflow-hidden rounded-lg" />
+            {error && (
+                <div className="mb-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <p className="font-medium mb-1">⚠️ Lỗi camera</p>
+                    <p>{error}</p>
+                    <p className="text-xs text-red-500 mt-2">
+                        Hãy đảm bảo truy cập qua HTTPS hoặc localhost và đã cấp quyền camera cho trình duyệt.
+                    </p>
+                </div>
+            )}
+            <div id={scannerId} style={{ width: '100%', maxWidth: 400 }} className="overflow-hidden rounded-lg" />
             <button
                 type="button"
                 onClick={handleClose}
