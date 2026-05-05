@@ -238,7 +238,7 @@ const PublicEventDetailPage: React.FC = () => {
                                             <i className="fas fa-list-ol mr-2 text-orange-500" /> Lịch trình ({event.sessions.length} buổi)
                                         </h2>
                                         <div>
-                                            {event.sessions.map((s) => (
+                                            {[...event.sessions].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()).map((s) => (
                                                 <div key={s.scheduleId} className="flex relative pl-8 py-4 border-b border-gray-50 last:border-0">
                                                     <div className="absolute left-0 top-0 bottom-0 flex flex-col items-center">
                                                         <div className="w-px h-5 bg-gray-200" />
