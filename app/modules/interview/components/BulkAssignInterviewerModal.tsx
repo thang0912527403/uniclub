@@ -125,15 +125,58 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
     return intersection;
   }, [interviews]);
 
-  // Detect time conflicts for selected member across allInterviews
+  // Khoảng cách tối thiểu (phút) giữa hai lịch PV để cùng 1 interviewer phụ trách
+  const MIN_GAP_MINUTES = 60;
+
+  // ── Conflict 1: giữa các lịch ĐÃ CHỌN (selected) cách nhau < 60 phút ──
+  // Vì cùng 1 interviewer sẽ được phân cho TẤT CẢ lịch đang chọn, nên nếu hai
+  // lịch trong nhóm này gần nhau dưới 60 phút thì interviewer không thể đứng
+  // 2 ca cùng lúc → block.
+  const selfConflicts = useMemo(() => {
+    const list: {
+      aTitle: string;
+      bTitle: string;
+      aTime: string;
+      bTime: string;
+      gapMin: number;
+    }[] = [];
+    const sorted = [...interviews].sort(
+      (a, b) =>
+        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+    );
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const aStart = new Date(sorted[i].scheduledAt).getTime();
+        const bStart = new Date(sorted[j].scheduledAt).getTime();
+        const gapMin = Math.abs(bStart - aStart) / 60_000;
+        if (gapMin < MIN_GAP_MINUTES) {
+          list.push({
+            aTitle: sorted[i].title,
+            bTitle: sorted[j].title,
+            aTime: sorted[i].scheduledAt,
+            bTime: sorted[j].scheduledAt,
+            gapMin: Math.round(gapMin),
+          });
+        }
+      }
+    }
+    return list;
+  }, [interviews]);
+
+  // ── Conflict 2: interviewer đã có lịch PV CŨ trong < 60 phút so với 1
+  // trong các lịch đang chọn ──
   const timeConflicts = useMemo(() => {
     if (!selectedMember) return [];
     const selectedIds = new Set(interviews.map((iv) => iv.id));
-    const conflicts: { targetTitle: string; conflictTitle: string; scheduledAt: string }[] = [];
+    const conflicts: {
+      targetTitle: string;
+      conflictTitle: string;
+      scheduledAt: string;
+      gapMin: number;
+    }[] = [];
 
     for (const target of interviews) {
       const targetStart = new Date(target.scheduledAt).getTime();
-      const targetEnd = targetStart + (target.durationMinutes || 60) * 60_000;
 
       for (const other of allInterviews) {
         if (selectedIds.has(other.id)) continue;
@@ -143,18 +186,22 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
         if (!hasAssignment) continue;
 
         const otherStart = new Date(other.scheduledAt).getTime();
-        const otherEnd = otherStart + (other.durationMinutes || 60) * 60_000;
-        if (targetStart < otherEnd && targetEnd > otherStart) {
+        const gapMin = Math.abs(otherStart - targetStart) / 60_000;
+        if (gapMin < MIN_GAP_MINUTES) {
           conflicts.push({
             targetTitle: target.title,
             conflictTitle: other.title,
             scheduledAt: other.scheduledAt,
+            gapMin: Math.round(gapMin),
           });
         }
       }
     }
     return conflicts;
   }, [selectedMember, interviews, allInterviews]);
+
+  const hasAnyConflict =
+    selfConflicts.length > 0 || timeConflicts.length > 0;
 
   const filteredMembers = useMemo(() => {
     let members = clubMembers.filter(
@@ -192,6 +239,27 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
   const handleSubmit = async () => {
     if (!selectedMember) {
       message.warning("Vui lòng chọn người phỏng vấn");
+      return;
+    }
+
+    // Chặn nếu có 2 lịch đang chọn gần nhau < 60 phút (1 interviewer không
+    // thể phụ trách 2 ca trùng giờ)
+    if (selfConflicts.length > 0) {
+      const first = selfConflicts[0];
+      message.error({
+        content: `Không thể chọn cùng 1 interviewer cho nhiều người trong cùng 1 khung giờ — "${first.aTitle}" và "${first.bTitle}" cách nhau ${first.gapMin} phút (cần ≥ 60 phút)`,
+        duration: 5,
+      });
+      return;
+    }
+
+    // Chặn nếu interviewer được chọn đã có lịch PV cũ trong < 60 phút
+    if (timeConflicts.length > 0) {
+      const first = timeConflicts[0];
+      message.error({
+        content: `Người phỏng vấn này đã có lịch "${first.conflictTitle}" cách lịch "${first.targetTitle}" chỉ ${first.gapMin} phút (cần ≥ 60 phút)`,
+        duration: 5,
+      });
       return;
     }
 
@@ -665,22 +733,69 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
             )}
           </div>
 
-          {/* ── Conflict warning ── */}
+          {/* ── Self-conflict (giữa các lịch đang chọn): BLOCK ── */}
+          {selfConflicts.length > 0 && (
+            <div className="px-3 py-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700">
+              <p className="text-xs font-semibold text-red-700 dark:text-red-400 flex items-center gap-1.5 mb-1.5">
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                  />
+                </svg>
+                Không thể phân cùng 1 interviewer ({selfConflicts.length} cặp
+                lịch cách nhau &lt; {MIN_GAP_MINUTES} phút)
+              </p>
+              <ul className="space-y-0.5">
+                {selfConflicts.slice(0, 5).map((c, i) => (
+                  <li
+                    key={i}
+                    className="text-[11px] text-red-600 dark:text-red-300"
+                  >
+                    <span className="font-medium">{c.aTitle}</span> và{" "}
+                    <span className="font-medium">{c.bTitle}</span> chỉ cách
+                    nhau <span className="font-bold">{c.gapMin} phút</span>
+                  </li>
+                ))}
+                {selfConflicts.length > 5 && (
+                  <li className="text-[11px] text-red-500 italic">
+                    … và {selfConflicts.length - 5} cặp khác
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* ── Conflict với lịch CŨ của interviewer được chọn: BLOCK ── */}
           {timeConflicts.length > 0 && (
-            <div className="px-3 py-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 mb-1.5">
+            <div className="px-3 py-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700">
+              <p className="text-xs font-semibold text-red-700 dark:text-red-400 flex items-center gap-1.5 mb-1.5">
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                 </svg>
-                Cảnh báo trùng lịch ({timeConflicts.length})
+                Interviewer này đã có lịch trong {MIN_GAP_MINUTES} phút (
+                {timeConflicts.length})
               </p>
               <ul className="space-y-0.5">
-                {timeConflicts.map((c, i) => (
-                  <li key={i} className="text-[11px] text-amber-600 dark:text-amber-300">
-                    <span className="font-medium">{c.targetTitle}</span> trùng với <span className="font-medium">{c.conflictTitle}</span>{" "}
-                    ({new Date(c.scheduledAt).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })})
+                {timeConflicts.slice(0, 5).map((c, i) => (
+                  <li key={i} className="text-[11px] text-red-600 dark:text-red-300">
+                    <span className="font-medium">{c.targetTitle}</span> cách lịch cũ <span className="font-medium">{c.conflictTitle}</span>{" "}
+                    chỉ <span className="font-bold">{c.gapMin} phút</span>
+                    {" "}({new Date(c.scheduledAt).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })})
                   </li>
                 ))}
+                {timeConflicts.length > 5 && (
+                  <li className="text-[11px] text-red-500 italic">
+                    … và {timeConflicts.length - 5} lịch khác
+                  </li>
+                )}
               </ul>
             </div>
           )}
@@ -721,7 +836,12 @@ const BulkAssignInterviewerModal: React.FC<BulkAssignInterviewerModalProps> = ({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting || !selectedMember}
+              disabled={isSubmitting || !selectedMember || hasAnyConflict}
+              title={
+                hasAnyConflict
+                  ? `Không thể phân công – có lịch cách nhau dưới ${MIN_GAP_MINUTES} phút`
+                  : undefined
+              }
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium text-sm hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {isSubmitting ? (
