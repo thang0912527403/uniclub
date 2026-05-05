@@ -10,6 +10,7 @@ import {
 import { useGetClubMembersQuery } from "~/cores/api";
 import { useNotification } from "~/components/Notification";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
+import { useClubRole } from "~/hooks/useClubRole";
 
 interface Props {
   eventId: number;
@@ -33,6 +34,10 @@ const ALL_EVENT_POLICIES = [
 
 export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props) {
   const { show: showNotification } = useNotification();
+  const { can } = useClubRole();
+  const canAddMember = can("editevent");
+  const canSetPolicies = can("editevent");
+  const canRemoveMember = can("editevent");
   const { data: members = [], isLoading, refetch } = useGetEventMembersQuery({
     clubId,
     eventId,
@@ -208,7 +213,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
             Quản lý thành viên trong ban tổ chức và chức vụ của họ.
           </p>
         </div>
-        {eventStatus !== "COMPLETED" && eventStatus !== "CANCELLED" && (
+        {canAddMember && eventStatus !== "COMPLETED" && eventStatus !== "CANCELLED" && (
           <button
             onClick={() => setShowAddPanel(!showAddPanel)}
             className="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
@@ -415,7 +420,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {!isCreator && (
+                            {!isCreator && canSetPolicies && (
                               <button
                                 onClick={() => {
                                   if (isEditingPolicies) {
@@ -436,7 +441,7 @@ export function EventMembersTab({ eventId, clubId, isDark, eventStatus }: Props)
                                 {isEditingPolicies ? "Đóng" : "Đặc quyền"}
                               </button>
                             )}
-                            {!isCreator && (
+                            {!isCreator && canRemoveMember && (
                               <button
                                 onClick={() => setDeleteId(m.eventMemberId)}
                                 className={`px-2.5 py-1.5 text-xs text-red-500 border border-red-200 dark:border-red-900/80 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors`}

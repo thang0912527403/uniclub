@@ -10,6 +10,8 @@ interface BulkActionBarProps {
   onBulkStartInterview?: () => void;
   onBulkComplete?: () => void;
   onClearSelection: () => void;
+  canCreateInterview?: boolean;
+  canAssignInterviewer?: boolean;
 }
 
 const BulkActionBar: React.FC<BulkActionBarProps> = ({
@@ -22,6 +24,8 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
   onBulkStartInterview,
   onBulkComplete,
   onClearSelection,
+  canCreateInterview = true,
+  canAssignInterviewer = true,
 }) => {
   if (selectedCount === 0) return null;
 
@@ -41,7 +45,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
         <div className="w-px h-6 bg-gray-700 dark:bg-gray-600 flex-shrink-0" />
 
         {/* ─── REVIEWED tab ────────────────────────────────────── */}
-        {activeTab === "Reviewed" && onBulkCreateSchedule && (
+        {activeTab === "Reviewed" && onBulkCreateSchedule && canCreateInterview && (
           <button
             onClick={onBulkCreateSchedule}
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-all hover:shadow-md whitespace-nowrap"
@@ -64,7 +68,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
         )}
 
         {/* ─── SCHEDULED tab ───────────────────────────────────── */}
-        {activeTab === "Confirmed" && onBulkAssignInterviewers && (
+        {activeTab === "Confirmed" && onBulkAssignInterviewers && canAssignInterviewer && (
           <button
             onClick={onBulkAssignInterviewers}
             className="flex items-center gap-1.5 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-all hover:shadow-md whitespace-nowrap"

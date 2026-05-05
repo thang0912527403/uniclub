@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { message } from "antd";
 import type { ApplicationResponseDto } from "~/cores/api";
 import { useGetUserByIdQuery } from "~/cores/api";
+import { useClubRole } from "~/hooks/useClubRole";
 
 const BulkCandidateRow: React.FC<{
   app: ApplicationResponseDto;
@@ -80,6 +81,8 @@ const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
   currentUserId,
   onSubmit,
 }) => {
+  const { can } = useClubRole();
+  const canSubmitForm = can("manageschedule");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(60);
@@ -474,40 +477,42 @@ const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
             >
               Hủy
             </button>
-            <button
-              type="submit"
-              disabled={
-                isSubmitting || !title.trim() || validSlots.length === 0
-              }
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium text-sm hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <svg
-                    className="w-4 h-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                  </svg>
-                  Đang tạo...
-                </span>
-              ) : (
-                "Tạo lịch phỏng vấn"
-              )}
-            </button>
+            {canSubmitForm && (
+              <button
+                type="submit"
+                disabled={
+                  isSubmitting || !title.trim() || validSlots.length === 0
+                }
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium text-sm hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                    Đang tạo...
+                  </span>
+                ) : (
+                  "Tạo lịch phỏng vấn"
+                )}
+              </button>
+            )}
           </div>
         </form>
       </div>

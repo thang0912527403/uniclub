@@ -7,6 +7,7 @@ import { Loading } from '~/components/Loading';
 import { Error } from '~/components/Error';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useNotification } from '~/components/Notification';
+import { useClubRole } from '~/hooks/useClubRole';
 import {
   useGetClubStructureQuery,
   useCreateClubRoleMutation,
@@ -59,19 +60,25 @@ interface RoleActionsProps {
   role: ClubRole;
   onEdit: (role: ClubRole) => void;
   onDelete: (role: ClubRole) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
-function RoleActions({ role, onEdit, onDelete }: RoleActionsProps) {
+function RoleActions({ role, onEdit, onDelete, canEdit = true, canDelete = true }: RoleActionsProps) {
   return (
     <div className="flex items-center gap-1">
-      <button onClick={() => onEdit(role)} title="Chỉnh sửa"
-        className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors">
-        <i className="fas fa-edit text-xs"></i>
-      </button>
-      <button onClick={() => onDelete(role)} title="Xóa"
-        className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 transition-colors">
-        <i className="fas fa-trash text-xs"></i>
-      </button>
+      {canEdit && (
+        <button onClick={() => onEdit(role)} title="Chỉnh sửa"
+          className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors">
+          <i className="fas fa-edit text-xs"></i>
+        </button>
+      )}
+      {canDelete && (
+        <button onClick={() => onDelete(role)} title="Xóa"
+          className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 transition-colors">
+          <i className="fas fa-trash text-xs"></i>
+        </button>
+      )}
     </div>
   );
 }
@@ -787,10 +794,15 @@ export default function ClubStructureModule() {
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { show: showNotification } = useNotification();
+  const { can } = useClubRole();
 
   const [viewMode, setViewMode] = useState<'chart' | 'list'>('chart');
   const clubId = Number(id) || getClubId();
   const { data: structure, isLoading, error } = useGetClubStructureQuery(clubId, { skip: !clubId });
+
+  const canCreateRole = can('createrole');
+  const canEditRole = can('editrole');
+  const canDeleteRole = can('deleterole');
 
   const [createRole, { isLoading: isCreating }] = useCreateClubRoleMutation();
   const [updateRole, { isLoading: isUpdating }] = useUpdateClubRoleMutation();
@@ -936,6 +948,8 @@ export default function ClubStructureModule() {
   const actionProps = {
     onEdit: (role: ClubRole) => { setSelectedRole(role); setModalMode('edit'); },
     onDelete: (role: ClubRole) => setDeleteTarget(role),
+    canEdit: canEditRole,
+    canDelete: canDeleteRole,
   };
 
   return (
@@ -959,16 +973,20 @@ export default function ClubStructureModule() {
           </button>
 
           <div className="flex items-center gap-3">
-            <button onClick={() => setDeptModalOpen(true)}
-              className="cursor-pointer flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors shadow-md">
-              <i className="fas fa-building text-sm"></i>
-              Thêm phòng ban
-            </button>
-            <button onClick={() => { setSelectedRole(null); setModalMode('create'); }}
-              className="cursor-pointer flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors shadow-md">
-              <i className="fas fa-plus text-sm"></i>
-              Thêm vai trò
-            </button>
+            {canCreateRole && (
+              <button onClick={() => setDeptModalOpen(true)}
+                className="cursor-pointer flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors shadow-md">
+                <i className="fas fa-building text-sm"></i>
+                Thêm phòng ban
+              </button>
+            )}
+            {canCreateRole && (
+              <button onClick={() => { setSelectedRole(null); setModalMode('create'); }}
+                className="cursor-pointer flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors shadow-md">
+                <i className="fas fa-plus text-sm"></i>
+                Thêm vai trò
+              </button>
+            )}
 
             <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-1 shadow-sm">
               <button onClick={() => setViewMode('chart')}
@@ -1037,10 +1055,12 @@ export default function ClubStructureModule() {
             <i className="fas fa-sitemap text-3xl text-gray-300 dark:text-gray-600 mb-3"></i>
             <p className="text-gray-700 dark:text-gray-300 font-medium">Chưa có vai trò nào</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Hãy tạo vai trò cho câu lạc bộ</p>
-            <button onClick={() => { setSelectedRole(null); setModalMode('create'); }}
-              className="cursor-pointer mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors">
-              Thêm vai trò đầu tiên
-            </button>
+            {canCreateRole && (
+              <button onClick={() => { setSelectedRole(null); setModalMode('create'); }}
+                className="cursor-pointer mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors">
+                Thêm vai trò đầu tiên
+              </button>
+            )}
           </div>
         )}
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { useSoftDeleteFundMutation } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
+import { useClubRole } from '~/hooks/useClubRole';
 import { extractClubFundErrorMessage } from '~/modules/funds/utils/fundRefundErrors';
 import { fundTokens as t } from '~/routes/funds.design-tokens';
 
@@ -29,6 +30,8 @@ export function ClubFundSoftDeleteControl({
   onAfterSuccess,
 }: ClubFundSoftDeleteControlProps) {
   const { show: showNotification } = useNotification();
+  const { can } = useClubRole();
+  const canDeleteByPolicy = can("deletefinance");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [softDeleteFund, { isLoading }] = useSoftDeleteFundMutation();
 
@@ -38,11 +41,13 @@ export function ClubFundSoftDeleteControl({
   const closedBlock = isFundClosed === true;
   const terminalBlock = Boolean(softDeleteBlockedReasonVi?.trim());
   const terminalReason = softDeleteBlockedReasonVi?.trim() || undefined;
-  const disabledReason = !canSoftDeleteFund && hint
-    ? hint
-    : !canSoftDeleteFund
-      ? 'Bạn không có quyền đóng quỹ trong CLB này.'
-      : undefined;
+  const disabledReason = !canDeleteByPolicy
+    ? 'Bạn không có quyền đóng quỹ trong CLB này.'
+    : !canSoftDeleteFund && hint
+      ? hint
+      : !canSoftDeleteFund
+        ? 'Bạn không có quyền đóng quỹ trong CLB này.'
+        : undefined;
 
   const btnClass = compact
     ? `${t.btn.secondary} !min-h-0 !py-1.5 !px-3 text-xs`
@@ -85,27 +90,29 @@ export function ClubFundSoftDeleteControl({
       <button
         type="button"
         disabled={
-          closedBlock || terminalBlock || !canSoftDeleteFund || isLoading
+          closedBlock || terminalBlock || !canSoftDeleteFund || !canDeleteByPolicy || isLoading
         }
         title={
           closedBlock
             ? undefined
             : terminalBlock
               ? terminalReason
-              : !canSoftDeleteFund
-                ? disabledReason
-                : hint
-                  ? `Gợi ý: ${hint}`
-                  : 'Đóng quỹ — thường dùng khi quỹ không còn nhận nộp; một số loại quỹ sau hạn có thể không đóng được, hệ thống sẽ báo nếu không hợp lệ.'
+              : !canDeleteByPolicy
+                ? 'Bạn không có quyền đóng quỹ trong CLB này.'
+                : !canSoftDeleteFund
+                  ? disabledReason
+                  : hint
+                    ? `Gợi ý: ${hint}`
+                    : 'Đóng quỹ — thường dùng khi quỹ không còn nhận nộp; một số loại quỹ sau hạn có thể không đóng được, hệ thống sẽ báo nếu không hợp lệ.'
         }
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (closedBlock || terminalBlock || !canSoftDeleteFund || isLoading)
+          if (closedBlock || terminalBlock || !canSoftDeleteFund || !canDeleteByPolicy || isLoading)
             return;
           setConfirmOpen(true);
         }}
-        className={`${btnClass} ${closedBlock || terminalBlock || !canSoftDeleteFund ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`${btnClass} ${closedBlock || terminalBlock || !canSoftDeleteFund || !canDeleteByPolicy ? 'opacity-50 cursor-not-allowed' : ''}`}
         aria-label={`Đóng quỹ ${fundLabel}`}
       >
         {isLoading ? 'Đang xử lý…' : 'Đóng quỹ'}

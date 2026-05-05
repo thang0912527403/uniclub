@@ -6,6 +6,7 @@ import { SettingButton } from '~/components/SettingButton';
 import { Loading } from '~/components/Loading';
 import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useNotification } from '~/components/Notification';
+import { useClubRole } from '~/hooks/useClubRole';
 import {
     useGetClubByIdQuery,
     useGetClubMembersQuery,
@@ -73,6 +74,9 @@ export default function SendNotificationPage() {
     const clubId = Number(clubIdParam) || getClubId();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const { show } = useNotification();
+    const { can } = useClubRole();
+
+    const canSendNotification = can('updatememberstatus');
 
     const [target, setTarget] = useState<SendTarget>('all');
     const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null);
@@ -256,17 +260,19 @@ export default function SendNotificationPage() {
                                             </span>
                                         )}
                                     </div>
-                                    <button
-                                        onClick={handleSend}
-                                        disabled={isSending || recipientUserIds.length === 0 || !title.trim() || !message.trim()}
-                                        className="w-full px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50 transition-all cursor-pointer"
-                                    >
-                                        {isSending ? (
-                                            <><i className="fas fa-spinner fa-spin" /> Đang gửi...</>
-                                        ) : (
-                                            <><i className="fas fa-paper-plane" /> Gửi thông báo</>
-                                        )}
-                                    </button>
+                                    {canSendNotification && (
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={isSending || recipientUserIds.length === 0 || !title.trim() || !message.trim()}
+                                            className="w-full px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                                        >
+                                            {isSending ? (
+                                                <><i className="fas fa-spinner fa-spin" /> Đang gửi...</>
+                                            ) : (
+                                                <><i className="fas fa-paper-plane" /> Gửi thông báo</>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 

@@ -7,6 +7,7 @@ import { useGetClubByIdQuery, useToggleClubStatusMutation, useUpdateClubMutation
 import { getClubId } from "~/utils/auth";
 import { Loading } from "~/components/Loading";
 import { Error } from "~/components/Error";
+import { useClubRole } from "~/hooks/useClubRole";
 
 export default function ClubDetailModule() {
   const { id: paramId } = useParams();
@@ -15,6 +16,8 @@ export default function ClubDetailModule() {
 
   const navigate = useNavigate();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+  const { can } = useClubRole();
+  const canUpdateClub = can("updateclub");
 
   const { data: club, isLoading, error } = useGetClubByIdQuery(Number(id));
   const [toggleClubStatus, { isLoading: isTogglingStatus }] = useToggleClubStatusMutation();
@@ -127,19 +130,22 @@ export default function ClubDetailModule() {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() =>
-                        navigate(paramId ? `/clubs/edit/${id}` : `/club/edit`)
-                      }
-                      className="cursor-pointer px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                    >
-                      <i className="fas fa-edit mr-2"></i>
-                      Chỉnh sửa
-                    </button>
+                    {canUpdateClub && (
+                      <button
+                        onClick={() =>
+                          navigate(paramId ? `/clubs/edit/${id}` : `/club/edit`)
+                        }
+                        className="cursor-pointer px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                      >
+                        <i className="fas fa-edit mr-2"></i>
+                        Chỉnh sửa
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Quick Settings */}
+                {/* Quick Settings — chỉ hiện khi user có quyền updateclub */}
+                {canUpdateClub && (
                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
                   {/* isActive toggle */}
                   <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 min-w-[230px]">
@@ -183,6 +189,7 @@ export default function ClubDetailModule() {
                     </label>
                   </div>
                 </div>
+                )}
               </div>
             </div>
 

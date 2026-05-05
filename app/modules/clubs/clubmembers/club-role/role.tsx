@@ -18,6 +18,7 @@ import {
   getMemberRoleNames,
 } from "~/cores/api/types/clubMember";
 import { getClubId } from "~/utils/auth";
+import { useClubRole } from "~/hooks/useClubRole";
 
 /* ─── Level Badge ─────────────────────────────────────────────────────────── */
 function LevelBadge({ level }: { level: number }) {
@@ -214,9 +215,12 @@ export default function ClubMemberRoleModule() {
   }>();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { show } = useNotification();
+  const { can } = useClubRole();
 
   const clubId = Number(clubIdParam) || getClubId();
   const memberId = Number(memberIdParam) || 0;
+
+  const canUpdateMemberRole = can('updatememberrole');
 
   const { data: club } = useGetClubByIdQuery(clubId, { skip: !clubId });
   const { data: member, isLoading: isMemberLoading } =
@@ -434,13 +438,15 @@ export default function ClubMemberRoleModule() {
 
                   <div className="flex items-center gap-3">
                     {!isEditing ? (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 text-[11px] font-black uppercase tracking-wider border-2 border-blue-100 dark:border-blue-900/50 hover:border-blue-500 dark:hover:border-blue-500 hover:text-white hover:bg-blue-600 dark:hover:bg-blue-600 transition-all duration-300 shadow-sm hover:shadow-blue-500/20 active:scale-95 group cursor-pointer"
-                      >
-                        <i className="fas fa-user-edit text-[10px] transition-transform group-hover:rotate-12" />
-                        Thiết lập vai trò
-                      </button>
+                      canUpdateMemberRole && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 text-[11px] font-black uppercase tracking-wider border-2 border-blue-100 dark:border-blue-900/50 hover:border-blue-500 dark:hover:border-blue-500 hover:text-white hover:bg-blue-600 dark:hover:bg-blue-600 transition-all duration-300 shadow-sm hover:shadow-blue-500/20 active:scale-95 group cursor-pointer"
+                        >
+                          <i className="fas fa-user-edit text-[10px] transition-transform group-hover:rotate-12" />
+                          Thiết lập vai trò
+                        </button>
+                      )
                     ) : (
                       <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-500">
                         <button
@@ -452,18 +458,20 @@ export default function ClubMemberRoleModule() {
                         >
                           Hủy bỏ
                         </button>
-                        <button
-                          onClick={handleSave}
-                          disabled={!hasChanged || isUpdating}
-                          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/25 transition-all active:scale-95 disabled:shadow-none group relative overflow-hidden cursor-pointer"
-                        >
-                          {isUpdating ? (
-                            <i className="fas fa-spinner fa-spin text-[10px]" />
-                          ) : (
-                            <i className="fas fa-check-circle text-[10px] group-hover:scale-125 transition-transform" />
-                          )}
-                          {isUpdating ? "Đang lưu" : "Lưu lại"}
-                        </button>
+                        {canUpdateMemberRole && (
+                          <button
+                            onClick={handleSave}
+                            disabled={!hasChanged || isUpdating}
+                            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/25 transition-all active:scale-95 disabled:shadow-none group relative overflow-hidden cursor-pointer"
+                          >
+                            {isUpdating ? (
+                              <i className="fas fa-spinner fa-spin text-[10px]" />
+                            ) : (
+                              <i className="fas fa-check-circle text-[10px] group-hover:scale-125 transition-transform" />
+                            )}
+                            {isUpdating ? "Đang lưu" : "Lưu lại"}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

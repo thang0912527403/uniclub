@@ -197,6 +197,9 @@ function DeleteDepartmentModal({ dept, clubId, onClose }: { dept: UserDepartment
 
 function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEdit: (d: UserDepartment) => void; onDelete: (d: UserDepartment) => void }) {
     const navigate = useNavigate();
+    const { can } = useClubRole();
+    const canEditDepartment = can("editdepartment");
+    const canDeleteDepartment = can("deletedepartment");
     const primaryRole = dept.roles?.[0];
     const levelConfig = primaryRole !== undefined ? getLevelConfig(primaryRole.level) : null;
 
@@ -270,20 +273,24 @@ function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEd
                     </div>
 
                     <div className="flex gap-2">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onEdit(dept); }}
-                            className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-all shadow-sm"
-                            title="Sửa"
-                        >
-                            <i className="fas fa-edit text-sm"></i>
-                        </button>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onDelete(dept); }}
-                            className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-all shadow-sm"
-                            title="Xóa"
-                        >
-                            <i className="fas fa-trash-alt text-sm"></i>
-                        </button>
+                        {canEditDepartment && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onEdit(dept); }}
+                                className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-all shadow-sm"
+                                title="Sửa"
+                            >
+                                <i className="fas fa-edit text-sm"></i>
+                            </button>
+                        )}
+                        {canDeleteDepartment && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDelete(dept); }}
+                                className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-all shadow-sm"
+                                title="Xóa"
+                            >
+                                <i className="fas fa-trash-alt text-sm"></i>
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

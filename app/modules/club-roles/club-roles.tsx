@@ -10,6 +10,7 @@ import { useGetClubStructureRolesQuery } from '~/cores/api/clubRoleApi';
 import { getClubId } from '~/utils/auth';
 import { PolicyPanel } from './components/PolicyPanel';
 import type { ClubRole } from '~/cores/api';
+import { useClubRole } from '~/hooks/useClubRole';
 
 const LEVEL_CONFIG: Record<number, { gradient: string; badge: string; icon: string; label: string }> = {
     0: { gradient: 'from-gray-400 to-gray-500', badge: 'bg-gray-500', icon: 'fa-user', label: 'Chưa phân cấp' },
@@ -44,12 +45,14 @@ function RoleCard({
     onMembers,
     onView,
     onEdit,
+    canEdit = true,
 }: {
     role: ClubRole;
     maxPolicies: number;
     onMembers: () => void;
     onView: () => void;
     onEdit: () => void;
+    canEdit?: boolean;
 }) {
     const config = getLevelConfig(role.level);
     const policyCount = role.policies.length;
@@ -116,14 +119,16 @@ function RoleCard({
                         <i className="fas fa-eye text-xs text-purple-500"></i>
                         Xem quyền
                     </button>
-                    <button onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit();
-                    }}
-                        className="cursor-pointer flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold shadow-sm">
-                        <i className="fas fa-key text-xs"></i>
-                        Phân quyền
-                    </button>
+                    {canEdit && (
+                        <button onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit();
+                        }}
+                            className="cursor-pointer flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold shadow-sm">
+                            <i className="fas fa-key text-xs"></i>
+                            Phân quyền
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -133,10 +138,13 @@ function RoleCard({
 export default function ClubRolesModule() {
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+    const { can } = useClubRole();
     const clubId = getClubId();
     const { data: roles, isLoading, error } = useGetClubStructureRolesQuery(clubId, {
         skip: !clubId,
     });
+
+    const canEditRole = can('editrole');
 
     const [policyTarget, setPolicyTarget] = useState<{ role: ClubRole; readOnly: boolean } | null>(null);
     const [search, setSearch] = useState('');
@@ -270,6 +278,7 @@ export default function ClubRolesModule() {
                                 onMembers={() => navigate(`/club-roles/members?clubId=${clubId}&roleId=${role.clubRoleId}`)}
                                 onView={() => setPolicyTarget({ role, readOnly: true })}
                                 onEdit={() => setPolicyTarget({ role, readOnly: false })}
+                                canEdit={canEditRole}
                             />
                         ))}
                     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, PlugZap, Save } from "lucide-react";
 import { useNotification } from "~/components/Notification";
+import { useClubRole } from "~/hooks/useClubRole";
 import {
   useGetPayosGuideQuery,
   useGetPayosSettingsQuery,
@@ -169,6 +170,8 @@ function mergeProviderOptions(
 
 export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
   const { show: showNotification } = useNotification();
+  const { can } = useClubRole();
+  const canSavePayosSettings = can("editfinance");
 
   const {
     data: guide,
@@ -369,6 +372,14 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
             onSubmit={async (e) => {
               e.preventDefault();
               if (!clubId) return;
+              if (!canSavePayosSettings) {
+                showNotification({
+                  type: "error",
+                  title: "Không có quyền",
+                  message: "Bạn không có quyền cập nhật cấu hình thanh toán.",
+                });
+                return;
+              }
               if (schemaUnsupported) {
                 showNotification({
                   type: "error",
@@ -538,18 +549,20 @@ export function PayOSConnectPanel({ clubId, canManagePayos }: Props) {
                   <>Cập nhật lần cuối: {settings.updatedAtUtc}</>
                 ) : null}
               </p>
-              <button
-                type="submit"
-                className={`${t.btn.cta} inline-flex items-center gap-2`}
-                disabled={isSaving || schemaUnsupported}
-              >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-                ) : (
-                  <Save className="w-4 h-4" aria-hidden />
-                )}
-                Lưu
-              </button>
+              {canSavePayosSettings && (
+                <button
+                  type="submit"
+                  className={`${t.btn.cta} inline-flex items-center gap-2`}
+                  disabled={isSaving || schemaUnsupported}
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Save className="w-4 h-4" aria-hidden />
+                  )}
+                  Lưu
+                </button>
+              )}
             </div>
           </form>
         )}

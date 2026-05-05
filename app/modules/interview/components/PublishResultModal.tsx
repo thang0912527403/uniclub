@@ -4,6 +4,7 @@ import {
   useGetPublishStatusQuery,
 } from "~/cores/api/interviewApi";
 import { useGetUserByIdQuery } from "~/cores/api";
+import { useClubRole } from "~/hooks/useClubRole";
 
 // ─── Inline user name resolver ───────────────────────────────────
 const UserNameInline: React.FC<{ userId: string; fallback?: string }> = ({
@@ -60,6 +61,8 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
   clubId,
   onSuccess,
 }) => {
+  const { can } = useClubRole();
+  const canPublishResults = can("manageresults");
   const [publishResults, { isLoading }] = usePublishResultsMutation();
   const { data: publishStatus } = useGetPublishStatusQuery(campaignId);
 
@@ -313,7 +316,7 @@ const PublishResultModal: React.FC<PublishResultModalProps> = ({
           >
             {hasDecisions ? "Hủy" : "Đóng"}
           </button>
-          {hasDecisions && (
+          {hasDecisions && canPublishResults && (
             <button
               onClick={handlePublish}
               disabled={isLoading || selectedIds.size === 0}

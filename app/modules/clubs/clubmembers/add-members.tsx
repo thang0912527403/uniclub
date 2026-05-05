@@ -13,14 +13,18 @@ import { getClubId } from "~/utils/auth";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { Loading } from "~/components/Loading";
+import { useClubRole } from "~/hooks/useClubRole";
 
 export default function AddMembersModule() {
   const { t } = useTranslation("common");
   const { isOpen, toggle } = useSidebarToggle();
   const { show } = useNotification();
   const navigate = useNavigate();
+  const { can } = useClubRole();
   const clubIdStr = getClubId();
   const clubId = Number(clubIdStr);
+
+  const canAddMember = can('addmember');
 
   // States
   const [searchQuery, setSearchQuery] = useState("");
@@ -335,24 +339,26 @@ export default function AddMembersModule() {
                     </div>
                   )}
 
-                  <button
-                    onClick={handleSubmit}
-                    disabled={
-                      isSubmitting ||
-                      (activeTab === "search" && selectedUsers.length === 0) ||
-                      (activeTab === "bulk" && !bulkEmails.trim())
-                    }
-                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale"
-                  >
-                    {isSubmitting ? (
-                      <i className="fas fa-spinner fa-spin" />
-                    ) : (
-                      <>
-                        <i className="fas fa-check-circle" />
-                        Xác nhận thêm vào CLB
-                      </>
-                    )}
-                  </button>
+                  {canAddMember && (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={
+                        isSubmitting ||
+                        (activeTab === "search" && selectedUsers.length === 0) ||
+                        (activeTab === "bulk" && !bulkEmails.trim())
+                      }
+                      className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:grayscale"
+                    >
+                      {isSubmitting ? (
+                        <i className="fas fa-spinner fa-spin" />
+                      ) : (
+                        <>
+                          <i className="fas fa-check-circle" />
+                          Xác nhận thêm vào CLB
+                        </>
+                      )}
+                    </button>
+                  )}
 
                   <p className="text-[10px] text-center text-gray-400 mt-4 px-4 uppercase tracking-widest font-bold">
                     Hệ thống sẽ gửi thông báo đến người dùng sau khi thêm thành

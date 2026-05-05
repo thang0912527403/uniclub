@@ -41,7 +41,10 @@ const InterviewSchedulePage: React.FC = () => {
 
   // ─── Campaign selector ──────────────────────────────────────
   const { isAdmin } = useCurrentUser();
-  const { isClubManager } = useClubRole();
+  const { isClubManager, can } = useClubRole();
+  const canCreateInterview = can("manageschedule");
+  const canAssignInterviewer = can("manageinterview");
+  const canPublishResults = can("manageresults");
   const clubId = Number(Cookies.get("clubId"));
   const { data: clubRoles = [] } = useGetClubRolesByClubIdQuery(clubId, {
     skip: !clubId,
@@ -819,6 +822,8 @@ const InterviewSchedulePage: React.FC = () => {
         onBulkStartInterview={handleBulkStartInterview}
         onBulkComplete={handleBulkComplete}
         onClearSelection={() => setSelectedIds(new Set())}
+        canCreateInterview={canCreateInterview}
+        canAssignInterviewer={canAssignInterviewer}
       />
 
       {/* Detail Drawer */}

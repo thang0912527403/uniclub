@@ -882,14 +882,22 @@ export default function RecruitmentCampaignsModule() {
   const location = useLocation();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const { isAdmin } = useCurrentUser();
-  const { currentClub } = useClubRole();
+  const { currentClub, can } = useClubRole();
   const managerClubId = currentClub?.clubId ?? 0;
   // clubId từ navigation state (khi điều hướng từ trang chi tiết club)
   const stateClubId: number | undefined = (
     location.state as { clubId?: number } | null
   )?.clubId;
   const clubId = stateClubId ?? managerClubId;
-  const canManage = !isAdmin && managerClubId !== 0;
+  // Phân quyền theo policy của hệ thống
+  const canCreateCampaign = can("createcampaign");
+  const canEditCampaign = can("editcampaign");
+  const canDeleteCampaign = can("deletecampaign");
+  // canManage cũ (giữ tương thích) – bao gồm bất kỳ thao tác ghi nào
+  const canManage =
+    !isAdmin &&
+    managerClubId !== 0 &&
+    (canEditCampaign || canDeleteCampaign || canCreateCampaign);
   const { show: notify } = useNotification();
 
   // ── Local state ──
@@ -1297,8 +1305,8 @@ export default function RecruitmentCampaignsModule() {
                   {filteredCampaigns.length} kết quả
                 </span>
 
-                {/* Create button — managers only */}
-                {canManage && (
+                {/* Create button — chỉ user có policy createcampaign */}
+                {canCreateCampaign && (
                   <button
                     onClick={handleOpenCreate}
                     className="cursor-pointer flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-500/30 whitespace-nowrap"
@@ -1319,9 +1327,9 @@ export default function RecruitmentCampaignsModule() {
                     campaign={campaign}
                     onNavigate={handleNavigate}
                     onManageForm={handleManageForm}
-                    onEdit={canManage ? handleOpenEdit : undefined}
-                    onDelete={canManage ? handleOpenDelete : undefined}
-                    onToggle={canManage ? handleToggleStatus : undefined}
+                    onEdit={canEditCampaign ? handleOpenEdit : undefined}
+                    onDelete={canDeleteCampaign ? handleOpenDelete : undefined}
+                    onToggle={canEditCampaign ? handleToggleStatus : undefined}
                   />
                 ))}
               </div>
@@ -1358,9 +1366,13 @@ export default function RecruitmentCampaignsModule() {
                           campaign={campaign}
                           onNavigate={handleNavigate}
                           onManageForm={handleManageForm}
-                          onEdit={canManage ? handleOpenEdit : undefined}
-                          onDelete={canManage ? handleOpenDelete : undefined}
-                          onToggle={canManage ? handleToggleStatus : undefined}
+                          onEdit={canEditCampaign ? handleOpenEdit : undefined}
+                          onDelete={
+                            canDeleteCampaign ? handleOpenDelete : undefined
+                          }
+                          onToggle={
+                            canEditCampaign ? handleToggleStatus : undefined
+                          }
                         />
                       ))}
                     </tbody>

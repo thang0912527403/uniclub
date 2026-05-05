@@ -9,6 +9,7 @@ import {
 } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
 import { useDialogAccessibility } from '~/hooks/useDialogAccessibility';
+import { useClubRole } from '~/hooks/useClubRole';
 import { fundTokens as t } from '~/routes/funds.design-tokens';
 import { FUND_REFUND_LIMITS } from '~/modules/funds/constants/fundRefund';
 import {
@@ -73,6 +74,9 @@ type Props = {
 
 export function ManagerRefundQueue({ clubId, skip }: Props) {
   const { show: showNotification } = useNotification();
+  const { can } = useClubRole();
+  const canApproveRefund = can("editfinance");
+  const canRejectRefund = can("editfinance");
   const [status, setStatus] = useState<FundRefundQueueStatusFilter>('ALL');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(L.managerPageSizeDefault);
@@ -341,7 +345,7 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
                           </>
                         )}
                       </button>
-                      {pending ? (
+                      {pending && canApproveRefund ? (
                         <>
                           <button
                             type="button"
@@ -354,16 +358,18 @@ export function ManagerRefundQueue({ clubId, skip }: Props) {
                           >
                             Hoàn tất
                           </button>
-                          <button
-                            type="button"
-                            className={`${t.btn.danger} !min-h-0 !py-2 !px-3 text-sm`}
-                            onClick={() => {
-                              setRejectTarget(row);
-                              setRejectReason('');
-                            }}
-                          >
-                            Từ chối
-                          </button>
+                          {canRejectRefund && (
+                            <button
+                              type="button"
+                              className={`${t.btn.danger} !min-h-0 !py-2 !px-3 text-sm`}
+                              onClick={() => {
+                                setRejectTarget(row);
+                                setRejectReason('');
+                              }}
+                            >
+                              Từ chối
+                            </button>
+                          )}
                         </>
                       ) : null}
                     </div>

@@ -8,13 +8,17 @@ import { useCreateDepartmentMutation } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
 import { validateDepartmentForm, type DepartmentFormData } from '~/utils/validation/schemas/departmentSchema';
 import { getClubId } from '~/utils/auth';
+import { useClubRole } from '~/hooks/useClubRole';
 
 export default function CreateDepartmentModule() {
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+    const { can } = useClubRole();
     const clubId = getClubId();
     const [createDepartment, { isLoading }] = useCreateDepartmentMutation();
     const { show: showNotification } = useNotification();
+
+    const canCreateDepartment = can('createdepartment');
 
     const [formData, setFormData] = useState<DepartmentFormData>({
         name: '',
@@ -182,14 +186,16 @@ export default function CreateDepartmentModule() {
                                 >
                                     Hủy
                                 </button>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="cursor-pointer px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                    {isLoading && <i className="fas fa-spinner fa-spin"></i>}
-                                    {isLoading ? 'Đang tạo...' : 'Tạo ban'}
-                                </button>
+                                {canCreateDepartment && (
+                                    <button
+                                        type="submit"
+                                        disabled={isLoading}
+                                        className="cursor-pointer px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {isLoading && <i className="fas fa-spinner fa-spin"></i>}
+                                        {isLoading ? 'Đang tạo...' : 'Tạo ban'}
+                                    </button>
+                                )}
                             </div>
                         </form>
                     )}

@@ -339,8 +339,11 @@ export function CreatePostModal({
 /* ═══ Main Module ══════════════════════════════════════════════ */
 export default function ClubPostModule() {
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
-  const { currentClub } = useClubRole();
+  const { currentClub, can } = useClubRole();
   const clubId = currentClub?.clubId ?? getClubId();
+  const canCreatePost = can("createpost");
+  const canEditPost = can("editpost");
+  const canDeletePost = can("deletepost");
   const { data: clubPosts = [], isLoading } = useGetClubPostsByClubIdQuery(
     clubId,
     { skip: !clubId },
@@ -448,12 +451,14 @@ export default function ClubPostModule() {
                 <LayoutGrid size={15} />
               </button>
             </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer shadow-[0_4px_14px_rgba(249,115,22,0.3)] hover:shadow-[0_6px_20px_rgba(249,115,22,0.4)] hover:-translate-y-0.5 active:translate-y-0"
-            >
-              <Plus size={15} /> Tạo bài mới
-            </button>
+            {canCreatePost && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer shadow-[0_4px_14px_rgba(249,115,22,0.3)] hover:shadow-[0_6px_20px_rgba(249,115,22,0.4)] hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <Plus size={15} /> Tạo bài mới
+              </button>
+            )}
           </div>
         </div>
 
@@ -484,12 +489,14 @@ export default function ClubPostModule() {
             <p className="text-sm text-zinc-400 mb-5">
               Hãy đăng bài viết đầu tiên của câu lạc bộ
             </p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors cursor-pointer"
-            >
-              <Plus size={15} /> Tạo ngay
-            </button>
+            {canCreatePost && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors cursor-pointer"
+              >
+                <Plus size={15} /> Tạo ngay
+              </button>
+            )}
           </div>
         ) : viewMode === "grid" ? (
           /* Grid View */
@@ -542,33 +549,41 @@ export default function ClubPostModule() {
                   </div>
                 </div>
                 {/* Actions */}
+                {(canEditPost || canDeletePost) && (
                 <div className="px-4 pb-4 flex items-center gap-2 border-t border-zinc-50 pt-3">
-                  <button
-                    onClick={() => navigate(`/club/post/edit/${post.postId}`)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-zinc-50 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-xs font-semibold text-zinc-600 transition-colors cursor-pointer"
-                  >
-                    <Pencil size={12} /> Sửa
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleToggleStatus(post.postId, post.status || "")
-                    }
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${post.status === "inactive" ? "bg-green-50 text-green-600 hover:bg-green-100" : "bg-zinc-50 text-zinc-500 hover:bg-amber-50 hover:text-amber-600"}`}
-                  >
-                    {post.status === "inactive" ? (
-                      <Eye size={12} />
-                    ) : (
-                      <EyeOff size={12} />
-                    )}
-                    {post.status === "inactive" ? "Hiện" : "Ẩn"}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(post.postId)}
-                    className="w-7 h-7 flex items-center justify-center bg-zinc-50 hover:bg-red-50 hover:text-red-500 rounded-lg text-zinc-400 transition-colors cursor-pointer"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  {canEditPost && (
+                    <button
+                      onClick={() => navigate(`/club/post/edit/${post.postId}`)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-zinc-50 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-xs font-semibold text-zinc-600 transition-colors cursor-pointer"
+                    >
+                      <Pencil size={12} /> Sửa
+                    </button>
+                  )}
+                  {canEditPost && (
+                    <button
+                      onClick={() =>
+                        handleToggleStatus(post.postId, post.status || "")
+                      }
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${post.status === "inactive" ? "bg-green-50 text-green-600 hover:bg-green-100" : "bg-zinc-50 text-zinc-500 hover:bg-amber-50 hover:text-amber-600"}`}
+                    >
+                      {post.status === "inactive" ? (
+                        <Eye size={12} />
+                      ) : (
+                        <EyeOff size={12} />
+                      )}
+                      {post.status === "inactive" ? "Hiện" : "Ẩn"}
+                    </button>
+                  )}
+                  {canDeletePost && (
+                    <button
+                      onClick={() => handleDelete(post.postId)}
+                      className="w-7 h-7 flex items-center justify-center bg-zinc-50 hover:bg-red-50 hover:text-red-500 rounded-lg text-zinc-400 transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
+                )}
               </div>
             ))}
           </div>
@@ -634,33 +649,39 @@ export default function ClubPostModule() {
 
                   {/* Actions */}
                   <div className="shrink-0 flex items-center gap-1 px-3 border-l border-zinc-50">
-                    <button
-                      onClick={() => navigate(`/club/post/edit/${post.postId}`)}
-                      title="Chỉnh sửa"
-                      className="w-9 h-9 flex items-center justify-center rounded-xl text-zinc-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleToggleStatus(post.postId, post.status || "")
-                      }
-                      title={post.status === "inactive" ? "Hiện bài" : "Ẩn bài"}
-                      className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors cursor-pointer ${post.status === "inactive" ? "text-green-500 hover:bg-green-50" : "text-zinc-400 hover:text-amber-500 hover:bg-amber-50"}`}
-                    >
-                      {post.status === "inactive" ? (
-                        <Eye size={15} />
-                      ) : (
-                        <EyeOff size={15} />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(post.postId)}
-                      title="Xóa"
-                      className="w-9 h-9 flex items-center justify-center rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    {canEditPost && (
+                      <button
+                        onClick={() => navigate(`/club/post/edit/${post.postId}`)}
+                        title="Chỉnh sửa"
+                        className="w-9 h-9 flex items-center justify-center rounded-xl text-zinc-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    )}
+                    {canEditPost && (
+                      <button
+                        onClick={() =>
+                          handleToggleStatus(post.postId, post.status || "")
+                        }
+                        title={post.status === "inactive" ? "Hiện bài" : "Ẩn bài"}
+                        className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors cursor-pointer ${post.status === "inactive" ? "text-green-500 hover:bg-green-50" : "text-zinc-400 hover:text-amber-500 hover:bg-amber-50"}`}
+                      >
+                        {post.status === "inactive" ? (
+                          <Eye size={15} />
+                        ) : (
+                          <EyeOff size={15} />
+                        )}
+                      </button>
+                    )}
+                    {canDeletePost && (
+                      <button
+                        onClick={() => handleDelete(post.postId)}
+                        title="Xóa"
+                        className="w-9 h-9 flex items-center justify-center rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
                     <button
                       onClick={() =>
                         navigate(`/club/${clubId}/posts/${post.postId}`)

@@ -24,6 +24,7 @@ import {
   useRemoveMemberFromDepartmentMutation,
 } from "~/cores/api/departmentApi";
 import { getClubId } from "~/utils/auth";
+import { useClubRole } from "~/hooks/useClubRole";
 
 /* ─── Avatar ──────────────────────────────────────────────────────────────── */
 function MemberAvatar({
@@ -727,6 +728,12 @@ export default function ClubMembersModule() {
   const { clubId: clubIdParam } = useParams<{ clubId: string }>();
   const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
   const clubId = Number(clubIdParam) || getClubId();
+  // Phân quyền theo policy hệ thống
+  const { can } = useClubRole();
+  const canAddMember = can("addmember");
+  const canRemoveMember = can("removemember");
+  const canUpdateMemberStatus = can("updatememberstatus");
+  const canTransferClub = can("updateclub");
 
   const { data: club } = useGetClubByIdQuery(clubId, { skip: !clubId });
   const {
@@ -908,64 +915,74 @@ export default function ClubMembersModule() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => setStatusTarget(member)}
-                            className="cursor-pointer"
-                            title="Đổi trạng thái thành viên"
-                          >
+                          {canUpdateMemberStatus ? (
+                            <button
+                              onClick={() => setStatusTarget(member)}
+                              className="cursor-pointer"
+                              title="Đổi trạng thái thành viên"
+                            >
+                              <StatusBadge status={member.status} />
+                            </button>
+                          ) : (
                             <StatusBadge status={member.status} />
-                          </button>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1.5">
                             {/* Thêm vào phòng ban */}
-                            <button
-                              onClick={() =>
-                                setActiveModal({ type: "addDept", member })
-                              }
-                              title="Thêm vào phòng ban"
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all cursor-pointer"
-                            >
-                              <i className="fas fa-folder-plus text-[11px]" />
-                              Thêm ban
-                            </button>
+                            {canAddMember && (
+                              <button
+                                onClick={() =>
+                                  setActiveModal({ type: "addDept", member })
+                                }
+                                title="Thêm vào phòng ban"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all cursor-pointer"
+                              >
+                                <i className="fas fa-folder-plus text-[11px]" />
+                                Thêm ban
+                              </button>
+                            )}
                             {/* Xóa khỏi phòng ban */}
-                            <button
-                              onClick={() =>
-                                setActiveModal({ type: "kickDept", member })
-                              }
-                              title="Xóa khỏi phòng ban"
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all cursor-pointer"
-                            >
-                              <i className="fas fa-folder-minus text-[11px]" />
-                              Xóa ban
-                            </button>
+                            {canRemoveMember && (
+                              <button
+                                onClick={() =>
+                                  setActiveModal({ type: "kickDept", member })
+                                }
+                                title="Xóa khỏi phòng ban"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all cursor-pointer"
+                              >
+                                <i className="fas fa-folder-minus text-[11px]" />
+                                Xóa ban
+                              </button>
+                            )}
                             {/* Xóa khỏi CLB — ẩn nếu là Club Manager */}
-                            {!member.roles?.some((r) => r.level === 0) && (
-                              <button
-                                onClick={() =>
-                                  setActiveModal({ type: "kickClub", member })
-                                }
-                                title="Xóa khỏi câu lạc bộ"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-all cursor-pointer"
-                              >
-                                <i className="fas fa-user-slash text-[11px]" />
-                                Xóa CLB
-                              </button>
-                            )}
+                            {canRemoveMember &&
+                              !member.roles?.some((r) => r.level === 0) && (
+                                <button
+                                  onClick={() =>
+                                    setActiveModal({ type: "kickClub", member })
+                                  }
+                                  title="Xóa khỏi câu lạc bộ"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-all cursor-pointer"
+                                >
+                                  <i className="fas fa-user-slash text-[11px]" />
+                                  Xóa CLB
+                                </button>
+                              )}
                             {/* Chuyển giao — ẩn nếu thành viên đã là Club Manager */}
-                            {!member.roles?.some((r) => r.level === 0) && (
-                              <button
-                                onClick={() =>
-                                  setActiveModal({ type: "transfer", member })
-                                }
-                                title="Chuyển giao câu lạc bộ cho thành viên này"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all cursor-pointer"
-                              >
-                                <i className="fas fa-exchange-alt text-[11px]" />
-                                Chuyển giao
-                              </button>
-                            )}
+                            {canTransferClub &&
+                              !member.roles?.some((r) => r.level === 0) && (
+                                <button
+                                  onClick={() =>
+                                    setActiveModal({ type: "transfer", member })
+                                  }
+                                  title="Chuyển giao câu lạc bộ cho thành viên này"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all cursor-pointer"
+                                >
+                                  <i className="fas fa-exchange-alt text-[11px]" />
+                                  Chuyển giao
+                                </button>
+                              )}
                           </div>
                         </td>
                       </tr>

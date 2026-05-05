@@ -8,6 +8,7 @@ import { useGetClubByIdQuery, useUpdateClubMutation } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
 import { validateClubForm, type ClubFormData } from '~/utils/validation';
 import { getClubId } from '~/utils/auth';
+import { useClubRole } from '~/hooks/useClubRole';
 
 
 export default function ClubEditModule() {
@@ -15,10 +16,13 @@ export default function ClubEditModule() {
     const clubId = Number(paramId) || getClubId();
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
+    const { can } = useClubRole();
 
     const { data: club, isLoading: isLoadingClub, error: loadError } = useGetClubByIdQuery(clubId);
     const [updateClub, { isLoading: isUpdating }] = useUpdateClubMutation();
     const { show: showNotification } = useNotification();
+
+    const canUpdateClub = can('updateclub');
 
     const [formData, setFormData] = useState<ClubFormData>({
         clubName: '',
@@ -366,23 +370,25 @@ export default function ClubEditModule() {
                                 >
                                     Hủy
                                 </button>
-                                <button
-                                    type="submit"
-                                    disabled={isUpdating}
-                                    className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                    {isUpdating ? (
-                                        <>
-                                            <i className="fas fa-spinner fa-spin"></i>
-                                            Đang lưu...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="fas fa-save"></i>
-                                            Lưu Thay Đổi
-                                        </>
-                                    )}
-                                </button>
+                                {canUpdateClub && (
+                                    <button
+                                        type="submit"
+                                        disabled={isUpdating}
+                                        className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {isUpdating ? (
+                                            <>
+                                                <i className="fas fa-spinner fa-spin"></i>
+                                                Đang lưu...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fas fa-save"></i>
+                                                Lưu Thay Đổi
+                                            </>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         </form>
                     </div>
