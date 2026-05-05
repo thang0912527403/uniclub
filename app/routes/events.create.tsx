@@ -435,7 +435,7 @@ export default function CreateEventPage() {
                             className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'info'
                                 ? 'bg-blue-500 text-white shadow-md'
                                 : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
-                            }`}
+                                }`}
                         >
                             <i className="fas fa-edit mr-2" />Thông tin sự kiện
                         </button>
@@ -444,7 +444,7 @@ export default function CreateEventPage() {
                             className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'time'
                                 ? 'bg-blue-500 text-white shadow-md'
                                 : `${isDark ? 'bg-[#242838] text-gray-400 hover:bg-[#2c3e50]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
-                            }`}
+                                }`}
                         >
                             <i className="fas fa-calendar-alt mr-2" />Thời gian sự kiện
                         </button>
