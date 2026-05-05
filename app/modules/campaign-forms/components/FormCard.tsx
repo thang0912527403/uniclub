@@ -81,29 +81,6 @@ export const FormCard: React.FC<FormCardProps> = ({
         className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700"
         onClick={(e) => e.stopPropagation()}
       >
-        <Link
-          to={`/application-form/${form.formId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-all"
-        >
-          <i className="fa-solid fa-pen-to-square text-[10px]" />
-          Ứng tuyển
-        </Link>
-        <button
-          onClick={handleCopy}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-            copied
-              ? "bg-green-100 text-green-700"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-          }`}
-          title="Sao chép link ứng tuyển"
-        >
-          <i
-            className={`fa-solid ${copied ? "fa-check" : "fa-link"} text-[10px]`}
-          />
-          {copied ? "Đã chép!" : "Sao chép link"}
-        </button>
       </div>
 
       {isSelected && (

@@ -865,6 +865,7 @@ const InterviewSchedulePage: React.FC = () => {
           setSelectedIds(new Set());
         }}
         interviews={bulkAssignInterviews}
+        allInterviews={allInterviews}
         clubId={clubId}
         campaignId={activeCampaignId || 0}
       />

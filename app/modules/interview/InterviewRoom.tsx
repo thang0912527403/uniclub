@@ -11,6 +11,7 @@ import {
   useJoinRoomMutation,
   useSubmitFeedbackMutation,
   useGetInterviewsQuery,
+  useConfirmAssignmentMutation,
 } from "~/cores/api";
 import type {
   InterviewScheduleResponse,
@@ -89,8 +90,10 @@ const InterviewRoom: React.FC = () => {
   const [hasJoined, setHasJoined] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [activeRoomCode, setActiveRoomCode] = useState(urlRoomCode || "");
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   const [joinRoomApi, { isLoading: isJoining }] = useJoinRoomMutation();
+  const [confirmAssignment, { isLoading: isConfirming }] = useConfirmAssignmentMutation();
 
   const { data: interviews = [], isLoading: isValidating } =
     useGetInterviewsQuery(undefined, { skip: !urlRoomCode });
@@ -141,6 +144,58 @@ const InterviewRoom: React.FC = () => {
             backPath="/meeting-room"
             backLabel="Quay lại sảnh"
           />
+        );
+      }
+
+      const currentAssignment = matchedInterview.assignments?.find(
+        (a) => a.interviewerUserId === currentUserId,
+      );
+      if (currentAssignment && !currentAssignment.hasConfirmed) {
+        const handleConfirm = async () => {
+          setConfirmError(null);
+          try {
+            await confirmAssignment({
+              scheduleId: matchedInterview.id,
+              assignmentId: currentAssignment.id,
+            }).unwrap();
+          } catch {
+            setConfirmError("Xác nhận thất bại. Vui lòng thử lại.");
+          }
+        };
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-900">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                <i className="fa-solid fa-calendar-check text-orange-500 text-2xl" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+                Xác nhận tham gia phỏng vấn
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
+                Bạn được phân công làm phỏng vấn viên cho buổi này.
+              </p>
+              <p className="text-gray-400 dark:text-gray-500 text-xs mb-6">
+                Vui lòng xác nhận trước khi vào phòng.
+              </p>
+              {confirmError && (
+                <p className="text-red-500 text-sm mb-4">{confirmError}</p>
+              )}
+              <button
+                onClick={handleConfirm}
+                disabled={isConfirming}
+                className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all"
+              >
+                {isConfirming ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <i className="fa-solid fa-spinner fa-spin" />
+                    Đang xác nhận...
+                  </span>
+                ) : (
+                  "Xác nhận tham gia"
+                )}
+              </button>
+            </div>
+          </div>
         );
       }
     }

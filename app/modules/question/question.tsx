@@ -11,7 +11,7 @@ import {
   useGetApplicationsByUserQuery,
   useGetFormsByCampaignQuery,
 } from "../../cores/api/applicationApi";
-import { useGetRecruitmentCampaignQuery } from "../../cores/api";
+import { useGetRecruitmentCampaignQuery, useGetClubMembersQuery } from "../../cores/api";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
 import { getAccessToken } from "~/utils/auth";
 import type { ApplicationAnswerItemDto } from "../../cores/api";
@@ -72,6 +72,13 @@ const QuestionPage: React.FC = () => {
       { skip: !currentUserId },
     );
   const existingApp = userApps.find((a) => a.formId === actualFormId) ?? null;
+
+  // Check if user is already a member of this club
+  const { data: clubMembers = [], isLoading: checkingMembership } =
+    useGetClubMembersQuery(clubId, { skip: !clubId || !currentUserId });
+  const isAlreadyMember = clubMembers.some(
+    (m) => m.userId === currentUserId && m.status === "ACTIVE",
+  );
 
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<number, string>>({});
@@ -243,7 +250,7 @@ const QuestionPage: React.FC = () => {
   }
 
   // ── Guard: loading questions ────────────────────────────────────────────
-  if (questionsLoading || checkingApp) {
+  if (questionsLoading || checkingApp || checkingMembership) {
     return (
       <div className="min-h-screen bg-[#FDFCFB] flex items-center justify-center">
         <div className="text-center text-gray-500">
@@ -327,6 +334,34 @@ const QuestionPage: React.FC = () => {
             >
               <i className="fa-solid fa-list mr-2" />
               Xem đơn của tôi
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (isAlreadyMember) {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB]">
+        <Navbar />
+        <main className="max-w-md mx-auto px-4 py-20 text-center">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-10">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-100 flex items-center justify-center">
+              <i className="fa-solid fa-user-check text-blue-500 text-3xl" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
+              Bạn đã là thành viên
+            </h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Bạn đã là thành viên của câu lạc bộ này nên không thể ứng tuyển.
+            </p>
+            <Link
+              to="/recruitment-campaigns"
+              className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all"
+            >
+              <i className="fa-solid fa-arrow-left mr-2" />
+              Xem chiến dịch khác
             </Link>
           </div>
         </main>
