@@ -11,7 +11,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { encodeId } from '~/utils/hashId';
-import { useCreateEventMutation, useCreateSessionMutation } from '~/cores/api';
+import { useCreateEventMutation, useCreateSessionMutation, useOpenRegistrationMutation } from '~/cores/api';
 import { ApiStatusButton } from '~/components/ApiStatusButton';
 import { Sidebar } from '~/components/Sidebar';
 import { HeaderBar } from '~/components/HeaderBar';
@@ -51,6 +51,7 @@ interface DraftSession {
     endTime: string;
     location: string;
     description: string;
+    sessionType: 'main' | 'setup' | 'break';
 }
 
 let _nextSessionId = -1;
@@ -149,6 +150,7 @@ function deriveCalendarState(form: FormState): CalendarState {
                 title: s.sessionName || 'Phiên mới',
                 start: toIso(s.startTime),
                 end: toIso(s.endTime),
+                sessionType: s.sessionType,
             })),
     };
 }
@@ -165,6 +167,8 @@ export default function CreateEventPage() {
 
     // ── All hooks must be called unconditionally before any early return ──
     const [createEvent, { isLoading: isCreating }] = useCreateEventMutation();
+    const [createSession] = useCreateSessionMutation();
+    const [openRegistration] = useOpenRegistrationMutation();
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'info' | 'time'>('info');
 
@@ -233,6 +237,7 @@ export default function CreateEventPage() {
                 endTime: '',
                 location: '',
                 description: '',
+                sessionType: 'main' as const,
             }],
         }));
     };
@@ -278,6 +283,7 @@ export default function CreateEventPage() {
                     endTime: data.end,
                     location: data.location,
                     description: data.description,
+                    sessionType: data.sessionType,
                 }],
             }));
         } else if (sessionModal.mode === 'edit' && sessionModal.sessionId != null) {
@@ -291,6 +297,7 @@ export default function CreateEventPage() {
                     endTime: data.end,
                     location: data.location,
                     description: data.description,
+                    sessionType: data.sessionType,
                 } : s),
             }));
         }
@@ -303,18 +310,59 @@ export default function CreateEventPage() {
         setSessionModal(null);
     }, [sessionModal]);
 
-    // ── Submit — 1 lần duy nhất ──
+    // ── Submit — tạo event + sessions + registration ──
     const handleSubmit = async (submitData: any) => {
         try {
             setError(null);
-            // Merge submitData từ EventForm với form state
+            // 1️⃣ Tạo event chính
             const merged = {
                 ...submitData,
                 startDate: toIso(form.startDate),
                 endDate: toIso(form.endDate),
             };
             const result = await createEvent(merged).unwrap();
-            navigate(`/events/${encodeId(result.eventId)}`);
+            const newEventId = result.eventId;
+            const eventClubId = result.clubId ?? clubId ?? 0;
+
+            // 2️⃣ Mở đăng ký (nếu có)
+            if (form.regStart && form.regEnd) {
+                try {
+                    await openRegistration({
+                        clubId: eventClubId,
+                        eventId: newEventId,
+                        registrationStartDate: toIso(form.regStart),
+                        registrationEndDate: toIso(form.regEnd),
+                        ...(form.maxAttendees ? { maxAttendees: Number(form.maxAttendees) } : {}),
+                    }).unwrap();
+                } catch (e) { console.warn('[Create] openRegistration:', e); }
+            }
+
+            // 3️⃣ Tạo sessions (nếu có)
+            const validSessions = form.sessions.filter(
+                s => s.sessionName && s.startTime && s.endTime
+            );
+            if (validSessions.length) {
+                const results = await Promise.allSettled(
+                    validSessions.map(s => createSession({
+                        clubId: eventClubId,
+                        eventId: newEventId,
+                        sessionName: s.sessionName,
+                        startTime: toIso(s.startTime),
+                        endTime: toIso(s.endTime),
+                        location: s.location || undefined,
+                        description: s.description || undefined,
+                        sessionType: s.sessionType || undefined,
+                    }).unwrap())
+                );
+                const failed = results
+                    .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+                    .map(r => r.reason?.data?.error || r.reason?.message || 'Lỗi');
+                if (failed.length) {
+                    console.warn(`[Create] ${failed.length} sessions failed:`, failed);
+                }
+            }
+
+            navigate(`/events/${encodeId(newEventId)}`);
         } catch (err: any) {
             setError(err?.data?.error || 'Không thể tạo sự kiện. Vui lòng thử lại.');
         }
@@ -507,7 +555,9 @@ export default function CreateEventPage() {
                         description: sessionModal.mode === 'edit'
                             ? form.sessions.find(s => s.id === sessionModal.sessionId)?.description ?? ''
                             : '',
-                        sessionType: 'main',
+                        sessionType: sessionModal.mode === 'edit'
+                            ? (form.sessions.find(s => s.id === sessionModal.sessionId)?.sessionType ?? 'main')
+                            : 'main',
                     }}
                     eventBounds={
                         form.startDate && form.endDate
