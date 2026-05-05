@@ -248,7 +248,7 @@ function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEd
                 {/* Bottom Stats & Actions */}
                 <div className="flex items-center justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-auto">
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
+                        {/* <div className="flex items-center gap-1.5">
                             <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
                                 <i className="fas fa-users text-blue-500 text-[10px]"></i>
                             </div>
@@ -266,7 +266,7 @@ function DepartmentCard({ dept, onEdit, onDelete }: { dept: UserDepartment; onEd
                                 <span className="text-xs font-semibold text-gray-900 dark:text-white">{dept.roleCount ?? dept.roles?.length ?? 0}</span>
                                 <span className="text-[10px] text-gray-500 dark:text-gray-400">Vai trò</span>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
 
                     <div className="flex gap-2">
@@ -298,28 +298,29 @@ export default function AllDepartmentsModule() {
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
     const clubId = getClubId();
     const loggedIn = isLoggedIn();
-    const { isClubManager } = useClubRole();
+    const { isClubManager, isLoading: roleLoading } = useClubRole();
+
+    const skipAll = roleLoading || !loggedIn || !clubId || clubId <= 0;
 
     const { data: allDeptData, isLoading: allLoading, error: allError } = useGetDepartmentsQuery(
         clubId,
-        { skip: !isClubManager || !loggedIn || !clubId || clubId <= 0 }
+        { skip: skipAll || !isClubManager }
     );
     const { data: userDeptData, isLoading: userLoading, error: userError } = useGetUserDepartmentsQuery(
         { clubId },
-        { skip: isClubManager || !loggedIn || !clubId || clubId <= 0 }
+        { skip: skipAll || isClubManager }
     );
 
     const departments = isClubManager ? allDeptData : userDeptData;
-    const isLoading = isClubManager ? allLoading : userLoading;
+    const isLoading = roleLoading || (isClubManager ? allLoading : userLoading);
     const error = isClubManager ? allError : userError;
-    console.log('Fetched departments:', departments);
     const [search, setSearch] = useState('');
     const [editTarget, setEditTarget] = useState<UserDepartment | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<UserDepartment | null>(null);
 
     const allDepartments = departments ?? [];
     const filteredDepartments = allDepartments.filter((d) =>
-        d.departmentName.toLowerCase().includes(search.toLowerCase()) ||
+        (d.departmentName ?? '').toLowerCase().includes(search.toLowerCase()) ||
         (d.description ?? '').toLowerCase().includes(search.toLowerCase())
     );
 
