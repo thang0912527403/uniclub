@@ -1,0 +1,95 @@
+{
+  "sidebar": {
+    "dashboard": "Tổng quan",
+    "system": {
+      "title": "Hệ thống",
+      "manageClubs": "Quản lý Câu lạc bộ",
+      "manageUsers": "Quản lý Người dùng",
+      "creationRequests": "Yêu cầu tạo CLB",
+      "recordOfChange": "Nhật ký thay đổi"
+    },
+    "manageClub": {
+      "title": "Quản lý CLB",
+      "allClubs": "Tất cả CLB",
+      "clubStructure": "Sơ đồ tổ chức",
+      "clubRoles": "Vai trò CLB",
+      "yourClubInfo": "Thông tin CLB",
+      "manageClubName": "Quản lý Tên CLB",
+      "recruitmentCampaigns": "Chiến dịch Tuyển sinh",
+      "clubMembers": "Thành viên CLB",
+      "clubActivities": "Hoạt động CLB",
+      "clubRequests": "Yêu cầu tạo CLB"
+    },
+    "manageDepartment": {
+      "title": "Quản lý Bộ phận",
+      "allDepartments": "Tất cả Bộ phận",
+      "createDepartment": "Tạo Bộ phận",
+      "departmentRoles": "Vai trò Bộ phận",
+      "departmentSettings": "Cài đặt Bộ phận"
+    },
+    "manageRecruitment": {
+      "title": "Quản lý Tuyển sinh",
+      "allCampaigns": "Tất cả Chiến dịch"
+    },
+    "manageMembers": {
+      "title": "Quản lý Thành viên",
+      "allMembers": "Tất cả Thành viên",
+      "addMember": "Thêm Thành viên",
+      "memberRoles": "Vai trò Thành viên",
+      "memberActivity": "Hoạt động Thành viên",
+      "participationHistory": "Lịch sử tham gia"
+    },
+    "managePosts": {
+      "title": "Quản lý Bài viết",
+      "allPosts": "Tất cả Bài viết"
+    },
+    "manageEvents": {
+      "title": "Quản lý Sự kiện",
+      "allEvents": "Tất cả Sự kiện",
+      "createEvent": "Tạo Sự kiện",
+      "eventCalendar": "Lịch Sự kiện",
+      "eventReports": "Báo cáo Sự kiện"
+    },
+    "manageFunds": {
+      "title": "Quản lý Quỹ",
+      "budgetOverview": "Tổng quan Ngân sách",
+      "myFunds": "Quỹ của tôi",
+      "transactions": "Giao dịch",
+      "paymentSettings": "Thiết lập thanh toán",
+      "expenseReports": "Báo cáo Chi tiêu"
+    },
+    "manageInterview": {
+      "title": "Quản lý Phỏng vấn",
+      "allInterviews": "Lịch Phỏng vấn",
+      "comparison": "So sánh & Công bố"
+    },
+    "manageNotifications": {
+      "title": "Quản lý Thông báo",
+      "sendNotification": "Gửi Thông báo"
+    }
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "theme": {
+      "label": "Giao diện",
+      "dark": "Chế độ tối",
+      "light": "Chế độ sáng"
+    },
+    "language": {
+      "label": "Ngôn ngữ",
+      "vi": "Tiếng Việt",
+      "en": "Tiếng Anh"
+    },
+    "notifications": {
+      "label": "Thông báo",
+      "on": "Đang bật",
+      "off": "Đang tắt"
+    },
+    "sound": {
+      "label": "Âm thanh",
+      "on": "Đang bật",
+      "off": "Đang tắt"
+    },
+    "footer": "Một số tính năng đang phát triển"
+  }
+}

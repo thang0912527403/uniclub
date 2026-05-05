@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useAuth } from '~/components/AuthProvider';
+import { getUserId } from '~/utils/auth';
+import { useCurrentUser } from '~/hooks/useCurrentUser';
 
 interface RoomAccessGateProps {
   roomCode?: string;
@@ -20,7 +21,7 @@ const RoomAccessGate: React.FC<RoomAccessGateProps> = ({
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState('Candidate');
 
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useCurrentUser();
 
   // Pre-fill display name from auth context
   React.useEffect(() => {
@@ -31,7 +32,7 @@ const RoomAccessGate: React.FC<RoomAccessGateProps> = ({
     e.preventDefault();
     if (!roomCode.trim() || !displayName.trim()) return;
 
-    const userId = authUser?.userId ?? '';
+    const userId = getUserId();
     onJoinRoom(roomCode.trim(), userId, displayName.trim(), role);
   };
 

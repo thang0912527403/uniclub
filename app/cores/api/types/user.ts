@@ -11,13 +11,8 @@ export interface User {
   major?: string | null;
   joinDate?: string | null;
   status?: string | null;
+  role?: string | null;
   createdAt?: string | null;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
 }
 
 /** Map từ CreateUserDto (backend) */

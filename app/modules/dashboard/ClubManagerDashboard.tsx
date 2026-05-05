@@ -1,352 +1,506 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router';
-import { Sidebar } from '~/components/Sidebar';
-import { HeaderBar } from '~/components/HeaderBar';
-import { SettingButton } from '~/components/SettingButton';
-import { useSidebarToggle } from '~/hooks/useSidebarToggle';
-import { useAuth } from '~/components/AuthProvider';
-import { useGetApplicationsByClubQuery } from '~/cores/api/applicationApi';
-import { useGetRecruitmentCampaignsByClubIdQuery } from '~/cores/api/recruitmentCampaignApi';
-import { useGetInterviewsQuery } from '~/cores/api/interviewApi';
-import { useGetClubByIdQuery } from '~/cores/api/clubApi';
+import { useMemo, useState } from "react";
+import Cookies from "js-cookie";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Loading } from "~/components/Loading";
+import { Error } from "~/components/Error";
+import {
+  useGetClubReportSummaryQuery,
+  useGetClubReportAnalyticsQuery,
+} from "~/cores/api";
 
-// ─── Animated Counter ──────────────────────────────────────────────────────
-function AnimCounter({ to }: { to: number }) {
-  const [v, setV] = useState(0);
-  useEffect(() => {
-    let n = 0;
-    const step = Math.max(1, Math.ceil(to / 55));
-    const t = setInterval(() => { n = Math.min(n + step, to); setV(n); if (n >= to) clearInterval(t); }, 16);
-    return () => clearInterval(t);
-  }, [to]);
-  return <>{v.toLocaleString()}</>;
-}
+const CHART_COLORS = [
+  "#3B82F6",
+  "#22C55E",
+  "#A855F7",
+  "#F97316",
+  "#EAB308",
+  "#06B6D4",
+  "#EF4444",
+];
 
-// ─── Stat Card ─────────────────────────────────────────────────────────────
-function StatCard({ title, value, icon, gradient, sub, delay, loading }:
-  { title: string; value: number; icon: string; gradient: string; sub: string; delay: number; loading?: boolean }) {
-  const [show, setShow] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setShow(true), delay); return () => clearTimeout(t); }, [delay]);
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden hover:shadow-xl hover:-translate-y-1 group transition-all duration-500 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-      <div className="p-5 flex items-start justify-between">
-        <div>
-          <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">{title}</p>
-          {loading ? (
-            <div className="h-9 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-          ) : (
-            <h3 className="text-3xl font-black text-gray-900 dark:text-white"><AnimCounter to={value} /></h3>
-          )}
-          <p className="text-xs text-gray-400 mt-2">{sub}</p>
-        </div>
-        <div className={`w-14 h-14 rounded-2xl ${gradient} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-          <i className={`fas ${icon} text-white text-xl`} />
-        </div>
-      </div>
-      <div className={`h-1 ${gradient}`} />
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl p-3 shadow-xl text-sm">
+      {label && (
+        <p className="font-semibold text-gray-700 dark:text-gray-200 mb-1">
+          {label}
+        </p>
+      )}
+      {payload.map((p: any, i: number) => (
+        <p key={i} className="text-blue-500 dark:text-blue-400">
+          {p.name}: <span className="font-bold">{p.value}</span>
+        </p>
+      ))}
     </div>
   );
 }
 
-// ─── Status Badge ──────────────────────────────────────────────────────────
-function Badge({ status }: { status: string }) {
-  const m: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-    Pending:   { bg: 'bg-amber-100 dark:bg-amber-900/30',     text: 'text-amber-700 dark:text-amber-400',     dot: 'bg-amber-400',   label: 'Chờ duyệt' },
-    Interview: { bg: 'bg-sky-100 dark:bg-sky-900/30',         text: 'text-sky-700 dark:text-sky-400',         dot: 'bg-sky-500',     label: 'Phỏng vấn' },
-    Accepted:  { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', label: 'Chấp nhận' },
-    Rejected:  { bg: 'bg-red-100 dark:bg-red-900/30',         text: 'text-red-700 dark:text-red-400',         dot: 'bg-red-500',     label: 'Từ chối' },
-  };
-  const c = m[status] ?? m.Pending;
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${c.bg} ${c.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
-      {c.label}
-    </span>
-  );
-}
-
-// ─── Interview Countdown ────────────────────────────────────────────────────
-function Countdown({ dateStr }: { dateStr: string }) {
-  const [label, setLabel] = useState('');
-  useEffect(() => {
-    const upd = () => {
-      const ms = new Date(dateStr).getTime() - Date.now();
-      if (ms <= 0) { setLabel('Đã qua'); return; }
-      const h = Math.floor(ms / 3600000), m2 = Math.floor((ms % 3600000) / 60000);
-      setLabel(h > 48 ? `${Math.floor(h / 24)} ngày nữa` : h > 0 ? `${h}h ${m2}m nữa` : `${m2}m nữa`);
-    };
-    upd(); const t = setInterval(upd, 60000); return () => clearInterval(t);
-  }, [dateStr]);
-  return <span className="font-bold text-sky-600 dark:text-sky-400">{label}</span>;
-}
-
-// ─── Quick Action ──────────────────────────────────────────────────────────
-function QA({ icon, label, to, g }: { icon: string; label: string; to: string; g: string }) {
-  return (
-    <Link to={to} className={`flex flex-col items-center gap-2 p-4 rounded-2xl ${g} hover:scale-105 active:scale-95 transition-all shadow group`}>
-      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
-        <i className={`fas ${icon} text-white text-lg`} />
-      </div>
-      <span className="text-[11px] font-bold text-white text-center leading-tight">{label}</span>
-    </Link>
-  );
-}
-
-// ─── Main ───────────────────────────────────────────────────────────────────
 export default function ClubManagerDashboard() {
-  const { isOpen, toggle } = useSidebarToggle();
-  const { user, clubManagerMembership } = useAuth();
-  const clubId = clubManagerMembership?.clubId;
+  const now = useMemo(() => new Date(), []);
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
 
-  // ── Fetch data scoped to this club only ────────────────────────────────
-  const { data: club } = useGetClubByIdQuery(clubId ?? 0, { skip: !clubId });
+  const clubId = Number(Cookies.get("clubId")) || 0;
+  const hasClubId = clubId > 0;
 
-  const { data: allApplications = [], isLoading: appsLoading } =
-    useGetApplicationsByClubQuery({ clubId: clubId ?? 0 }, { skip: !clubId });
+  const {
+    data: apiData,
+    isLoading,
+    isFetching,
+    error,
+  } = useGetClubReportSummaryQuery(
+    { clubId, year, month },
+    { skip: !hasClubId },
+  );
+  const {
+    data: analyticsApiData,
+    isLoading: isAnalyticsLoading,
+    isFetching: isAnalyticsFetching,
+    error: analyticsError,
+  } = useGetClubReportAnalyticsQuery({ clubId, year }, { skip: !hasClubId });
 
-  const { data: myCampaigns = [], isLoading: campaignsLoading } =
-    useGetRecruitmentCampaignsByClubIdQuery(clubId ?? 0, { skip: !clubId });
+  const data = apiData?.success === true ? apiData.data.clubReport : null;
+  const analyticsData =
+    analyticsApiData?.success === true ? analyticsApiData.data : null;
+  const showLoading =
+    isLoading || isFetching || isAnalyticsLoading || isAnalyticsFetching;
 
-  const { data: allInterviews = [], isLoading: interviewsLoading } =
-    useGetInterviewsQuery();
-
-  // ── Filter to this club only ───────────────────────────────────────────
-  const myCampaignIds = useMemo(() => new Set(myCampaigns.map(c => c.campaignId)), [myCampaigns]);
-
-  // Filter interviews via campaignId belonging to this club
-  const myInterviews = useMemo(
-    () => allInterviews.filter(iv => myCampaignIds.has(iv.campaignId)),
-    [allInterviews, myCampaignIds]
+  const yearOptions = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => now.getFullYear() - 5 + i),
+    [now],
+  );
+  const monthOptions = useMemo(
+    () => Array.from({ length: 12 }, (_, i) => i + 1),
+    [],
   );
 
-  // Upcoming interviews (future, sorted asc)
-  const upcomingInterviews = useMemo(
-    () => myInterviews
-      .filter(iv => new Date(iv.scheduledAt) > new Date())
-      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-      .slice(0, 3),
-    [myInterviews]
-  );
+  const statCards = useMemo(() => {
+    if (!data) return [];
+    const activeRate =
+      data.totalMembers > 0
+        ? ((data.activeMembers / data.totalMembers) * 100).toFixed(0)
+        : "0";
 
-  // Latest applications (newest first by submissionDate)
-  const latestApplications = useMemo(
-    () => [...allApplications]
-      .sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime())
-      .slice(0, 5),
-    [allApplications]
-  );
+    return [
+      {
+        key: "totalMembers",
+        label: "Total Members",
+        value: data.totalMembers,
+        sub: `${data.totalDepartments} departments`,
+        icon: "fa-users",
+        gradient: "from-blue-500 to-blue-600",
+        iconBg: "bg-blue-50 dark:bg-blue-900/30",
+        iconColor: "text-blue-500",
+      },
+      {
+        key: "activeMembers",
+        label: "Active Members",
+        value: data.activeMembers,
+        sub: `${activeRate}% active rate`,
+        icon: "fa-user-check",
+        gradient: "from-emerald-500 to-teal-500",
+        iconBg: "bg-emerald-50 dark:bg-emerald-900/30",
+        iconColor: "text-emerald-500",
+      },
+      {
+        key: "upcomingEvents",
+        label: "Events This Month",
+        value: data.totalEventsInMonth,
+        sub: "Scheduled events",
+        icon: "fa-calendar-alt",
+        gradient: "from-amber-400 to-orange-500",
+        iconBg: "bg-amber-50 dark:bg-amber-900/30",
+        iconColor: "text-amber-500",
+      },
+      {
+        key: "totalEvents",
+        label: "Total Events",
+        value: data.eventReport.totalOrganizedEvents,
+        sub: `${data.eventReport.totalRegisteredButNotCheckedIn} not checked-in`,
+        icon: "fa-calendar-check",
+        gradient: "from-purple-500 to-violet-600",
+        iconBg: "bg-purple-50 dark:bg-purple-900/30",
+        iconColor: "text-purple-500",
+      },
+      {
+        key: "attendanceRate",
+        label: "Attendance Rate",
+        value: `${Number(data.eventReport.overallAttendanceRatePercent).toFixed(1)}%`,
+        sub: "Overall check-in rate",
+        icon: "fa-chart-line",
+        gradient: "from-rose-500 to-pink-600",
+        iconBg: "bg-rose-50 dark:bg-rose-900/30",
+        iconColor: "text-rose-500",
+      },
+    ];
+  }, [data]);
 
-  // Pending app count
-  const pendingCount = allApplications.filter(a => a.status === 'Pending').length;
-  // Active campaigns
-  const activeCampaigns = myCampaigns.filter(c => c.status === 'Active' || c.status === 'Open');
+  const memberGrowthData = useMemo(() => {
+    if (!analyticsData) return [];
+    return analyticsData.membershipGrowth.growthByMonth.map((item) => ({
+      month: `T${item.month}`,
+      "New Members": item.newMembers,
+    }));
+  }, [analyticsData]);
 
-  const dataLoading = appsLoading || campaignsLoading || interviewsLoading;
+  const eventParticipationData = useMemo(() => {
+    if (!data) return [];
+    const notIn = Math.max(0, data.eventReport.totalRegisteredButNotCheckedIn);
+    const checkedIn = Math.max(0, data.activeMembers - notIn);
+    return [
+      { name: "Checked In", value: checkedIn },
+      { name: "Not Checked In", value: notIn },
+    ].filter((d) => d.value > 0);
+  }, [data]);
+
+  const departmentData = useMemo(() => {
+    if (!data) return [];
+    return [...data.memberReport.membersByDepartment]
+      .sort((a, b) => b.memberCount - a.memberCount)
+      .map((item) => ({
+        name: item.departmentName,
+        Members: item.memberCount,
+      }));
+  }, [data]);
+
+  if (!hasClubId) {
+    return <Error title="Missing clubId in cookies." error={{ status: 400 }} />;
+  }
+  if (showLoading) return <Loading message="Loading dashboard..." />;
+  if (error || analyticsError) {
+    return (
+      <Error
+        title="Failed to load dashboard data."
+        error={error ?? analyticsError}
+      />
+    );
+  }
+  if (!data) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
-      <SettingButton />
-      <Sidebar currentPath="/dashboard" isOpen={isOpen} />
-      <HeaderBar
-        title={club?.clubName ? club.clubName : 'Quản lý Câu lạc bộ'}
-        breadcrumb="Trang chủ / Dashboard"
-        isSidebarOpen={isOpen}
-        onToggleSidebar={toggle}
-      />
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Page header + filter */}
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-2">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Activity Overview
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Club performance metrics for the selected period
+          </p>
+        </div>
+        <div className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+              Month
+            </span>
+            <select
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+            >
+              {monthOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-600" />
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+              Year
+            </span>
+            <select
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+            >
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
 
-      <main className={`pt-24 p-6 transition-all duration-300 min-h-screen ${isOpen ? 'ml-64' : 'ml-0'}`}>
-
-        {/* Hero */}
-        <div className="relative rounded-3xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 p-6 mb-8 overflow-hidden shadow-2xl">
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 75% 50%, white 0%, transparent 55%)' }} />
-          <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10" />
-          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sky-100 text-sm font-medium">Xin chào, Club Manager</span>
-                {club && (
-                  <span className="bg-white/20 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                    {club.clubName}
-                  </span>
-                )}
+      {/* Hero banner */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 rounded-2xl shadow-lg p-6 mb-8 text-white">
+        <div className="absolute -right-8 -top-8 w-56 h-56 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-24 bottom-0 w-72 h-44 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <i className="fas fa-chart-bar text-sm" />
               </div>
-              <h1 className="text-white text-2xl font-black">{user?.fullName ?? 'Club Manager'}</h1>
-              <p className="text-sky-100 text-sm mt-1">
-                {pendingCount > 0 ? (
-                  <><strong className="text-white">{pendingCount} đơn</strong> đang chờ xét duyệt · </>
-                ) : 'Không có đơn chờ · '}
-                <strong className="text-white">{upcomingInterviews.length} phỏng vấn</strong> sắp tới
+            </div>
+            <h3 className="text-3xl font-extrabold tracking-tight">
+              {month}/{year} Summary
+            </h3>
+            <p className="text-white/60 text-sm mt-1">
+              Real-time club statistics
+            </p>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            {[
+              { label: "Members", value: data.totalMembers },
+              { label: "Departments", value: data.totalDepartments },
+              { label: "Roles", value: data.totalRoles },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-center min-w-[76px]"
+              >
+                <div className="text-2xl font-bold">{item.value}</div>
+                <div className="text-white/60 text-xs mt-0.5">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
+        {statCards.map((card) => (
+          <div
+            key={card.key}
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          >
+            <div className={`h-1 bg-gradient-to-r ${card.gradient}`} />
+            <div className="p-5">
+              <div
+                className={`w-10 h-10 rounded-xl ${card.iconBg} flex items-center justify-center mb-4`}
+              >
+                <i className={`fas ${card.icon} ${card.iconColor}`} />
+              </div>
+              <div className="text-2xl font-extrabold text-gray-900 dark:text-white">
+                {card.value as string | number}
+              </div>
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1">
+                {card.label}
+              </div>
+              <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                {card.sub}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+        {/* Member Growth – area chart */}
+        <div className="xl:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                Member Growth
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                New members per month –{" "}
+                {analyticsData?.membershipGrowth.year ?? year}
               </p>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <Link to="/applications" className="bg-white/20 hover:bg-white/30 text-white text-sm font-bold px-4 py-2 rounded-xl backdrop-blur-sm transition-all">
-                <i className="fas fa-file-alt mr-1.5" />Duyệt đơn
-              </Link>
-              <Link to="/interview/schedule" className="bg-white text-sky-700 text-sm font-bold px-4 py-2 rounded-xl hover:bg-sky-50 transition-all shadow">
-                <i className="fas fa-calendar-check mr-1.5" />Lịch phỏng vấn
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats — scoped to this club */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <StatCard title="Tổng đơn nộp"  value={allApplications.length} icon="fa-file-alt"      gradient="bg-gradient-to-br from-sky-500 to-blue-700"    sub="CLB này"         delay={0}   loading={appsLoading} />
-          <StatCard title="Chờ xét duyệt" value={pendingCount}           icon="fa-hourglass-half" gradient="bg-gradient-to-br from-amber-500 to-orange-600" sub="Cần xử lý"        delay={80}  loading={appsLoading} />
-          <StatCard title="Chiến dịch"    value={activeCampaigns.length} icon="fa-solid fa-flag"  gradient="bg-gradient-to-br from-indigo-500 to-indigo-700" sub="Đang mở"         delay={160} loading={campaignsLoading} />
-          <StatCard title="Phỏng vấn"     value={upcomingInterviews.length} icon="fa-microphone"  gradient="bg-gradient-to-br from-emerald-500 to-teal-700" sub="Sắp diễn ra"     delay={240} loading={interviewsLoading} />
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-6 mb-6">
-
-          {/* Latest Applications */}
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-gray-900 dark:text-white">Đơn ứng tuyển mới nhất</h3>
-              <Link to="/applications" className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-medium">
-                Xem tất cả <i className="fas fa-arrow-right ml-1" />
-              </Link>
-            </div>
-            {appsLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="h-14 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            ) : latestApplications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                <i className="fas fa-inbox text-4xl mb-3 opacity-30" />
-                <p className="text-sm">Chưa có đơn nào cho CLB này</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {latestApplications.map(app => (
-                  <div key={app.applicationId}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-sky-200 dark:hover:border-sky-700 hover:bg-sky-50/50 dark:hover:bg-sky-900/10 transition-all group cursor-pointer">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow">
-                      <i className="fas fa-user text-sm" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
-                        Đơn #{app.applicationId}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        Form #{app.formId} · {new Date(app.submissionDate).toLocaleDateString('vi-VN')}
-                      </p>
-                    </div>
-                    <Badge status={app.status} />
-                    <i className="fas fa-chevron-right text-gray-300 group-hover:text-sky-500 transition-colors" />
-                  </div>
-                ))}
-              </div>
+            {analyticsData?.membershipGrowth.bestGrowthMonth && (
+              <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-semibold rounded-full whitespace-nowrap">
+                Peak T{analyticsData.membershipGrowth.bestGrowthMonth} ·{" "}
+                {analyticsData.membershipGrowth.bestGrowthCount} new
+              </span>
             )}
           </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-5">Truy cập nhanh</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <QA icon="fa-file-alt"       label="Duyệt đơn"   to="/applications"          g="bg-gradient-to-br from-amber-500 to-orange-600" />
-              <QA icon="fa-calendar-check" label="Phỏng vấn"   to="/interview/schedule"    g="bg-gradient-to-br from-sky-500 to-blue-700" />
-              <QA icon="fa-solid fa-flag"  label="Chiến dịch"  to="/recruitment-campaigns" g="bg-gradient-to-br from-indigo-500 to-indigo-700" />
-              <QA icon="fa-newspaper"      label="Bài đăng"    to="/club/manage-posts"     g="bg-gradient-to-br from-emerald-500 to-teal-700" />
-              <QA icon="fa-calendar"       label="Sự kiện"     to="/events"                g="bg-gradient-to-br from-pink-500 to-rose-700" />
-              <QA icon="fa-users"          label="Thành viên"  to="/members"               g="bg-gradient-to-br from-violet-500 to-purple-700" />
-            </div>
+          <div className="h-60">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={memberGrowthData}
+                margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="areaBlue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#e5e7eb"
+                  strokeOpacity={0.5}
+                />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="New Members"
+                  stroke="#3B82F6"
+                  strokeWidth={2.5}
+                  fill="url(#areaBlue)"
+                  dot={{
+                    r: 3.5,
+                    fill: "#3B82F6",
+                    stroke: "#fff",
+                    strokeWidth: 2,
+                  }}
+                  activeDot={{ r: 5.5 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Upcoming Interviews + Campaign Progress */}
-        <div className="grid lg:grid-cols-2 gap-6">
-
-          {/* Upcoming Interviews (filtered to this club's campaigns) */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-5">
-              <i className="fas fa-calendar-check text-sky-500 mr-2" />Phỏng vấn sắp tới
+        {/* Event Participation – donut */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col">
+          <div className="mb-5">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Event Participation
             </h3>
-            {interviewsLoading ? (
-              <div className="space-y-3">
-                {[1, 2].map(i => <div key={i} className="h-20 bg-gray-100 dark:bg-gray-700 rounded-2xl animate-pulse" />)}
-              </div>
-            ) : upcomingInterviews.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                <i className="fas fa-calendar-xmark text-4xl mb-3 opacity-30" />
-                <p className="text-sm">Không có phỏng vấn sắp tới</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {upcomingInterviews.map(iv => (
-                  <div key={iv.id} className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-sky-50 to-blue-50 dark:from-sky-900/20 dark:to-blue-900/20 border border-sky-100 dark:border-sky-900/40">
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow">
-                      <i className="fas fa-microphone text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{iv.title}</p>
-                      <p className="text-xs text-gray-500 truncate">
-                        Ứng viên: {iv.candidateUserId.slice(0, 8)}…
-                        {iv.description ? ` · ${iv.description}` : ''}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(iv.scheduledAt).toLocaleString('vi-VN', {
-                          weekday: 'short', day: '2-digit', month: '2-digit',
-                          hour: '2-digit', minute: '2-digit',
-                        })}
-                        {' · '}<Countdown dateStr={iv.scheduledAt} />
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="text-xs text-gray-400 mt-0.5">
+              Check-in status this month
+            </p>
           </div>
-
-          {/* Campaigns of this club */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-gray-900 dark:text-white">Chiến dịch của CLB</h3>
-              <Link to="/recruitment-campaigns" className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-medium">
-                Chi tiết
-              </Link>
+          {eventParticipationData.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2">
+              <i className="fas fa-calendar-times text-4xl opacity-30" />
+              <span className="text-sm">No event data</span>
             </div>
-            {campaignsLoading ? (
-              <div className="space-y-4">
-                {[1, 2].map(i => <div key={i} className="h-16 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />)}
+          ) : (
+            <>
+              <div className="h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={eventParticipationData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={48}
+                      outerRadius={72}
+                      paddingAngle={4}
+                      strokeWidth={0}
+                    >
+                      {eventParticipationData.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            ) : myCampaigns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                <i className="fas fa-flag text-4xl mb-3 opacity-30" />
-                <p className="text-sm">Chưa có chiến dịch nào</p>
-                <Link to="/recruitment-campaigns" className="mt-3 text-xs text-sky-600 font-medium hover:underline">
-                  + Tạo chiến dịch mới
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {myCampaigns.slice(0, 4).map(c => {
-                  const isActive = c.status === 'Active' || c.status === 'Open';
-                  const total = allApplications.filter(a => a.formId && myCampaignIds.has(c.campaignId)).length;
+              <div className="mt-auto space-y-2">
+                {eventParticipationData.map((item, i) => {
+                  const total = eventParticipationData.reduce(
+                    (s, d) => s + d.value,
+                    0,
+                  );
+                  const pct =
+                    total > 0 ? ((item.value / total) * 100).toFixed(0) : "0";
                   return (
-                    <div key={c.campaignId} className="flex items-start gap-3 group hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl p-2 -mx-2 transition-colors cursor-pointer">
-                      <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{c.campaignName}</p>
-                        <p className="text-xs text-gray-400">
-                          {total} đơn ·{' '}
-                          <span className={isActive ? 'text-emerald-500 font-medium' : 'text-gray-400'}>
-                            {isActive ? 'Đang mở' : c.status}
-                          </span>
-                          {' · '}HSD: {new Date(c.endDate).toLocaleDateString('vi-VN')}
-                        </p>
+                    <div
+                      key={item.name}
+                      className="flex items-center justify-between text-xs gap-2"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ background: CHART_COLORS[i] }}
+                        />
+                        <span className="text-gray-600 dark:text-gray-400 truncate">
+                          {item.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          {item.value}
+                        </span>
+                        <span className="text-gray-400">({pct}%)</span>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
+      </div>
 
-      </main>
+      {/* Department Distribution – horizontal bar */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Department Distribution
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Members per department
+            </p>
+          </div>
+          <span className="px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs font-semibold rounded-full">
+            {departmentData.length} dept.
+          </span>
+        </div>
+        <div style={{ height: Math.max(180, departmentData.length * 42) }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={departmentData}
+              layout="vertical"
+              margin={{ left: 0, right: 40, top: 4, bottom: 4 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                horizontal={false}
+                stroke="#e5e7eb"
+                strokeOpacity={0.5}
+              />
+              <XAxis
+                type="number"
+                allowDecimals={false}
+                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 12, fill: "#6b7280" }}
+                axisLine={false}
+                tickLine={false}
+                width={130}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="Members" radius={[0, 5, 5, 0]} maxBarSize={22}>
+                {departmentData.map((_, i) => (
+                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 }

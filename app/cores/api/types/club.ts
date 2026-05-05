@@ -1,6 +1,6 @@
 export interface Club {
-  address: string;
   clubId: number;
+  address: string;
   clubName: string;
   coverImageUrl: string;
   createdAt: string;
@@ -23,6 +23,8 @@ export interface Club {
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
+  totalPages: number;
+  totalCount: number;
   message?: string;
 }
 

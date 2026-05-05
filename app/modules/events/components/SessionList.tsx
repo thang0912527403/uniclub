@@ -41,7 +41,13 @@ export function SessionList({ sessions, isDark = false }: SessionListProps) {
 
     return (
         <div className="space-y-4">
-            {sessions.map((session, index) => (
+            {[...sessions]
+                .sort((a, b) => {
+                    const tA = a.startTime ? new Date(a.startTime).getTime() : 0;
+                    const tB = b.startTime ? new Date(b.startTime).getTime() : 0;
+                    return tA - tB;
+                })
+                .map((session, index) => (
                 <div
                     key={session.scheduleId}
                     className={`${cardClass} rounded-lg shadow-md p-4 border-l-4 border-blue-500`}

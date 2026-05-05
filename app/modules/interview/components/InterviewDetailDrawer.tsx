@@ -6,10 +6,33 @@ import {
   useConfirmAssignmentMutation,
   useGetClubMembersQuery,
 } from "~/cores/api";
+import { useGetCriteriaScoresQuery } from "~/cores/api/interviewApi";
 import FeedbackForm from "./FeedbackForm";
-import type { ProposedSlots } from "./CreateInterviewModal";
+import CriteriaFeedbackForm from "./CriteriaFeedbackForm";
+import EvaluationSummary from "./EvaluationSummary";
+import CriteriaAssignment from "./CriteriaAssignment";
+
 import type { ClubRole } from "~/cores/api/types";
 import type { ClubMember } from "~/cores/api/types";
+
+/** Small badge showing assigned criteria count from CriteriaScore API */
+const CriteriaBadge: React.FC<{ scheduleId: number; assignmentId: number }> = ({
+  scheduleId,
+  assignmentId,
+}) => {
+  const { data: scores } = useGetCriteriaScoresQuery({
+    scheduleId,
+    assignmentId,
+  });
+  const count = scores?.length || 0;
+  if (count === 0) return null;
+  return (
+    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
+      <i className="fa-solid fa-clipboard-list text-[8px]" />
+      {count} tiêu chí
+    </span>
+  );
+};
 
 interface InterviewDetailDrawerProps {
   isOpen: boolean;
@@ -18,7 +41,13 @@ interface InterviewDetailDrawerProps {
   currentUserId: string;
   clubId: number;
   clubRoles?: ClubRole[];
+  isClubManager?: boolean;
   onUpdateStatus?: (id: number, status: string) => void;
+  onReschedule?: (
+    id: number,
+    newScheduledAt: string,
+    proposedTimeSlots: { date: string; time: string }[],
+  ) => Promise<void>;
   onAssignInterviewer?: (
     scheduleId: number,
     userId: string,
@@ -81,12 +110,6 @@ const statusActions: Record<
       icon: "fa-solid fa-play",
     },
     {
-      label: "Dời lịch",
-      nextStatus: "Rescheduled",
-      color: "bg-purple-500 hover:bg-purple-600",
-      icon: "fa-solid fa-calendar-days",
-    },
-    {
       label: "Hủy",
       nextStatus: "Cancelled",
       color: "bg-red-500 hover:bg-red-600",
@@ -104,10 +127,11 @@ const statusActions: Record<
 };
 
 // ─── User Display ────────────────────────────────────────────────
-const UserDisplay: React.FC<{ userId: string; showId?: boolean }> = ({
-  userId,
-  showId = false,
-}) => {
+const UserDisplay: React.FC<{
+  userId: string;
+  showId?: boolean;
+  size?: string;
+}> = ({ userId, showId = false, size = "w-6 h-6" }) => {
   const { data: user, isFetching } = useGetUserByIdQuery(userId, {
     skip: !userId,
   });
@@ -116,16 +140,31 @@ const UserDisplay: React.FC<{ userId: string; showId?: boolean }> = ({
       <span className="text-gray-400 text-xs animate-pulse">Đang tải...</span>
     );
   return (
-    <span>
-      {user?.fullName || (
-        <span className="font-mono text-xs">{userId.slice(0, 12)}...</span>
-      )}
-      {showId && user?.fullName && (
-        <span className="text-gray-400 text-xs ml-1">
-          ({userId.slice(0, 8)})
-        </span>
-      )}
-    </span>
+    <div className="flex items-center gap-2">
+      <div
+        className={`${size} rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-[10px] font-bold shadow-sm flex-shrink-0 overflow-hidden`}
+      >
+        {user?.avatar ? (
+          <img
+            src={user.avatar}
+            className="w-full h-full object-cover"
+            alt=""
+          />
+        ) : (
+          (user?.fullName?.[0] || userId.slice(0, 2)).toUpperCase()
+        )}
+      </div>
+      <span className="truncate">
+        {user?.fullName || (
+          <span className="font-mono text-xs">{userId.slice(0, 12)}...</span>
+        )}
+        {showId && user?.fullName && (
+          <span className="text-gray-400 text-[10px] ml-1">
+            ({userId.slice(0, 8)})
+          </span>
+        )}
+      </span>
+    </div>
   );
 };
 
@@ -136,19 +175,31 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
   currentUserId,
   clubId,
   clubRoles,
+  isClubManager = false,
   onUpdateStatus,
+  onReschedule,
   onAssignInterviewer,
   onRemoveAssignment,
   onNavigateToRoom,
 }) => {
+  // Reschedule modal state
+  const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+  const [rescheduleSlots, setRescheduleSlots] = useState<
+    { id: string; date: string; time: string }[]
+  >([{ id: Math.random().toString(36).slice(2, 9), date: "", time: "" }]);
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
   const [activeTab, setActiveTab] = useState<
-    "info" | "assignments" | "feedback"
+    "info" | "assignments" | "feedback" | "evaluation"
   >("info");
   const [newUserId, setNewUserId] = useState("");
   const [newRole, setNewRole] = useState(
     clubRoles?.[0]?.roleName || "Interviewer",
   );
   const [feedbackForAssignment, setFeedbackForAssignment] = useState<
+    number | null
+  >(null);
+  const [criteriaForAssignment, setCriteriaForAssignment] = useState<
     number | null
   >(null);
   const [memberSearch, setMemberSearch] = useState("");
@@ -218,25 +269,24 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
     { skip: !interview?.createdByUserId },
   );
 
-  // ─── Parse proposed time slots from description ───────────────
-  const proposedSlots = useMemo(() => {
-    if (!interview?.description) return null;
-    const match = interview.description.match(/<!--PROPOSED_SLOTS:(.*?)-->/);
-    if (!match) return null;
-    try {
-      return JSON.parse(match[1]) as ProposedSlots;
-    } catch {
-      return null;
+  // ─── Resolve proposed time slots ───────────────
+  const unifiedSlots = useMemo(() => {
+    if (!interview) return [];
+    if (interview.proposedTimeSlots && interview.proposedTimeSlots.length > 0) {
+      return interview.proposedTimeSlots.map((s) => {
+        const d = new Date(s.proposedAt);
+        return {
+          id: s.id,
+          date: d.toISOString().split("T")[0],
+          time: d.toTimeString().slice(0, 5),
+          isSelected: s.isSelected,
+        };
+      });
     }
-  }, [interview?.description]);
+    return [];
+  }, [interview]);
 
-  // Clean description (strip the JSON metadata)
-  const cleanDescription = useMemo(() => {
-    if (!interview?.description) return "";
-    return interview.description
-      .replace(/\n*<!--PROPOSED_SLOTS:.*?-->/, "")
-      .trim();
-  }, [interview?.description]);
+  const cleanDescription = interview?.description?.trim() || "";
 
   if (!interview) return null;
 
@@ -297,16 +347,19 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                     {interview.status}
                   </span>
                   <span className="text-orange-100 text-sm">
-                    {new Date(interview.scheduledAt).toLocaleDateString(
-                      "vi-VN",
-                      {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      },
-                    )}
+                    {interview.scheduledAt &&
+                    new Date(interview.scheduledAt).getFullYear() > 1970
+                      ? new Date(interview.scheduledAt).toLocaleDateString(
+                          "vi-VN",
+                          {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )
+                      : "Chưa xác nhận"}
                   </span>
                 </div>
                 {/* Interviewer confirm banner */}
@@ -365,6 +418,12 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                 key: "assignments" as const,
                 label: `PV viên (${interview.assignments?.length || 0})`,
                 icon: "fa-solid fa-users",
+                visible: [
+                  "Confirmed",
+                  "InProgress",
+                  "Completed",
+                  "Rescheduled",
+                ].includes(interview.status),
               },
               {
                 key: "feedback" as const,
@@ -374,32 +433,41 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                   feedbackTotal > 0
                     ? `${feedbackDone}/${feedbackTotal}`
                     : undefined,
+                visible: ["InProgress", "Completed"].includes(interview.status),
               },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
-                  activeTab === tab.key
-                    ? "border-orange-500 text-orange-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                }`}
-              >
-                <i className={tab.icon} />
-                {tab.label}
-                {"badge" in tab && tab.badge && (
-                  <span
-                    className={`ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-                      feedbackDone === feedbackTotal && feedbackTotal > 0
-                        ? "bg-green-100 text-green-700"
-                        : "bg-amber-100 text-amber-700"
-                    }`}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            ))}
+              {
+                key: "evaluation" as const,
+                label: "Tổng hợp",
+                icon: "fa-solid fa-chart-bar",
+                visible: interview.status === "Completed",
+              },
+            ]
+              .filter((tab) => !("visible" in tab) || tab.visible)
+              .map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
+                    activeTab === tab.key
+                      ? "border-orange-500 text-orange-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  }`}
+                >
+                  <i className={tab.icon} />
+                  {tab.label}
+                  {"badge" in tab && tab.badge && (
+                    <span
+                      className={`ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                        feedbackDone === feedbackTotal && feedbackTotal > 0
+                          ? "bg-green-100 text-green-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
           </div>
 
           {/* Content */}
@@ -431,36 +499,37 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                     </div>
                     <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 ml-9">
                       <i className="fa-regular fa-calendar text-xs" />
-                      {new Date(interview.scheduledAt).toLocaleDateString(
-                        "vi-VN",
-                        {
-                          weekday: "long",
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
+                      {interview.scheduledAt &&
+                      new Date(interview.scheduledAt).getFullYear() > 1970
+                        ? new Date(interview.scheduledAt).toLocaleDateString(
+                            "vi-VN",
+                            {
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )
+                        : "Chưa xác định thời gian"}
                     </div>
                   </div>
                 )}
 
                 {/* Proposed Time Slots — READ-ONLY for admin/interviewer */}
-                {proposedSlots &&
-                  proposedSlots.proposedTimeSlots.length > 0 &&
+                {unifiedSlots.length > 0 &&
                   interview.status === "Scheduled" && (
                     <div>
                       <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                         <i className="fa-regular fa-calendar text-orange-500" />
-                        Khung giờ đề xuất (
-                        {proposedSlots.proposedTimeSlots.length})
+                        Khung giờ đề xuất ({unifiedSlots.length})
                       </h4>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
                         Candidate sẽ chọn một trong các khung giờ dưới đây.
                       </p>
                       <div className="space-y-2">
-                        {proposedSlots.proposedTimeSlots.map((slot, idx) => {
+                        {unifiedSlots.map((slot, idx) => {
                           const slotDate = new Date(
                             `${slot.date}T${slot.time}`,
                           );
@@ -533,22 +602,12 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                     value={`${interview.durationMinutes} phút`}
                   />
                   <InfoCard
-                    label="Application"
-                    value={`#${interview.applicationId}`}
-                  />
-                  <InfoCard
                     label="Ứng viên"
-                    value={
-                      candidateInfo?.fullName ||
-                      interview.candidateUserId.slice(0, 12) + "..."
-                    }
+                    value={<UserDisplay userId={interview.candidateUserId} />}
                   />
                   <InfoCard
                     label="Tạo bởi"
-                    value={
-                      creatorInfo?.fullName ||
-                      interview.createdByUserId.slice(0, 12) + "..."
-                    }
+                    value={<UserDisplay userId={interview.createdByUserId} />}
                   />
                 </div>
 
@@ -589,7 +648,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                 )}
 
                 {/* Status Actions */}
-                {actions.length > 0 && (
+                {(actions.length > 0 || interview.status === "Confirmed") && (
                   <div>
                     <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                       Thao tác
@@ -607,6 +666,25 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                           {action.label}
                         </button>
                       ))}
+                      {/* Reschedule button — separate from actions since it opens a modal */}
+                      {interview.status === "Confirmed" && (
+                        <button
+                          onClick={() => {
+                            setRescheduleSlots([
+                              {
+                                id: Math.random().toString(36).slice(2, 9),
+                                date: "",
+                                time: "",
+                              },
+                            ]);
+                            setRescheduleModalOpen(true);
+                          }}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-all hover:shadow-md"
+                        >
+                          <i className="fa-solid fa-calendar-days" />
+                          Dời lịch
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -886,87 +964,127 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                 ) : (
                   <div className="space-y-2">
                     {interview.assignments.map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex items-center justify-between bg-white dark:bg-gray-700/50 rounded-xl p-4 border border-gray-100 dark:border-gray-600 hover:border-orange-200 dark:hover:border-orange-800 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-                              a.hasConfirmed
-                                ? "bg-gradient-to-br from-emerald-400 to-emerald-600"
-                                : "bg-gradient-to-br from-blue-400 to-blue-600"
-                            }`}
-                          >
-                            {a.interviewerUserId.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                              <UserDisplay userId={a.interviewerUserId} />
-                            </p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                <i
-                                  className={`${roleOptions.find((r) => r.value === a.role)?.icon} ${roleOptions.find((r) => r.value === a.role)?.color}`}
+                      <div key={a.id} className="space-y-0">
+                        <div className="flex items-center justify-between bg-white dark:bg-gray-700/50 rounded-xl p-4 border border-gray-100 dark:border-gray-600 hover:border-orange-200 dark:hover:border-orange-800 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <UserDisplay
+                              userId={a.interviewerUserId}
+                              size="w-10 h-10"
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                  <i
+                                    className={`${roleOptions.find((r) => r.value === a.role)?.icon} ${roleOptions.find((r) => r.value === a.role)?.color}`}
+                                  />
+                                  {a.role}
+                                </span>
+                                {a.hasConfirmed ? (
+                                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                    <i className="fa-solid fa-check-circle" />{" "}
+                                    Đã xác nhận
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                    <i className="fa-solid fa-clock" /> Chờ xác
+                                    nhận
+                                  </span>
+                                )}
+                                <CriteriaBadge
+                                  scheduleId={interview.id}
+                                  assignmentId={a.id}
                                 />
-                                {a.role}
-                              </span>
-                              {a.hasConfirmed ? (
-                                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                                  <i className="fa-solid fa-check-circle" /> Đã
-                                  xác nhận
-                                </span>
-                              ) : (
-                                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                                  <i className="fa-solid fa-clock" /> Chờ xác
-                                  nhận
-                                </span>
-                              )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {/* If this is the current user and hasn't confirmed, show confirm button */}
-                          {a.interviewerUserId === currentUserId &&
-                            !a.hasConfirmed &&
-                            !isReadOnly && (
+                          <div className="flex items-center gap-1">
+                            {/* Criteria assignment button */}
+                            {!isReadOnly && isClubManager && (
                               <button
                                 onClick={() =>
-                                  confirmAssignment({
-                                    scheduleId: interview.id,
-                                    assignmentId: a.id,
-                                  })
+                                  setCriteriaForAssignment(
+                                    criteriaForAssignment === a.id
+                                      ? null
+                                      : a.id,
+                                  )
                                 }
-                                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-all mr-1"
-                                title="Xác nhận lịch"
+                                className={`p-2 rounded-lg transition-all ${
+                                  criteriaForAssignment === a.id
+                                    ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                                    : "text-blue-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                }`}
+                                title="Phân tiêu chí"
                               >
-                                Xác nhận
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                                  />
+                                </svg>
                               </button>
                             )}
-                          {!isReadOnly && (
-                            <button
-                              onClick={() =>
-                                onRemoveAssignment?.(interview.id, a.id)
-                              }
-                              className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                              title="Xóa"
-                            >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                            {/* Confirm button for current user */}
+                            {a.interviewerUserId === currentUserId &&
+                              !a.hasConfirmed &&
+                              !isReadOnly && (
+                                <button
+                                  onClick={() =>
+                                    confirmAssignment({
+                                      scheduleId: interview.id,
+                                      assignmentId: a.id,
+                                    })
+                                  }
+                                  className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-all mr-1"
+                                  title="Xác nhận lịch"
+                                >
+                                  Xác nhận
+                                </button>
+                              )}
+                            {!isReadOnly && (
+                              <button
+                                onClick={() =>
+                                  onRemoveAssignment?.(interview.id, a.id)
+                                }
+                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                title="Xóa"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          )}
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
+
+                        {/* Expandable CriteriaAssignment */}
+                        {criteriaForAssignment === a.id && (
+                          <div className="ml-4 mt-1 p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800 animate-fadeIn">
+                            <CriteriaAssignment
+                              scheduleId={interview.id}
+                              assignmentId={a.id}
+                              campaignId={interview.campaignId}
+                              readOnly={isReadOnly || !isClubManager}
+                              onSuccess={() => {}}
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
 
@@ -1028,22 +1146,16 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                              a.feedbackSubmittedAt
-                                ? "bg-gradient-to-br from-green-400 to-green-600"
-                                : "bg-gradient-to-br from-gray-400 to-gray-500"
-                            }`}
-                          >
-                            {a.interviewerUserId.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                              <UserDisplay userId={a.interviewerUserId} />
-                              <span className="text-gray-400 font-normal ml-1">
+                          <UserDisplay
+                            userId={a.interviewerUserId}
+                            size="w-8 h-8"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-gray-400 text-xs">
                                 ({a.role})
                               </span>
-                            </p>
+                            </div>
                             <p className="text-xs text-gray-400">
                               {a.feedbackSubmittedAt
                                 ? `Đã đánh giá: ${new Date(a.feedbackSubmittedAt).toLocaleString("vi-VN")}`
@@ -1052,38 +1164,21 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                           </div>
                         </div>
 
-                        {/* Results */}
-                        {a.feedbackSubmittedAt && (
-                          <div className="flex items-center gap-2">
-                            {a.score != null && (
-                              <div
-                                className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                  a.score >= 70
-                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                    : a.score >= 50
-                                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                }`}
-                              >
-                                {a.score}/100
-                              </div>
-                            )}
-                            {a.result && (
-                              <span
-                                className={`px-2 py-0.5 text-[11px] font-semibold rounded-full ${
-                                  a.result === "Pass"
-                                    ? "bg-green-100 text-green-700"
-                                    : a.result === "Fail"
-                                      ? "bg-red-100 text-red-700"
-                                      : a.result === "OnHold"
-                                        ? "bg-yellow-100 text-yellow-700"
-                                        : "bg-gray-100 text-gray-700"
-                                }`}
-                              >
-                                {a.result}
-                              </span>
-                            )}
-                          </div>
+                        {/* Results — chỉ hiện trạng thái, không hiện điểm */}
+                        {a.feedbackSubmittedAt && a.result && (
+                          <span
+                            className={`px-2.5 py-1 text-[11px] font-semibold rounded-full ${
+                              a.result === "Pass"
+                                ? "bg-green-100 text-green-700"
+                                : a.result === "Fail"
+                                  ? "bg-red-100 text-red-700"
+                                  : a.result === "OnHold"
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {a.result}
+                          </span>
                         )}
                       </div>
 
@@ -1094,15 +1189,17 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                         </p>
                       )}
 
-                      {/* Show feedback form for current user if not yet submitted */}
+                      {/* Show criteria feedback form for current user if not yet submitted */}
                       {!a.feedbackSubmittedAt &&
                         a.interviewerUserId === currentUserId &&
                         interview.status === "Completed" && (
                           <>
                             {feedbackForAssignment === a.id ? (
-                              <FeedbackForm
+                              <CriteriaFeedbackForm
                                 scheduleId={interview.id}
                                 assignmentId={a.id}
+                                campaignId={interview.campaignId}
+                                isClubManager={isClubManager}
                                 onSuccess={() => setFeedbackForAssignment(null)}
                                 onCancel={() => setFeedbackForAssignment(null)}
                               />
@@ -1112,7 +1209,7 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                                 className="flex items-center gap-2 px-4 py-2 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-xl text-sm font-medium hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors w-full justify-center border border-orange-200 dark:border-orange-800"
                               >
                                 <i className="fa-solid fa-pen-to-square" />
-                                Đánh giá ngay
+                                Đánh giá theo tiêu chí
                               </button>
                             )}
                           </>
@@ -1122,15 +1219,295 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                 )}
               </div>
             )}
+
+            {/* ──── EVALUATION TAB ──── */}
+            {activeTab === "evaluation" && (
+              <div className="space-y-4">
+                {interview.status === "Completed" ? (
+                  <>
+                    <EvaluationSummary scheduleId={interview.id} />
+
+                    {/* Link to comparison page */}
+                    <a
+                      href={`/interview/comparison?campaignId=${interview.campaignId}`}
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:scale-[1.01] transition-all"
+                    >
+                      <i className="fa-solid fa-code-compare" />
+                      So sánh tất cả ứng viên trong campaign
+                    </a>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <i className="fa-solid fa-chart-bar text-3xl mb-3 block" />
+                    <p className="text-sm">
+                      Phỏng vấn cần hoàn thành trước khi xem tổng hợp đánh giá.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* ─── Reschedule Modal ─── */}
+      {rescheduleModalOpen && interview && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+            onClick={() => setRescheduleModalOpen(false)}
+          />
+          <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scaleIn">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">
+                      Dời lịch phỏng vấn
+                    </h3>
+                    <p className="text-purple-200 text-sm mt-0.5">
+                      {interview.title}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setRescheduleModalOpen(false)}
+                    className="text-white/80 hover:text-white transition-colors p-1"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Chọn khung giờ mới để đề xuất cho ứng viên. Ứng viên sẽ cần
+                  xác nhận lại lịch.
+                </p>
+
+                {/* Time Slots */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Khung giờ mới <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRescheduleSlots((prev) => [
+                          ...prev,
+                          {
+                            id: Math.random().toString(36).slice(2, 9),
+                            date: "",
+                            time: "",
+                          },
+                        ])
+                      }
+                      className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                    >
+                      <i className="fa-solid fa-plus text-[10px]" />
+                      Thêm khung giờ
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {rescheduleSlots.map((slot, index) => (
+                      <div
+                        key={slot.id}
+                        className="flex items-center gap-2 group"
+                      >
+                        <span className="text-xs font-bold w-5 text-center flex-shrink-0 text-gray-400">
+                          {index + 1}
+                        </span>
+                        <input
+                          type="date"
+                          min={(() => {
+                            const d = new Date();
+                            const offset = d.getTimezoneOffset() * 60000;
+                            const localDate = new Date(d.getTime() - offset);
+                            return localDate.toISOString().split("T")[0];
+                          })()}
+                          value={slot.date}
+                          onChange={(e) =>
+                            setRescheduleSlots((prev) =>
+                              prev.map((s) =>
+                                s.id === slot.id
+                                  ? { ...s, date: e.target.value }
+                                  : s,
+                              ),
+                            )
+                          }
+                          className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
+                        />
+                        <input
+                          type="time"
+                          value={slot.time}
+                          onChange={(e) =>
+                            setRescheduleSlots((prev) =>
+                              prev.map((s) =>
+                                s.id === slot.id
+                                  ? { ...s, time: e.target.value }
+                                  : s,
+                              ),
+                            )
+                          }
+                          className="w-28 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
+                        />
+                        {rescheduleSlots.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setRescheduleSlots((prev) =>
+                                prev.filter((s) => s.id !== slot.id),
+                              )
+                            }
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {rescheduleSlots.filter((s) => s.date && s.time).length > 1 && (
+                  <div className="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-100 dark:border-purple-800">
+                    <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                      <i className="fa-solid fa-info-circle" />
+                      Ứng viên sẽ chọn 1 trong{" "}
+                      {
+                        rescheduleSlots.filter((s) => s.date && s.time).length
+                      }{" "}
+                      khung giờ
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 px-6 pb-6">
+                <button
+                  onClick={() => setRescheduleModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  disabled={
+                    isRescheduling ||
+                    rescheduleSlots.filter((s) => s.date && s.time).length === 0
+                  }
+                  onClick={async () => {
+                    const validSlots = rescheduleSlots.filter(
+                      (s) => s.date && s.time,
+                    );
+                    if (validSlots.length === 0) {
+                      message.warning("Vui lòng chọn ít nhất 1 khung giờ");
+                      return;
+                    }
+                    const now = new Date();
+                    const hasPast = validSlots.some(
+                      (s) => new Date(`${s.date}T${s.time}`) < now,
+                    );
+                    if (hasPast) {
+                      message.warning("Không thể chọn ngày giờ trong quá khứ");
+                      return;
+                    }
+                    setIsRescheduling(true);
+                    try {
+                      const firstSlot = validSlots[0];
+                      const newScheduledAt = new Date(
+                        `${firstSlot.date}T${firstSlot.time}`,
+                      ).toISOString();
+                      const proposedTimeSlots = validSlots.map((s) => ({
+                        date: s.date,
+                        time: s.time,
+                      }));
+                      await onReschedule?.(
+                        interview.id,
+                        newScheduledAt,
+                        proposedTimeSlots,
+                      );
+                      setRescheduleModalOpen(false);
+                    } catch {
+                      // error is handled by parent
+                    } finally {
+                      setIsRescheduling(false);
+                    }
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium text-sm hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {isRescheduling ? (
+                    <span className="flex items-center gap-2">
+                      <svg
+                        className="w-4 h-4 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      Đang xử lý...
+                    </span>
+                  ) : (
+                    "Xác nhận dời lịch"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes scaleIn {
+              from { opacity: 0; transform: scale(0.95); }
+              to { opacity: 1; transform: scale(1); }
+            }
+            .animate-scaleIn { animation: scaleIn 0.2s ease-out forwards; }
+          `}</style>
+        </>
+      )}
     </>
   );
 };
 
 // ─── Info Card Helper ────────────────────────────────────────────
-const InfoCard: React.FC<{ label: string; value: string }> = ({
+const InfoCard: React.FC<{ label: string; value: React.ReactNode }> = ({
   label,
   value,
 }) => (
@@ -1138,9 +1515,9 @@ const InfoCard: React.FC<{ label: string; value: string }> = ({
     <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-0.5">
       {label}
     </p>
-    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+    <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
       {value}
-    </p>
+    </div>
   </div>
 );
 

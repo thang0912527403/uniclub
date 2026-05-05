@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import { useMemo } from 'react';
 import {
     useGetPolicyGroupsQuery,
     useGetPoliciesByGroupQuery,
-    useGetClubRolePoliciesQuery,
     useUpdateClubRolePoliciesMutation,
 } from '~/cores/api';
 import type { ClubRole, PolicyGroup } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
+import { getClubId } from '~/utils/auth';
 
 /* ─── Single policy group row (lazy loads policies on expand) ────────────── */
 interface PolicyGroupRowProps {
@@ -154,22 +155,19 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
     const { show: showNotification } = useNotification();
 
     const { data: groups, isLoading: groupsLoading } = useGetPolicyGroupsQuery();
-    const { data: assignedIds, isLoading: assignedLoading } = useGetClubRolePoliciesQuery(
-        role.clubRoleId
-    );
     const [updatePolicies, { isLoading: isSaving }] = useUpdateClubRolePoliciesMutation();
 
-    const [selected, setSelected] = useState<Set<number>>(new Set());
-    const [seeded, setSeeded] = useState(false);
+    const assignedIds = useMemo(
+        () => new Set(role.policies?.map((p) => p.id) ?? []),
+        [role.policies]
+    );
+
+    const [selected, setSelected] = useState<Set<number>>(assignedIds);
     const [dirty, setDirty] = useState(false);
 
-    // Seed checkboxes once assignedIds resolves (including empty array)
     useEffect(() => {
-        if (assignedIds !== undefined) {
-            setSelected(new Set(assignedIds));
-            setSeeded(true);
-            setDirty(false);
-        }
+        setSelected(assignedIds);
+        setDirty(false);
     }, [assignedIds]);
 
     const handleToggle = (policyId: number) => {
@@ -196,7 +194,17 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
 
     const handleSave = async () => {
         try {
-            await updatePolicies({ roleId: role.clubRoleId, policyIds: [...selected] }).unwrap();
+            const currentClubId = role.clubId || getClubId();
+            if (!currentClubId) {
+                showNotification({
+                    type: 'error',
+                    title: 'Lỗi',
+                    message: 'Không thể xác định Câu lạc bộ hiện tại.',
+                    duration: 4000,
+                });
+                return;
+            }
+            await updatePolicies({ clubId: currentClubId, roleId: role.clubRoleId, policyIds: [...selected] }).unwrap();
             showNotification({
                 type: 'success',
                 title: 'Cập nhật quyền thành công!',
@@ -205,17 +213,31 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
             });
             setDirty(false);
         } catch (err) {
-            const rtkErr = err as { data?: { message?: string } };
+            const rtkErr = err as {
+                status?: number;
+                data?: { message?: string };
+            };
+
+            if (rtkErr?.status === 403) {
+                showNotification({
+                    type: 'error',
+                    title: 'Không có quyền',
+                    message: 'Bạn không có quyền thực hiện thao tác này!',
+                    duration: 4000
+                });
+                return;
+            }
+
             showNotification({
                 type: 'error',
-                title: 'Cập nhật quyền thất bại',
+                title: 'Thao tác thất bại',
                 message: rtkErr?.data?.message ?? 'Vui lòng thử lại.',
-                duration: 4000,
+                duration: 4000
             });
         }
     };
 
-    const isHeaderLoading = groupsLoading || assignedLoading;
+    const isHeaderLoading = groupsLoading;
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
@@ -269,8 +291,7 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
                             <i className="fas fa-lock text-3xl mb-2 opacity-30"></i>
                             <p className="text-sm">Không có nhóm quyền nào.</p>
                         </div>
-                    ) : seeded ? (
-                        // Render groups only after assignedIds is ready → checkboxes are pre-ticked correctly
+                    ) : (
                         groups.map((group) => (
                             <PolicyGroupRow
                                 key={group.policyGroupId}
@@ -281,11 +302,6 @@ export function PolicyPanel({ role, readOnly = false, onClose }: PolicyPanelProp
                                 onToggleAll={handleToggleAll}
                             />
                         ))
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-40 gap-3 text-gray-400">
-                            <i className="fas fa-spinner fa-spin text-2xl"></i>
-                            <span className="text-sm">Đang tải quyền của vai trò...</span>
-                        </div>
                     )}
                 </div>
 

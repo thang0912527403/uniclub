@@ -1,0 +1,95 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "system": {
+      "title": "System",
+      "manageClubs": "Manage Clubs",
+      "manageUsers": "Manage Users",
+      "creationRequests": "Creation Requests",
+      "recordOfChange": "Record of Change"
+    },
+    "manageClub": {
+      "title": "Manage Club",
+      "allClubs": "All Clubs",
+      "clubStructure": "Club Organization",
+      "clubRoles": "Club Roles",
+      "yourClubInfo": "Your Club Info",
+      "manageClubName": "Manage Club Name",
+      "recruitmentCampaigns": "Recruitment Campaigns",
+      "clubMembers": "Club Members",
+      "clubActivities": "Club Activities"
+    },
+    "manageDepartment": {
+      "title": "Manage Department",
+      "allDepartments": "All Departments",
+      "createDepartment": "Create Department",
+      "departmentRoles": "Department Roles",
+      "departmentSettings": "Department Settings"
+    },
+    "manageRecruitment": {
+      "title": "Manage Recruitment Campaigns",
+      "allCampaigns": "All Recruitment Campaigns",
+      "yourClubCampaigns": "Your Club Campaigns"
+    },
+    "manageMembers": {
+      "title": "Manage Members",
+      "allMembers": "All Members",
+      "addMember": "Add Member",
+      "memberRoles": "Member Roles",
+      "memberActivity": "Member Activity",
+      "participationHistory": "Participation History"
+    },
+    "managePosts": {
+      "title": "Manage Posts",
+      "allPosts": "All Posts"
+    },
+    "manageEvents": {
+      "title": "Manage Events",
+      "allEvents": "All Events",
+      "createEvent": "Create Event",
+      "eventCalendar": "Event Calendar",
+      "eventReports": "Event Reports"
+    },
+    "manageFunds": {
+      "title": "Manage Funds",
+      "budgetOverview": "Budget Overview",
+      "myFunds": "My Funds",
+      "transactions": "Transactions",
+      "paymentSettings": "Payment Settings",
+      "expenseReports": "Expense Reports"
+    },
+    "manageInterview": {
+      "title": "Manage Interview",
+      "allInterviews": "Interview Schedule",
+      "comparison": "Comparison & Announcement"
+    },
+    "manageNotifications": {
+      "title": "Manage Notifications",
+      "sendNotification": "Send Notification"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": {
+      "label": "Theme",
+      "dark": "Dark mode",
+      "light": "Light mode"
+    },
+    "language": {
+      "label": "Language",
+      "vi": "Vietnamese",
+      "en": "English"
+    },
+    "notifications": {
+      "label": "Notifications",
+      "on": "On",
+      "off": "Off"
+    },
+    "sound": {
+      "label": "Sound",
+      "on": "On",
+      "off": "Off"
+    },
+    "footer": "Some features are in development"
+  }
+}

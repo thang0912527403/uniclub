@@ -32,8 +32,26 @@ export interface AttendanceDetailDto {
     memberName: string;
     studentId?: string;
     registrationDate: string;
-    attendanceStatus: 'REGISTERED' | 'PRESENT' | 'ABSENT' | 'CANCELLED';
+    attendanceStatus: 'PENDING' | 'REGISTERED' | 'WAITLIST' | 'PRESENT' | 'ABSENT' | 'CANCELLED';
     checkInTime?: string;
     score?: number;
     comment?: string;
+}
+
+/** Response for GET my-checkin-qr — participant shows this QR at event; organizer scans it */
+export interface CheckInQrResponse {
+    token?: string;
+    qrContent?: string; // alias from backend
+    eventId?: number;
+    expiresAt?: string;
+}
+
+/** Body for POST checkin-qr — token = content read from participant's QR */
+export interface CheckInByQrRequest {
+    token: string;
+}
+
+export interface CheckInByQrResponse {
+    message?: string;
+    memberName?: string;
 }

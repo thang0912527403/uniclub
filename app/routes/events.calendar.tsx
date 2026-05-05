@@ -16,6 +16,7 @@ export default function EventCalendarPage() {
             <Sidebar
                 currentPath="/events/calendar"
                 isOpen={isSidebarOpen}
+                onClose={toggleSidebar}
             />
 
             <HeaderBar
@@ -25,7 +26,7 @@ export default function EventCalendarPage() {
                 onToggleSidebar={toggleSidebar}
             />
 
-            <main className={`pt-24 p-6 ${bgClass} transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'
+            <main className={`pt-24 p-6 ${bgClass} transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'
                 }`}>
                 <div className={`${cardClass} rounded-lg shadow-md p-12 text-center`}>
                     <i className="fas fa-calendar-alt text-6xl text-gray-400 mb-4"></i>

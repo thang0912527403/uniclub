@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { toggleTheme, isDarkMode } from '~/utils/theme';
+import { useTranslation } from 'react-i18next';
 
 export function SettingButton() {
   const [isDark, setIsDark] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [language, setLanguage] = useState('vi');
+  const { t, i18n } = useTranslation('common');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Sync with DOM when component mounts
@@ -47,7 +48,7 @@ export function SettingButton() {
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
               <i className="fas fa-cog mr-2"></i>
-              Cài đặt
+              {t('settings.title')}
             </h3>
           </div>
 
@@ -61,9 +62,9 @@ export function SettingButton() {
                     <i className={`fas ${isDark ? 'fa-moon' : 'fa-sun'} text-blue-500`}></i>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Giao diện</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('settings.theme.label')}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {isDark ? 'Chế độ tối' : 'Chế độ sáng'}
+                      {isDark ? t('settings.theme.dark') : t('settings.theme.light')}
                     </p>
                   </div>
                 </div>
@@ -82,28 +83,27 @@ export function SettingButton() {
               </div>
             </div>
 
-            {/* Language Setting (UI only) */}
-            <div className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors opacity-60 cursor-not-allowed">
+            {/* Language Setting */}
+            <div className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-green-500/10 dark:bg-green-500/20 rounded-lg flex items-center justify-center">
                     <i className="fas fa-language text-green-500"></i>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Ngôn ngữ</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('settings.language.label')}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {language === 'vi' ? 'Tiếng Việt' : 'English'}
+                      {i18n.language.startsWith('en') ? t('settings.language.en') : t('settings.language.vi')}
                     </p>
                   </div>
                 </div>
                 <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="px-3 py-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none cursor-not-allowed"
-                  disabled
+                  value={i18n.language.startsWith('en') ? 'en' : 'vi'}
+                  onChange={(e) => i18n.changeLanguage(e.target.value)}
+                  className="px-3 py-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
-                  <option value="vi">🇻🇳 Tiếng Việt</option>
-                  <option value="en">🇬🇧 English</option>
+                  <option value="vi">🇻🇳 {t('settings.language.vi')}</option>
+                  <option value="en">🇬🇧 {t('settings.language.en')}</option>
                 </select>
               </div>
             </div>
@@ -116,9 +116,9 @@ export function SettingButton() {
                     <i className="fas fa-bell text-yellow-500"></i>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Thông báo</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('settings.notifications.label')}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Đang bật
+                      {t('settings.notifications.on')}
                     </p>
                   </div>
                 </div>
@@ -139,9 +139,9 @@ export function SettingButton() {
                     <i className="fas fa-volume-up text-purple-500"></i>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Âm thanh</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('settings.sound.label')}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Đang bật
+                      {t('settings.sound.on')}
                     </p>
                   </div>
                 </div>
@@ -159,7 +159,7 @@ export function SettingButton() {
           <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
               <i className="fas fa-info-circle mr-1"></i>
-              Một số tính năng đang phát triển
+              {t('settings.footer')}
             </p>
           </div>
         </div>

@@ -1,77 +1,110 @@
-import { type RouteConfig, index, route } from "@react-router/dev/routes";
+import {
+  type RouteConfig,
+  index,
+  route,
+  layout,
+} from "@react-router/dev/routes";
 
 export default [
+  // ─── Public routes (không cần đăng nhập) ──────────────────
   index("routes/_index.tsx"),
   route("home", "routes/home.tsx"),
-  // Dashboard route
-  route("dashboard", "routes/dashboard.tsx"),
 
-  // Club routes
-  route("clubs", "routes/clubs/clubs.tsx"),
-  route("clubs/:id", "routes/clubs/clubs.$id.tsx"),
-  route("clubs/create", "routes/clubs/clubs.create.tsx"),
-  route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
-  route("clubs/edit/:id", "routes/clubs/clubs.edit.$id.tsx"),
-  route("club/manage-posts", "routes/clubs/clubpost.tsx"),
-  route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
-  route("club/posts", "routes/clubposts/clubpost.tsx"),
-  route("club/posts/:id", "routes/clubposts/clubpost.$id.tsx"),
-
-  // Users (CRUD)
-  route("users", "routes/users.tsx"),
-  // Members
-  route("members", "routes/clubs/clubmembers.tsx"),
-  route("club-roles", "routes/club-roles.tsx"),
-
-  // Auth routes
   route("auth/login", "routes/auth/login.tsx"),
   route("auth/register", "routes/auth/register.tsx"),
   route("auth/forgot-password", "routes/auth/forgot-password.tsx"),
   route("auth/reset-password", "routes/auth/reset-password.tsx"),
   route("auth/verify-email", "routes/auth/verify-email.tsx"),
-  route("auth/change-password", "routes/auth/change-password.tsx"),
+  route("public/clubs", "routes/clubs-homepage/clubs.tsx"),
+  route("public/clubs/:id", "routes/clubs-homepage/clubs.$id.tsx"),
+  // PayOS callback routes (public)
+  route("payos/return", "routes/payos.return.tsx"),
+  route("payos/cancel", "routes/payos.cancel.tsx"),
+  route("fund/contribute/success", "routes/fund.contribute.success.tsx"),
 
-  // Interview routes
-  route("interview/schedule", "routes/interview-schedule.tsx"),
-  route("interview/room/:roomCode?", "routes/interview-room.tsx"),
-  // Event routes
-  route("events", "routes/events.tsx"),
-  route("events/create", "routes/events.create.tsx"),
-  route("events/calendar", "routes/events.calendar.tsx"),
-  route("events/reports", "routes/events.reports.tsx"),
-  route("events/:id", "routes/events.$id.tsx"),
-  route("events/:id/edit", "routes/events.$id.edit.tsx"),
-
-  // Public event routes (no auth, uses landing Navbar/Footer)
+  // Public event routes
   route("public/events", "routes/public.events.tsx"),
   route("public/events/:id", "routes/public.events.$id.tsx"),
-
-  // Meeting routes
-  route("meeting/:roomId?", "routes/meeting.tsx"),
+  route("public/news", "routes/news.tsx"),
+  route("public/news/:id", "routes/news.$id.tsx"),
+  route("campaign/:id", "routes/campaign.$id.tsx"),
+  route("public/recruitment", "routes/public.recruitment.tsx"),
 
   // Error routes
   route("401", "routes/error/401.tsx"),
   route("403", "routes/error/403.tsx"),
-
-  // News routes (public)
-  route("public/news", "routes/news.tsx"),
-  route("public/news/:id", "routes/news.$id.tsx"),
-
-  // Catch-all route
   route("*", "routes/error/404.tsx"),
 
-  // User Profile route
-  route("profile", "routes/user_profile.tsx"),
+  // ─── Protected routes (cần đăng nhập) ─────────────────────
+  layout("components/ProtectedRoute.tsx", [
+    route("dashboard", "routes/dashboard.tsx"),
+    route("dashboard/reports", "routes/dashboard.reports.tsx"),
+    route("dashboard/analytics", "routes/dashboard.analytics.tsx"),
+    route("profile/:userId?", "routes/user_profile.tsx"),
+    route("auth/change-password", "routes/auth/change-password.tsx"),
 
-  // Question route - dynamic formId from URL
-  route("question/:formId?", "routes/question.tsx"),
+    // User management
+    route("users", "routes/users.tsx"),
+    route("club/members/history", "routes/members-history.tsx"),
 
-  // Chiến dịch tuyển dụng (public detail)
-  route("campaign/:id", "routes/campaign.$id.tsx"),
+    // Club management
+    route("clubs", "routes/clubs/clubs.tsx"),
+    route("club/info", "routes/clubs/clubs.$id.tsx"),
+    route("clubs/create", "routes/clubs/clubs.create.tsx"),
+    route("club/edit", "routes/clubs/clubs.edit.$id.tsx"),
+    route("club/organization", "routes/clubs/clubs.$id.structure.tsx"),
+    route(
+      "clubs/:id/funds/:publicId",
+      "routes/clubs/clubs.$id.funds.$fundId.tsx",
+    ),
+    route("club/members", "routes/clubs/clubmembers.tsx"),
+    route("club/members/add", "routes/clubs/clubmembers.add.tsx"),
+    route("club/members/:memberId/roles", "routes/clubs/clubmembers.role.tsx"),
+    route(
+      "club/notifications/send",
+      "routes/clubs/clubs.$id.notifications.send.tsx",
+    ),
+    route("club-roles", "routes/club-roles.tsx"),
+    route("club-roles/members", "routes/club-roles.members.tsx"),
+    route("manage-clubs", "routes/my-clubs.tsx"),
+    route("campaign/:formId?/application-form", "routes/question.tsx"),
 
-  // My applications
-  route("my-applications", "routes/my-applications.tsx"),
+    route("club/post/edit/:id", "routes/clubs/clubpost.edit.$id.tsx"),
+    route("club/post", "routes/clubs/clubpost.tsx"),
+    // Department
+    route("department", "routes/department.tsx"),
+    route("department/create", "routes/department.create.tsx"),
+    route("department/:id", "routes/department.member.tsx"),
 
-  // Campaign form manager
-  route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
+    // Recruitment & Applications
+    route("recruitment-campaigns", "routes/recruitment-campaigns.tsx"),
+    route("campaign-forms/:campaignId", "routes/campaign-forms.tsx"),
+    route("club/request", "routes/clubs-homepage/clubrequest.tsx"),
+    route("club/all-requests", "routes/clubs/clubrequests.tsx"),
+
+    // Interview routes
+    route("interview/schedule", "routes/interview-schedule.tsx"),
+    route("interview/room/:roomCode?", "routes/interview-room.tsx"),
+    route("interview/comparison", "routes/interview-comparison.tsx"),
+
+    // General Meeting Room (WebRTC)
+    route("meeting-room/:roomCode?", "routes/meeting-room.tsx"),
+
+    // Events
+    route("events", "routes/events.tsx"),
+    route("events/create", "routes/events.create.tsx"),
+    route("events/calendar", "routes/events.calendar.tsx"),
+    route("events/reports", "routes/events.reports.tsx"),
+    route("events/:id", "routes/events.$id.tsx"),
+    route("events/:id/edit", "routes/events.$id.edit.tsx"),
+    route("my-events", "routes/my-events.tsx"),
+
+    // Funds
+    route("funds", "routes/funds.tsx"),
+    route("funds/my", "routes/funds.my.tsx"),
+    route("funds/transactions", "routes/funds.transactions.tsx"),
+    route("funds/reports", "routes/funds.reports.tsx"),
+    route("funds/payos", "routes/funds.payos.tsx"),
+    route("funds/:publicId", "routes/funds.$fundId.tsx"),
+  ]),
 ] satisfies RouteConfig;

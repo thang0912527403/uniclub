@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { Footer } from "../home/components";
+import Footer from '~/modules/home/components/Footer';
 import Navbar from "../../components/Navbar";
 import { useGetClubPostsQuery } from "~/cores/api/clubApi";
 import type { ClubPostResponseDto } from "~/cores/api";
@@ -282,11 +282,10 @@ const NewsPage: React.FC = () => {
                   setClubFilter("Tất cả");
                   setPage(1);
                 }}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
-                  clubFilter === "Tất cả"
-                    ? "bg-orange-500 text-white shadow-md"
-                    : "bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600"
-                }`}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${clubFilter === "Tất cả"
+                  ? "bg-orange-500 text-white shadow-md"
+                  : "bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600"
+                  }`}
               >
                 Tất cả
               </button>
@@ -297,11 +296,10 @@ const NewsPage: React.FC = () => {
                     setClubFilter(name);
                     setPage(1);
                   }}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
-                    clubFilter === name
-                      ? "bg-orange-500 text-white shadow-md"
-                      : "bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600"
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${clubFilter === name
+                    ? "bg-orange-500 text-white shadow-md"
+                    : "bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600"
+                    }`}
                 >
                   {name}
                 </button>

@@ -1,17 +1,32 @@
 import { baseApi } from './baseApi';
 import { type ApiResponse, type ClubRole } from './types';
+import type { ClubRoleUserItem, ClubStructure } from './types/clubRole';
 
-
+export interface AssignClubRoleDto {
+    userId: string;
+    clubId: number;
+    clubRoleId: number;
+}
 
 export interface CreateClubRoleDto {
     roleName: string;
-    description?: string;
+    description: string;
+    level: number;
     clubId: number;
+    departmentId?: number | null;
 }
 
 export interface UpdateClubRoleDto {
     roleName: string;
+    description: string;
+    level: number;
+    departmentId?: number | null;
+}
+
+export interface CreateClubDepartmentDto {
+    name: string;
     description?: string;
+    managerRoleLevel: number;
 }
 
 const clubRoleApi = baseApi.injectEndpoints({
@@ -40,18 +55,18 @@ const clubRoleApi = baseApi.injectEndpoints({
         }),
 
         /** Replace all policies assigned to a role */
-        updateClubRolePolicies: builder.mutation<void, { roleId: number; policyIds: number[] }>({
-            query: ({ roleId, policyIds }) => ({
-                url: `/ClubRole/${roleId}/policies`,
+        updateClubRolePolicies: builder.mutation<void, { clubId: number; roleId: number; policyIds: number[] }>({
+            query: ({ clubId, roleId, policyIds }) => ({
+                url: `/club/${clubId}/role/${roleId}/policies`,
                 method: 'PUT',
-                body:  policyIds ,
+                body: policyIds,
             }),
-            invalidatesTags: (result, error, { roleId }) => [{ type: 'ClubRole', id: `policies-${roleId}` }],
+            invalidatesTags: (result, error, { roleId }) => [{ type: 'ClubRole', id: `policies-${roleId}` }, 'ClubRole'],
         }),
 
         createClubRole: builder.mutation<ClubRole, CreateClubRoleDto>({
-            query: (body) => ({
-                url: '/ClubRole',
+            query: ({ clubId, ...body }) => ({
+                url: `/club/${clubId}/role`,
                 method: 'POST',
                 body,
             }),
@@ -59,18 +74,18 @@ const clubRoleApi = baseApi.injectEndpoints({
             invalidatesTags: ['ClubRole'],
         }),
 
-        updateClubRole: builder.mutation<ClubRole, { id: number; body: UpdateClubRoleDto }>({
-            query: ({ id, body }) => ({
-                url: `/ClubRole/${id}`,
+        updateClubRole: builder.mutation<ClubRole, { clubId: number; roleId: number; body: UpdateClubRoleDto }>({
+            query: ({ clubId, roleId, body }) => ({
+                url: `/club/${clubId}/role/${roleId}`,
                 method: 'PUT',
                 body,
             }),
             transformResponse: (response: ApiResponse<ClubRole>) => response.data,
-            invalidatesTags: (result, error, { id }) => [{ type: 'ClubRole', id }, 'ClubRole'],
+            invalidatesTags: (result, error, { roleId }) => [{ type: 'ClubRole', id: roleId }, 'ClubRole'],
         }),
 
         getClubRolesByClubId: builder.query<ClubRole[], number>({
-            query: (clubId) => `/ClubRole/club/${clubId}`,
+            query: (clubId) => `/club/${clubId}/role`,
             transformResponse: (response: ApiResponse<ClubRole[]>) => response.data,
             providesTags: (result, error, clubId) =>
                 result
@@ -78,12 +93,50 @@ const clubRoleApi = baseApi.injectEndpoints({
                     : [{ type: 'ClubRole', id: `club-${clubId}` }],
         }),
 
-        deleteClubRole: builder.mutation<void, number>({
-            query: (id) => ({
-                url: `/ClubRole/${id}`,
+        getClubStructureRoles: builder.query<ClubRole[], number>({
+            query: (clubId) => `/club/${clubId}/role`,
+            transformResponse: (response: ApiResponse<ClubRole[]>) => response.data ?? [],
+            providesTags: (result, error, clubId) => [{ type: 'ClubRole', id: `structure-${clubId}` }],
+        }),
+
+        getClubRoleUsers: builder.query<ClubRoleUserItem[], { clubId: number; roleId: number }>({
+            query: ({ clubId, roleId }) => `/club/${clubId}/role/${roleId}/users`,
+            transformResponse: (response: ApiResponse<ClubRoleUserItem[]>) => response.data ?? [],
+            providesTags: (result, error, { clubId, roleId }) => [{ type: 'ClubRole', id: `role-users-${clubId}-${roleId}` }],
+        }),
+
+        deleteClubRole: builder.mutation<void, { clubId: number; roleId: number }>({
+            query: ({ clubId, roleId }) => ({
+                url: `/club/${clubId}/role/${roleId}`,
                 method: 'DELETE',
             }),
-            invalidatesTags: (result, error, id) => [{ type: 'ClubRole', id }, 'ClubRole'],
+            invalidatesTags: (result, error, { roleId }) => [{ type: 'ClubRole', id: roleId }, 'ClubRole'],
+        }),
+
+        createClubDepartment: builder.mutation<void, { clubId: number; body: CreateClubDepartmentDto }>({
+            query: ({ clubId, body }) => ({
+                url: `/club/${clubId}/Department`,
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['ClubRole'],
+        }),
+
+        getClubStructure: builder.query<ClubStructure, number>({
+            query: (clubId) => `/Club/${clubId}/club-structure`,
+            transformResponse: (response: ApiResponse<ClubStructure>) => response.data!,
+            providesTags: (result, error, clubId) => [{ type: 'ClubRole', id: `clubstructure-${clubId}` }, 'ClubRole'],
+        }),
+        assignClubRole: builder.mutation<void, AssignClubRoleDto>({
+            query: (body) => ({
+                url: '/assign',
+                method: 'POST',
+                body
+            }),
+            invalidatesTags: (result, error, { clubRoleId }) => [
+                { type: 'ClubRole', id: clubRoleId },
+                'ClubRole'
+            ],
         }),
     }),
     overrideExisting: false,
@@ -93,9 +146,14 @@ export const {
     useGetClubRolesQuery,
     useGetClubRoleByIdQuery,
     useGetClubRolesByClubIdQuery,
+    useGetClubStructureRolesQuery,
+    useGetClubRoleUsersQuery,
     useGetClubRolePoliciesQuery,
     useUpdateClubRolePoliciesMutation,
     useCreateClubRoleMutation,
     useUpdateClubRoleMutation,
     useDeleteClubRoleMutation,
+    useGetClubStructureQuery,
+    useCreateClubDepartmentMutation,
+    useAssignClubRoleMutation
 } = clubRoleApi;

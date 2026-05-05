@@ -38,17 +38,27 @@ export function EventCard({ event, isDark = false, onClick }: EventCardProps) {
     };
 
     const getStatusColor = (status: string) => {
-        const statusLower = status.toLowerCase();
-        if (statusLower.includes('active') || statusLower.includes('ongoing')) {
-            return 'bg-green-100 text-green-800';
-        } else if (statusLower.includes('upcoming') || statusLower.includes('planned')) {
-            return 'bg-blue-100 text-blue-800';
-        } else if (statusLower.includes('completed') || statusLower.includes('finished')) {
-            return 'bg-gray-100 text-gray-800';
-        } else if (statusLower.includes('cancelled')) {
-            return 'bg-red-100 text-red-800';
-        }
-        return 'bg-gray-100 text-gray-800';
+        const map: Record<string, string> = {
+            PLANNED: 'bg-blue-100 text-blue-800',
+            REGISTRATION_OPEN: 'bg-green-100 text-green-800',
+            REGISTRATION_CLOSED: 'bg-gray-200 text-gray-700',
+            ONGOING: 'bg-yellow-100 text-yellow-800',
+            ENDED: 'bg-gray-100 text-gray-600',
+            CANCELED: 'bg-red-100 text-red-800',
+        };
+        return map[status] ?? 'bg-gray-100 text-gray-800';
+    };
+
+    const getStatusLabel = (status: string) => {
+        const labels: Record<string, string> = {
+            PLANNED: 'Sắp diễn ra',
+            REGISTRATION_OPEN: 'Đang mở đăng ký',
+            REGISTRATION_CLOSED: 'Đã đóng đăng ký',
+            ONGOING: 'Đang diễn ra',
+            ENDED: 'Đã kết thúc',
+            CANCELED: 'Đã huỷ',
+        };
+        return labels[status] ?? status;
     };
 
     const cardBg = isDark ? 'bg-[#242838]' : 'bg-white';
@@ -101,7 +111,7 @@ export function EventCard({ event, isDark = false, onClick }: EventCardProps) {
 
                     <div className="flex items-center">
                         <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(event.status)}`}>
-                            {event.status && event.status !== 'string' ? event.status : 'N/A'}
+                            {event.status && event.status !== 'string' ? getStatusLabel(event.status) : 'N/A'}
                         </span>
                     </div>
                 </div>

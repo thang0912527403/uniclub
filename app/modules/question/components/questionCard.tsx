@@ -5,9 +5,11 @@ interface QuestionCardProps {
   data: ApplicationQuestionResponseDto;
   value: any;
   onChange: (value: any) => void;
+  error?: string;
+  inputRef?: (el: HTMLElement | null) => void;
 }
 
-const QuestionCard: React.FC<QuestionCardProps> = ({ data, value, onChange }) => {
+const QuestionCard: React.FC<QuestionCardProps> = ({ data, value, onChange, error, inputRef }) => {
   const handleCheckboxChange = (opt: string) => {
     const currentArray = Array.isArray(value) ? value : [];
     if (currentArray.includes(opt)) {
@@ -39,29 +41,37 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ data, value, onChange }) =>
       </label>
 
       {isText && (
-        <input
-          type="text"
-          value={textValue}
-          placeholder="Nhập câu trả lời của bạn..."
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-          className="w-full border-b-2 border-gray-100 focus:border-[#FF6B00] outline-none py-3 transition-colors text-lg bg-transparent"
-          autoComplete="off"
-        />
+        <div className="relative">
+          <input
+            ref={inputRef as React.RefCallback<HTMLInputElement>}
+            type="text"
+            value={textValue}
+            placeholder="Nhập câu trả lời của bạn..."
+            maxLength={255}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+            className={`w-full border-b-2 ${error ? 'border-red-400' : 'border-gray-100 focus:border-[#FF6B00]'} outline-none py-3 transition-colors text-lg bg-transparent`}
+            autoComplete="off"
+          />
+          <span className={`text-xs mt-1 float-right ${textValue.length >= 240 ? 'text-red-400' : 'text-gray-400'}`}>
+            {textValue.length}/255
+          </span>
+        </div>
       )}
 
       {(isRadio || isCheckbox) && hasOptions && (
-        <div className="space-y-3">
+        <div className={`space-y-3 ${error ? 'rounded-2xl border border-red-200 p-3 -mx-3' : ''}`}>
           {options.slice(1).map((opt, index) => (
             <label
               key={index}
               className="flex items-center gap-4 p-4 rounded-2xl border border-transparent hover:border-orange-100 hover:bg-orange-50/50 cursor-pointer transition-all group"
             >
               <input
+                ref={index === 0 ? (inputRef as React.RefCallback<HTMLInputElement>) : undefined}
                 type={isRadio ? 'radio' : 'checkbox'}
                 name={`q-${data.questionId}`}
                 value={opt}
                 checked={isRadio ? textValue === opt : (Array.isArray(value) ? value : []).includes(opt)}
-                onChange={() => handleCheckboxChange(opt)}
+                onChange={() => (isRadio ? onChange(opt) : handleCheckboxChange(opt))}
                 className="w-5 h-5 accent-[#FF6B00] cursor-pointer"
               />
               <span className="text-gray-700 font-medium group-hover:text-[#FF6B00] transition-colors">
@@ -73,14 +83,27 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ data, value, onChange }) =>
       )}
 
       {isTextarea && (
-        <textarea
-          value={textValue}
-          placeholder="Nhập câu trả lời của bạn..."
-          rows={4}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
-          className="w-full p-4 rounded-2xl border border-gray-200 focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 outline-none transition-all resize-none"
-          autoComplete="off"
-        />
+        <div>
+          <textarea
+            ref={inputRef as React.RefCallback<HTMLTextAreaElement>}
+            value={textValue}
+            placeholder="Nhập câu trả lời của bạn..."
+            rows={4}
+            maxLength={1000}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
+            className={`w-full p-4 rounded-2xl border ${error ? 'border-red-400' : 'border-gray-200 focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100'} outline-none transition-all resize-none`}
+            autoComplete="off"
+          />
+          <span className={`text-xs mt-1 float-right ${textValue.length >= 950 ? 'text-red-400' : 'text-gray-400'}`}>
+            {textValue.length}/1000
+          </span>
+        </div>
+      )}
+      {error && (
+        <p className="text-red-500 text-sm mt-3 flex items-center gap-1.5">
+          <i className="fa-solid fa-circle-exclamation text-xs" />
+          {error}
+        </p>
       )}
     </div>
   );

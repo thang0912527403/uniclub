@@ -130,14 +130,16 @@ function Skeleton() {
    MAIN
    ═════════════════════════════════════════════════════════ */
 export default function CampaignsSection() {
-    const { data: campaigns = [], isLoading } = useGetRecruitmentCampaignsQuery();
+    const { data, isLoading } = useGetRecruitmentCampaignsQuery({ page: 1, pageSize: 50 });
+    const campaigns = data?.items ?? [];
     const scrollRef = useRef<HTMLDivElement>(null);
     const [canLeft, setCanLeft] = useState(false);
     const [canRight, setCanRight] = useState(true);
 
     const active = campaigns.filter(c => {
         const s = c.status?.toLowerCase();
-        return s === 'open' || s === 'active';
+        const notExpired = new Date(c.endDate).setHours(23, 59, 59, 999) >= Date.now();
+        return (s === 'open' || s === 'active') && notExpired;
     });
 
     const checkScroll = () => {
@@ -163,8 +165,8 @@ export default function CampaignsSection() {
     if (active.length === 0) return null;
 
     return (
-        <section className="py-14 bg-white overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6">
+        <section className="py-10 sm:py-14 bg-white overflow-hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
                 {/* ── Header ── */}
                 <div className="flex items-end justify-between mb-7">

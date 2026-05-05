@@ -7,14 +7,16 @@ import { useSidebarToggle } from '~/hooks/useSidebarToggle';
 import { useGetClubByIdQuery, useUpdateClubMutation } from '~/cores/api';
 import { useNotification } from '~/components/Notification';
 import { validateClubForm, type ClubFormData } from '~/utils/validation';
+import { getClubId } from '~/utils/auth';
 
 
 export default function ClubEditModule() {
-    const { id } = useParams();
+    const { id: paramId } = useParams();
+    const clubId = Number(paramId) || getClubId();
     const navigate = useNavigate();
     const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarToggle();
 
-    const { data: club, isLoading: isLoadingClub, error: loadError } = useGetClubByIdQuery(Number(id));
+    const { data: club, isLoading: isLoadingClub, error: loadError } = useGetClubByIdQuery(clubId);
     const [updateClub, { isLoading: isUpdating }] = useUpdateClubMutation();
     const { show: showNotification } = useNotification();
 
@@ -73,15 +75,16 @@ export default function ClubEditModule() {
             return;
         }
 
+        const resolvedId = club?.clubId || clubId;
         try {
-            await updateClub({ id: Number(id), club: formData }).unwrap();
+            await updateClub({ id: resolvedId, club: formData }).unwrap();
             showNotification({
                 type: 'success',
                 title: 'Cập nhật thành công!',
                 message: `Câu lạc bộ “${formData.clubName}” đã được cập nhật.`,
                 duration: 3000,
             });
-            navigate(`/clubs/${id}`);
+            navigate(paramId ? `/clubs/${clubId}` : "/club/info");
         } catch (err) {
             const rtkErr = err as { data?: { message?: string } };
             showNotification({
@@ -99,8 +102,9 @@ export default function ClubEditModule() {
             <SettingButton />
 
             <Sidebar
-                currentPath="/clubs"
+                currentPath={paramId ? `/clubs/${clubId}/edit` : "/club/edit"}
                 isOpen={isSidebarOpen}
+                onClose={toggleSidebar}
             />
 
             <HeaderBar
@@ -111,7 +115,7 @@ export default function ClubEditModule() {
             />
 
             {/* Main Content */}
-            <main className={`pt-24 px-6 py-8 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'ml-64' : 'ml-0'
+            <main className={`pt-24 px-6 py-8 bg-gray-50 dark:bg-gray-900 transition-all duration-300 min-h-screen ${isSidebarOpen ? 'md:ml-64' : 'ml-0'
                 }`}>
 
                 {/* Loading state */}
@@ -134,7 +138,7 @@ export default function ClubEditModule() {
                         {/* Title */}
                         <div className="mb-6">
                             <button
-                                onClick={() => navigate(`/clubs/${id}`)}
+                                onClick={() => navigate(paramId ? `/clubs/${clubId}` : "/club/info")}
                                 className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-2 flex items-center gap-2"
                             >
                                 <i className="fas fa-arrow-left"></i>
@@ -252,9 +256,11 @@ export default function ClubEditModule() {
                                             <input
                                                 type="date"
                                                 value={formData.foundedDate}
+                                                max={new Date().toISOString().split('T')[0]}
                                                 onChange={(e) => handleInputChange('foundedDate', e.target.value)}
-                                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg pl-10 pr-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                                                className={`w-full bg-gray-50 dark:bg-gray-900 border ${formErrors.foundedDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'} rounded-lg pl-10 pr-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500`}
                                             />
+                                            {formErrors.foundedDate && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{formErrors.foundedDate}</p>}
                                         </div>
                                     </div>
 
@@ -390,7 +396,7 @@ export default function ClubEditModule() {
                             <div className="flex items-center justify-end gap-3 pt-4">
                                 <button
                                     type="button"
-                                    onClick={() => navigate(`/clubs/${id}`)}
+                                    onClick={() => navigate(paramId ? `/clubs/${clubId}` : "/club/info")}
                                     className="px-6 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                     disabled={isUpdating}
                                 >
