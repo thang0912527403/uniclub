@@ -25,7 +25,16 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
         url: '/RecruitmentCampaign',
         params: params || {},
       }),
-      transformResponse: (response: ApiResponse<{ items: RecruitmentCampaign[]; totalCount: number; totalPages: number }>) => response.data,
+      transformResponse: (
+        response: ApiResponse<{
+          items: RecruitmentCampaign[];
+          totalCount: number;
+          totalPages: number;
+        }>,
+      ) => ({
+        ...response.data,
+        items: (response.data?.items ?? []).map(normalizeCampaign),
+      }),
       providesTags: ['RecruitmentCampaign'],
     }),
 
@@ -38,15 +47,26 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
         url: `/club/${clubId}/RecruitmentCampaign`,
         params,
       }),
-      transformResponse: (response: ApiResponse<{ items: RecruitmentCampaign[]; totalCount: number; totalPages: number }>) => response.data,
+      transformResponse: (
+        response: ApiResponse<{
+          items: RecruitmentCampaign[];
+          totalCount: number;
+          totalPages: number;
+        }>,
+      ) => ({
+        ...response.data,
+        items: (response.data?.items ?? []).map(normalizeCampaign),
+      }),
       providesTags: (result, error, { clubId }) => [{ type: 'RecruitmentCampaign', id: `club-${clubId}` }],
     }),
 
     // GET /club/{clubId}/RecruitmentCampaign/{id}
     getRecruitmentCampaign: builder.query<RecruitmentCampaign, { clubId: number; id: number }>({
       query: ({ clubId, id }) => `/club/${clubId}/RecruitmentCampaign/${id}`,
-      transformResponse: (response: ApiResponse<RecruitmentCampaign> | RecruitmentCampaign) =>
-        'data' in response ? response.data : response,
+      transformResponse: (response: ApiResponse<RecruitmentCampaign> | RecruitmentCampaign) => {
+        const raw = ('data' in response ? response.data : response) as RecruitmentCampaign;
+        return normalizeCampaign(raw);
+      },
       providesTags: (result, error, { id }) => [{ type: 'RecruitmentCampaign', id }],
     }),
 
@@ -60,8 +80,10 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
         method: 'POST',
         body: campaign,
       }),
-      transformResponse: (response: ApiResponse<RecruitmentCampaign> | RecruitmentCampaign) =>
-        'data' in response ? response.data : response,
+      transformResponse: (response: ApiResponse<RecruitmentCampaign> | RecruitmentCampaign) => {
+        const raw = ('data' in response ? response.data : response) as RecruitmentCampaign;
+        return normalizeCampaign(raw);
+      },
       invalidatesTags: ['RecruitmentCampaign'],
     }),
 
@@ -75,8 +97,10 @@ export const recruitmentCampaignApi = baseApi.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
-      transformResponse: (response: ApiResponse<RecruitmentCampaign> | RecruitmentCampaign) =>
-        'data' in response ? response.data : response,
+      transformResponse: (response: ApiResponse<RecruitmentCampaign> | RecruitmentCampaign) => {
+        const raw = ('data' in response ? response.data : response) as RecruitmentCampaign;
+        return normalizeCampaign(raw);
+      },
       invalidatesTags: ['RecruitmentCampaign'],
     }),
 

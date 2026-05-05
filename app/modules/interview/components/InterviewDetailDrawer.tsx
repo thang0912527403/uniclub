@@ -1189,6 +1189,31 @@ const InterviewDetailDrawer: React.FC<InterviewDetailDrawerProps> = ({
                         </p>
                       )}
 
+                      {/* Show criteria scores after feedback submitted */}
+                      {a.feedbackSubmittedAt && a.criteriaScores && a.criteriaScores.length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                            <i className="fa-solid fa-clipboard-list text-blue-500" />
+                            Nhận xét theo tiêu chí ({a.criteriaScores.length})
+                          </p>
+                          <div className="space-y-1.5">
+                            {a.criteriaScores.map((cs) => (
+                              <div
+                                key={cs.id}
+                                className="flex items-start gap-2 text-xs px-3 py-2 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30"
+                              >
+                                <span className="font-medium text-blue-700 dark:text-blue-400 flex-shrink-0 min-w-[100px]">
+                                  {cs.criterionName || `Tiêu chí #${cs.evaluationCriterionId}`}
+                                </span>
+                                <span className="text-gray-600 dark:text-gray-400 flex-1">
+                                  {cs.note || <span className="italic text-gray-400">Không có nhận xét</span>}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Show criteria feedback form for current user if not yet submitted */}
                       {!a.feedbackSubmittedAt &&
                         a.interviewerUserId === currentUserId &&

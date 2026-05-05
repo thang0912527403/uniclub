@@ -110,6 +110,7 @@ export interface InterviewAssignmentResponse {
   result?: string | null;
   assignedAt: string;
   feedbackSubmittedAt?: string | null;
+  criteriaScores?: import('./evaluation').CriteriaScoreResponse[];
 }
 
 // ═══════════════════════════════════════════════════════════════

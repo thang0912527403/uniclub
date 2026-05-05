@@ -41,6 +41,7 @@ export interface CriteriaScoreResponse {
   id: number;
   interviewAssignmentId?: number;
   evaluationCriterionId: number;
+  criterionName?: string | null;
   note?: string | null;
   createdAt: string;
 }
